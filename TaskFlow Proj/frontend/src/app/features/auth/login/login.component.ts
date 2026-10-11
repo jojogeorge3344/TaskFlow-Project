@@ -1,0 +1,55 @@
+import { Component, inject, signal } from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { dashboardRouteFor } from '../../../core/auth/role-routes';
+import { AuthService } from '../../../core/auth/auth.service';
+
+@Component({
+  selector: 'app-login',
+  imports: [ReactiveFormsModule],
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css'
+})
+export class LoginComponent {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly formBuilder = inject(NonNullableFormBuilder);
+
+  readonly submitting = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly showPassword = signal(false);
+
+  readonly form = this.formBuilder.group({
+    emailOrUsername: ['', [Validators.required]],
+    password: ['', [Validators.required]]
+  });
+
+  togglePassword(): void {
+    this.showPassword.update((visible) => !visible);
+  }
+
+  submit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    if (this.submitting()) {
+      return;
+    }
+
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+
+    this.authService.login(this.form.getRawValue()).subscribe({
+      next: (user) => {
+        this.submitting.set(false);
+        void this.router.navigateByUrl(dashboardRouteFor(user.role));
+      },
+      error: () => {
+        this.submitting.set(false);
+        this.errorMessage.set('Invalid email/username or password.');
+      }
+    });
+  }
+}
