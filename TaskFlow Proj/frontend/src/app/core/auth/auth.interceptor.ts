@@ -1,0 +1,39 @@
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { AuthService } from './auth.service';
+
+const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/refresh'];
+
+export const authInterceptor: HttpInterceptorFn = (request, next) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const isCredentialEndpoint = CREDENTIAL_ENDPOINTS.some((endpoint) => request.url.includes(endpoint));
+  const accessToken = authService.getAccessToken();
+
+  const authorizedRequest =
+    accessToken !== null && !isCredentialEndpoint
+      ? request.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } })
+      : request;
+
+  return next(authorizedRequest).pipe(
+    catchError((error: unknown) => {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401 || isCredentialEndpoint) {
+        return throwError(() => error);
+      }
+
+      return authService.refresh().pipe(
+        switchMap((response) =>
+          next(request.clone({ setHeaders: { Authorization: `Bearer ${response.accessToken}` } }))
+        ),
+        catchError((refreshError: unknown) => {
+          authService.clearSession();
+          void router.navigateByUrl('/login');
+          return throwError(() => refreshError);
+        })
+      );
+    })
+  );
+};

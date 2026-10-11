@@ -1,0 +1,47 @@
+<section class="login">
+  <form class="login__card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <header class="login__header">
+      <div class="login__logo" aria-hidden="true">TF</div>
+      <h1 class="login__title">TaskFlow</h1>
+      <p class="login__subtitle">Sign in to continue</p>
+    </header>
+
+    <label class="login__field">
+      <span class="login__label">Email or username</span>
+      <input
+        type="text"
+        formControlName="emailOrUsername"
+        autocomplete="username"
+        [attr.aria-invalid]="form.controls.emailOrUsername.invalid && form.controls.emailOrUsername.touched"
+      />
+      @if (form.controls.emailOrUsername.touched && form.controls.emailOrUsername.hasError('required')) {
+        <span class="login__hint">Email or username is required.</span>
+      }
+    </label>
+
+    <label class="login__field">
+      <span class="login__label">Password</span>
+      <span class="login__password">
+        <input
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        <button type="button" class="login__toggle" (click)="togglePassword()">
+          {{ showPassword() ? 'Hide' : 'Show' }}
+        </button>
+      </span>
+      @if (form.controls.password.touched && form.controls.password.hasError('required')) {
+        <span class="login__hint">Password is required.</span>
+      }
+    </label>
+
+    @if (errorMessage(); as message) {
+      <p class="login__error" role="alert">{{ message }}</p>
+    }
+
+    <button type="submit" class="login__submit" [disabled]="submitting()">
+      {{ submitting() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+</section>

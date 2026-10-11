@@ -25,8 +25,8 @@ TaskFlow Proj/
 │  ├─ src/TaskFlow.Domain/         # entities, enums, business rules
 │  ├─ src/TaskFlow.Infrastructure/ # EF Core, migrations, SMTP, scheduler
 │  └─ tests/                       # unit + integration
-├─ frontend/                       # Angular 19 workspace + taskflow.client.esproj
-│  ├─ proxy.conf.js                # dev proxy: /api/*  →  backend
+├─ frontend/                       # Angular 19 workspace (Angular CLI, standalone)
+│  ├─ proxy.conf.json              # dev proxy: /api/*  →  https://localhost:7055
 │  └─ src/app/                     # core, shared, features (lazy-loaded)
 ├─ database/                       # runtime DB + seed scripts
 ├─ docs/                           # documentation
@@ -49,13 +49,16 @@ Do **not** edit files under `.opencode/` (tooling/skills) as part of feature wor
 
 ## 3. Prerequisites & Commands
 
-**Prerequisites:** VS 2022 17.8+ (or VS 2026) with the **ASP.NET and web development** workload;
-.NET 10 SDK; **Node 22 LTS recommended** (Angular 19 supports `^18.19.1 || ^20.11.1 || ^22.0.0`;
-Node 24 builds but warns); global **Angular CLI 19** (`npm install -g @angular/cli@19`).
+**Prerequisites:** .NET 10 SDK; **Node 22 LTS recommended** (Angular 19 supports
+`^18.19.1 || ^20.11.1 || ^22.0.0`; the current machine runs Node 24 and warns); Angular CLI 19
+via `npx @angular/cli@19` (no global install). **VS 2022 17.8+ / VS 2026** with the
+**ASP.NET and web development** workload is *optional* (F5 + debugger only).
 
-**Run both:** open `backend/TaskFlow.sln`, set Startup Projects to **Multiple projects**
-(`TaskFlow.Api` first, frontend `.esproj` second), press **F5** — Visual Studio starts the API
-and launches the Angular dev server via `Microsoft.AspNetCore.SpaProxy` (`npm start`).
+**Run both:** `dotnet run --project src/TaskFlow.Api` (default **https** profile), or open
+`backend/TaskFlow.sln` and press **F5**. `Microsoft.AspNetCore.SpaProxy` launches the Angular
+dev server (`npm start`) once the API is up and redirects the browser to `http://localhost:4200`;
+the SPA proxies `/api/*` to `https://localhost:7055`. The API-only `http` profile does not launch
+the SPA. (Run `npm install` in `frontend/` first.)
 
 | Task | Command | Working dir |
 |---|---|---|

@@ -1,0 +1,4 @@
+## Runtime SQLite database (recreated by migrations + seeding); keep seed/ scripts
+*.db
+*.db-shm
+*.db-wal
