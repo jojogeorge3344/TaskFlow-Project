@@ -1,0 +1,139 @@
+# Agent Guide — TaskFlow
+
+Operating instructions for AI assistants and automation contributors working in this
+repository. Read this before making changes. For product context, see `project.md`; for the
+authoritative design, see `../Artifacts/TDD-TaskFlow.md`.
+
+---
+
+## 1. Role & Scope
+
+You help build and maintain TaskFlow: an ASP.NET Core Web API + SQLite backend with an
+Angular SPA frontend, implementing the BRD. Work from the design documents, not from
+assumption. When something is ambiguous or would change scope, ask before acting.
+
+---
+
+## 2. Repository Map
+
+```
+TaskFlow Proj/
+├─ backend/                        # .NET solution
+│  ├─ TaskFlow.sln
+│  ├─ src/TaskFlow.Api/            # controllers, middleware, DI, Program.cs
+│  ├─ src/TaskFlow.Application/    # services, DTOs, validators, interfaces
+│  ├─ src/TaskFlow.Domain/         # entities, enums, business rules
+│  ├─ src/TaskFlow.Infrastructure/ # EF Core, migrations, SMTP, scheduler
+│  └─ tests/                       # unit + integration
+├─ frontend/                       # Angular 19 workspace + taskflow.client.esproj
+│  ├─ proxy.conf.js                # dev proxy: /api/*  →  backend
+│  └─ src/app/                     # core, shared, features (lazy-loaded)
+├─ database/                       # runtime DB + seed scripts
+├─ docs/                           # documentation
+├─ project.md                      # project overview (read this first)
+└─ agent.md                        # this file
+```
+
+Planning material lives **outside** this folder, at the workspace root:
+
+| Path | Contents | Treat as |
+|---|---|---|
+| `../Requirements/BRD for Task management.docx` | Business requirements | Source of truth for *what* |
+| `../Requirements/screens wise feature/01..20*.md` | Per-screen specs | Source of truth for UI behaviour |
+| `../Artifacts/TDD-TaskFlow.md` | Technical design | Source of truth for *how* |
+| `../openspec/` | OpenSpec workspace (changes, specs) | Planning workflow |
+
+Do **not** edit files under `.opencode/` (tooling/skills) as part of feature work.
+
+---
+
+## 3. Prerequisites & Commands
+
+**Prerequisites:** VS 2022 17.8+ (or VS 2026) with the **ASP.NET and web development** workload;
+.NET 10 SDK; **Node 22 LTS recommended** (Angular 19 supports `^18.19.1 || ^20.11.1 || ^22.0.0`;
+Node 24 builds but warns); global **Angular CLI 19** (`npm install -g @angular/cli@19`).
+
+**Run both:** open `backend/TaskFlow.sln`, set Startup Projects to **Multiple projects**
+(`TaskFlow.Api` first, frontend `.esproj` second), press **F5** — Visual Studio starts the API
+and launches the Angular dev server via `Microsoft.AspNetCore.SpaProxy` (`npm start`).
+
+| Task | Command | Working dir |
+|---|---|---|
+| Build backend | `dotnet build` | `backend/` |
+| Run API | `dotnet run --project src/TaskFlow.Api` | `backend/` |
+| Apply migrations | `dotnet ef database update --project src/TaskFlow.Infrastructure --startup-project src/TaskFlow.Api` | `backend/` |
+| Backend tests | `dotnet test` | `backend/` |
+| Install frontend deps | `npm install` | `frontend/` |
+| Run frontend | `npm start` | `frontend/` |
+| Frontend unit tests | `ng test` | `frontend/` |
+| Frontend e2e | `npx playwright test` | `frontend/` |
+
+If a lint/typecheck/build command exists, run it after your change and fix what you broke.
+If you cannot find the right command, ask.
+
+---
+
+## 4. Hard Rules
+
+**Architecture**
+- Respect layer direction: `Api → Application → Domain`; `Infrastructure → Application/Domain`.
+  Never reference a higher layer from a lower one.
+- Controllers stay thin; business rules live in Application services; pure rules in Domain.
+
+**Data**
+- All timestamps stored in **UTC**. Convert only at the boundary using `Application.Timezone`.
+- **Overdue is never stored** — derive it from `Deadline` + `Status` at query time.
+- Soft-delete history-bearing entities (`users`, `departments`, `tasks`); never hard-delete
+  referenced rows. `IsActive=false` (blocks login) is separate from `IsDeleted`.
+- Reminder generation must be **idempotent** — rely on the unique dedup index
+  `(TaskId, RecipientUserId, ReminderType, ScheduledFor)`; a duplicate insert is ignored.
+
+**API**
+- Base path `/api/v1`, `camelCase` JSON, `ProblemDetails` for errors.
+- Every endpoint declares an explicit role/resource policy. Never trust client-supplied IDs
+  for ownership — check assignee/creator/recipient/manager scope server-side.
+- List endpoints return `{ items, total, page, pageSize }`.
+
+**Security**
+- Passwords only via `PasswordHasher<T>` (PBKDF2). Never log or return them.
+- Secrets (JWT signing key, SMTP password) come from environment variables/user-secrets —
+  never the database, never a response, never a log line.
+- Generic authentication errors (no user enumeration); CORS restricted to known origins.
+
+**Frontend**
+- Server-side validation is authoritative; client validation mirrors it for UX only.
+- Feature folders are lazy-loaded; use signals for local state, RxJS for HTTP.
+
+---
+
+## 5. Workflow
+
+1. **Understand** the request against the BRD/TDD/screen spec. Ask if scope or observable
+   behaviour is unclear.
+2. **Plan with OpenSpec** for non-trivial changes: create a proposal, get specs/design/tasks,
+   then implement. Start with the openspec workflow skills — do not hand-write directories
+   under `../openspec/changes/`.
+3. **Implement** in small, coherent steps that map to the task list.
+4. **Verify** — build + tests for the affected layer. Never claim done without running them.
+5. **Do not commit, push, or open a PR unless the user explicitly asks.** If asked, follow
+   the repo's commit/PR workflow and never commit secrets.
+
+---
+
+## 6. Recording Decisions
+
+- Changes to *what the system must do* → OpenSpec specs / the BRD.
+- Changes to *how it is built* → TDD (`../Artifacts/TDD-TaskFlow.md`) and/or OpenSpec design.
+- Changes to stack, structure, or conventions → update `project.md` in the same change.
+
+Keep `project.md`, `agent.md`, the TDD, and OpenSpec specs in sync; do not duplicate facts
+in more than one place without a clear canonical owner.
+
+---
+
+## 7. Guardrails
+
+- Never add comments to code unless asked.
+- Never introduce a library without checking the stack in `project.md` and the TDD.
+- Never expand scope beyond the BRD; put ideas in the "Future Enhancements" backlog instead.
+- Stop and ask when a decision materially affects scope, data, security, or acceptance criteria.
