@@ -11,7 +11,7 @@
 - `/employees` and `/departments` do not use the layout at all.
 - The in-progress `task-management-impl` change (task 4.4, "Routes") will add more authenticated screens soon.
 
-Visual reference: `mockup.html` in this change folder, also published at https://claude.ai/artifact/TrFQcfq6KJpP65P9tH15VQ (shell expanded, collapsed and mobile; Employee Management; Department Management).
+Visual reference: `mockup.html` in this change folder (shell expanded, collapsed and mobile; Employee Management; Department Management). Open it directly in a browser; it has no external dependencies.
 
 ## Goals / Non-Goals
 

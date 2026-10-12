@@ -26,14 +26,14 @@
 ## 5. Employee Management redesign
 
 - [ ] 5.1 Rewrite `employee-list.component.html/.css` with the page header (title, count subtitle, "Add employee"), the filter toolbar (search, department, role, status, Reset) and the `.tf-table` with avatar, badges, "Unassigned" fallback and row actions. Add the <768px card-row transform. Verify at 390px, 768px and 1280px with no horizontal scroll.
-- [ ] 5.2 Refactor `employee-list.component.ts`: filter signals, 300ms debounced search, select filters applied on change, `switchMap` loading, `departmentId` read from and written to query params, and loading/empty/error states with Retry and Clear filters (D6). Verify with `employee-list.component.spec.ts` covering debounce, query-param prefilter, empty state and retry.
-- [ ] 5.3 Create `employee-form-panel` (Reactive Forms, inline errors, password and status fields only in create mode, server error shown in the panel, Save disabled while saving) and `employee-details-panel` (read-only fields + Edit). Verify with specs for create-mode vs edit-mode fields, required/email errors, a kept-open panel on a 409 error, and the success toast.
+- [ ] 5.2 Refactor `employee-list.component.ts`: filter signals, 300ms debounced search, select filters applied on change, `switchMap` loading, `departmentId` read from and written to query params, and loading/empty/error states with Retry and Clear filters (D6). Verify by creating `employee-list.component.spec.ts` (it does not exist yet) covering debounce, query-param prefilter, empty state and retry.
+- [ ] 5.3 Create `employee-form-panel` (Reactive Forms, optional employee code field, inline errors, password and status fields only in create mode, server error shown in the panel, Save disabled while saving) and `employee-details-panel` (read-only fields + Edit). Verify with specs for create-mode vs edit-mode fields, required/email errors, a kept-open panel on a 409 error, and the success toast.
 - [ ] 5.4 Wire Deactivate through `ConfirmDialogComponent` (no confirmation for Activate) and show toasts. Verify with a spec showing a cancelled confirmation does not call `updateStatus`.
 
 ## 6. Department Management redesign
 
 - [ ] 6.1 Rewrite `department-list.component.html/.css`: page header with count and "Add department", search field, and a card grid (1 column / 2 columns at ≥576px / auto-fill at ≥1200px) with name, description fallback, employee count, Edit, guarded Delete with tooltip, and View employees (`/employees?departmentId=`). Verify at 390px, 768px and 1280px.
-- [ ] 6.2 Refactor `department-list.component.ts`: client-side `computed()` search, loading/empty/no-match/error states, and replace `confirm()` with `ConfirmDialogComponent` (D7). Verify with `department-list.component.spec.ts` covering search filtering, the disabled delete when employees > 0, and the confirm flow.
+- [ ] 6.2 Refactor `department-list.component.ts`: client-side `computed()` search, loading/empty/no-match/error states, and replace `confirm()` with `ConfirmDialogComponent` (D7). Verify by creating `department-list.component.spec.ts` (it does not exist yet) covering search filtering, the disabled delete when employees > 0, and the confirm flow.
 - [ ] 6.3 Create `department-form-dialog` (native `<dialog>`, required Name, server error kept inside the dialog, toast on success). Verify with a spec for the required-name error and a duplicate-name error that keeps the dialog open.
 
 ## 7. Documentation
@@ -43,4 +43,4 @@
 ## 8. Integration verification
 
 - [ ] 8.1 Run `npm run build` and `npm test` (`ng test --watch=false`) in `frontend/`. Both must pass with no new warnings.
-- [ ] 8.2 Manual check in `npm start` as Administrator, Manager and Employee: role menus and icons, active highlight, desktop collapse persisted across reload, mobile drawer (390px) closing on link/backdrop/Esc, sign-out from `/employees`, the full employee CRUD and deactivate flow, the department CRUD flow, and View employees prefilter. Compare against the mockup artifact.
+- [ ] 8.2 Manual check in `npm start` as Administrator, Manager and Employee: role menus and icons, active highlight, desktop collapse persisted across reload, mobile drawer (390px) closing on link/backdrop/Esc, sign-out from `/employees`, the full employee CRUD and deactivate flow, the department CRUD flow, and View employees prefilter. Compare against `mockup.html`.

@@ -4,9 +4,9 @@
 
 ### Requirement: Employee Management page layout
 
-The Employee Management screen SHALL show, in order: a page header with the title "Employee Management", a subtitle with the total number of employees, and an "Add employee" primary button aligned to the right; a filter toolbar; and the employee list.
+The Employee Management screen SHALL show, in order: a page header with the title "Employee Management", a subtitle with the number of employees that match the current filters (the length of the filtered list the API returns; no separate total is requested), and an "Add employee" primary button aligned to the right; a filter toolbar; and the employee list.
 
-#### Scenario: Header shows total
+#### Scenario: Header shows matching count
 
 - **WHEN** an Administrator opens `/employees` and 24 employees match the current filters
 - **THEN** the header shows "Employee Management", a subtitle that includes "24 employees", and an "Add employee" button
@@ -68,17 +68,17 @@ The list SHALL show a loading placeholder while data loads. It SHALL show an emp
 
 ### Requirement: Add and edit employee in a side panel
 
-Add and Edit SHALL open a form in a side panel that slides in over the list. The panel title SHALL say "Add employee" or "Edit employee". The form SHALL include full name, username, email, role, and department. Password and initial status SHALL appear only when adding.
+Add and Edit SHALL open a form in a side panel that slides in over the list. The panel title SHALL say "Add employee" or "Edit employee". The form SHALL include employee code (optional), full name, username, email, role, and department. Password and initial status SHALL appear only when adding.
 
 #### Scenario: Open add form
 
 - **WHEN** the Administrator clicks "Add employee"
-- **THEN** a side panel opens with empty fields, including a password field, and focus moves to the first field
+- **THEN** a side panel opens with empty fields, including an optional employee code field and a password field, and focus moves to the first field
 
 #### Scenario: Open edit form
 
 - **WHEN** the Administrator clicks Edit on an employee
-- **THEN** the side panel opens with that employee's values filled in and no password field
+- **THEN** the side panel opens with that employee's values filled in, including the employee code, and no password field
 
 ### Requirement: Inline form validation and server errors
 
