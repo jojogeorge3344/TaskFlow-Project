@@ -1,0 +1,53 @@
+<div class="layout">
+  <header class="layout__topbar">
+    <button
+      type="button"
+      class="layout__menu"
+      aria-label="Toggle navigation"
+      [attr.aria-expanded]="sidebarOpen()"
+      (click)="toggleSidebar()"
+    >
+      ☰
+    </button>
+    <span class="layout__brand">TaskFlow</span>
+  </header>
+
+  <aside class="layout__sidebar" [class.layout__sidebar--open]="sidebarOpen()">
+    <div class="layout__brand-block">
+      <span class="layout__logo">TF</span>
+      <span class="layout__brand-name">TaskFlow</span>
+    </div>
+
+    <nav class="layout__nav" aria-label="Primary">
+      @for (item of navItems(); track item.label) {
+        @if (item.route) {
+          <a
+            class="layout__link"
+            [routerLink]="item.route"
+            routerLinkActive="layout__link--active"
+            (click)="closeSidebar()"
+          >
+            {{ item.label }}
+          </a>
+        } @else {
+          <span class="layout__link layout__link--disabled" title="Not available yet">
+            {{ item.label }}
+            <small class="layout__soon">soon</small>
+          </span>
+        }
+      }
+    </nav>
+
+    <div class="layout__account">
+      @if (user(); as currentUser) {
+        <p class="layout__account-name">{{ currentUser.fullName }}</p>
+        <p class="layout__account-role">{{ currentUser.role }}</p>
+      }
+      <button type="button" class="layout__logout" (click)="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="layout__content">
+    <ng-content></ng-content>
+  </main>
+</div>

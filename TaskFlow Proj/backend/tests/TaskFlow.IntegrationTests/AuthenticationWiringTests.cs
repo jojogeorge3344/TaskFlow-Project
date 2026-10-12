@@ -17,7 +17,7 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task ProtectedEndpoint_ReturnsUnauthorized_WithoutToken()
+    public async System.Threading.Tasks.Task ProtectedEndpoint_ReturnsUnauthorized_WithoutToken()
     {
         var client = _factory.CreateClient();
 
@@ -27,7 +27,7 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task ProtectedEndpoint_ReturnsOk_WithValidToken()
+    public async System.Threading.Tasks.Task ProtectedEndpoint_ReturnsOk_WithValidToken()
     {
         var client = _factory.CreateClient();
 

@@ -25,7 +25,7 @@ public class DatabaseSeeder
         _timeProvider = timeProvider;
     }
 
-    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    public async System.Threading.Tasks.Task SeedAsync(CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled)
         {
@@ -60,7 +60,7 @@ public class DatabaseSeeder
             cancellationToken);
     }
 
-    private async Task EnsureUserAsync(
+    private async System.Threading.Tasks.Task EnsureUserAsync(
         string employeeCode,
         string fullName,
         string username,

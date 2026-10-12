@@ -34,7 +34,7 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
         });
     }
 
-    public async Task SeedUserAsync(
+    public async System.Threading.Tasks.Task SeedUserAsync(
         string username,
         string email,
         string password,

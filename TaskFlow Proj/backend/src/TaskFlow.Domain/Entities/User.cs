@@ -28,5 +28,9 @@ public class User
 
     public bool IsDeleted { get; set; }
 
+    public int? DepartmentId { get; set; }
+
+    public Department? Department { get; set; }
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
