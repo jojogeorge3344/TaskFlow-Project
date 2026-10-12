@@ -1,6 +1,6 @@
 ---
 name: code-review-resolved
-description: Verifies fixes on a GitHub Pull Request and posts ONE consolidated "Resolved Items" comment. Use after a /code-review run, when the user asks to re-review a PR, verify fixes, check whether review comments were addressed, or run /code-review-resolved. Requires BOTH the PR link and the branch name; asks for whichever is missing.
+description: Verifies fixes on a GitHub Pull Request and posts ONE consolidated "Resolved Items" comment. Use after a /manual-code-review run, when the user asks to re-review a PR, verify fixes, check whether review comments were addressed, or run /code-review-resolved. Requires BOTH the PR link and the branch name; asks for whichever is missing.
 license: MIT
 compatibility: Requires gh CLI (GitHub CLI) with authenticated access to the repository.
 metadata:
@@ -60,7 +60,7 @@ If `headRefName` differs from the provided branch name, stop and tell the user a
    ```
 
    Take `{owner}`, `{repo}` and `<pr-number>` from the PR link itself, and pass `--repo {owner}/{repo}` (or use the explicit path) so commands hit that repo even when run from another directory.
-   Filter for the comments whose body starts with `## Code Review Findings` (posted by `/code-review`). Parse out each finding: title, location, issue, and suggested fix.
+   Filter for the comments whose body starts with `## Code Review Findings` (posted by `/manual-code-review` or `/commit-pr-review`). Parse out each finding: title, location, issue, and suggested fix.
 
    If no prior `## Code Review Findings` comment exists, stop and tell the user — there is nothing to verify.
 
@@ -133,10 +133,10 @@ Report back to the user: PR URL, branch, counts of resolved vs still open, and a
 - Never start without both the PR link and branch name from the user; never guess or auto-detect either.
 - ONE consolidated comment only — never one comment per resolved issue.
 - Never duplicate the same finding.
-- Only include findings from the previous `/code-review` comment.
+- Only include findings from the previous `/manual-code-review` (or `/commit-pr-review`) comment.
 - Verify the current code before marking any issue resolved.
 - Do not treat unrelated changes as resolved review findings.
-- Do not report new issues here — this skill only tracks prior findings. New problems go through `/code-review`.
+- Do not report new issues here — this skill only tracks prior findings. New problems go through `/manual-code-review`.
 - Keep explanations concise and technically accurate.
 - Do not modify the PR code.
 - Do not create commits, branches, or pushes.

@@ -1,6 +1,6 @@
 ---
-name: code-review
-description: Reviews a GitHub Pull Request and posts ONE consolidated "Code Review Findings" comment (optionally with inline line comments). Use whenever the user asks for a code review, PR review, /code-review, "review this PR", "check this PR before merge", "look over my changes", "find issues in this pull request", or shares a GitHub PR link and wants feedback, even if they don't say "code review" explicitly. Requires BOTH the PR link and the branch name; asks for whichever is missing.
+name: manual-code-review
+description: Reviews a GitHub Pull Request and posts ONE consolidated "Code Review Findings" comment (optionally with inline line comments). Use whenever the user asks for a code review, PR review, /manual-code-review, "review this PR", "check this PR before merge", "look over my changes", "find issues in this pull request", or shares a GitHub PR link and wants feedback, even if they don't say "code review" explicitly. Requires BOTH the PR link and the branch name; asks for whichever is missing.
 license: MIT
 compatibility: Requires gh CLI (GitHub CLI) with authenticated access to the repository.
 metadata:
