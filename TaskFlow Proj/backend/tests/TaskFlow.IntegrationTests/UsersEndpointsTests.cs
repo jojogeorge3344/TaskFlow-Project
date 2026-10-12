@@ -132,13 +132,73 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
     }
 
-    private static object UpdateBody(string username, string? password = null, string fullName = "Updated Name") => new
+    [Fact]
+    public async Task Update_WithBlankPassword_IsRejected()
+    {
+        var adminClient = _factory.CreateClient();
+        var adminToken = (await LoginAsync(adminClient, "users-admin-blank", Role.Administrator)).AccessToken;
+        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-blank", Role.Employee);
+
+        var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
+            UpdateBody("users-emp-blank", password: "      "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithNewRole_EndsExistingSessions()
+    {
+        var adminClient = _factory.CreateClient();
+        var adminToken = (await LoginAsync(adminClient, "users-admin-role", Role.Administrator)).AccessToken;
+        var demotedClient = _factory.CreateClient();
+        var demoted = await LoginAsync(demotedClient, "users-demoted-admin", Role.Administrator);
+
+        var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{demoted.UserId}", adminToken,
+            UpdateBody("users-demoted-admin", role: "Employee"));
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        // The old Administrator token no longer reaches admin-only endpoints.
+        var list = await SendAsync(demotedClient, HttpMethod.Get, "/api/v1/users", demoted.AccessToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, list.StatusCode);
+    }
+
+    [Fact]
+    public async Task Deactivate_ThenReactivate_DoesNotReviveOldSessions()
+    {
+        var adminClient = _factory.CreateClient();
+        var adminToken = (await LoginAsync(adminClient, "users-admin-status", Role.Administrator)).AccessToken;
+        var employeeClient = _factory.CreateClient();
+        var employee = await LoginAsync(employeeClient, "users-emp-status", Role.Employee);
+
+        var deactivate = await SendAsync(adminClient, HttpMethod.Patch, $"/api/v1/users/{employee.UserId}/status",
+            adminToken, new { isActive = false });
+        Assert.Equal(HttpStatusCode.OK, deactivate.StatusCode);
+        var reactivate = await SendAsync(adminClient, HttpMethod.Patch, $"/api/v1/users/{employee.UserId}/status",
+            adminToken, new { isActive = true });
+        Assert.Equal(HttpStatusCode.OK, reactivate.StatusCode);
+
+        var me = await SendAsync(employeeClient, HttpMethod.Get, "/api/v1/auth/me", employee.AccessToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
+
+        using var refresh = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/refresh");
+        refresh.Headers.Add("Cookie", $"taskflow_refresh={employee.RefreshCookie}");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await employeeClient.SendAsync(refresh)).StatusCode);
+
+        var login = await PostLoginAsync(employeeClient, "users-emp-status", Password);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    private static object UpdateBody(
+        string username,
+        string? password = null,
+        string fullName = "Updated Name",
+        string role = "Employee") => new
     {
         employeeCode = (string?)null,
         fullName,
         username,
         email = $"{username}@taskflow.local",
-        role = "Employee",
+        role,
         departmentId = (int?)null,
         password
     };

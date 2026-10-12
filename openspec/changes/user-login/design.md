@@ -14,7 +14,7 @@ See `proposal.md` — Why. Current state and constraints that shape the approach
 
 - One end-to-end vertical slice: browser → API → SQLite → back, exercised by login.
 - Establish the app-wide auth skeleton (token, interceptor, guards, error envelope) that later features reuse unchanged.
-- Make login verifiable from a clean database via seeded accounts, one per role.
+- Make login verifiable from a clean database via a seeded Administrator account (other roles are created from Employee Management; see change `app-shell-and-admin-ui`).
 
 **Non-Goals:**
 
@@ -50,7 +50,7 @@ Resolves bootstrap D6 early: login is the first feature, its component and routi
 _Alternative considered:_ write login NgModule-style to minimise bootstrap risk — rejected, as it would leave the baseline divergent from the TDD §12 target and force a second migration later.
 
 **D7 — Seed accounts via an idempotent startup seeder, not static SQL.**
-Password hashes must be produced by `PasswordHasher` at runtime, so seeding is code-driven and idempotent (present accounts are skipped). Seeds an Administrator plus one Manager and one Employee so all three role redirects are verifiable.
+Password hashes must be produced by `PasswordHasher` at runtime, so seeding is code-driven and idempotent (present accounts are skipped). Seeds only an Administrator; Manager and Employee accounts are created from Employee Management, which is how the other role redirects are verified. (The demo Manager and Employee seeds were removed in `app-shell-and-admin-ui`.)
 _Alternative considered:_ a SQL script in `database/seed/` — can't produce PBKDF2 hashes cleanly, and would drift from the model.
 
 **D8 — Cache the role → route mapping in one place.**

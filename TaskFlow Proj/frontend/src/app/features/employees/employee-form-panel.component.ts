@@ -16,6 +16,12 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
   return control.value?.trim() ? null : { required: true };
 }
 
+/** Optional, but a value that is only whitespace is not a usable password. */
+function notBlankIfPresent(control: AbstractControl<string>): ValidationErrors | null {
+  const value = control.value ?? '';
+  return value !== '' && value.trim() === '' ? { blank: true } : null;
+}
+
 /** Add/edit employee form shown inside the side panel. Saves through the API and reports the result. */
 @Component({
   selector: 'app-employee-form-panel',
@@ -66,7 +72,7 @@ export class EmployeeFormPanelComponent implements OnInit {
       });
       // Initial status only exists when adding; a new password is optional when editing.
       this.form.controls.isActive.disable();
-      this.form.controls.password.addValidators(Validators.minLength(MIN_PASSWORD_LENGTH));
+      this.form.controls.password.addValidators([notBlankIfPresent, Validators.minLength(MIN_PASSWORD_LENGTH)]);
     } else {
       // Mirrors the API's CreateUserRequestValidator (required, at least 6 characters).
       this.form.controls.password.addValidators([requiredText, Validators.minLength(MIN_PASSWORD_LENGTH)]);
@@ -105,8 +111,10 @@ export class EmployeeFormPanelComponent implements OnInit {
     request$.subscribe({
       next: (user) => {
         this.saving.set(false);
-        // The API ends every session of a user whose username or password changed.
-        const credentialsChanged = employee !== null && (user.username !== employee.username || newPassword !== null);
+        // The API ends every session of a user whose username, password or role changed.
+        const credentialsChanged =
+          employee !== null &&
+          (user.username !== employee.username || newPassword !== null || user.role !== employee.role);
 
         if (credentialsChanged && this.authService.currentUser()?.id === user.id) {
           // The signed-in admin changed their own credentials: sign out now and ask for the new ones.

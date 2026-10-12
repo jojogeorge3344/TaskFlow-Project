@@ -119,7 +119,7 @@ Deactivating an active employee SHALL require confirmation in a dialog that name
 
 ### Requirement: Changing sign-in credentials ends the employee's sessions
 
-When an Administrator changes an employee's username or sets a new password, the system SHALL end every existing session of that employee. The employee's next request SHALL be rejected, and the app SHALL return them to the login screen with a message asking them to sign in with the new details. Their sessions SHALL be re-checked at least once a minute and whenever the browser tab becomes visible. Other edits (name, email, role, department, employee code) SHALL NOT end sessions.
+When an Administrator changes an employee's username or role, sets a new password, or deactivates the employee, the system SHALL end every existing session of that employee, and reactivating SHALL NOT restore them. The employee's next request SHALL be rejected and the app SHALL return them to the login screen with a message. Other edits (name, email, department, employee code) SHALL NOT end sessions.
 
 #### Scenario: Password changed by an Administrator
 
@@ -136,3 +136,21 @@ When an Administrator changes an employee's username or sets a new password, the
 
 - **WHEN** an Administrator changes only an employee's full name
 - **THEN** the employee stays signed in
+
+### Requirement: Signed-out sessions are noticed promptly
+
+While a user is signed in, the app SHALL re-check their session at least once a minute and whenever the browser tab becomes visible, so an ended session returns them to the login screen without waiting for their next action.
+
+#### Scenario: Idle tab after a password change
+
+- **WHEN** an employee's password is changed while their tab is open but idle
+- **THEN** within about a minute the app shows the login screen with a notice that their session ended
+
+### Requirement: New passwords cannot be blank
+
+A new password set while editing an employee SHALL be at least 6 characters and SHALL NOT consist only of whitespace. Leaving the field empty SHALL keep the current password.
+
+#### Scenario: Spaces only
+
+- **WHEN** an Administrator enters only spaces as the new password and saves
+- **THEN** the form shows "Password cannot be only spaces." and nothing is saved

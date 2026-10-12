@@ -92,9 +92,9 @@ Remove all Bootstrap class names from the two templates. Component CSS files hol
 
 Load once, and filter client-side with a `computed()` over the `departments` and `query` signals. "View employees" uses `routerLink="/employees" [queryParams]="{ departmentId: d.id }"`. Delete is disabled when `employeeCount > 0`, with a `title` tooltip and an `aria-describedby` hint.
 
-### D8. Ending sessions when credentials change
+### D8. Ending sessions when credentials, role or status change
 
-`User.SecurityStamp` (new column) is written into each access token as the `sstamp` claim and compared with the stored value in `JwtBearerEvents.OnTokenValidated`, which also rejects missing or inactive users. Changing the username or setting a new password (optional `password` on `PUT /users/{id}`) issues a new stamp and revokes the user's refresh tokens, so both the access token and the refresh fail. The SPA already redirects to `/login` when a refresh fails; it now adds `?reason=session-ended` (or `credentials-changed` when the Administrator edits themself), and the shell calls `GET /auth/me` every 60s and when the tab becomes visible so the sign-out happens promptly.
+`User.SecurityStamp` (new column) is written into each access token as the `sstamp` claim and compared with the stored value in `JwtBearerEvents.OnTokenValidated`, which also rejects missing or inactive users. Changing the username or role, setting a new password (optional `password` on `PUT /users/{id}`), or deactivating the user issues a new stamp and revokes the user's refresh tokens (so reactivation cannot revive old sessions), so both the access token and the refresh fail. The SPA already redirects to `/login` when a refresh fails; it now adds `?reason=session-ended` (or `credentials-changed` when the Administrator edits themself), and the shell calls `GET /auth/me` every 60s and when the tab becomes visible so the sign-out happens promptly.
 
 - *Why:* access tokens live 30 minutes; revoking refresh tokens alone would leave the old session working until then.
 - *Cost:* one indexed user lookup per authenticated request, and one `/auth/me` call per signed-in tab per minute.

@@ -111,6 +111,30 @@ describe('EmployeeFormPanelComponent', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
+  it('rejects a new password that is only spaces', () => {
+    const fixture = create(existing);
+
+    type(fixture, 'emp-password', '      ');
+    submit(fixture);
+
+    expect(el(fixture).querySelector('#emp-password-error')?.textContent).toContain('Password cannot be only spaces.');
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('signs the admin out at once when they change their own role', () => {
+    const self: User = { ...existing, id: 1, username: 'admin', fullName: 'Admin', role: 'Administrator' };
+    const fixture = create(self);
+    updateSpy.and.returnValue(of({ ...self, role: 'Manager' }));
+
+    const role = el(fixture).querySelector('#emp-role') as HTMLSelectElement;
+    role.value = 'Manager';
+    role.dispatchEvent(new Event('change'));
+    submit(fixture);
+
+    expect(clearSessionSpy).toHaveBeenCalled();
+    expect(navigateSpy).toHaveBeenCalledWith(['/login'], { queryParams: { reason: 'credentials-changed' } });
+  });
+
   it('signs the admin out at once when they change their own username', () => {
     const self: User = { ...existing, id: 1, username: 'admin', fullName: 'Admin' };
     const fixture = create(self);

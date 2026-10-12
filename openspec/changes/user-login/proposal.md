@@ -7,7 +7,7 @@ This change **assumes `bootstrap-solution-scaffold` is applied** (solution, four
 ## What Changes
 
 - **Authentication foundation:** `User` domain entity + `Role` enum, `users` table via the first EF Core migration, PBKDF2 hashing through `PasswordHasher<User>`, JWT bearer configuration, RFC-7807 `ProblemDetails` error handling, and CORS for the SPA origin.
-- **Seed credentials:** an Administrator plus demo Manager and Employee accounts (no registration screen exists), so login and role-redirect are testable from a clean database.
+- **Seed credentials:** an Administrator account (no registration screen exists), so login is testable from a clean database; other roles are created from Employee Management.
 - **Backend endpoints:** `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/me` (TDD §8.2).
 - **Login rules (Screen 1 FR 1–7):** accept registered **email or username**, verify the password, **reject `IsActive=false` / `IsDeleted` accounts**, update `LastLoginAt`, return the user + role. Invalid/inactive accounts return a **single generic 401** (no user enumeration, §9.4).
 - **Secure sessions (§9.2):** short-lived access JWT held **in Angular memory**; refresh token **hashed** in `refresh_tokens`, rotated on use, revocable on logout, delivered in an HttpOnly/Secure/SameSite cookie; session restored on reload via refresh.

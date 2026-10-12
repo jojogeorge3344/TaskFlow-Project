@@ -103,7 +103,13 @@
         />
         @if (showError('password')) {
           <span id="emp-password-error" class="tf-field__error">
-            {{ form.controls.password.hasError('minlength') ? 'Use at least ' + minPasswordLength + ' characters.' : 'Password is required.' }}
+            {{
+              form.controls.password.hasError('blank')
+                ? 'Password cannot be only spaces.'
+                : form.controls.password.hasError('minlength')
+                  ? 'Use at least ' + minPasswordLength + ' characters.'
+                  : 'Password is required.'
+            }}
           </span>
         }
       </div>
@@ -119,7 +125,7 @@
     </div>
     @if (!isCreate()) {
       <span id="emp-password-hint" class="tf-field__hint">
-        Changing the username or password signs this employee out. They must sign in again with the new details.
+        Changing the username, password or role signs this employee out. They must sign in again.
       </span>
     }
   </div>
