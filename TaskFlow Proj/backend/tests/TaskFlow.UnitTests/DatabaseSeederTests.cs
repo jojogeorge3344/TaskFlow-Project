@@ -11,7 +11,7 @@ namespace TaskFlow.UnitTests;
 public class DatabaseSeederTests
 {
     [Fact]
-    public async Task SeedAsync_OnCleanDatabase_CreatesThreeAccounts()
+    public async System.Threading.Tasks.Task SeedAsync_OnCleanDatabase_CreatesThreeAccounts()
     {
         await using var harness = SeederHarness.Create();
 
@@ -27,7 +27,7 @@ public class DatabaseSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_WhenRunTwice_IsIdempotent()
+    public async System.Threading.Tasks.Task SeedAsync_WhenRunTwice_IsIdempotent()
     {
         await using var harness = SeederHarness.Create();
 
@@ -38,7 +38,7 @@ public class DatabaseSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_WithPasswordsThatVerifyAgainstHashes()
+    public async System.Threading.Tasks.Task SeedAsync_WithPasswordsThatVerifyAgainstHashes()
     {
         await using var harness = SeederHarness.Create();
 
@@ -51,7 +51,7 @@ public class DatabaseSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_WhenDisabled_CreatesNoAccounts()
+    public async System.Threading.Tasks.Task SeedAsync_WhenDisabled_CreatesNoAccounts()
     {
         await using var harness = SeederHarness.Create(enabled: false);
 
