@@ -6,6 +6,10 @@
       <p class="login__subtitle">Sign in to continue</p>
     </header>
 
+    @if (notice) {
+      <p class="login__notice" role="status">{{ notice }}</p>
+    }
+
     <label class="login__field">
       <span class="login__label">Email or username</span>
       <input

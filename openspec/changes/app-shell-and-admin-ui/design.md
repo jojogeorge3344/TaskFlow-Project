@@ -22,7 +22,7 @@ Visual reference: `mockup.html` in this change folder (shell expanded, collapsed
 - Responsive from 360px to wide desktop, keyboard operable, WCAG AA contrast.
 
 **Non-Goals:**
-- No backend or API changes, no server-side pagination (lists are small; the user list endpoint returns an array today).
+- No server-side pagination (lists are small; the user list endpoint returns an array today).
 - No dark mode, no theming switch.
 - No restyling of the login screen. The dashboards get the shell but no other visual changes beyond removing the wrapper.
 - No building of placeholder screens (tasks, reports, and so on). They stay "Soon" items.
@@ -92,6 +92,14 @@ Remove all Bootstrap class names from the two templates. Component CSS files hol
 
 Load once, and filter client-side with a `computed()` over the `departments` and `query` signals. "View employees" uses `routerLink="/employees" [queryParams]="{ departmentId: d.id }"`. Delete is disabled when `employeeCount > 0`, with a `title` tooltip and an `aria-describedby` hint.
 
+### D8. Ending sessions when credentials, role or status change
+
+`User.SecurityStamp` (new column) is written into each access token as the `sstamp` claim and compared with the stored value in `JwtBearerEvents.OnTokenValidated`, which also rejects missing or inactive users. Changing the username or role, setting a new password (optional `password` on `PUT /users/{id}`), or deactivating the user issues a new stamp and revokes the user's refresh tokens (so reactivation cannot revive old sessions), so both the access token and the refresh fail. The SPA already redirects to `/login` when a refresh fails; it now adds `?reason=session-ended` (or `credentials-changed` when the Administrator edits themself), and the shell calls `GET /auth/me` every 60s and when the tab becomes visible so the sign-out happens promptly.
+
+- *Why:* access tokens live 30 minutes; revoking refresh tokens alone would leave the old session working until then.
+- *Cost:* one indexed user lookup per authenticated request, and one `/auth/me` call per signed-in tab per minute.
+- *Alternative:* push (SignalR) for instant sign-out. Rejected as extra infrastructure for a small app.
+
 ## Risks / Trade-offs
 
 - [Moving the dashboards under a parent route breaks their existing specs, which expect the wrapper] → update those specs in the same task group, and port the layout spec cases (role menus, toggle, sign-out) to the shell spec.
@@ -102,4 +110,4 @@ Load once, and filter client-side with a `computed()` over the `departments` and
 
 ## Migration Plan
 
-Frontend-only and deployed with the SPA. Rollback means reverting the commit. No data or API migration.
+Deployed with the SPA and API. The `AddUserSecurityStamp` migration runs on API start; existing users get an empty stamp, which matches tokens issued before the change, so nobody is signed out by the deploy. Rollback means reverting the commit and the migration.

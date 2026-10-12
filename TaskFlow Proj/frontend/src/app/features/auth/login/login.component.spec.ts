@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
@@ -74,6 +74,10 @@ describe('LoginComponent', () => {
       .toContain('Invalid email/username or password.');
   });
 
+  it('shows no sign-out notice by default', () => {
+    expect((fixture.nativeElement as HTMLElement).querySelector('.login__notice')).toBeNull();
+  });
+
   it('toggles password visibility', () => {
     expect(component.showPassword()).toBeFalse();
 
@@ -82,5 +86,29 @@ describe('LoginComponent', () => {
 
     component.togglePassword();
     expect(component.showPassword()).toBeFalse();
+  });
+});
+
+describe('LoginComponent sign-out notice', () => {
+  it('explains that the credentials changed when sent here for that reason', async () => {
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ reason: 'credentials-changed' }) } }
+        }
+      ]
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LoginComponent);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.login__notice')?.textContent).toContain(
+      'Your username or password was changed'
+    );
   });
 });

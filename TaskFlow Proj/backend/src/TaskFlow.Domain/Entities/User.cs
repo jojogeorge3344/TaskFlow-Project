@@ -16,6 +16,9 @@ public class User
 
     public string PasswordHash { get; set; } = string.Empty;
 
+    /// <summary>Changes whenever the sign-in credentials change; access tokens carrying an older stamp are rejected.</summary>
+    public string SecurityStamp { get; set; } = string.Empty;
+
     public Role Role { get; set; }
 
     public bool IsActive { get; set; } = true;

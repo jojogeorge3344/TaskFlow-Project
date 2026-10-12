@@ -132,7 +132,7 @@ Service (validation + business rules) → EF Core → SQLite → DTO → JSON re
 | Password hashing | ASP.NET Core `PasswordHasher<T>` (PBKDF2) | built-in | Secure hashing |
 | Logging | Serilog | latest | Structured logs |
 | Frontend | Angular | latest stable (20+) | SPA |
-| UI kit | Bootstrap 5 (+ optionally Angular Material) | latest | Layout (BRD uses Bootstrap) |
+| UI kit | Custom CSS design tokens + `.tf-*` primitives in `src/styles.css` (no CSS framework installed) | n/a | Layout and components; inline SVG icons |
 | Charts | Chart.js via ng2-charts | latest | Dashboard/report charts |
 | Drag & drop | Angular CDK | matching Angular | Kanban board |
 | Backend tests | xUnit + WebApplicationFactory | latest | Unit/integration |
@@ -142,7 +142,7 @@ Service (validation + business rules) → EF Core → SQLite → DTO → JSON re
 - EF Core + migrations directly satisfy "database schema and initialization scripts" (§9).
 - A hosted service satisfies "scheduler resumes after restart" (§5.4) without extra infra.
 - Angular guards/interceptors enforce role-based routing and attach the JWT.
-- Bootstrap matches the BRD's stated frontend styling (§6).
+- The BRD lists Bootstrap (§6); this design uses shared custom CSS tokens and primitives instead, which cover the same responsive layout needs without a framework dependency (see change `app-shell-and-admin-ui`, D4).
 
 ### 4.3 Mapping from the BRD's recommended stack
 | BRD component | BRD choice | This design |
@@ -151,7 +151,7 @@ Service (validation + business rules) → EF Core → SQLite → DTO → JSON re
 | ORM | SQLAlchemy | EF Core |
 | Scheduled reminders | APScheduler | `BackgroundService` scheduler |
 | Authentication | Flask sessions + hashing | JWT + `PasswordHasher` |
-| Frontend | HTML/CSS/JS/Bootstrap | Angular + Bootstrap |
+| Frontend | HTML/CSS/JS/Bootstrap | Angular + custom CSS tokens |
 | Charts | Chart.js | Chart.js (via ng2-charts) |
 | Email | SMTP | SMTP via `System.Net.Mail` |
 | Testing | Pytest | xUnit + Playwright |
@@ -195,7 +195,8 @@ Dependency direction: `Api → Application → Domain`; `Infrastructure → Appl
 ```
 frontend/src/app/
 ├─ core/            # auth service, guards, interceptors, models, api base
-├─ shared/          # reusable UI (cards, tables, pagination, confirm dialog)
+│  └─ layout/       # application shell (header + side menu), nav-items.ts, icons
+├─ shared/          # reusable UI: shared/ui (confirm dialog, drawer, toasts)
 ├─ features/
 │  ├─ auth/         # login
 │  ├─ dashboard/    # admin / manager / employee dashboards
@@ -210,6 +211,11 @@ frontend/src/app/
 │  └─ profile/
 └─ app.routes.ts    # lazy-loaded routes (§12.3)
 ```
+
+Authenticated screens are child routes of the shell route (`ShellComponent`, guarded by
+`authGuard`; each child keeps its `roleGuard`), and each adds its menu entry to
+`core/layout/nav-items.ts`. Styling uses the custom CSS tokens and `.tf-*` primitives in
+`src/styles.css`; no CSS framework is installed.
 
 ---
 
@@ -710,7 +716,7 @@ delivery attempts, supporting the "maintain reminder history" requirement (Scree
 
 ### 12.2 State & UI
 - Prefer Angular **signals** for local/feature state; RxJS for HTTP and streams.
-- Bootstrap grid for responsive layout (NFR §5.6).
+- Custom CSS tokens and `.tf-*` primitives in `styles.css` (CSS grid/flex, 992px/768px/576px breakpoints) for responsive layout (NFR §5.6).
 - Chart.js (`ng2-charts`) for dashboards (Screen 2/3, Screen 16) and reports (Screen 17).
 - Angular CDK drag-drop for the Kanban board (Screen 10).
 - Client-side validation mirrors, but never replaces, server validation.
@@ -795,7 +801,7 @@ user enumeration; structured logs exclude secrets and passwords.
 |---|---|
 | Performance (§5.1) | Indexed filter columns; pagination; async EF Core; aggregated single-query dashboard/report endpoints |
 | Reliability (§5.4) | SQLite persistence; scheduler resumes from DB with no in-memory state; dedup index; transactional writes |
-| Usability (§5.3) | Bootstrap responsive layout; clear validation messages; confirmation dialogs for destructive/reassign actions |
+| Usability (§5.3) | Responsive layout (shared CSS primitives); clear validation messages; confirmation dialogs for destructive/reassign actions |
 | Maintainability (§5.5) | Layered solution; separate auth/task/notification/report/database logic; DI; unit tests |
 | Compatibility (§5.6) | Modern desktop browsers; responsive breakpoints for smaller screens |
 | Backup/Recovery (§5.7) | Documented SQLite backup/restore procedure (§17) |

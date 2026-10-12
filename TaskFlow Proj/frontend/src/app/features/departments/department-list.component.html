@@ -1,38 +1,128 @@
-<div class="container-fluid">
-  <h2>Departments</h2>
-  <div *ngIf="error()" class="alert alert-danger">{{ error() }}</div>
-  <button *ngIf="isAdmin()" class="btn btn-primary mb-3" (click)="add()">Add Department</button>
-
-  <form *ngIf="showForm()" class="mb-3" (ngSubmit)="save()">
-    <div class="mb-2">
-      <input type="text" class="form-control" [(ngModel)]="name" name="name" placeholder="Name" required>
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Department Management</h1>
+      <p>{{ loading() && departments().length === 0 ? 'Loading departments…' : countLabel() }}</p>
     </div>
-    <div class="mb-2">
-      <input type="text" class="form-control" [(ngModel)]="description" name="description" placeholder="Description">
-    </div>
-    <button type="submit" class="btn btn-success me-2" [disabled]="loading()">Save</button>
-    <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="loading()">Cancel</button>
-  </form>
+    <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+      <tf-icon name="plus" />
+      Add department
+    </button>
+  </header>
 
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Employees</th>
-        <th *ngIf="isAdmin()">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let dept of departments()">
-        <td>{{ dept.name }}</td>
-        <td>{{ dept.description }}</td>
-        <td>{{ dept.employeeCount }}</td>
-        <td *ngIf="isAdmin()">
-          <button class="btn btn-sm btn-primary me-2" (click)="edit(dept)" [disabled]="loading()">Edit</button>
-          <button class="btn btn-sm btn-danger" (click)="delete(dept)" [disabled]="loading() || dept.employeeCount > 0">Delete</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+  <div class="dept-tools" role="search">
+    <div class="tf-search dept-tools__search">
+      <tf-icon name="search" />
+      <label for="dept-search" class="tf-sr-only">Search departments</label>
+      <input
+        id="dept-search"
+        class="tf-input"
+        type="search"
+        placeholder="Search by name or description"
+        autocomplete="off"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <strong>Something went wrong</strong>
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="dept-grid" aria-busy="true">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <div class="tf-card dept dept--skeleton" aria-hidden="true">
+          <span class="tf-skeleton" style="width: 60%"></span>
+          <span class="tf-skeleton" style="width: 90%"></span>
+          <span class="tf-skeleton" style="width: 30%"></span>
+        </div>
+      }
+    </div>
+  } @else if (departments().length === 0) {
+    <div class="tf-card tf-empty">
+      <tf-icon name="building" />
+      <strong>No departments yet</strong>
+      <p>Add the first department to start organising employees.</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add department</button>
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="tf-card tf-empty">
+      <tf-icon name="search" />
+      <strong>No departments match "{{ query().trim() }}"</strong>
+      <button type="button" class="tf-btn tf-btn--ghost" (click)="query.set('')">Clear search</button>
+    </div>
+  } @else {
+    <div class="dept-grid">
+      @for (department of filtered(); track department.id) {
+        <article class="tf-card dept">
+          <div class="dept__top">
+            <span class="dept__icon" aria-hidden="true"><tf-icon name="building" /></span>
+            <div class="dept__heading">
+              <h2 class="dept__name">{{ department.name }}</h2>
+              @if (department.description) {
+                <p class="dept__desc">{{ department.description }}</p>
+              } @else {
+                <p class="dept__desc dept__desc--none">No description</p>
+              }
+            </div>
+          </div>
+
+          <div class="dept__count">
+            <strong>{{ department.employeeCount }}</strong>
+            <span>{{ employeeLabel(department.employeeCount) }}</span>
+          </div>
+
+          <div class="dept__foot">
+            <a
+              class="tf-btn tf-btn--link"
+              routerLink="/employees"
+              [queryParams]="{ departmentId: department.id }"
+              [attr.aria-label]="'View employees in ' + department.name"
+            >
+              View employees
+              <tf-icon name="arrow" />
+            </a>
+            <div class="dept__actions">
+              <button
+                type="button"
+                class="tf-btn tf-btn--icon"
+                data-action="edit"
+                [attr.aria-label]="'Edit ' + department.name"
+                title="Edit"
+                (click)="openEdit(department)"
+              >
+                <tf-icon name="edit" />
+              </button>
+              <button
+                type="button"
+                class="tf-btn tf-btn--icon tf-btn--danger"
+                data-action="delete"
+                [attr.aria-label]="'Delete ' + department.name"
+                [title]="department.employeeCount > 0 ? 'Reassign its employees before deleting' : 'Delete'"
+                [attr.aria-describedby]="department.employeeCount > 0 ? 'dept-delete-hint-' + department.id : null"
+                [attr.aria-disabled]="department.employeeCount > 0 ? 'true' : null"
+                [disabled]="deletingId() === department.id"
+                (click)="delete(department)"
+              >
+                <tf-icon name="trash" />
+              </button>
+              @if (department.employeeCount > 0) {
+                <span class="tf-sr-only" [id]="'dept-delete-hint-' + department.id">
+                  Reassign its {{ department.employeeCount }} {{ employeeLabel(department.employeeCount) }} before deleting.
+                </span>
+              }
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<app-department-form-dialog (saved)="load()" />
+<tf-confirm-dialog />

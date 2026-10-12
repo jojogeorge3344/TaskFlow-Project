@@ -25,7 +25,7 @@
 
 ## 5. Seed data
 
-- [x] 5.1 Add an idempotent startup seeder creating an Administrator, a Manager, and an Employee with hashed passwords (dev-only, configurable); verify a clean database yields exactly three accounts and a second run adds none.
+- [x] 5.1 Add an idempotent startup seeder creating an Administrator with a hashed password (dev-only, configurable); verify a clean database yields exactly one account and a second run adds none. (Originally also seeded a Manager and an Employee; narrowed in `app-shell-and-admin-ui`.)
 
 ## 6. Frontend core
 
@@ -42,5 +42,5 @@
 ## 8. End-to-end verification
 
 - [x] 8.1 Run `dotnet test` and `ng test`; verify all suites pass.
-- [ ] 8.2 From a clean database with the seeded accounts, F5 and log in as each of the three roles; verify each lands on its dashboard and that a browser reload restores the session without re-entry.
+- [ ] 8.2 From a clean database, F5 and log in as the seeded Administrator, then create a Manager and an Employee in Employee Management and log in as each of the three roles; verify each lands on its dashboard and that a browser reload restores the session without re-entry.
 - [x] 8.3 Verify against the spec: invalid credentials show the generic error, an inactive account is refused without disclosure, and a refresh after logout is rejected.

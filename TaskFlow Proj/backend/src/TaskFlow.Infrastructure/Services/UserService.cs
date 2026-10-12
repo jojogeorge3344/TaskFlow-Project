@@ -9,6 +9,8 @@ namespace TaskFlow.Infrastructure.Services;
 
 public class UserService : IUserService
 {
+    private const int MinPasswordLength = 6;
+
     private readonly AppDbContext _dbContext;
     private readonly IPasswordHasher<User> _passwordHasher;
 
@@ -134,6 +136,7 @@ public class UserService : IUserService
             Role = request.Role,
             IsActive = request.IsActive,
             DepartmentId = request.DepartmentId,
+            SecurityStamp = NewSecurityStamp(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -193,13 +196,39 @@ public class UserService : IUserService
             }
         }
 
+        // An empty password keeps the current one; anything else must be a real password.
+        var passwordChanged = !string.IsNullOrEmpty(request.Password);
+        if (passwordChanged && string.IsNullOrWhiteSpace(request.Password))
+        {
+            throw new InvalidOperationException("Password cannot be blank.");
+        }
+        if (passwordChanged && request.Password!.Length < MinPasswordLength)
+        {
+            throw new InvalidOperationException($"Password must be at least {MinPasswordLength} characters.");
+        }
+
+        var usernameChanged = !string.Equals(user.Username, username, StringComparison.Ordinal);
+        var roleChanged = user.Role != request.Role;
+        var now = DateTime.UtcNow;
+
         user.EmployeeCode = request.EmployeeCode?.Trim();
         user.FullName = request.FullName.Trim();
         user.Username = username;
         user.Email = email;
         user.Role = request.Role;
         user.DepartmentId = request.DepartmentId;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
+
+        if (passwordChanged)
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password!);
+        }
+
+        // A role change ends sessions too, so a demoted user cannot keep the old role's access token.
+        if (usernameChanged || passwordChanged || roleChanged)
+        {
+            await EndSessionsAsync(user, now, cancellationToken);
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -229,8 +258,15 @@ public class UserService : IUserService
             return null;
         }
 
+        var now = DateTime.UtcNow;
+        if (user.IsActive && !request.IsActive)
+        {
+            // Deactivation ends sessions for good, so reactivating later cannot revive an old refresh cookie.
+            await EndSessionsAsync(user, now, cancellationToken);
+        }
+
         user.IsActive = request.IsActive;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new UserDto(
@@ -246,5 +282,24 @@ public class UserService : IUserService
             user.LastLoginAt,
             user.DepartmentId,
             user.Department?.Name);
+    }
+
+    private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// Ends every existing session of the user: access tokens carrying the old stamp fail validation,
+    /// and their refresh tokens are revoked so no new ones can be minted. Saved by the caller.
+    /// </summary>
+    private async System.Threading.Tasks.Task EndSessionsAsync(User user, DateTime now, CancellationToken cancellationToken)
+    {
+        user.SecurityStamp = NewSecurityStamp();
+
+        var activeTokens = await _dbContext.RefreshTokens
+            .Where(token => token.UserId == user.Id && token.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = now;
+        }
     }
 }

@@ -68,7 +68,7 @@ The list SHALL show a loading placeholder while data loads. It SHALL show an emp
 
 ### Requirement: Add and edit employee in a side panel
 
-Add and Edit SHALL open a form in a side panel that slides in over the list. The panel title SHALL say "Add employee" or "Edit employee". The form SHALL include employee code (optional), full name, username, email, role, and department. Password and initial status SHALL appear only when adding.
+Add and Edit SHALL open a form in a side panel that slides in over the list. The panel title SHALL say "Add employee" or "Edit employee". The form SHALL include employee code (optional), full name, username, email, role, and department. Initial status SHALL appear only when adding. Adding SHALL require a password (at least 6 characters); editing SHALL offer an optional new password that is kept unchanged when left blank.
 
 #### Scenario: Open add form
 
@@ -78,7 +78,7 @@ Add and Edit SHALL open a form in a side panel that slides in over the list. The
 #### Scenario: Open edit form
 
 - **WHEN** the Administrator clicks Edit on an employee
-- **THEN** the side panel opens with that employee's values filled in, including the employee code, and no password field
+- **THEN** the side panel opens with that employee's values filled in, including the employee code, and an empty optional "New password" field
 
 ### Requirement: Inline form validation and server errors
 
@@ -116,3 +116,41 @@ Deactivating an active employee SHALL require confirmation in a dialog that name
 
 - **WHEN** the Administrator chooses Deactivate and then cancels the dialog
 - **THEN** the employee stays Active
+
+### Requirement: Changing sign-in credentials ends the employee's sessions
+
+When an Administrator changes an employee's username or role, sets a new password, or deactivates the employee, the system SHALL end every existing session of that employee, and reactivating SHALL NOT restore them. The employee's next request SHALL be rejected and the app SHALL return them to the login screen with a message. Other edits (name, email, department, employee code) SHALL NOT end sessions.
+
+#### Scenario: Password changed by an Administrator
+
+- **WHEN** an Administrator sets a new password for an employee who is signed in elsewhere
+- **THEN** within about a minute, or as soon as that employee makes a request or returns to the tab, the employee is taken to the login screen with a notice that their session ended
+- **AND** only the new password signs them in
+
+#### Scenario: Administrator changes their own username
+
+- **WHEN** the signed-in Administrator changes their own username or password
+- **THEN** they are signed out at once and the login screen asks them to sign in with the new details
+
+#### Scenario: Non-credential edit
+
+- **WHEN** an Administrator changes only an employee's full name
+- **THEN** the employee stays signed in
+
+### Requirement: Signed-out sessions are noticed promptly
+
+While a user is signed in, the app SHALL re-check their session at least once a minute and whenever the browser tab becomes visible, so an ended session returns them to the login screen without waiting for their next action.
+
+#### Scenario: Idle tab after a password change
+
+- **WHEN** an employee's password is changed while their tab is open but idle
+- **THEN** within about a minute the app shows the login screen with a notice that their session ended
+
+### Requirement: New passwords cannot be blank
+
+A new password set while editing an employee SHALL be at least 6 characters and SHALL NOT consist only of whitespace. Leaving the field empty SHALL keep the current password.
+
+#### Scenario: Spaces only
+
+- **WHEN** an Administrator enters only spaces as the new password and saves
+- **THEN** the form shows "Password cannot be only spaces." and nothing is saved
