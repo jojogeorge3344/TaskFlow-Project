@@ -52,7 +52,7 @@ calendar integration, email-token password reset.
 | Validation | FluentValidation | Server-side input validation |
 | Auth | JWT bearer + `PasswordHasher<T>` (PBKDF2) | Tokens, RBAC |
 | Logging | Serilog | Structured logs |
-| Frontend | Angular 19 (Angular CLI, standalone) + Bootstrap 5 | SPA |
+| Frontend | Angular 19 (Angular CLI, standalone) + custom CSS tokens and primitives (`src/styles.css`, no CSS framework) | SPA |
 | SPA dev integration | `Microsoft.AspNetCore.SpaProxy` | Launches `ng serve` on F5 / `dotnet run` |
 | Charts | Chart.js (`ng2-charts`) | Dashboards / reports |
 | Drag & drop | Angular CDK | Kanban board |
@@ -70,7 +70,7 @@ Full rationale and the BRD→stack mapping are in TDD §4.
 │  Angular SPA (browser)   │ ◄──────────────► │  ASP.NET Core Web API (.NET)     │
 │  standalone components   │   Bearer JWT     │  Controllers (thin)              │
 │  route guards, services  │                  │  Application services/validators │
-│  Bootstrap, Chart.js     │                  │  Domain entities/rules           │
+│  custom CSS, Chart.js    │                  │  Domain entities/rules           │
 └──────────────────────────┘                  │  Infrastructure (EF Core, SMTP)  │
                                               │  ┌────────────────────────────┐  │
                                               │  │ ReminderSchedulerService   │  │
@@ -254,6 +254,10 @@ variables/user-secrets (JWT key, SMTP password), and the `application_settings` 
   client-supplied IDs for ownership.
 - **Frontend:** Angular signals for local state, RxJS for HTTP; feature folders are
   lazy-loaded; server validation is never replaced by client validation.
+- **Frontend screens:** authenticated screens register as children of the shell route in
+  `app.routes.ts` (so they get the header and side menu) and add their menu entry to
+  `core/layout/nav-items.ts`. Styling uses the design tokens and `.tf-*` primitives in
+  `src/styles.css`; Bootstrap is not installed.
 
 ---
 

@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Application.Abstractions;
-using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
+using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.IntegrationTests;
 
@@ -31,16 +32,13 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
     {
         var client = _factory.CreateClient();
 
+        // Tokens are only honoured for users that exist and whose security stamp matches.
+        await _factory.SeedUserAsync("wiring-admin", "wiring-admin@taskflow.local", "P@ssw0rd!", Role.Administrator);
+
         using var scope = _factory.Services.CreateScope();
         var tokenService = scope.ServiceProvider.GetRequiredService<ITokenService>();
-
-        var user = new User
-        {
-            Id = 1,
-            Username = "admin",
-            FullName = "Admin User",
-            Role = Role.Administrator
-        };
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.Users.SingleAsync(candidate => candidate.Username == "wiring-admin");
 
         var accessToken = tokenService.CreateAccessToken(user);
         client.DefaultRequestHeaders.Authorization =

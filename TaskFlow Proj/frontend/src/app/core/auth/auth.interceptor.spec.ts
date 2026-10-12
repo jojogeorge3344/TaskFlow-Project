@@ -77,9 +77,9 @@ describe('authInterceptor', () => {
     expect(received).toEqual({ ok: true });
   });
 
-  it('clears the session and redirects to /login when refresh fails', () => {
+  it('clears the session and redirects to /login with a session-ended notice when refresh fails', () => {
     const router = TestBed.inject(Router);
-    spyOn(router, 'navigateByUrl').and.resolveTo(true);
+    spyOn(router, 'navigate').and.resolveTo(true);
     tokenStore.set('stale-token');
 
     http.get('/api/v1/tasks').subscribe({ error: () => void 0 });
@@ -88,6 +88,6 @@ describe('authInterceptor', () => {
     httpMock.expectOne('/api/v1/auth/refresh').flush({}, { status: 401, statusText: 'Unauthorized' });
 
     expect(tokenStore.token).toBeNull();
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/login');
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { reason: 'session-ended' } });
   });
 });

@@ -1,55 +1,88 @@
 import { Routes } from '@angular/router';
 import { authGuard, roleGuard } from './core/auth/auth.guard';
 import { routes } from './app.routes';
+import { ShellComponent } from './core/layout/shell.component';
 import { AdminDashboardComponent } from './features/dashboard/admin-dashboard.component';
 import { EmployeeDashboardComponent } from './features/dashboard/employee-dashboard.component';
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
+import { DepartmentListComponent } from './features/departments/department-list.component';
+import { EmployeeListComponent } from './features/employees/employee-list.component';
 
 describe('app routes', () => {
-  function routeFor(path: string): Routes[number] {
-    const route = routes.find((candidate) => candidate.path === path);
-    expect(route).withContext(`route '${path}' should exist`).toBeDefined();
+  function shellRoute(): Routes[number] {
+    const shell = routes.find((candidate) => candidate.path === '' && candidate.children !== undefined);
+    expect(shell).withContext('shell route should exist').toBeDefined();
+    return shell!;
+  }
+
+  function topLevelRoute(path: string): Routes[number] {
+    const route = routes.find((candidate) => candidate.path === path && candidate.children === undefined);
+    expect(route).withContext(`top-level route '${path}' should exist`).toBeDefined();
     return route!;
   }
 
-  async function loadComponentFor(path: string): Promise<unknown> {
-    const loadComponent = routeFor(path).loadComponent as () => Promise<unknown>;
+  function childRoute(path: string): Routes[number] {
+    const route = shellRoute().children!.find((candidate) => candidate.path === path);
+    expect(route).withContext(`shell child route '${path}' should exist`).toBeDefined();
+    return route!;
+  }
+
+  async function load(route: Routes[number]): Promise<unknown> {
+    const loadComponent = route.loadComponent as () => Promise<unknown>;
     return loadComponent();
   }
 
   it('redirects the empty path to the login screen', () => {
-    const root = routeFor('');
+    const root = topLevelRoute('');
     expect(root.redirectTo).toBe('login');
     expect(root.pathMatch).toBe('full');
   });
 
-  it('loads the login component without authentication guards', () => {
-    const login = routeFor('login');
+  it('loads the login component outside the shell and without guards', () => {
+    const login = topLevelRoute('login');
     expect(login.loadComponent).toBeDefined();
     expect(login.canActivate).toBeUndefined();
+    expect(shellRoute().children!.some((child) => child.path === 'login')).toBeFalse();
+  });
+
+  it('wraps authenticated screens in the shell behind the auth guard', async () => {
+    const shell = shellRoute();
+    expect(shell.canActivate).toEqual([authGuard]);
+    expect(await load(shell)).toBe(ShellComponent);
+    expect(shell.children!.map((child) => child.path)).toEqual(['admin', 'manager', 'me', 'departments', 'employees']);
   });
 
   it('protects the administrator dashboard for Administrators only', () => {
-    const admin = routeFor('admin');
-    expect(admin.canActivate).toEqual([authGuard, roleGuard]);
+    const admin = childRoute('admin');
+    expect(admin.canActivate).toEqual([roleGuard]);
     expect(admin.data?.['roles']).toEqual(['Administrator']);
   });
 
   it('protects the manager dashboard for Managers only', () => {
-    const manager = routeFor('manager');
-    expect(manager.canActivate).toEqual([authGuard, roleGuard]);
+    const manager = childRoute('manager');
+    expect(manager.canActivate).toEqual([roleGuard]);
     expect(manager.data?.['roles']).toEqual(['Manager']);
   });
 
   it('protects the employee dashboard at /me for Employees only', () => {
-    const me = routeFor('me');
-    expect(me.canActivate).toEqual([authGuard, roleGuard]);
+    const me = childRoute('me');
+    expect(me.canActivate).toEqual([roleGuard]);
     expect(me.data?.['roles']).toEqual(['Employee']);
   });
 
-  it('loads the role-specific dashboard components', async () => {
-    expect(await loadComponentFor('admin')).toBe(AdminDashboardComponent);
-    expect(await loadComponentFor('manager')).toBe(ManagerDashboardComponent);
-    expect(await loadComponentFor('me')).toBe(EmployeeDashboardComponent);
+  it('protects the management screens for Administrators only', () => {
+    for (const path of ['employees', 'departments']) {
+      const route = childRoute(path);
+      expect(route.canActivate).toEqual([roleGuard]);
+      expect(route.data?.['roles']).toEqual(['Administrator']);
+    }
+  });
+
+  it('loads the role-specific dashboards and management screens', async () => {
+    expect(await load(childRoute('admin'))).toBe(AdminDashboardComponent);
+    expect(await load(childRoute('manager'))).toBe(ManagerDashboardComponent);
+    expect(await load(childRoute('me'))).toBe(EmployeeDashboardComponent);
+    expect(await load(childRoute('employees'))).toBe(EmployeeListComponent);
+    expect(await load(childRoute('departments'))).toBe(DepartmentListComponent);
   });
 });

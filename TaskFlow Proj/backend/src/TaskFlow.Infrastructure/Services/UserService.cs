@@ -9,6 +9,8 @@ namespace TaskFlow.Infrastructure.Services;
 
 public class UserService : IUserService
 {
+    private const int MinPasswordLength = 6;
+
     private readonly AppDbContext _dbContext;
     private readonly IPasswordHasher<User> _passwordHasher;
 
@@ -134,6 +136,7 @@ public class UserService : IUserService
             Role = request.Role,
             IsActive = request.IsActive,
             DepartmentId = request.DepartmentId,
+            SecurityStamp = NewSecurityStamp(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -193,13 +196,42 @@ public class UserService : IUserService
             }
         }
 
+        var passwordChanged = !string.IsNullOrEmpty(request.Password);
+        if (passwordChanged && request.Password!.Length < MinPasswordLength)
+        {
+            throw new InvalidOperationException($"Password must be at least {MinPasswordLength} characters.");
+        }
+
+        var usernameChanged = !string.Equals(user.Username, username, StringComparison.Ordinal);
+        var now = DateTime.UtcNow;
+
         user.EmployeeCode = request.EmployeeCode?.Trim();
         user.FullName = request.FullName.Trim();
         user.Username = username;
         user.Email = email;
         user.Role = request.Role;
         user.DepartmentId = request.DepartmentId;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
+
+        if (passwordChanged)
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password!);
+        }
+
+        if (usernameChanged || passwordChanged)
+        {
+            // End every existing session: access tokens with the old stamp fail validation,
+            // and refresh tokens can no longer mint new ones. The user must sign in again.
+            user.SecurityStamp = NewSecurityStamp();
+
+            var activeTokens = await _dbContext.RefreshTokens
+                .Where(token => token.UserId == user.Id && token.RevokedAt == null)
+                .ToListAsync(cancellationToken);
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = now;
+            }
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -247,4 +279,6 @@ public class UserService : IUserService
             user.DepartmentId,
             user.Department?.Name);
     }
+
+    private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
 }

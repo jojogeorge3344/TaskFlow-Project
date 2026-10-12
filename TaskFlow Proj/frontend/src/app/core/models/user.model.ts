@@ -33,6 +33,8 @@ export interface UpdateUserRequest {
   email: string;
   role: Role;
   departmentId?: number | null;
+  /** New password; omit or leave empty to keep the current one. Changing it (or the username) ends the user's sessions. */
+  password?: string | null;
 }
 
 export interface UserStatusRequest {

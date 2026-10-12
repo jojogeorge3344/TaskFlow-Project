@@ -41,23 +41,7 @@ public class DatabaseSeeder
             Role.Administrator,
             cancellationToken);
 
-        await EnsureUserAsync(
-            "MGR-001",
-            "Team Manager",
-            "manager",
-            "manager@taskflow.local",
-            _options.ManagerPassword,
-            Role.Manager,
-            cancellationToken);
-
-        await EnsureUserAsync(
-            "EMP-001",
-            "Team Member",
-            "employee",
-            "employee@taskflow.local",
-            _options.EmployeePassword,
-            Role.Employee,
-            cancellationToken);
+        // Only the administrator is seeded; managers and employees are created from Employee Management.
     }
 
     private async System.Threading.Tasks.Task EnsureUserAsync(

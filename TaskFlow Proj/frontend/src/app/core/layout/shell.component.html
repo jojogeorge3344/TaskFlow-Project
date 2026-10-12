@@ -1,0 +1,74 @@
+<div class="shell" [class.shell--collapsed]="railCollapsed()" [class.shell--open]="drawerOpen()">
+  <aside id="tf-sidebar" class="sidebar" aria-label="Primary navigation">
+    <div class="brand">
+      <span class="brand__logo" aria-hidden="true">TF</span>
+      <span class="brand__name">TaskFlow</span>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      @for (item of navItems(); track item.label) {
+        @if (item.route) {
+          <a
+            class="nav__item"
+            [routerLink]="item.route"
+            routerLinkActive="nav__item--active"
+            ariaCurrentWhenActive="page"
+            (click)="layout.closeMobile()"
+          >
+            <tf-icon [name]="item.icon" />
+            <span class="nav__text">{{ item.label }}</span>
+            <span class="nav__tip tf-tooltip">{{ item.label }}</span>
+          </a>
+        } @else {
+          <span class="nav__item nav__item--disabled" aria-disabled="true">
+            <tf-icon [name]="item.icon" />
+            <span class="nav__text">{{ item.label }}</span>
+            <small class="nav__soon">Soon</small>
+            <span class="nav__tip tf-tooltip">{{ item.label }} (soon)</span>
+          </span>
+        }
+      }
+    </nav>
+
+    <div class="account">
+      <span class="account__avatar tf-avatar" aria-hidden="true">{{ userInitials() }}</span>
+      @if (user(); as currentUser) {
+        <div class="account__who">
+          <div class="account__name">{{ currentUser.fullName }}</div>
+          <div class="account__role">{{ currentUser.role }}</div>
+        </div>
+      }
+      <button type="button" class="account__signout" aria-label="Sign out" title="Sign out" (click)="logout()">
+        <tf-icon name="logout" />
+      </button>
+    </div>
+  </aside>
+
+  @if (drawerOpen()) {
+    <div class="tf-backdrop backdrop" (click)="closeDrawer()"></div>
+  }
+
+  <header class="header">
+    <button
+      #toggleButton
+      type="button"
+      class="header__toggle"
+      aria-label="Toggle navigation"
+      aria-controls="tf-sidebar"
+      [attr.aria-expanded]="layout.expanded()"
+      (click)="toggleMenu()"
+    >
+      <tf-icon [name]="toggleIcon()" />
+    </button>
+    <span class="header__brand">TaskFlow</span>
+    <span class="header__title">{{ pageTitle() }}</span>
+  </header>
+
+  <main class="content">
+    <div class="content__inner">
+      <router-outlet />
+    </div>
+  </main>
+</div>
+
+<tf-toast-host />

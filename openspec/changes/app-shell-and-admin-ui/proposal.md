@@ -27,7 +27,7 @@ The Employee Management (`/employees`) and Department Management (`/departments`
 
 ## Impact
 
-- **Frontend only.** No backend, API, or database changes.
+- **Mostly frontend.** Backend changes added during implementation: enums serialized as names (`JsonStringEnumConverter`), only the Administrator is seeded, an optional new password on user update, and a `SecurityStamp` column (migration `AddUserSecurityStamp`) that ends a user's sessions when their username or password changes (see design D8).
 - New: `frontend/src/app/core/layout/` (shell component, nav config, icon component), shared UI styles in `frontend/src/styles.css`.
 - Changed: `app.routes.ts` (authenticated routes become children of the shell route), the three dashboard component templates (wrapper removed), `features/employees/*`, `features/departments/*`, `dashboard-layout.component.*` (moved or replaced), plus the matching `*.spec.ts` files.
 - Employee Management reads an optional `?departmentId=` query parameter so it can be opened pre-filtered.

@@ -2,12 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminDashboardStats } from '../../core/models';
 import { DashboardService } from '../../core/services/dashboard.service';
-import { DashboardLayoutComponent } from './dashboard-layout.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DashboardLayoutComponent],
   templateUrl: './admin-dashboard.component.html'
 })
 export class AdminDashboardComponent implements OnInit {

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { LOGIN_REASON_MESSAGES } from '../../../core/auth/login-reasons';
 import { dashboardRouteFor } from '../../../core/auth/role-routes';
 import { AuthService } from '../../../core/auth/auth.service';
 
@@ -17,6 +18,8 @@ export class LoginComponent {
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  /** Why the user was sent here (e.g. their credentials changed), from the `reason` query parameter. */
+  readonly notice = LOGIN_REASON_MESSAGES[inject(ActivatedRoute).snapshot.queryParamMap.get('reason') ?? ''] ?? null;
   readonly showPassword = signal(false);
 
   readonly form = this.formBuilder.group({

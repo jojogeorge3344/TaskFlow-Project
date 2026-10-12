@@ -1,103 +1,202 @@
-<div class="container-fluid">
-  <h2>Employees</h2>
-  <div *ngIf="error()" class="alert alert-danger">{{ error() }}</div>
-  <button *ngIf="isAdmin()" class="btn btn-primary mb-3" (click)="add()">Add Employee</button>
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Employee Management</h1>
+      <p>
+        @if (loading() && employees().length === 0) {
+          Loading employees…
+        } @else {
+          {{ countLabel() }}{{ hasFilters() ? ' match the current filters' : '' }}
+        }
+      </p>
+    </div>
+    <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+      <tf-icon name="plus" />
+      Add employee
+    </button>
+  </header>
 
-  <form *ngIf="showForm()" class="mb-3" (ngSubmit)="save()">
-    <div class="row">
-      <div class="col-md-6 mb-2">
-        <input type="text" class="form-control" [(ngModel)]="fullName" name="fullName" placeholder="Full Name" required>
-      </div>
-      <div class="col-md-6 mb-2">
-        <input type="text" class="form-control" [(ngModel)]="username" name="username" placeholder="Username" required>
-      </div>
-      <div class="col-md-6 mb-2">
-        <input type="email" class="form-control" [(ngModel)]="email" name="email" placeholder="Email" required>
-      </div>
-      <div class="col-md-6 mb-2" *ngIf="editing() === null">
-        <input type="password" class="form-control" [(ngModel)]="password" name="password" placeholder="Password" required>
-      </div>
-      <div class="col-md-4 mb-2">
-        <select class="form-control" [(ngModel)]="employeeRole" name="employeeRole">
-          <option value="Employee">Employee</option>
-          <option value="Manager">Manager</option>
-          <option value="Administrator">Administrator</option>
-        </select>
-      </div>
-      <div class="col-md-4 mb-2">
-        <select class="form-control" [(ngModel)]="employeeDepartmentId" name="employeeDepartmentId">
-          <option [ngValue]="null">No Department</option>
-          <option *ngFor="let dept of departments()" [ngValue]="dept.id">{{ dept.name }}</option>
-        </select>
-      </div>
-      <div class="col-md-4 mb-2" *ngIf="editing() === null">
-        <select class="form-control" [(ngModel)]="employeeActive" name="employeeActive">
-          <option [ngValue]="true">Active</option>
-          <option [ngValue]="false">Inactive</option>
-        </select>
+  <div class="tf-card tf-toolbar" role="search" aria-label="Filter employees">
+    <div class="tf-field">
+      <label for="emp-search">Search</label>
+      <div class="tf-search">
+        <tf-icon name="search" />
+        <input
+          id="emp-search"
+          class="tf-input"
+          type="search"
+          placeholder="Name or email"
+          autocomplete="off"
+          [value]="searchText()"
+          (input)="onSearch($any($event.target).value)"
+        />
       </div>
     </div>
-    <button type="submit" class="btn btn-success me-2" [disabled]="loading()">Save</button>
-    <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="loading()">Cancel</button>
-  </form>
-
-  <form class="row mb-3" (ngSubmit)="applyFilters()">
-    <div class="col-md-3 mb-2">
-      <input type="text" class="form-control" [(ngModel)]="search" name="search" placeholder="Search name/email">
-    </div>
-    <div class="col-md-3 mb-2">
-      <select class="form-control" [(ngModel)]="departmentId" name="departmentId">
-        <option [ngValue]="null">All Departments</option>
-        <option *ngFor="let dept of departments()" [ngValue]="dept.id">{{ dept.name }}</option>
+    <div class="tf-field">
+      <label for="emp-filter-department">Department</label>
+      <select id="emp-filter-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
+        <option value="" [selected]="departmentId() === null">All departments</option>
+        @for (department of departments(); track department.id) {
+          <option [value]="department.id" [selected]="department.id === departmentId()">{{ department.name }}</option>
+        }
       </select>
     </div>
-    <div class="col-md-2 mb-2">
-      <select class="form-control" [(ngModel)]="role" name="role">
-        <option value="">All Roles</option>
-        <option value="Employee">Employee</option>
-        <option value="Manager">Manager</option>
-        <option value="Administrator">Administrator</option>
+    <div class="tf-field">
+      <label for="emp-filter-role">Role</label>
+      <select id="emp-filter-role" class="tf-select" (change)="setRole($any($event.target).value)">
+        <option value="" [selected]="role() === ''">All roles</option>
+        @for (option of roles; track option) {
+          <option [value]="option" [selected]="option === role()">{{ option }}</option>
+        }
       </select>
     </div>
-    <div class="col-md-2 mb-2">
-      <select class="form-control" [(ngModel)]="isActive" name="isActive">
-        <option value="">All Status</option>
-        <option [ngValue]="true">Active</option>
-        <option [ngValue]="false">Inactive</option>
+    <div class="tf-field">
+      <label for="emp-filter-status">Status</label>
+      <select id="emp-filter-status" class="tf-select" (change)="setStatus($any($event.target).value)">
+        <option value="" [selected]="status() === ''">All statuses</option>
+        <option value="active" [selected]="status() === 'active'">Active</option>
+        <option value="inactive" [selected]="status() === 'inactive'">Inactive</option>
       </select>
     </div>
-    <div class="col-md-2 mb-2">
-      <button type="submit" class="btn btn-secondary" [disabled]="loading()">Filter</button>
-    </div>
-  </form>
+    <button type="button" class="tf-btn tf-btn--ghost" [disabled]="!hasFilters() && !searchText()" (click)="resetFilters()">
+      <tf-icon name="reset" />
+      Reset
+    </button>
+  </div>
 
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Username</th>
-        <th>Role</th>
-        <th>Department</th>
-        <th>Status</th>
-        <th *ngIf="isAdmin()">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let user of employees()">
-        <td>{{ user.fullName }}</td>
-        <td>{{ user.email }}</td>
-        <td>{{ user.username }}</td>
-        <td>{{ user.role }}</td>
-        <td>{{ user.departmentName }}</td>
-        <td>{{ user.isActive ? 'Active' : 'Inactive' }}</td>
-        <td *ngIf="isAdmin()">
-          <button class="btn btn-sm btn-primary me-2" (click)="edit(user)" [disabled]="loading()">Edit</button>
-          <button class="btn btn-sm btn-secondary" (click)="toggleStatus(user)" [disabled]="loading()">
-            {{ user.isActive ? 'Deactivate' : 'Activate' }}
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+  <div class="tf-card">
+    @if (error()) {
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ error() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+      </div>
+    } @else if (!loading() && employees().length === 0) {
+      <div class="tf-empty">
+        <tf-icon name="users" />
+        @if (hasFilters()) {
+          <strong>No employees match these filters</strong>
+          <p>Try a different search or clear the filters.</p>
+          <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">Clear filters</button>
+        } @else {
+          <strong>No employees yet</strong>
+          <p>Add the first employee to get started.</p>
+          <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add employee</button>
+        }
+      </div>
+    } @else {
+      <div class="tf-table-wrap">
+        <table class="tf-table" [attr.aria-busy]="loading()">
+          <thead>
+            <tr>
+              <th scope="col">Employee</th>
+              <th scope="col">Email</th>
+              <th scope="col">Department</th>
+              <th scope="col">Role</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="tf-sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loading()) {
+              @for (row of [1, 2, 3, 4, 5]; track row) {
+                <tr class="skeleton-row" aria-hidden="true">
+                  <td class="cell-person"><span class="tf-skeleton" style="width: 10rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 12rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 6rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 5rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 4rem"></span></td>
+                  <td></td>
+                </tr>
+              }
+            } @else {
+              @for (employee of employees(); track employee.id) {
+                <tr class="employee-row">
+                  <td class="cell-person">
+                    <div class="person">
+                      <span class="tf-avatar" aria-hidden="true">{{ initials(employee.fullName) }}</span>
+                      <div class="person__text">
+                        <button type="button" class="person__name" (click)="openDetails(employee)">
+                          {{ employee.fullName }}
+                        </button>
+                        <div class="person__sub">{{ employee.username }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Email" class="cell-email">{{ employee.email }}</td>
+                  <td data-label="Department">
+                    @if (employee.departmentName) {
+                      {{ employee.departmentName }}
+                    } @else {
+                      <span class="unassigned">Unassigned</span>
+                    }
+                  </td>
+                  <td data-label="Role">
+                    <span [class]="'tf-badge tf-badge--' + employee.role.toLowerCase()">{{ employee.role }}</span>
+                  </td>
+                  <td data-label="Status">
+                    <span class="tf-badge" [class.tf-badge--active]="employee.isActive" [class.tf-badge--inactive]="!employee.isActive">
+                      {{ employee.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                  <td class="cell-actions">
+                    <div class="actions">
+                      <button
+                        type="button"
+                        class="tf-btn tf-btn--icon"
+                        data-action="edit"
+                        [attr.aria-label]="'Edit ' + employee.fullName"
+                        title="Edit"
+                        (click)="openEdit(employee)"
+                      >
+                        <tf-icon name="edit" />
+                      </button>
+                      <button
+                        type="button"
+                        class="tf-btn tf-btn--icon"
+                        data-action="toggle-status"
+                        [class.tf-btn--danger]="employee.isActive"
+                        [attr.aria-label]="(employee.isActive ? 'Deactivate ' : 'Activate ') + employee.fullName"
+                        [title]="employee.isActive ? 'Deactivate' : 'Activate'"
+                        [disabled]="busyId() === employee.id"
+                        (click)="toggleStatus(employee)"
+                      >
+                        <tf-icon name="power" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>
+
+<tf-drawer [open]="panel() !== null" [title]="panelTitle()" (closed)="closePanel()">
+  @switch (panel()?.mode) {
+    @case ('create') {
+      <app-employee-form-panel [departments]="departments()" (saved)="onSaved()" (cancelled)="closePanel()" />
+    }
+    @case ('edit') {
+      <app-employee-form-panel
+        [employee]="$any(panel()).employee"
+        [departments]="departments()"
+        (saved)="onSaved()"
+        (cancelled)="closePanel()"
+      />
+    }
+    @case ('details') {
+      <app-employee-details-panel
+        [employee]="$any(panel()).employee"
+        (edit)="openEdit($any(panel()).employee)"
+        (closed)="closePanel()"
+      />
+    }
+  }
+</tf-drawer>
+
+<tf-confirm-dialog />
