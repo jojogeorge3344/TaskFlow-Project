@@ -17,28 +17,31 @@ if ((Test-Path '.opencode/skills') -and -not (Get-ChildItem '.opencode/skills'))
 }
 
 # Replace the regenerated full-length commands with thin wrappers around the shared skills.
-$skills = [ordered]@{
-    apply   = 'openspec-apply-change'
-    archive = 'openspec-archive-change'
-    explore = 'openspec-explore'
-    propose = 'openspec-propose'
-    sync    = 'openspec-sync-specs'
-    update  = 'openspec-update-change'
+# A generated command repeats its skill's body, so they are paired by the first body line;
+# this also covers workflows added later via `openspec config profile`.
+$frontmatter = '(?s)^(---\r?\n.*?\r?\n---)\s*(.*)$'
+function Get-FirstBodyLine([string]$text) {
+    if ($text -notmatch $frontmatter) { return $null }
+    ($Matches[2] -split '\r?\n' | Where-Object { $_.Trim() } | Select-Object -First 1)
 }
+
+$skillByFirstLine = @{}
+foreach ($skillFile in Get-ChildItem '.claude/skills/*/SKILL.md') {
+    $line = Get-FirstBodyLine ([IO.File]::ReadAllText($skillFile.FullName))
+    if ($line) { $skillByFirstLine[$line] = $skillFile.Directory.Name }
+}
+
 $utf8 = New-Object System.Text.UTF8Encoding $false
+$commandFiles = @(Get-ChildItem '.claude/commands/opsx/*.md', '.opencode/commands/opsx-*.md' -ErrorAction SilentlyContinue)
 
-foreach ($cmd in $skills.Keys) {
-    $skill = $skills[$cmd]
+foreach ($file in $commandFiles) {
+    $text = [IO.File]::ReadAllText($file.FullName)
+    $skill = $skillByFirstLine[(Get-FirstBodyLine $text)]
+    if (-not $skill) { continue }   # already a wrapper, or no matching skill
+
+    $null = $text -match $frontmatter
     $body = "Load the ``$skill`` skill (from ``.claude/skills/$skill/SKILL.md``) and follow its instructions exactly.`n`n**Provided arguments**: `$ARGUMENTS`n"
-
-    foreach ($file in @(".claude/commands/opsx/$cmd.md", ".opencode/commands/opsx-$cmd.md")) {
-        if (-not (Test-Path $file)) { continue }
-        $text = [IO.File]::ReadAllText((Resolve-Path $file))
-        # Keep the generated frontmatter (first --- ... --- block), swap the body.
-        if ($text -match '(?s)^(---\r?\n.*?\r?\n---)') {
-            [IO.File]::WriteAllText((Join-Path $root $file), "$($Matches[1])`n`n$body", $utf8)
-        }
-    }
+    [IO.File]::WriteAllText($file.FullName, "$($Matches[1])`n`n$body", $utf8)
 }
 
 Write-Host 'Deduplicated: skills live only in .claude/skills; commands are thin wrappers.'
