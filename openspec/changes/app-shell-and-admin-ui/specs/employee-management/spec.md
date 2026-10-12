@@ -1,0 +1,118 @@
+# Spec Delta
+
+## ADDED Requirements
+
+### Requirement: Employee Management page layout
+
+The Employee Management screen SHALL show, in order: a page header with the title "Employee Management", a subtitle with the total number of employees, and an "Add employee" primary button aligned to the right; a filter toolbar; and the employee list.
+
+#### Scenario: Header shows total
+
+- **WHEN** an Administrator opens `/employees` and 24 employees match the current filters
+- **THEN** the header shows "Employee Management", a subtitle that includes "24 employees", and an "Add employee" button
+
+### Requirement: Employee filter toolbar
+
+The screen SHALL provide a search field (name or email), a department filter, a role filter, a status filter, and a Reset action. Search SHALL apply automatically after the user stops typing for 300ms. Each select filter SHALL apply as soon as it changes.
+
+#### Scenario: Search while typing
+
+- **WHEN** the Administrator types "anu" in the search field and pauses
+- **THEN** the list refreshes to show only employees whose name or email matches "anu"
+
+#### Scenario: Reset filters
+
+- **WHEN** filters are applied and the Administrator clicks Reset
+- **THEN** every filter returns to its default and the full list is shown
+
+### Requirement: Pre-filter by department from the URL
+
+The screen SHALL read an optional `departmentId` query parameter and apply it as the initial department filter.
+
+#### Scenario: Opened from a department
+
+- **WHEN** the Administrator opens `/employees?departmentId=3`
+- **THEN** the department filter shows department 3 and only that department's employees are listed
+
+### Requirement: Employee list presentation
+
+On wide screens the list SHALL be a table with these columns: Employee (initials avatar, full name, username), Email, Department, Role, Status, and Actions. Role and status SHALL be shown as colored badges. An employee with no department SHALL show "Unassigned".
+
+#### Scenario: Status badge
+
+- **WHEN** an employee is inactive
+- **THEN** their status shows as a grey "Inactive" badge, and active employees show a green "Active" badge
+
+### Requirement: Responsive employee list
+
+On viewports narrower than 768px, each employee SHALL be shown as a stacked card with the same information and actions. The page SHALL NOT scroll horizontally.
+
+#### Scenario: Mobile view
+
+- **WHEN** the screen is viewed 390px wide
+- **THEN** employees are shown as cards, the filters stack vertically, and there is no horizontal page scroll
+
+### Requirement: Loading, empty, and error states
+
+The list SHALL show a loading placeholder while data loads. It SHALL show an empty state when no employees match, with a "Clear filters" action if filters are active. It SHALL show an error message with a Retry action if loading fails.
+
+#### Scenario: No matches
+
+- **WHEN** the active filters match no employees
+- **THEN** the list shows "No employees match these filters" and a "Clear filters" action
+
+#### Scenario: Load failure
+
+- **WHEN** the employee request fails
+- **THEN** an error message is shown with a Retry button that reloads the list
+
+### Requirement: Add and edit employee in a side panel
+
+Add and Edit SHALL open a form in a side panel that slides in over the list. The panel title SHALL say "Add employee" or "Edit employee". The form SHALL include full name, username, email, role, and department. Password and initial status SHALL appear only when adding.
+
+#### Scenario: Open add form
+
+- **WHEN** the Administrator clicks "Add employee"
+- **THEN** a side panel opens with empty fields, including a password field, and focus moves to the first field
+
+#### Scenario: Open edit form
+
+- **WHEN** the Administrator clicks Edit on an employee
+- **THEN** the side panel opens with that employee's values filled in and no password field
+
+### Requirement: Inline form validation and server errors
+
+The form SHALL show an inline message under each invalid field (required fields, email format) after the field is touched or on submit. While saving, the Save button SHALL be disabled. A server error (for example, duplicate email or username) SHALL be shown inside the panel without closing it.
+
+#### Scenario: Duplicate email
+
+- **WHEN** the Administrator saves an employee whose email already exists
+- **THEN** the panel stays open and shows the server's error message
+
+#### Scenario: Successful save
+
+- **WHEN** the Administrator saves valid data
+- **THEN** the panel closes, the list refreshes, and a success toast is shown
+
+### Requirement: Employee details view
+
+Selecting an employee's name SHALL open a read-only details view. It SHALL show full name, employee code, username, email, role, department, status, created date, and last login. From the details view, the Administrator SHALL be able to go to Edit.
+
+#### Scenario: View details
+
+- **WHEN** the Administrator clicks an employee's name
+- **THEN** a details panel opens with that employee's information and an Edit action
+
+### Requirement: Confirm before deactivating
+
+Deactivating an active employee SHALL require confirmation in a dialog that names the employee and explains that they will not be able to sign in. Activating SHALL NOT require confirmation. A success toast SHALL be shown after either change.
+
+#### Scenario: Deactivate with confirmation
+
+- **WHEN** the Administrator chooses Deactivate on an active employee and confirms
+- **THEN** the employee's status changes to Inactive and a success toast is shown
+
+#### Scenario: Cancel deactivation
+
+- **WHEN** the Administrator chooses Deactivate and then cancels the dialog
+- **THEN** the employee stays Active
