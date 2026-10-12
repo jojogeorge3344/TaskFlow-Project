@@ -1,0 +1,67 @@
+<app-dashboard-layout>
+  <section class="dashboard">
+    <header class="dashboard__header">
+      <h1 class="dashboard__title">Employee Dashboard</h1>
+      <p class="dashboard__welcome">
+        Welcome back@if (user(); as currentUser) {, {{ currentUser.fullName }}}
+      </p>
+    </header>
+
+    @if (loading()) {
+      <p class="dashboard__status">Loading dashboard&hellip;</p>
+    } @else if (error()) {
+      <div class="dashboard__error">
+        <span>{{ error() }}</span>
+        <button type="button" (click)="load()">Retry</button>
+      </div>
+    } @else {
+      @if (stats(); as data) {
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="stat-card__label">Assigned Tasks</span>
+          <span class="stat-card__value">{{ data.assignedTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Pending Tasks</span>
+          <span class="stat-card__value">{{ data.pendingTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Due Today</span>
+          <span class="stat-card__value">{{ data.tasksDueToday }}</span>
+        </article>
+        <article class="stat-card stat-card--overdue">
+          <span class="stat-card__label">Overdue Tasks</span>
+          <span class="stat-card__value">{{ data.overdueTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">In Progress</span>
+          <span class="stat-card__value">{{ data.inProgressTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Completed Tasks</span>
+          <span class="stat-card__value">{{ data.completedTasks }}</span>
+        </article>
+      </div>
+
+      <section class="dashboard__section">
+        <h2 class="dashboard__section-title">Progress summary</h2>
+        <div class="progress" role="progressbar" [attr.aria-valuenow]="completionRate()" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress__bar" [style.width.%]="completionRate()"></div>
+        </div>
+        <div class="progress__legend">
+          <span>{{ data.completedTasks }} of {{ data.assignedTasks }} tasks completed</span>
+          <span>{{ completionRate() }}%</span>
+        </div>
+      </section>
+
+      <section class="dashboard__section">
+        <h2 class="dashboard__section-title">My tasks</h2>
+        <p class="empty-state">
+          No individual task details are available yet. The task list API is not implemented, so only the
+          aggregate counts above are shown. Task details will appear here once task management is available.
+        </p>
+      </section>
+      }
+    }
+  </section>
+</app-dashboard-layout>

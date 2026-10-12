@@ -1,0 +1,38 @@
+<div class="container-fluid">
+  <h2>Departments</h2>
+  <div *ngIf="error()" class="alert alert-danger">{{ error() }}</div>
+  <button *ngIf="isAdmin()" class="btn btn-primary mb-3" (click)="add()">Add Department</button>
+
+  <form *ngIf="showForm()" class="mb-3" (ngSubmit)="save()">
+    <div class="mb-2">
+      <input type="text" class="form-control" [(ngModel)]="name" name="name" placeholder="Name" required>
+    </div>
+    <div class="mb-2">
+      <input type="text" class="form-control" [(ngModel)]="description" name="description" placeholder="Description">
+    </div>
+    <button type="submit" class="btn btn-success me-2" [disabled]="loading()">Save</button>
+    <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="loading()">Cancel</button>
+  </form>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Employees</th>
+        <th *ngIf="isAdmin()">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let dept of departments()">
+        <td>{{ dept.name }}</td>
+        <td>{{ dept.description }}</td>
+        <td>{{ dept.employeeCount }}</td>
+        <td *ngIf="isAdmin()">
+          <button class="btn btn-sm btn-primary me-2" (click)="edit(dept)" [disabled]="loading()">Edit</button>
+          <button class="btn btn-sm btn-danger" (click)="delete(dept)" [disabled]="loading() || dept.employeeCount > 0">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

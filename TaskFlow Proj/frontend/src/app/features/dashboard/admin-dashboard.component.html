@@ -1,0 +1,52 @@
+<app-dashboard-layout>
+  <section class="dashboard">
+    <header class="dashboard__header">
+      <h1 class="dashboard__title">Administrator Dashboard</h1>
+      <p class="dashboard__welcome">
+        Welcome back@if (user(); as currentUser) {, {{ currentUser.fullName }}}
+      </p>
+    </header>
+
+    @if (loading()) {
+      <p class="dashboard__status">Loading dashboard&hellip;</p>
+    } @else if (error()) {
+      <div class="dashboard__error">
+        <span>{{ error() }}</span>
+        <button type="button" (click)="load()">Retry</button>
+      </div>
+    } @else {
+      @if (stats(); as data) {
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="stat-card__label">Total Employees</span>
+          <span class="stat-card__value">{{ data.totalEmployees }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Active Employees</span>
+          <span class="stat-card__value">{{ data.activeEmployees }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Departments</span>
+          <span class="stat-card__value">{{ data.totalDepartments }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Total Tasks</span>
+          <span class="stat-card__value">{{ data.totalTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Pending Tasks</span>
+          <span class="stat-card__value">{{ data.pendingTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Completed Tasks</span>
+          <span class="stat-card__value">{{ data.completedTasks }}</span>
+        </article>
+        <article class="stat-card stat-card--overdue">
+          <span class="stat-card__label">Overdue Tasks</span>
+          <span class="stat-card__value">{{ data.overdueTasks }}</span>
+        </article>
+      </div>
+      }
+    }
+  </section>
+</app-dashboard-layout>

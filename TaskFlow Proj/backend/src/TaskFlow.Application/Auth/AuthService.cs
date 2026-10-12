@@ -93,7 +93,7 @@ public class AuthService : IAuthService
         return AuthResult.Success(tokens, ToDto(stored.User));
     }
 
-    public async Task LogoutAsync(string? refreshToken, CancellationToken cancellationToken = default)
+    public async System.Threading.Tasks.Task LogoutAsync(string? refreshToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
