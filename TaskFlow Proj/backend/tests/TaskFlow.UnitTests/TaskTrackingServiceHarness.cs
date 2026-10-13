@@ -1,0 +1,113 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Enums;
+using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Infrastructure.Services;
+using Task = System.Threading.Tasks.Task;
+using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+
+namespace TaskFlow.UnitTests;
+
+internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
+{
+    private readonly SqliteConnection _connection;
+
+    private TaskTrackingServiceHarness(SqliteConnection connection, AppDbContext db)
+    {
+        _connection = connection;
+        Db = db;
+
+        ActivityService = new TaskActivityService(db, TimeProvider.System);
+        NotificationPublisher = new NotificationPublisher(db, TimeProvider.System);
+        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System);
+        CommentService = new TaskCommentService(db, ActivityService, TimeProvider.System);
+    }
+
+    public AppDbContext Db { get; }
+
+    public TaskActivityService ActivityService { get; }
+
+    public NotificationPublisher NotificationPublisher { get; }
+
+    public TaskService TaskService { get; }
+
+    public TaskCommentService CommentService { get; }
+
+    public static TaskTrackingServiceHarness Create()
+    {
+        var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        var db = new AppDbContext(options);
+        db.Database.EnsureCreated();
+
+        return new TaskTrackingServiceHarness(connection, db);
+    }
+
+    public User AddUser(string username, Role role = Role.Employee, bool isActive = true)
+    {
+        var user = new User
+        {
+            FullName = $"{username} full name",
+            Username = username,
+            Email = $"{username}@taskflow.local",
+            Role = role,
+            IsActive = isActive,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        Db.Users.Add(user);
+        Db.SaveChanges();
+
+        return user;
+    }
+
+    public Domain.Entities.Task AddTask(
+        int assignedToUserId,
+        int createdByUserId,
+        string title = "Seed task",
+        TaskStatus status = TaskStatus.ToDo,
+        DateTime? deadline = null,
+        TaskPriority priority = TaskPriority.Medium)
+    {
+        var task = new Domain.Entities.Task
+        {
+            TaskCode = $"TSK-{Random.Shared.Next(1000, 9999)}",
+            Title = title,
+            Description = "Seed description",
+            AssignedToUserId = assignedToUserId,
+            CreatedByUserId = createdByUserId,
+            Priority = priority,
+            StartDate = DateTime.UtcNow.AddDays(-1),
+            Deadline = deadline ?? DateTime.UtcNow.AddDays(5),
+            EstimatedHours = 8,
+            Status = status,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        Db.Tasks.Add(task);
+        Db.SaveChanges();
+
+        return task;
+    }
+
+    public void AddRecipient(int taskId, int userId)
+    {
+        Db.TaskRecipients.Add(new TaskRecipient { TaskId = taskId, UserId = userId });
+        Db.SaveChanges();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Db.DisposeAsync();
+        await _connection.DisposeAsync();
+    }
+}

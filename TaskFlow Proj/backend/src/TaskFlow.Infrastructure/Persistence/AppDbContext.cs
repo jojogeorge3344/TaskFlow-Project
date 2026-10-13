@@ -18,6 +18,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
+    public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+    public DbSet<TaskActivityLog> TaskActivityLogs => Set<TaskActivityLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +73,68 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .HasOne(token => token.User)
                 .WithMany(user => user.RefreshTokens)
                 .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskComment>(entity =>
+        {
+            entity.HasKey(comment => comment.Id);
+            entity.Property(comment => comment.Body).IsRequired();
+
+            entity.HasIndex(comment => new { comment.TaskId, comment.CreatedAt });
+
+            entity
+                .HasOne(comment => comment.Task)
+                .WithMany()
+                .HasForeignKey(comment => comment.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(comment => comment.Author)
+                .WithMany()
+                .HasForeignKey(comment => comment.AuthorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskActivityLog>(entity =>
+        {
+            entity.HasKey(activity => activity.Id);
+            entity.Property(activity => activity.EventType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(activity => activity.Message).IsRequired();
+
+            entity.HasIndex(activity => new { activity.TaskId, activity.CreatedAt });
+
+            entity
+                .HasOne(activity => activity.Task)
+                .WithMany()
+                .HasForeignKey(activity => activity.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(activity => activity.Actor)
+                .WithMany()
+                .HasForeignKey(activity => activity.ActorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(notification => notification.Id);
+            entity.Property(notification => notification.Type).HasConversion<string>().HasMaxLength(32);
+            entity.Property(notification => notification.Message).IsRequired();
+
+            entity.HasIndex(notification => new { notification.UserId, notification.IsRead });
+
+            entity
+                .HasOne(notification => notification.User)
+                .WithMany()
+                .HasForeignKey(notification => notification.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(notification => notification.Task)
+                .WithMany()
+                .HasForeignKey(notification => notification.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

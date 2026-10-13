@@ -1,0 +1,93 @@
+.tf-back {
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tf-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.discussion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-5);
+  max-width: 48rem;
+}
+
+.discussion__skeleton {
+  height: 4rem;
+}
+
+.discussion__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.discussion__item {
+  display: flex;
+  gap: var(--tf-space-3);
+}
+
+.discussion__body {
+  flex: 1;
+  min-width: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-md);
+  background: var(--tf-surface);
+}
+
+.discussion__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  flex-wrap: wrap;
+}
+
+.discussion__author {
+  font-weight: 700;
+}
+
+.discussion__time {
+  font-size: 0.75rem;
+  color: var(--tf-muted);
+}
+
+.discussion__text {
+  margin: var(--tf-space-1) 0 0;
+  white-space: pre-wrap;
+  color: var(--tf-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.discussion__composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-4);
+}
+
+.discussion__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.discussion__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  flex-wrap: wrap;
+}
+
+.discussion__hint {
+  font-size: 0.75rem;
+  color: var(--tf-muted);
+}

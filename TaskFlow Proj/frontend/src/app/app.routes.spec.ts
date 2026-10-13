@@ -7,6 +7,11 @@ import { EmployeeDashboardComponent } from './features/dashboard/employee-dashbo
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
+import { ActivityComponent } from './features/tasks/activity.component';
+import { KanbanComponent } from './features/tasks/kanban.component';
+import { TaskReassignComponent } from './features/tasks/reassign.component';
+import { TaskDetailsComponent } from './features/tasks/task-details.component';
+import { TaskDiscussionComponent } from './features/tasks/task-discussion.component';
 
 describe('app routes', () => {
   function shellRoute(): Routes[number] {
@@ -49,7 +54,18 @@ describe('app routes', () => {
     const shell = shellRoute();
     expect(shell.canActivate).toEqual([authGuard]);
     expect(await load(shell)).toBe(ShellComponent);
-    expect(shell.children!.map((child) => child.path)).toEqual(['admin', 'manager', 'me', 'departments', 'employees']);
+    expect(shell.children!.map((child) => child.path)).toEqual([
+      'admin',
+      'manager',
+      'me',
+      'departments',
+      'employees',
+      'board',
+      'tasks/:id',
+      'tasks/:id/discussion',
+      'tasks/:id/activity',
+      'tasks/:id/reassign'
+    ]);
   });
 
   it('protects the administrator dashboard for Administrators only', () => {
@@ -84,5 +100,30 @@ describe('app routes', () => {
     expect(await load(childRoute('me'))).toBe(EmployeeDashboardComponent);
     expect(await load(childRoute('employees'))).toBe(EmployeeListComponent);
     expect(await load(childRoute('departments'))).toBe(DepartmentListComponent);
+  });
+
+  it('registers the board for every authenticated role', () => {
+    const board = childRoute('board');
+    expect(board.canActivate).toBeUndefined();
+  });
+
+  it('registers the task detail and discussion routes for every authenticated role', () => {
+    expect(childRoute('tasks/:id').canActivate).toBeUndefined();
+    expect(childRoute('tasks/:id/discussion').canActivate).toBeUndefined();
+    expect(childRoute('tasks/:id/activity').canActivate).toBeUndefined();
+  });
+
+  it('protects reassignment for Managers and Administrators only', () => {
+    const reassign = childRoute('tasks/:id/reassign');
+    expect(reassign.canActivate).toEqual([roleGuard]);
+    expect(reassign.data?.['roles']).toEqual(['Manager', 'Administrator']);
+  });
+
+  it('lazy-loads the task screens', async () => {
+    expect(await load(childRoute('board'))).toBe(KanbanComponent);
+    expect(await load(childRoute('tasks/:id'))).toBe(TaskDetailsComponent);
+    expect(await load(childRoute('tasks/:id/discussion'))).toBe(TaskDiscussionComponent);
+    expect(await load(childRoute('tasks/:id/activity'))).toBe(ActivityComponent);
+    expect(await load(childRoute('tasks/:id/reassign'))).toBe(TaskReassignComponent);
   });
 });

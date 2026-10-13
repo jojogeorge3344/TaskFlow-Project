@@ -1,0 +1,73 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+        <tf-icon name="arrow" />
+        Back to task #{{ taskId }}
+      </a>
+      <h1>Discussion</h1>
+      <p>Comments are chronological and immutable — they cannot be edited or deleted.</p>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="discussion" aria-busy="true">
+      <div class="tf-skeleton discussion__skeleton"></div>
+      <div class="tf-skeleton discussion__skeleton"></div>
+    </div>
+  } @else {
+    <div class="discussion">
+      @if (comments().length === 0) {
+        <div class="tf-card tf-empty">
+          <tf-icon name="users" />
+          <strong>No comments yet</strong>
+          <p>Start the discussion about this task below.</p>
+        </div>
+      } @else {
+        <ol class="discussion__list">
+          @for (comment of comments(); track comment.id) {
+            <li class="discussion__item">
+              <span class="tf-avatar" aria-hidden="true">{{ initials(comment.authorName) }}</span>
+              <div class="discussion__body">
+                <header class="discussion__meta">
+                  <span class="discussion__author">{{ comment.authorName }}</span>
+                  <time class="discussion__time" [attr.datetime]="comment.createdAt">
+                    {{ timeLabel(comment.createdAt) }}
+                  </time>
+                </header>
+                <p class="discussion__text">{{ comment.body }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      }
+
+      <form class="tf-card discussion__composer" (ngSubmit)="post()">
+        <label for="discussion-body" class="discussion__label">Add a comment</label>
+        <textarea
+          id="discussion-body"
+          class="tf-input tf-textarea"
+          rows="3"
+          maxlength="1000"
+          placeholder="Share an update, question or handoff note…"
+          [value]="body()"
+          (input)="body.set($any($event.target).value)"
+        ></textarea>
+        <div class="discussion__actions">
+          <span class="discussion__hint">
+            {{ body() === '' ? 'Commenting as ' + currentUserName : '' }}
+          </span>
+          <button type="submit" class="tf-btn tf-btn--primary" [disabled]="body().trim() === '' || posting()">
+            {{ posting() ? 'Posting…' : 'Post comment' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</section>

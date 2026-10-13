@@ -1,0 +1,81 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Board</h1>
+      <p>{{ loading() ? 'Loading board…' : `${taskCount()} tasks across ${columns().length} stages` }}</p>
+    </div>
+    <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">
+      <tf-icon name="reset" />
+      Refresh
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="kanban" aria-busy="true">
+      @for (placeholder of [0, 1, 2, 3]; track placeholder) {
+        <div class="kanban__column">
+          <div class="tf-skeleton kanban__skeleton-title"></div>
+          <div class="kanban__list">
+            <div class="tf-skeleton kanban__skeleton-card"></div>
+            <div class="tf-skeleton kanban__skeleton-card"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="kanban" cdkDropListGroup>
+      @for (column of columns(); track column.status) {
+        <section class="kanban__column" [attr.aria-label]="`${label(column.status)} column`">
+          <header class="kanban__column-header">
+            <h2>{{ label(column.status) }}</h2>
+            <span class="kanban__count">{{ column.tasks.length }}</span>
+          </header>
+
+          <div
+            cdkDropList
+            class="kanban__list"
+            [class.kanban__list--empty]="column.tasks.length === 0"
+            [cdkDropListData]="column.tasks"
+            [attr.aria-label]="`Drop ${label(column.status)} tasks here`"
+            (cdkDropListDropped)="drop($event, column.status)"
+          >
+            @for (task of column.tasks; track task.id) {
+              <article
+                class="kanban__card"
+                [class.kanban__card--overdue]="task.isOverdue"
+                cdkDrag
+                [cdkDragData]="task"
+                tabindex="0"
+                (click)="open(task)"
+                (keydown.enter)="open(task)"
+              >
+                <header class="kanban__card-head">
+                  <span class="kanban__code">{{ task.taskCode }}</span>
+                  <span class="kanban__priority" [class]="priorityClass(task.priority)">{{ task.priority }}</span>
+                </header>
+                <h3 class="kanban__title">{{ task.title }}</h3>
+                <footer class="kanban__card-foot">
+                  <span class="kanban__assignee">
+                    <tf-icon name="users" />
+                    {{ task.assignedToName || 'Unassigned' }}
+                  </span>
+                  <span class="kanban__deadline" [class.kanban__deadline--overdue]="task.isOverdue">
+                    {{ deadlineLabel(task.deadline) }}
+                  </span>
+                </footer>
+              </article>
+            } @empty {
+              <p class="kanban__empty">Drop tasks here</p>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</section>
