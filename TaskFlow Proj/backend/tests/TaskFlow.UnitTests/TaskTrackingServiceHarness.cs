@@ -79,7 +79,7 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
     {
         var task = new Domain.Entities.Task
         {
-            TaskCode = $"TSK-{Random.Shared.Next(1000, 9999)}",
+            TaskCode = $"SEED-{Guid.NewGuid():N}"[..24],
             Title = title,
             Description = "Seed description",
             AssignedToUserId = assignedToUserId,

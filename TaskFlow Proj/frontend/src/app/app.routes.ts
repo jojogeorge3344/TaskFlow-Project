@@ -56,6 +56,19 @@ export const routes: Routes = [
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },
       {
+        path: 'tasks',
+        pathMatch: 'full',
+        loadComponent: () => import('./features/tasks/task-list.component').then((m) => m.TaskListComponent)
+      },
+      {
+        // Before 'tasks/:id' so "new" is not read as a task id.
+        path: 'tasks/new',
+        canActivate: [roleGuard],
+        data: { roles: ['Manager', 'Administrator'] },
+        loadComponent: () =>
+          import('./features/tasks/task-create.component').then((m) => m.TaskCreateComponent)
+      },
+      {
         path: 'tasks/:id',
         loadComponent: () =>
           import('./features/tasks/task-details.component').then((m) => m.TaskDetailsComponent)

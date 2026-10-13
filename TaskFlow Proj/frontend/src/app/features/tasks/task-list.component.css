@@ -1,0 +1,92 @@
+/* Search, employee, status, priority, two deadline dates, reset. */
+.task-toolbar {
+  grid-template-columns: minmax(14rem, 2fr) repeat(5, minmax(8rem, 1fr)) auto;
+}
+
+.cell-code {
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cell-title a {
+  color: var(--tf-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cell-title a:hover {
+  color: var(--tf-primary);
+  text-decoration: underline;
+}
+
+.cell-deadline {
+  white-space: nowrap;
+}
+
+.cell-deadline .tf-chip {
+  margin-left: var(--tf-space-2);
+}
+
+.task-row--overdue td:first-child {
+  box-shadow: inset 3px 0 0 var(--tf-danger);
+}
+
+.priority {
+  display: inline-block;
+  padding: 0.125rem var(--tf-space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.priority--low {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+.priority--medium {
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
+}
+
+.priority--high {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.priority--critical {
+  background: var(--tf-danger-soft);
+  color: var(--tf-danger-strong);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-top: 1px solid var(--tf-border);
+}
+
+.pager__label {
+  color: var(--tf-muted);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 1199.98px) {
+  .task-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .task-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .skeleton-row td:nth-child(n + 3) {
+    display: none;
+  }
+}

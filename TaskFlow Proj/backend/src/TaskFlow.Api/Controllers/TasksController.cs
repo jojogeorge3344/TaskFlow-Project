@@ -23,6 +23,7 @@ public class TasksController : ControllerBase
     private readonly IValidator<ReassignTaskRequest> _reassignValidator;
     private readonly IValidator<AddCommentRequest> _commentValidator;
     private readonly IValidator<SetRecipientsRequest> _recipientsValidator;
+    private readonly IValidator<CreateTaskRequest> _createValidator;
 
     public TasksController(
         ITaskService taskService,
@@ -33,7 +34,8 @@ public class TasksController : ControllerBase
         IValidator<UpdateTaskStatusRequest> statusValidator,
         IValidator<ReassignTaskRequest> reassignValidator,
         IValidator<AddCommentRequest> commentValidator,
-        IValidator<SetRecipientsRequest> recipientsValidator)
+        IValidator<SetRecipientsRequest> recipientsValidator,
+        IValidator<CreateTaskRequest> createValidator)
     {
         _taskService = taskService;
         _commentService = commentService;
@@ -44,6 +46,68 @@ public class TasksController : ControllerBase
         _reassignValidator = reassignValidator;
         _commentValidator = commentValidator;
         _recipientsValidator = recipientsValidator;
+        _createValidator = createValidator;
+    }
+
+    /// <summary>A page of tasks the caller may access, with search, filters and paging (Screen 7).</summary>
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<TaskListItemDto>>> List(
+        [FromQuery] TaskListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        var tasks = await _taskService.ListAsync(filter, userId, role, cancellationToken);
+        return Ok(tasks);
+    }
+
+    /// <summary>Creates a task and assigns it to an employee (Screen 8). Manager/Administrator only.</summary>
+    [HttpPost]
+    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    public async Task<ActionResult<TaskDetailsDto>> Create(
+        [FromBody] CreateTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _createValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
+
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var task = await _taskService.CreateAsync(request, userId, role, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = task.Id }, task);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    /// <summary>The distinct assignees of tasks the caller may access, for the list's employee filter.</summary>
+    [HttpGet("assignees")]
+    public async Task<ActionResult<IReadOnlyCollection<TaskRecipientDto>>> GetAssignees(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        var assignees = await _taskService.GetAssigneesAsync(userId, role, cancellationToken);
+        return Ok(assignees);
     }
 
     /// <summary>All tasks the caller may access, flat list the Kanban board groups client-side.</summary>

@@ -61,6 +61,95 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
+        var now = Now;
+        var tasks = await ScopedTasks(currentUserId, currentUserRole)
+            .Include(task => task.AssignedTo)
+            .OrderBy(task => task.Deadline)
+            .ToListAsync(cancellationToken);
+
+        return tasks.Select(task => ToCard(task, now)).ToList();
+    }
+
+    public async Task<PagedResult<TaskListItemDto>> ListAsync(
+        TaskListFilter filter,
+        int currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken)
+    {
+        var page = filter.Page < 1 ? 1 : filter.Page;
+        var pageSize = filter.PageSize is < 1 or > 100 ? 20 : filter.PageSize;
+
+        var query = ScopedTasks(currentUserId, currentUserRole);
+
+        if (filter.AssignedToUserId is int assignedTo)
+        {
+            query = query.Where(task => task.AssignedToUserId == assignedTo);
+        }
+
+        if (filter.Status is TaskStatus status)
+        {
+            query = query.Where(task => task.Status == status);
+        }
+
+        if (filter.Priority is TaskPriority priority)
+        {
+            query = query.Where(task => task.Priority == priority);
+        }
+
+        if (filter.DeadlineFrom is DateTime deadlineFrom)
+        {
+            query = query.Where(task => task.Deadline >= deadlineFrom);
+        }
+
+        if (filter.DeadlineTo is DateTime deadlineTo)
+        {
+            query = query.Where(task => task.Deadline <= deadlineTo);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var term = filter.Search.Trim();
+            query = query.Where(task =>
+                EF.Functions.Like(task.Title, $"%{term}%")
+                || EF.Functions.Like(task.TaskCode, $"%{term}%"));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var now = Now;
+        var tasks = await query
+            .Include(task => task.AssignedTo)
+            .Include(task => task.CreatedBy)
+            .OrderBy(task => task.Deadline)
+            .ThenBy(task => task.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = tasks.Select(task => ToListItem(task, now)).ToList();
+        return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
+    }
+
+    public async Task<IReadOnlyCollection<TaskRecipientDto>> GetAssigneesAsync(
+        int currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken)
+    {
+        var assignees = await ScopedTasks(currentUserId, currentUserRole)
+            .Select(task => new { task.AssignedToUserId, task.AssignedTo!.FullName })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return assignees
+            .OrderBy(assignee => assignee.FullName)
+            .Select(assignee => new TaskRecipientDto(assignee.AssignedToUserId, assignee.FullName))
+            .ToList();
+    }
+
+    /// <summary>Non-deleted tasks the caller may access: everything for Managers/Administrators,
+    /// otherwise tasks they are assigned to, created, or receive notifications for.</summary>
+    private IQueryable<TaskEntity> ScopedTasks(int currentUserId, string currentUserRole)
+    {
         IQueryable<TaskEntity> query = _dbContext.Tasks.AsNoTracking().Where(task => !task.IsDeleted);
 
         if (!IsManagerOrAdmin(currentUserRole))
@@ -75,13 +164,114 @@ public class TaskService : ITaskService
                 || recipientTaskIds.Contains(task.Id));
         }
 
-        var now = Now;
-        var tasks = await query
-            .Include(task => task.AssignedTo)
-            .OrderBy(task => task.Deadline)
-            .ToListAsync(cancellationToken);
+        return query;
+    }
 
-        return tasks.Select(task => ToCard(task, now)).ToList();
+    public async Task<TaskDetailsDto> CreateAsync(
+        CreateTaskRequest request,
+        int currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken)
+    {
+        if (!IsManagerOrAdmin(currentUserRole))
+        {
+            throw new UnauthorizedAccessException("Only Managers and Administrators can create tasks.");
+        }
+
+        ValidateCreate(request);
+
+        var assignee = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Id == request.AssignedToUserId && !user.IsDeleted, cancellationToken);
+
+        if (assignee is null || !assignee.IsActive)
+        {
+            throw new InvalidOperationException("The assigned employee does not exist or is not active.");
+        }
+
+        var additionalRecipientIds = request.AdditionalRecipientUserIds?.Distinct().ToList() ?? [];
+        if (additionalRecipientIds.Count > 0)
+        {
+            var existing = await _dbContext.Users
+                .Where(user => additionalRecipientIds.Contains(user.Id) && !user.IsDeleted)
+                .CountAsync(cancellationToken);
+
+            if (existing != additionalRecipientIds.Count)
+            {
+                throw new InvalidOperationException("One or more recipients do not exist.");
+            }
+        }
+
+        var now = Now;
+        var task = new TaskEntity
+        {
+            // A unique placeholder keeps the TaskCode index valid until the identity Id is known.
+            TaskCode = $"PENDING-{Guid.NewGuid():N}",
+            Title = request.Title.Trim(),
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            AssignedToUserId = assignee.Id,
+            CreatedByUserId = currentUserId,
+            Priority = request.Priority,
+            StartDate = request.StartDate,
+            Deadline = request.Deadline,
+            EstimatedHours = request.EstimatedHours,
+            Status = TaskStatus.ToDo,
+            FirstReminderDays = request.FirstReminderDays,
+            SecondReminderDays = request.SecondReminderDays,
+            OverdueReminderFrequency = request.OverdueReminderFrequency,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        _dbContext.Tasks.Add(task);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        task.TaskCode = $"TSK-{task.Id:D6}";
+
+        // BR-5: the assignee is always a recipient, and recipients are unique per task.
+        var recipientIds = new HashSet<int> { assignee.Id };
+        recipientIds.UnionWith(additionalRecipientIds);
+        foreach (var userId in recipientIds)
+        {
+            _dbContext.TaskRecipients.Add(new TaskFlow.Domain.Entities.TaskRecipient
+            {
+                TaskId = task.Id,
+                UserId = userId
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _activityService.AppendAsync(
+            task.Id,
+            TaskActivityEventType.Created,
+            currentUserId,
+            "Task created",
+            newValue: task.Title,
+            cancellationToken: cancellationToken);
+
+        await _activityService.AppendAsync(
+            task.Id,
+            TaskActivityEventType.Assigned,
+            currentUserId,
+            $"Assigned to {assignee.FullName}",
+            newValue: assignee.Id.ToString(),
+            cancellationToken: cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        await _notificationPublisher.PublishAsync(
+            assignee.Id,
+            task.Id,
+            NotificationType.TaskAssigned,
+            $"A task was assigned to you: {task.Title}",
+            cancellationToken);
+
+        var created = await LoadTaskAsync(task.Id, cancellationToken) ?? task;
+        var createdRecipients = await LoadRecipientsAsync(task.Id, cancellationToken);
+        return ToDetails(created, createdRecipients);
     }
 
     public async Task<TaskDetailsDto?> UpdateAsync(
@@ -405,6 +595,29 @@ public class TaskService : ITaskService
         }
     }
 
+    private static void ValidateCreate(CreateTaskRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new InvalidOperationException("Title is required.");
+        }
+
+        if (request.AssignedToUserId <= 0)
+        {
+            throw new InvalidOperationException("An assigned employee is required.");
+        }
+
+        if (request.Deadline <= request.StartDate)
+        {
+            throw new InvalidOperationException("Deadline must be after the start date.");
+        }
+
+        if (request.EstimatedHours <= 0)
+        {
+            throw new InvalidOperationException("Estimated hours must be a positive number.");
+        }
+    }
+
     private TaskDetailsDto ToDetails(TaskEntity task, IReadOnlyCollection<TaskRecipientDto> recipients)
     {
         var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, Now).ToString();
@@ -445,5 +658,26 @@ public class TaskService : ITaskService
             task.Deadline,
             task.Status,
             isOverdue);
+    }
+
+    private TaskListItemDto ToListItem(TaskEntity task, DateTime utcNow)
+    {
+        var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, utcNow);
+
+        return new TaskListItemDto(
+            task.Id,
+            task.TaskCode,
+            task.Title,
+            task.AssignedToUserId,
+            task.AssignedTo?.FullName ?? string.Empty,
+            task.CreatedByUserId,
+            task.CreatedBy?.FullName ?? string.Empty,
+            task.Priority,
+            task.StartDate,
+            task.Deadline,
+            task.EstimatedHours,
+            task.Status,
+            stage.ToString(),
+            stage == TaskStage.Overdue);
     }
 }

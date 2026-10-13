@@ -1,0 +1,61 @@
+.tf-back {
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tf-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  max-width: 48rem;
+  padding: var(--tf-space-5);
+}
+
+.task-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-2);
+  margin: 0;
+  padding: var(--tf-space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--tf-border);
+}
+
+.task-form__group legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.task-form__group .tf-form-row {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.recipient-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--tf-space-1) var(--tf-space-4);
+  max-height: 14rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.recipient {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-1) 0;
+  cursor: pointer;
+}
+
+.recipient__role {
+  margin-left: auto;
+  color: var(--tf-subtle);
+  font-size: 0.75rem;
+}

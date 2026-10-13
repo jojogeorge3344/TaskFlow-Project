@@ -1,0 +1,201 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" routerLink="/tasks">Back to tasks</a>
+      <h1>Create task</h1>
+      <p>Assign work to an employee. They are notified as soon as the task is created.</p>
+    </div>
+  </header>
+
+  <form class="tf-card task-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (serverError()) {
+      <div class="tf-alert" role="alert">
+        <tf-icon name="alert" />
+        <span>{{ serverError() }}</span>
+      </div>
+    }
+
+    <div class="tf-field">
+      <label for="task-title">Title <span class="tf-field__required" aria-hidden="true">*</span></label>
+      <input
+        id="task-title"
+        class="tf-input"
+        formControlName="title"
+        autocomplete="off"
+        [attr.maxlength]="titleMaxLength"
+        [class.is-invalid]="showError('title')"
+        [attr.aria-invalid]="showError('title')"
+        aria-describedby="task-title-error"
+      />
+      @if (showError('title')) {
+        <span id="task-title-error" class="tf-field__error" data-error="title">
+          {{ form.controls.title.hasError('maxlength') ? 'Title must be 200 characters or fewer.' : 'Title is required.' }}
+        </span>
+      }
+    </div>
+
+    <div class="tf-field">
+      <label for="task-description">Description</label>
+      <textarea
+        id="task-description"
+        class="tf-input tf-textarea"
+        rows="4"
+        formControlName="description"
+        [attr.maxlength]="descriptionMaxLength"
+        [class.is-invalid]="showError('description')"
+      ></textarea>
+      @if (showError('description')) {
+        <span class="tf-field__error" data-error="description">Description must be 4000 characters or fewer.</span>
+      }
+    </div>
+
+    <div class="tf-form-row">
+      <div class="tf-field">
+        <label for="task-assignee">Assigned employee <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <select
+          id="task-assignee"
+          class="tf-select"
+          formControlName="assignedToUserId"
+          [class.is-invalid]="showError('assignedToUserId')"
+          [attr.aria-invalid]="showError('assignedToUserId')"
+          aria-describedby="task-assignee-error"
+        >
+          <option [ngValue]="null">{{ usersLoading() ? 'Loading employees…' : 'Select an employee…' }}</option>
+          @for (user of assigneeOptions(); track user.id) {
+            <option [ngValue]="user.id">{{ user.fullName }} ({{ user.employeeCode || user.username }})</option>
+          }
+        </select>
+        @if (showError('assignedToUserId')) {
+          <span id="task-assignee-error" class="tf-field__error" data-error="assignedToUserId">Select the employee to assign.</span>
+        }
+        @if (usersError()) {
+          <span class="tf-field__error">Could not load employees. Reload the page to try again.</span>
+        }
+      </div>
+
+      <div class="tf-field">
+        <label for="task-priority">Priority <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <select id="task-priority" class="tf-select" formControlName="priority">
+          @for (priority of priorities; track priority) {
+            <option [ngValue]="priority">{{ priority }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="tf-form-row">
+      <div class="tf-field">
+        <label for="task-start">Start date <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <input
+          id="task-start"
+          class="tf-input"
+          type="datetime-local"
+          formControlName="startDate"
+          [class.is-invalid]="showError('startDate')"
+          [attr.aria-invalid]="showError('startDate')"
+        />
+        @if (showError('startDate')) {
+          <span class="tf-field__error" data-error="startDate">Start date is required.</span>
+        }
+      </div>
+
+      <div class="tf-field">
+        <label for="task-deadline">Deadline <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <input
+          id="task-deadline"
+          class="tf-input"
+          type="datetime-local"
+          formControlName="deadline"
+          [class.is-invalid]="showError('deadline')"
+          [attr.aria-invalid]="showError('deadline')"
+          aria-describedby="task-deadline-error"
+        />
+        @if (showError('deadline')) {
+          <span id="task-deadline-error" class="tf-field__error" data-error="deadline">{{ deadlineError() }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="tf-form-row">
+      <div class="tf-field">
+        <label for="task-hours">Estimated hours <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <input
+          id="task-hours"
+          class="tf-input"
+          type="number"
+          min="0.25"
+          step="0.25"
+          formControlName="estimatedHours"
+          [class.is-invalid]="showError('estimatedHours')"
+          [attr.aria-invalid]="showError('estimatedHours')"
+        />
+        @if (showError('estimatedHours')) {
+          <span class="tf-field__error" data-error="estimatedHours">{{ estimatedHoursError() }}</span>
+        }
+      </div>
+    </div>
+
+    <fieldset class="task-form__group">
+      <legend>Additional recipients</legend>
+      <p class="tf-field__hint">The assigned employee is always notified. Pick anyone else who should follow this task.</p>
+      @if (recipientOptions().length === 0) {
+        <p class="tf-field__hint">{{ usersLoading() ? 'Loading people…' : 'No other active users.' }}</p>
+      } @else {
+        <ul class="recipient-list">
+          @for (user of recipientOptions(); track user.id) {
+            <li>
+              <label class="recipient">
+                <input
+                  type="checkbox"
+                  [attr.data-recipient]="user.id"
+                  [checked]="isRecipient(user.id)"
+                  (change)="toggleRecipient(user.id, $any($event.target).checked)"
+                />
+                <span>{{ user.fullName }}</span>
+                <span class="recipient__role">{{ user.role }}</span>
+              </label>
+            </li>
+          }
+        </ul>
+      }
+    </fieldset>
+
+    <fieldset class="task-form__group">
+      <legend>Reminders</legend>
+      <div class="tf-form-row">
+        <div class="tf-field">
+          <label for="task-first-reminder">First reminder</label>
+          <select id="task-first-reminder" class="tf-select" formControlName="firstReminderDays">
+            @for (option of firstReminderOptions; track option.days) {
+              <option [ngValue]="option.days">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="tf-field">
+          <label for="task-second-reminder">Second reminder</label>
+          <select id="task-second-reminder" class="tf-select" formControlName="secondReminderDays">
+            @for (option of secondReminderOptions; track option.days) {
+              <option [ngValue]="option.days">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="tf-field">
+          <label for="task-overdue-frequency">After the deadline</label>
+          <select id="task-overdue-frequency" class="tf-select" formControlName="overdueReminderFrequency">
+            @for (option of overdueFrequencyOptions; track option.value) {
+              <option [ngValue]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="tf-form-actions">
+      <a class="tf-btn tf-btn--ghost" routerLink="/tasks">Cancel</a>
+      <button type="submit" class="tf-btn tf-btn--primary" data-action="create" [disabled]="saving()">
+        <tf-icon name="plus" />
+        {{ saving() ? 'Creating…' : 'Create task' }}
+      </button>
+    </div>
+  </form>
+</section>

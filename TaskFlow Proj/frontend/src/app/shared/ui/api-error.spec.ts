@@ -16,6 +16,12 @@ describe('apiErrorMessage', () => {
     expect(apiErrorMessage(httpError(400, { error: 'Username already exists.' }), 'fallback')).toBe('Username already exists.');
   });
 
+  it('uses the { message } body returned by the task endpoints', () => {
+    expect(apiErrorMessage(httpError(400, { message: 'The assigned employee is not active.' }), 'fallback')).toBe(
+      'The assigned employee is not active.'
+    );
+  });
+
   it('uses the first validation message from an errors map', () => {
     const body = { title: 'One or more validation errors occurred.', errors: { Password: ['Too short.'] } };
     expect(apiErrorMessage(httpError(400, body), 'fallback')).toBe('Too short.');

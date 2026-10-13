@@ -89,7 +89,7 @@ describe('ShellComponent', () => {
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
     const taskLink = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Task Management')!;
-    expect(taskLink.getAttribute('href')).toBe('/board');
+    expect(taskLink.getAttribute('href')).toBe('/tasks');
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
   });
 

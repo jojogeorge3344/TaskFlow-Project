@@ -119,9 +119,6 @@ namespace TaskFlow.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("AssignedToId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("AssignedToUserId")
                         .HasColumnType("INTEGER");
 
@@ -134,9 +131,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("INTEGER");
 
@@ -147,15 +141,25 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(4000)
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("EstimatedHours")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("FirstReminderDays")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("OverdueReminderFrequency")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SecondReminderDays")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("StartDate")
@@ -166,10 +170,12 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.Property<string>("TaskCode")
                         .IsRequired()
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -177,11 +183,16 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignedToId");
+                    b.HasIndex("AssignedToUserId");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Deadline");
 
                     b.HasIndex("DepartmentId");
+
+                    b.HasIndex("TaskCode")
+                        .IsUnique();
 
                     b.ToTable("Tasks");
                 });
@@ -267,9 +278,10 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TaskId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("TaskId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("TaskRecipients");
                 });
@@ -377,15 +389,20 @@ namespace TaskFlow.Infrastructure.Migrations
                 {
                     b.HasOne("TaskFlow.Domain.Entities.User", "AssignedTo")
                         .WithMany()
-                        .HasForeignKey("AssignedToId");
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("TaskFlow.Domain.Entities.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
                         .WithMany()
-                        .HasForeignKey("DepartmentId");
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("AssignedTo");
 

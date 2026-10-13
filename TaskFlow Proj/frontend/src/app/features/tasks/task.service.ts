@@ -4,11 +4,15 @@ import { Observable } from 'rxjs';
 import {
   ActivityEntry,
   AddCommentRequest,
+  CreateTaskRequest,
+  PagedResult,
   ReassignTaskRequest,
   SetRecipientsRequest,
   TaskCard,
   TaskComment,
   TaskDetails,
+  TaskListFilter,
+  TaskListItem,
   TaskRecipient,
   UpdateTaskRequest,
   UpdateTaskStatusRequest
@@ -26,6 +30,27 @@ export interface ActivityFilter {
 export class TaskService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/v1/tasks';
+
+  /** A page of tasks the caller may access, with search, filters and paging (Screen 7). */
+  list(filter: TaskListFilter = {}): Observable<PagedResult<TaskListItem>> {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    }
+    return this.http.get<PagedResult<TaskListItem>>(this.baseUrl, { params });
+  }
+
+  /** Distinct assignees of the tasks the caller may access, for the list's employee filter. */
+  getAssignees(): Observable<TaskRecipient[]> {
+    return this.http.get<TaskRecipient[]>(`${this.baseUrl}/assignees`);
+  }
+
+  /** Creates a task (Screen 8). Manager/Administrator only. */
+  create(request: CreateTaskRequest): Observable<TaskDetails> {
+    return this.http.post<TaskDetails>(this.baseUrl, request);
+  }
 
   /** Flat list of every task the caller may access; the board groups it client-side. */
   getBoard(): Observable<TaskCard[]> {

@@ -12,6 +12,8 @@ import { KanbanComponent } from './features/tasks/kanban.component';
 import { TaskReassignComponent } from './features/tasks/reassign.component';
 import { TaskDetailsComponent } from './features/tasks/task-details.component';
 import { TaskDiscussionComponent } from './features/tasks/task-discussion.component';
+import { TaskCreateComponent } from './features/tasks/task-create.component';
+import { TaskListComponent } from './features/tasks/task-list.component';
 
 describe('app routes', () => {
   function shellRoute(): Routes[number] {
@@ -61,6 +63,8 @@ describe('app routes', () => {
       'departments',
       'employees',
       'board',
+      'tasks',
+      'tasks/new',
       'tasks/:id',
       'tasks/:id/discussion',
       'tasks/:id/activity',
@@ -105,6 +109,23 @@ describe('app routes', () => {
   it('registers the board for every authenticated role', () => {
     const board = childRoute('board');
     expect(board.canActivate).toBeUndefined();
+  });
+
+  it('registers the task list for every authenticated role', async () => {
+    const list = childRoute('tasks');
+    expect(list.canActivate).toBeUndefined();
+    expect(list.pathMatch).toBe('full');
+    expect(await load(list)).toBe(TaskListComponent);
+  });
+
+  it('protects task creation for Managers and Administrators only, ahead of the detail route', async () => {
+    const createRoute = childRoute('tasks/new');
+    expect(createRoute.canActivate).toEqual([roleGuard]);
+    expect(createRoute.data?.['roles']).toEqual(['Manager', 'Administrator']);
+    expect(await load(createRoute)).toBe(TaskCreateComponent);
+
+    const paths = shellRoute().children!.map((child) => child.path);
+    expect(paths.indexOf('tasks/new')).toBeLessThan(paths.indexOf('tasks/:id'));
   });
 
   it('registers the task detail and discussion routes for every authenticated role', () => {

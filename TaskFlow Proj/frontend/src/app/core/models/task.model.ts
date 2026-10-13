@@ -85,3 +85,58 @@ export interface AddCommentRequest {
 export interface SetRecipientsRequest {
   recipientUserIds: number[];
 }
+
+export type ReminderFrequency = 'Daily' | 'Weekly';
+
+export const TASK_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'Blocked', 'Completed', 'Cancelled'];
+export const TASK_PRIORITIES: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
+
+/** A row on the paginated Task List (Screen 7); stage and overdue are derived server-side. */
+export interface TaskListItem {
+  id: number;
+  taskCode: string;
+  title: string;
+  assignedToUserId: number;
+  assignedToName: string;
+  createdByUserId: number;
+  createdByName: string;
+  priority: TaskPriority;
+  startDate: string;
+  deadline: string;
+  estimatedHours: number;
+  status: TaskStatus;
+  stage: TaskStage;
+  isOverdue: boolean;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface TaskListFilter {
+  assignedToUserId?: number | null;
+  status?: TaskStatus | null;
+  priority?: TaskPriority | null;
+  deadlineFrom?: string | null;
+  deadlineTo?: string | null;
+  search?: string | null;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateTaskRequest {
+  title: string;
+  description: string | null;
+  assignedToUserId: number;
+  priority: TaskPriority;
+  startDate: string;
+  deadline: string;
+  estimatedHours: number;
+  additionalRecipientUserIds: number[];
+  firstReminderDays: number;
+  secondReminderDays: number;
+  overdueReminderFrequency: ReminderFrequency;
+}

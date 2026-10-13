@@ -60,6 +60,56 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasQueryFilter(department => !department.IsDeleted);
         });
 
+        modelBuilder.Entity<Domain.Entities.Task>(entity =>
+        {
+            entity.HasKey(task => task.Id);
+            entity.Property(task => task.TaskCode).IsRequired().HasMaxLength(32);
+            entity.Property(task => task.Title).IsRequired().HasMaxLength(200);
+            entity.Property(task => task.Description).HasMaxLength(4000);
+
+            entity.HasIndex(task => task.TaskCode).IsUnique();
+            entity.HasIndex(task => task.Deadline);
+            entity.HasIndex(task => task.AssignedToUserId);
+
+            entity
+                .HasOne(task => task.AssignedTo)
+                .WithMany()
+                .HasForeignKey(task => task.AssignedToUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(task => task.CreatedBy)
+                .WithMany()
+                .HasForeignKey(task => task.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(task => task.Department)
+                .WithMany()
+                .HasForeignKey(task => task.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Domain.Entities.TaskRecipient>(entity =>
+        {
+            entity.HasKey(recipient => recipient.Id);
+
+            // A user can be a recipient of a given task only once (TDD §7.3).
+            entity.HasIndex(recipient => new { recipient.TaskId, recipient.UserId }).IsUnique();
+
+            entity
+                .HasOne(recipient => recipient.Task)
+                .WithMany()
+                .HasForeignKey(recipient => recipient.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(recipient => recipient.User)
+                .WithMany()
+                .HasForeignKey(recipient => recipient.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<RefreshToken>(entity =>
         {
             entity.HasKey(token => token.Id);
