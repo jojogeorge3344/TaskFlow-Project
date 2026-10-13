@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthUser, PagedResult, TaskListItem, UserRole } from '../../core/models';
-import { PAGE_SIZE, SEARCH_DEBOUNCE_MS, TaskListComponent } from './task-list.component';
+import { PAGE_SIZE, SEARCH_DEBOUNCE_MS, TaskListComponent, endOfLocalDay, startOfLocalDay } from './task-list.component';
 import { TaskService } from './task.service';
 
 describe('TaskListComponent', () => {
@@ -139,9 +139,14 @@ describe('TaskListComponent', () => {
       assignedToUserId: 3,
       status: 'Blocked',
       priority: 'High',
-      deadlineFrom: '2026-10-01T00:00:00Z',
-      deadlineTo: '2026-10-31T23:59:59Z'
+      deadlineFrom: new Date(2026, 9, 1).toISOString(),
+      deadlineTo: new Date(2026, 9, 31, 23, 59, 59, 999).toISOString()
     });
+  });
+
+  it('builds deadline bounds from local calendar days', () => {
+    expect(startOfLocalDay('2026-10-15')).toBe(new Date(2026, 9, 15).toISOString());
+    expect(endOfLocalDay('2026-10-15')).toBe(new Date(2026, 9, 15, 23, 59, 59, 999).toISOString());
   });
 
   it('pages through results', () => {

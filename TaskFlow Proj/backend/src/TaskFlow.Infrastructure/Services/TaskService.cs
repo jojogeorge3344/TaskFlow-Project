@@ -108,10 +108,14 @@ public class TaskService : ITaskService
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var term = filter.Search.Trim();
+            // Escape LIKE wildcards so "%" and "_" are matched literally.
+            var term = filter.Search.Trim()
+                .Replace(@"\", @"\\")
+                .Replace("%", @"\%")
+                .Replace("_", @"\_");
             query = query.Where(task =>
-                EF.Functions.Like(task.Title, $"%{term}%")
-                || EF.Functions.Like(task.TaskCode, $"%{term}%"));
+                EF.Functions.Like(task.Title, $"%{term}%", @"\")
+                || EF.Functions.Like(task.TaskCode, $"%{term}%", @"\"));
         }
 
         var total = await query.CountAsync(cancellationToken);
@@ -206,7 +210,8 @@ public class TaskService : ITaskService
         var task = new TaskEntity
         {
             // A unique placeholder keeps the TaskCode index valid until the identity Id is known.
-            TaskCode = $"PENDING-{Guid.NewGuid():N}",
+            // "P-" + 30 hex chars stays within the 32-character TaskCode column.
+            TaskCode = $"P-{Guid.NewGuid():N}"[..32],
             Title = request.Title.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             AssignedToUserId = assignee.Id,
@@ -260,14 +265,16 @@ public class TaskService : ITaskService
             newValue: assignee.Id.ToString(),
             cancellationToken: cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
-
+        // Inside the transaction (design D5): if the notification fails, no task is left behind
+        // for a retry to duplicate.
         await _notificationPublisher.PublishAsync(
             assignee.Id,
             task.Id,
             NotificationType.TaskAssigned,
             $"A task was assigned to you: {task.Title}",
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         var created = await LoadTaskAsync(task.Id, cancellationToken) ?? task;
         var createdRecipients = await LoadRecipientsAsync(task.Id, cancellationToken);

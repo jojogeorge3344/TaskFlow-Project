@@ -210,6 +210,50 @@ public class TaskManagementServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_NotificationFails_RollsBackTheTask()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tm-mgr5", Role.Manager);
+        var assignee = harness.AddUser("tm-assignee5");
+        var service = new TaskFlow.Infrastructure.Services.TaskService(
+            harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System);
+
+        var request = new CreateTaskRequest(
+            "Never persisted", null, assignee.Id, TaskPriority.Low,
+            DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+
+        Assert.Equal(0, await harness.Db.Tasks.AsNoTracking().CountAsync());
+        Assert.Equal(0, await harness.Db.TaskRecipients.AsNoTracking().CountAsync());
+    }
+
+    [Fact]
+    public async Task ListAsync_SearchTreatsLikeWildcardsLiterally()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tl-mgr5", Role.Manager);
+        var employee = harness.AddUser("tl-emp5");
+        harness.AddTask(employee.Id, manager.Id, title: "Raise to 100% coverage");
+        harness.AddTask(employee.Id, manager.Id, title: "Plain task");
+
+        var percent = await harness.TaskService.ListAsync(
+            new TaskListFilter(Search: "%"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var underscore = await harness.TaskService.ListAsync(
+            new TaskListFilter(Search: "_"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+
+        Assert.Equal("Raise to 100% coverage", Assert.Single(percent.Items).Title);
+        Assert.Empty(underscore.Items);
+    }
+
+    private sealed class FailingNotificationPublisher : INotificationPublisher
+    {
+        public Task PublishAsync(int userId, int? taskId, NotificationType type, string message, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Notification store unavailable.");
+    }
+
+    [Fact]
     public async Task ListAsync_DeadlineRange_ReturnsOnlyTasksInRange()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
