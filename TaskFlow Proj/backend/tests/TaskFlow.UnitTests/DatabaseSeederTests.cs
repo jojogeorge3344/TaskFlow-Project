@@ -11,19 +11,17 @@ namespace TaskFlow.UnitTests;
 public class DatabaseSeederTests
 {
     [Fact]
-    public async System.Threading.Tasks.Task SeedAsync_OnCleanDatabase_CreatesThreeAccounts()
+    public async System.Threading.Tasks.Task SeedAsync_OnCleanDatabase_CreatesOnlyTheAdministrator()
     {
         await using var harness = SeederHarness.Create();
 
         await harness.Seeder.SeedAsync();
 
-        var users = await harness.Db.Users.OrderBy(user => user.Role).ToListAsync();
+        var user = Assert.Single(await harness.Db.Users.ToListAsync());
 
-        Assert.Equal(3, users.Count);
-        Assert.Contains(users, user => user.Role == Role.Administrator);
-        Assert.Contains(users, user => user.Role == Role.Manager);
-        Assert.Contains(users, user => user.Role == Role.Employee);
-        Assert.All(users, user => Assert.False(string.IsNullOrWhiteSpace(user.PasswordHash)));
+        Assert.Equal(Role.Administrator, user.Role);
+        Assert.Equal("admin", user.Username);
+        Assert.False(string.IsNullOrWhiteSpace(user.PasswordHash));
     }
 
     [Fact]
@@ -34,7 +32,7 @@ public class DatabaseSeederTests
         await harness.Seeder.SeedAsync();
         await harness.Seeder.SeedAsync();
 
-        Assert.Equal(3, await harness.Db.Users.CountAsync());
+        Assert.Equal(1, await harness.Db.Users.CountAsync());
     }
 
     [Fact]

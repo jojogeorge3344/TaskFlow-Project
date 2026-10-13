@@ -18,5 +18,11 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
             .NotEmpty()
             .EmailAddress()
             .MaximumLength(256);
+
+        RuleFor(x => x.Password)
+            .Must(password => !string.IsNullOrWhiteSpace(password))
+            .WithMessage("Password cannot be blank.")
+            .MinimumLength(6)
+            .When(x => !string.IsNullOrEmpty(x.Password));
     }
 }

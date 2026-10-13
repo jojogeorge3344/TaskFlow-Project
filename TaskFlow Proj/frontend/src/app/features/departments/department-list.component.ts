@@ -1,38 +1,54 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/auth/auth.service';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../core/layout/icon.component';
+import { DepartmentWithCount } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
-import { CreateDepartmentRequest, DepartmentWithCount, UpdateDepartmentRequest } from '../../core/models';
+import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { ToastService } from '../../shared/ui/toast.service';
+import { DepartmentFormDialogComponent } from './department-form-dialog.component';
 
 @Component({
   selector: 'app-department-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [RouterLink, IconComponent, ConfirmDialogComponent, DepartmentFormDialogComponent],
   templateUrl: './department-list.component.html',
   styleUrl: './department-list.component.css'
 })
 export class DepartmentListComponent implements OnInit {
   private readonly departmentService = inject(DepartmentService);
-  private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
+  private readonly formDialog = viewChild.required(DepartmentFormDialogComponent);
 
   readonly departments = signal<DepartmentWithCount[]>([]);
-  readonly loading = signal(false);
+  readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly query = signal('');
+  readonly deletingId = signal<number | null>(null);
 
-  readonly isAdmin = signal(false);
-  readonly showForm = signal(false);
-  readonly editing = signal<number | null>(null);
+  /** Client-side search over name and description. */
+  readonly filtered = computed(() => {
+    const term = this.query().trim().toLowerCase();
+    if (!term) {
+      return this.departments();
+    }
+    return this.departments().filter(
+      (department) =>
+        department.name.toLowerCase().includes(term) || (department.description ?? '').toLowerCase().includes(term)
+    );
+  });
 
-  name = '';
-  description = '';
+  readonly countLabel = computed(() => {
+    const count = this.departments().length;
+    return count === 1 ? '1 department' : `${count} departments`;
+  });
 
   ngOnInit(): void {
-    this.isAdmin.set(this.authService.currentUser()?.role === 'Administrator');
-    this.loadDepartments();
+    this.load();
   }
 
-  loadDepartments(): void {
+  load(): void {
     this.loading.set(true);
     this.error.set(null);
     this.departmentService.getAll().subscribe({
@@ -41,79 +57,50 @@ export class DepartmentListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load departments');
+        this.error.set('Could not load departments. Check your connection and try again.');
         this.loading.set(false);
       }
     });
   }
 
-  add(): void {
-    this.showForm.set(true);
-    this.editing.set(null);
-    this.name = '';
-    this.description = '';
+  employeeLabel(count: number): string {
+    return count === 1 ? 'employee' : 'employees';
   }
 
-  edit(dept: DepartmentWithCount): void {
-    if (!this.isAdmin()) return;
-    this.showForm.set(true);
-    this.editing.set(dept.id);
-    this.name = dept.name;
-    this.description = dept.description || '';
+  openCreate(): void {
+    this.formDialog().open(null);
   }
 
-  cancel(): void {
-    this.showForm.set(false);
-    this.editing.set(null);
-    this.name = '';
-    this.description = '';
+  openEdit(department: DepartmentWithCount): void {
+    this.formDialog().open(department);
   }
 
-  save(): void {
-    if (!this.name.trim()) return;
-    this.loading.set(true);
-    const request: CreateDepartmentRequest | UpdateDepartmentRequest = {
-      name: this.name.trim(),
-      description: this.description.trim() || null
-    };
-    if (this.editing() === null) {
-      this.departmentService.create(request as CreateDepartmentRequest).subscribe({
-        next: () => {
-          this.loadDepartments();
-          this.cancel();
-        },
-        error: (err) => {
-          this.error.set(err.error?.error || 'Failed to create department');
-          this.loading.set(false);
-        }
-      });
-    } else {
-      this.departmentService.update(this.editing()!, request as UpdateDepartmentRequest).subscribe({
-        next: () => {
-          this.loadDepartments();
-          this.cancel();
-        },
-        error: (err) => {
-          this.error.set(err.error?.error || 'Failed to update department');
-          this.loading.set(false);
-        }
-      });
+  async delete(department: DepartmentWithCount): Promise<void> {
+    if (department.employeeCount > 0) {
+      return;
     }
-  }
 
-  delete(dept: DepartmentWithCount): void {
-    if (!this.isAdmin() || dept.employeeCount > 0) return;
-    if (confirm('Delete department?')) {
-      this.loading.set(true);
-      this.departmentService.delete(dept.id).subscribe({
-        next: () => {
-          this.loadDepartments();
-        },
-        error: (err) => {
-          this.error.set(err.error?.error || 'Failed to delete department');
-          this.loading.set(false);
-        }
-      });
+    const confirmed = await this.confirmDialog().open({
+      title: 'Delete department?',
+      message: `"${department.name}" will be permanently deleted.`,
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      return;
     }
+
+    this.deletingId.set(department.id);
+    this.departmentService.delete(department.id).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.toast.success(`${department.name} deleted`);
+        this.load();
+      },
+      error: (err) => {
+        this.deletingId.set(null);
+        this.toast.error(apiErrorMessage(err, 'Could not delete the department.'));
+      }
+    });
   }
 }

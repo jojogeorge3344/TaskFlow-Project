@@ -31,6 +31,7 @@ public class JwtTokenService : ITokenService
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, string.IsNullOrWhiteSpace(user.FullName) ? user.Username : user.FullName),
             new(ClaimTypes.Role, user.Role.ToString()),
+            new(AuthClaims.SecurityStamp, user.SecurityStamp),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

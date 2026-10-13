@@ -1,165 +1,227 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../core/auth/auth.service';
-import { UserService } from '../../core/services/user.service';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
+import { IconComponent } from '../../core/layout/icon.component';
+import { DepartmentWithCount, Role, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
-import { CreateUserRequest, DepartmentWithCount, Role, UpdateUserRequest, User } from '../../core/models';
+import { UserService } from '../../core/services/user.service';
+import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { DrawerComponent } from '../../shared/ui/drawer.component';
+import { initials } from '../../shared/ui/initials';
+import { ToastService } from '../../shared/ui/toast.service';
+import { EmployeeDetailsPanelComponent } from './employee-details-panel.component';
+import { EmployeeFormPanelComponent, ROLES } from './employee-form-panel.component';
+
+export const SEARCH_DEBOUNCE_MS = 300;
+
+type StatusFilter = '' | 'active' | 'inactive';
+
+type Panel = { mode: 'create' } | { mode: 'edit'; employee: User } | { mode: 'details'; employee: User };
 
 @Component({
   selector: 'app-employee-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [IconComponent, DrawerComponent, ConfirmDialogComponent, EmployeeFormPanelComponent, EmployeeDetailsPanelComponent],
   templateUrl: './employee-list.component.html',
   styleUrl: './employee-list.component.css'
 })
 export class EmployeeListComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly departmentService = inject(DepartmentService);
-  private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
+
+  private readonly searchInput$ = new Subject<string>();
+  private readonly reload$ = new Subject<void>();
+
+  readonly roles = ROLES;
+  readonly initials = initials;
 
   readonly employees = signal<User[]>([]);
   readonly departments = signal<DepartmentWithCount[]>([]);
-  readonly loading = signal(false);
+  readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly busyId = signal<number | null>(null);
 
-  readonly isAdmin = signal(false);
-  readonly showForm = signal(false);
-  readonly editing = signal<number | null>(null);
+  /** What is typed in the search box; `search` is the debounced value that is applied. */
+  readonly searchText = signal('');
+  readonly search = signal('');
+  readonly departmentId = signal<number | null>(null);
+  readonly role = signal<Role | ''>('');
+  readonly status = signal<StatusFilter>('');
 
-  search = '';
-  departmentId: number | null = null;
-  role: Role | '' = '';
-  isActive: boolean | '' = '';
+  readonly hasFilters = computed(
+    () => this.search() !== '' || this.departmentId() !== null || this.role() !== '' || this.status() !== ''
+  );
 
-  fullName = '';
-  username = '';
-  email = '';
-  password = '';
-  employeeRole: Role = 'Employee';
-  employeeDepartmentId: number | null = null;
-  employeeActive = true;
+  readonly countLabel = computed(() => {
+    const count = this.employees().length;
+    return count === 1 ? '1 employee' : `${count} employees`;
+  });
 
-  ngOnInit(): void {
-    this.isAdmin.set(this.authService.currentUser()?.role === 'Administrator');
-    this.loadDepartments();
-    this.loadEmployees();
+  readonly panel = signal<Panel | null>(null);
+  readonly panelTitle = computed(() => {
+    switch (this.panel()?.mode) {
+      case 'create':
+        return 'Add employee';
+      case 'edit':
+        return 'Edit employee';
+      case 'details':
+        return 'Employee details';
+      default:
+        return '';
+    }
+  });
+
+  constructor() {
+    const departmentId = Number(this.route.snapshot.queryParamMap.get('departmentId'));
+    if (Number.isInteger(departmentId) && departmentId > 0) {
+      this.departmentId.set(departmentId);
+    }
+
+    this.searchInput$
+      .pipe(
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        map((term) => term.trim()),
+        // Skip when the applied search is unchanged (e.g. only whitespace was added).
+        filter((term) => term !== this.search()),
+        takeUntilDestroyed()
+      )
+      .subscribe((term) => {
+        this.search.set(term);
+        this.load();
+      });
+
+    // switchMap cancels the previous request so only the latest filters win.
+    this.reload$
+      .pipe(
+        switchMap(() => this.fetchEmployees()),
+        takeUntilDestroyed()
+      )
+      .subscribe((employees) => {
+        if (employees === null) {
+          this.error.set('Could not load employees. Check your connection and try again.');
+        } else {
+          this.employees.set(employees);
+        }
+        this.loading.set(false);
+      });
   }
 
-  loadDepartments(): void {
+  ngOnInit(): void {
     this.departmentService.getAll().subscribe({
       next: (departments) => this.departments.set(departments)
     });
+    this.load();
   }
 
-  loadEmployees(): void {
+  load(): void {
+    this.reload$.next();
+  }
+
+  onSearch(value: string): void {
+    this.searchText.set(value);
+    this.searchInput$.next(value);
+  }
+
+  setDepartment(value: string): void {
+    this.departmentId.set(value ? Number(value) : null);
+    this.syncUrl();
+    this.load();
+  }
+
+  setRole(value: string): void {
+    this.role.set(value as Role | '');
+    this.load();
+  }
+
+  setStatus(value: string): void {
+    this.status.set(value as StatusFilter);
+    this.load();
+  }
+
+  resetFilters(): void {
+    this.searchText.set('');
+    this.search.set('');
+    this.departmentId.set(null);
+    this.role.set('');
+    this.status.set('');
+    this.syncUrl();
+    this.load();
+  }
+
+  openCreate(): void {
+    this.panel.set({ mode: 'create' });
+  }
+
+  openDetails(employee: User): void {
+    this.panel.set({ mode: 'details', employee });
+  }
+
+  openEdit(employee: User): void {
+    this.panel.set({ mode: 'edit', employee });
+  }
+
+  closePanel(): void {
+    this.panel.set(null);
+  }
+
+  onSaved(): void {
+    this.closePanel();
+    this.load();
+  }
+
+  async toggleStatus(employee: User): Promise<void> {
+    if (employee.isActive) {
+      const confirmed = await this.confirmDialog().open({
+        title: 'Deactivate employee?',
+        message: `${employee.fullName} will not be able to sign in until they are activated again.`,
+        confirmLabel: 'Deactivate',
+        variant: 'danger'
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const activate = !employee.isActive;
+    this.busyId.set(employee.id);
+    this.userService.updateStatus(employee.id, { isActive: activate }).subscribe({
+      next: () => {
+        this.busyId.set(null);
+        this.toast.success(`${employee.fullName} ${activate ? 'activated' : 'deactivated'}`);
+        this.load();
+      },
+      error: (err) => {
+        this.busyId.set(null);
+        this.toast.error(apiErrorMessage(err, 'Could not update the employee status.'));
+      }
+    });
+  }
+
+  private fetchEmployees(): Observable<User[] | null> {
     this.loading.set(true);
     this.error.set(null);
-    const params: any = {};
-    if (this.search.trim()) params.search = this.search.trim();
-    if (this.departmentId) params.departmentId = this.departmentId;
-    if (this.role) params.role = this.role;
-    if (this.isActive !== '') params.isActive = this.isActive === true;
-    this.userService.getAll(params).subscribe({
-      next: (employees) => {
-        this.employees.set(employees);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Failed to load employees');
-        this.loading.set(false);
-      }
+
+    const params: { search?: string; departmentId?: number; role?: Role; isActive?: boolean } = {};
+    if (this.search()) params.search = this.search();
+    if (this.departmentId() !== null) params.departmentId = this.departmentId()!;
+    if (this.role()) params.role = this.role() as Role;
+    if (this.status()) params.isActive = this.status() === 'active';
+
+    return this.userService.getAll(params).pipe(catchError(() => of(null)));
+  }
+
+  private syncUrl(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { departmentId: this.departmentId() },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
     });
-  }
-
-  add(): void {
-    this.showForm.set(true);
-    this.editing.set(null);
-    this.fullName = '';
-    this.username = '';
-    this.email = '';
-    this.password = '';
-    this.employeeRole = 'Employee';
-    this.employeeDepartmentId = null;
-    this.employeeActive = true;
-  }
-
-  edit(user: User): void {
-    if (!this.isAdmin()) return;
-    this.showForm.set(true);
-    this.editing.set(user.id);
-    this.fullName = user.fullName;
-    this.username = user.username;
-    this.email = user.email;
-    this.password = '';
-    this.employeeRole = user.role;
-    this.employeeDepartmentId = user.departmentId || null;
-    this.employeeActive = user.isActive;
-  }
-
-  cancel(): void {
-    this.showForm.set(false);
-    this.editing.set(null);
-  }
-
-  save(): void {
-    if (!this.fullName.trim() || !this.username.trim() || !this.email.trim()) return;
-    if (this.editing() === null && !this.password.trim()) return;
-    this.loading.set(true);
-    if (this.editing() === null) {
-      const request: CreateUserRequest = {
-        fullName: this.fullName.trim(),
-        username: this.username.trim(),
-        email: this.email.trim(),
-        password: this.password.trim(),
-        role: this.employeeRole,
-        isActive: this.employeeActive,
-        departmentId: this.employeeDepartmentId
-      };
-      this.userService.create(request).subscribe({
-        next: () => {
-          this.loadEmployees();
-          this.cancel();
-        },
-        error: (err) => {
-          this.error.set(err.error?.error || 'Failed to create employee');
-          this.loading.set(false);
-        }
-      });
-    } else {
-      const request: UpdateUserRequest = {
-        fullName: this.fullName.trim(),
-        username: this.username.trim(),
-        email: this.email.trim(),
-        role: this.employeeRole,
-        departmentId: this.employeeDepartmentId
-      };
-      this.userService.update(this.editing()!, request).subscribe({
-        next: () => {
-          this.loadEmployees();
-          this.cancel();
-        },
-        error: (err) => {
-          this.error.set(err.error?.error || 'Failed to update employee');
-          this.loading.set(false);
-        }
-      });
-    }
-  }
-
-  toggleStatus(user: User): void {
-    if (!this.isAdmin()) return;
-    this.loading.set(true);
-    this.userService.updateStatus(user.id, { isActive: !user.isActive }).subscribe({
-      next: () => this.loadEmployees(),
-      error: () => {
-        this.error.set('Failed to update status');
-        this.loading.set(false);
-      }
-    });
-  }
-
-  applyFilters(): void {
-    this.loadEmployees();
   }
 }

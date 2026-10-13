@@ -1,0 +1,653 @@
+<title>TaskFlow Admin Mockup</title>
+<style>
+/* Layout: fixed app shell (64px header + 16rem sidebar / 4.5rem rail), fluid content column capped at 80rem.
+   Single light theme on purpose: TaskFlow has no dark mode (see design.md Non-Goals). */
+:root {
+  color-scheme: light;
+  --tf-primary: #2563eb; --tf-primary-hover: #1d4ed8; --tf-primary-soft: #eff6ff;
+  --tf-sidebar: #0f172a; --tf-sidebar-hover: #1e293b; --tf-sidebar-text: #cbd5e1; --tf-sidebar-muted: #64748b;
+  --tf-bg: #f1f5f9; --tf-surface: #ffffff; --tf-border: #e2e8f0; --tf-border-strong: #cbd5e1;
+  --tf-text: #0f172a; --tf-muted: #64748b; --tf-subtle: #94a3b8;
+  --tf-success: #15803d; --tf-success-soft: #dcfce7;
+  --tf-danger: #dc2626; --tf-danger-soft: #fee2e2;
+  --tf-warning: #b45309; --tf-warning-soft: #fef3c7;
+  --tf-violet: #6d28d9; --tf-violet-soft: #ede9fe;
+  --tf-neutral-soft: #f1f5f9;
+  --tf-radius: .625rem; --tf-radius-sm: .375rem;
+  --tf-shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
+  --tf-shadow-lg: 0 20px 40px rgba(15,23,42,.18);
+  --tf-sidebar-w: 16rem; --tf-rail-w: 4.5rem; --tf-header-h: 4rem;
+  --tf-font: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font: 14px/1.5 var(--tf-font); color: var(--tf-text); background: var(--tf-bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--tf-primary); outline-offset: 2px; }
+svg.i { width: 1.25rem; height: 1.25rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Shell ---------- */
+.shell { min-height: 100%; }
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  height: calc(var(--tf-header-h) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 1rem 0;
+  display: flex; align-items: center; gap: .75rem;
+  background: var(--tf-surface); border-bottom: 1px solid var(--tf-border);
+  margin-left: var(--tf-sidebar-w); transition: margin-left .22s ease;
+}
+.toggle {
+  width: 2.5rem; height: 2.5rem; display: grid; place-items: center;
+  border: 1px solid var(--tf-border); border-radius: var(--tf-radius-sm); background: var(--tf-surface); cursor: pointer; color: var(--tf-muted);
+}
+.toggle:hover { background: var(--tf-bg); color: var(--tf-text); }
+.crumbs { display: flex; align-items: center; gap: .375rem; color: var(--tf-muted); min-width: 0; }
+.crumbs strong { color: var(--tf-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header__spacer { flex: 1; }
+.header__brand { display: none; font-weight: 700; }
+.icon-btn { position: relative; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border: 0; background: transparent; border-radius: 50%; color: var(--tf-muted); cursor: pointer; }
+.icon-btn:hover { background: var(--tf-bg); color: var(--tf-text); }
+.dot { position: absolute; top: .55rem; right: .6rem; width: .5rem; height: .5rem; border-radius: 50%; background: var(--tf-danger); border: 2px solid var(--tf-surface); }
+
+.sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 40; width: var(--tf-sidebar-w);
+  display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top, 0px)) 0 env(safe-area-inset-bottom, 0px);
+  background: var(--tf-sidebar); color: var(--tf-sidebar-text);
+  transition: width .22s ease, transform .22s ease; overflow: hidden;
+}
+.brand { height: var(--tf-header-h); display: flex; align-items: center; gap: .625rem; padding: 0 1.125rem; border-bottom: 1px solid var(--tf-sidebar-hover); flex: none; }
+.logo { width: 2.25rem; height: 2.25rem; flex: none; display: grid; place-items: center; border-radius: .625rem; background: var(--tf-primary); color: #fff; font-weight: 700; font-size: .875rem; }
+.brand__name { font-size: 1.125rem; font-weight: 700; color: #fff; white-space: nowrap; }
+.nav { flex: 1; display: flex; flex-direction: column; gap: .125rem; padding: 1rem .75rem; overflow-y: auto; }
+.nav__label { padding: .75rem .75rem .375rem; font-size: .6875rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tf-sidebar-muted); white-space: nowrap; }
+.nav__item {
+  position: relative; display: flex; align-items: center; gap: .75rem; height: 2.625rem; padding: 0 .75rem;
+  border: 0; border-radius: .5rem; background: transparent; color: var(--tf-sidebar-text); text-decoration: none; cursor: pointer; text-align: left; width: 100%; white-space: nowrap;
+}
+.nav__item:hover { background: var(--tf-sidebar-hover); color: #fff; }
+.nav__item[aria-current="page"] { background: var(--tf-primary); color: #fff; font-weight: 600; }
+.nav__item[aria-disabled="true"] { color: var(--tf-sidebar-muted); cursor: not-allowed; }
+.nav__item[aria-disabled="true"]:hover { background: transparent; color: var(--tf-sidebar-muted); }
+.nav__text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.soon { font-size: .625rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: .0625rem .375rem; border-radius: 999px; background: var(--tf-sidebar-hover); color: var(--tf-subtle); }
+.tip {
+  position: absolute; left: calc(100% + .75rem); top: 50%; transform: translateY(-50%);
+  padding: .25rem .5rem; border-radius: var(--tf-radius-sm); background: var(--tf-text); color: #fff; font-size: .8125rem; font-weight: 500;
+  white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; display: none;
+}
+.account { flex: none; display: flex; align-items: center; gap: .75rem; padding: 1rem 1.125rem; border-top: 1px solid var(--tf-sidebar-hover); }
+.avatar { width: 2.25rem; height: 2.25rem; flex: none; display: grid; place-items: center; border-radius: 50%; background: #334155; color: #fff; font-weight: 600; font-size: .8125rem; }
+.account__who { flex: 1; min-width: 0; line-height: 1.3; }
+.account__name { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account__role { font-size: .8125rem; color: var(--tf-subtle); }
+.signout { width: 2.25rem; height: 2.25rem; flex: none; display: grid; place-items: center; border: 0; border-radius: .5rem; background: transparent; color: var(--tf-sidebar-text); cursor: pointer; }
+.signout:hover { background: var(--tf-sidebar-hover); color: #fff; }
+
+.content { margin-left: var(--tf-sidebar-w); padding: calc(var(--tf-header-h) + env(safe-area-inset-top, 0px) + 1.5rem) 1.5rem 2.5rem; transition: margin-left .22s ease; }
+.page { max-width: 80rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* Collapsed rail (wide screens) */
+@media (min-width: 992px) {
+  .shell.is-collapsed .sidebar { width: var(--tf-rail-w); }
+  .shell.is-collapsed .header, .shell.is-collapsed .content { margin-left: var(--tf-rail-w); }
+  .shell.is-collapsed .brand { padding: 0 1.125rem; }
+  .shell.is-collapsed .brand__name, .shell.is-collapsed .nav__text, .shell.is-collapsed .soon,
+  .shell.is-collapsed .account__who, .shell.is-collapsed .nav__label { display: none; }
+  .shell.is-collapsed .nav__item { justify-content: center; padding: 0; }
+  .shell.is-collapsed .sidebar { overflow: visible; }
+  .shell.is-collapsed .nav { overflow: visible; }
+  .shell.is-collapsed .tip { display: block; }
+  .shell.is-collapsed .nav__item:hover .tip, .shell.is-collapsed .nav__item:focus-visible .tip { opacity: 1; }
+  .shell.is-collapsed .account { flex-direction: column; padding: 1rem 0; gap: .5rem; }
+  .backdrop { display: none !important; }
+}
+/* Drawer (narrow screens) */
+@media (max-width: 991.98px) {
+  .header, .content { margin-left: 0; }
+  .header__brand { display: block; }
+  .crumbs { display: none; }
+  .sidebar { transform: translateX(-100%); box-shadow: none; width: min(var(--tf-sidebar-w), 85vw); }
+  .shell.is-open .sidebar { transform: translateX(0); box-shadow: var(--tf-shadow-lg); }
+  .content { padding-inline: 1rem; }
+}
+.backdrop { position: fixed; inset: 0; z-index: 35; background: rgba(15,23,42,.45); }
+
+/* ---------- UI primitives ---------- */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.page-header h1 { margin: 0; font-size: 1.5rem; line-height: 1.25; text-wrap: balance; }
+.page-header p { margin: .25rem 0 0; color: var(--tf-muted); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: 2.5rem; padding: 0 1rem;
+  border: 1px solid transparent; border-radius: .5rem; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none;
+}
+.btn svg.i { width: 1.125rem; height: 1.125rem; }
+.btn--primary { background: var(--tf-primary); color: #fff; }
+.btn--primary:hover { background: var(--tf-primary-hover); }
+.btn--ghost { background: var(--tf-surface); border-color: var(--tf-border); color: var(--tf-text); }
+.btn--ghost:hover { background: var(--tf-bg); }
+.btn--danger { background: var(--tf-danger); color: #fff; }
+.btn--sm { height: 2rem; padding: 0 .625rem; font-size: .8125rem; }
+.btn--icon { width: 2rem; height: 2rem; padding: 0; background: transparent; color: var(--tf-muted); border-radius: .375rem; }
+.btn--icon:hover { background: var(--tf-bg); color: var(--tf-text); }
+.btn--icon.danger:hover { background: var(--tf-danger-soft); color: var(--tf-danger); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.btn--text { background: none; border: 0; color: var(--tf-primary); padding: 0; height: auto; font-weight: 600; }
+
+.card { background: var(--tf-surface); border: 1px solid var(--tf-border); border-radius: var(--tf-radius); box-shadow: var(--tf-shadow); }
+.toolbar { display: grid; grid-template-columns: minmax(14rem, 2fr) repeat(3, minmax(9rem, 1fr)) auto; gap: .75rem; padding: 1rem; align-items: end; }
+.field { display: flex; flex-direction: column; gap: .375rem; min-width: 0; }
+.field > label { font-size: .8125rem; font-weight: 600; color: #334155; }
+.req { color: var(--tf-danger); }
+.input, .select, .textarea {
+  width: 100%; height: 2.5rem; padding: 0 .75rem; border: 1px solid var(--tf-border-strong); border-radius: .5rem; background: var(--tf-surface);
+}
+.textarea { height: auto; min-height: 5.5rem; padding: .5rem .75rem; resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--tf-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.18); }
+.input.is-invalid { border-color: var(--tf-danger); }
+.error { font-size: .8125rem; color: var(--tf-danger); }
+.hint { font-size: .8125rem; color: var(--tf-muted); }
+.search { position: relative; }
+.search svg.i { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--tf-subtle); width: 1.125rem; height: 1.125rem; }
+.search .input { padding-left: 2.375rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.badge { display: inline-flex; align-items: center; gap: .375rem; padding: .125rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+.badge--active { background: var(--tf-success-soft); color: var(--tf-success); }
+.badge--active::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: currentColor; }
+.badge--inactive { background: var(--tf-neutral-soft); color: var(--tf-muted); }
+.badge--inactive::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: currentColor; }
+.badge--Administrator { background: var(--tf-violet-soft); color: var(--tf-violet); }
+.badge--Manager { background: var(--tf-primary-soft); color: var(--tf-primary-hover); }
+.badge--Employee { background: var(--tf-neutral-soft); color: #334155; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.table th { text-align: left; font-size: .75rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--tf-muted); padding: .75rem 1rem; background: #f8fafc; border-bottom: 1px solid var(--tf-border); white-space: nowrap; }
+.table td { padding: .75rem 1rem; border-bottom: 1px solid var(--tf-border); vertical-align: middle; }
+.table tbody tr:hover { background: #f8fafc; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.person { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.person .avatar { width: 2.25rem; height: 2.25rem; }
+.person__name { font-weight: 600; color: var(--tf-text); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.person__name:hover { color: var(--tf-primary); text-decoration: underline; }
+.person__sub { font-size: .8125rem; color: var(--tf-muted); }
+.muted { color: var(--tf-muted); }
+.unassigned { color: var(--tf-subtle); font-style: italic; }
+.actions { display: flex; gap: .25rem; justify-content: flex-end; }
+.table-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .75rem 1rem; border-top: 1px solid var(--tf-border); color: var(--tf-muted); font-size: .8125rem; flex-wrap: wrap; }
+
+@media (max-width: 1199.98px) { .toolbar { grid-template-columns: 1fr 1fr; } .toolbar .field:first-child { grid-column: 1 / -1; } .toolbar .reset { justify-self: start; } }
+@media (max-width: 767.98px) {
+  .toolbar { grid-template-columns: 1fr; }
+  .page-header .btn { width: 100%; }
+  .page-header > div { flex: 1 1 100%; }
+  .table-wrap { overflow: visible; }
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr { padding: 1rem; border-bottom: 1px solid var(--tf-border); display: grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; }
+  .table tbody tr:last-child { border-bottom: 0; }
+  .table td { padding: 0; border: 0; display: flex; justify-content: space-between; gap: 1rem; grid-column: 1 / -1; min-width: 0; }
+  .table td[data-label]::before { content: attr(data-label); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--tf-muted); }
+  .table td.cell-person { grid-column: 1; }
+  .table td.cell-actions { grid-column: 2; grid-row: 1; }
+  .table td.cell-email { overflow-wrap: anywhere; }
+}
+
+/* Departments */
+.dept-tools { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.dept-tools .search { flex: 1 1 18rem; max-width: 26rem; }
+.dept-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 576px) { .dept-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .dept-grid { grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); } }
+.dept { display: flex; flex-direction: column; padding: 1.25rem; gap: .75rem; }
+.dept__top { display: flex; align-items: flex-start; gap: .75rem; }
+.dept__icon { width: 2.5rem; height: 2.5rem; flex: none; display: grid; place-items: center; border-radius: .5rem; background: var(--tf-primary-soft); color: var(--tf-primary); }
+.dept__name { margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.3; }
+.dept__desc { margin: .125rem 0 0; color: var(--tf-muted); font-size: .875rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
+.dept__desc.none { font-style: italic; color: var(--tf-subtle); }
+.dept__count { display: flex; align-items: baseline; gap: .375rem; }
+.dept__count strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.dept__foot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--tf-border); margin-top: auto; }
+.dept__foot .acts { display: flex; gap: .25rem; }
+
+.empty { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 3rem 1rem; text-align: center; color: var(--tf-muted); }
+.empty svg.i { width: 2.5rem; height: 2.5rem; color: var(--tf-subtle); }
+.empty strong { color: var(--tf-text); font-size: 1rem; }
+
+/* Drawer + modal */
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: min(28rem, 100%);
+  display: flex; flex-direction: column; background: var(--tf-surface); box-shadow: var(--tf-shadow-lg);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.overlay { position: fixed; inset: 0; z-index: 55; background: rgba(15,23,42,.45); }
+.drawer__head, .modal__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--tf-border); }
+.drawer__head h2, .modal__head h2 { margin: 0; font-size: 1.125rem; }
+.drawer__body { flex: 1; overflow-y: auto; padding: 1.25rem; display: grid; gap: 1rem; align-content: start; }
+.drawer__foot, .modal__foot { display: flex; justify-content: flex-end; gap: .5rem; padding: 1rem 1.25rem; border-top: 1px solid var(--tf-border); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 479.98px) { .grid-2 { grid-template-columns: 1fr; } }
+.alert { display: flex; gap: .625rem; padding: .75rem 1rem; border-radius: .5rem; background: var(--tf-danger-soft); color: #991b1b; font-size: .875rem; }
+.alert svg.i { width: 1.125rem; height: 1.125rem; margin-top: .125rem; }
+.details-hero { display: flex; align-items: center; gap: 1rem; }
+.details-hero .avatar { width: 3.5rem; height: 3.5rem; font-size: 1.125rem; }
+.dl { display: grid; grid-template-columns: 8rem 1fr; gap: .625rem 1rem; margin: 0; }
+.dl dt { color: var(--tf-muted); font-size: .8125rem; }
+.dl dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.modal {
+  position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(30rem, calc(100% - 2rem)); background: var(--tf-surface); border-radius: .75rem; box-shadow: var(--tf-shadow-lg);
+}
+.modal__body { padding: 1.25rem; display: grid; gap: 1rem; }
+.modal--confirm .modal__body { grid-template-columns: auto 1fr; align-items: start; }
+.warn-icon { width: 2.5rem; height: 2.5rem; border-radius: 50%; display: grid; place-items: center; background: var(--tf-danger-soft); color: var(--tf-danger); }
+.modal--confirm h2 { margin: 0 0 .25rem; font-size: 1.0625rem; }
+.modal--confirm p { margin: 0; color: var(--tf-muted); }
+
+.toasts { position: fixed; z-index: 80; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: .5rem; max-width: calc(100% - 2rem); }
+.toast { display: flex; align-items: center; gap: .625rem; padding: .75rem 1rem; border-radius: .5rem; background: var(--tf-text); color: #fff; box-shadow: var(--tf-shadow-lg); animation: rise .2s ease; }
+.toast svg.i { color: #4ade80; }
+@keyframes rise { from { transform: translateY(.5rem); opacity: 0; } }
+
+/* Mockup-only strip */
+.mock-note { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; padding: .625rem .875rem; border: 1px dashed var(--tf-border-strong); border-radius: .5rem; color: var(--tf-muted); font-size: .8125rem; background: #f8fafc; }
+.mock-note b { color: var(--tf-text); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/></symbol>
+    <symbol id="i-panel-open" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M13 10l2 2-2 2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+    <symbol id="i-kanban" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 7v7M12 7v4M16 7v9"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell" id="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+    <div class="brand"><span class="logo">TF</span><span class="brand__name">TaskFlow</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="account">
+      <span class="avatar" aria-hidden="true">SA</span>
+      <div class="account__who"><div class="account__name">System Admin</div><div class="account__role">Administrator</div></div>
+      <button class="signout" type="button" aria-label="Sign out" title="Sign out"><svg class="i"><use href="#i-logout"/></svg></button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <header class="header">
+    <button class="toggle" id="toggle" type="button" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="true">
+      <svg class="i" id="toggle-icon"><use href="#i-panel"/></svg>
+    </button>
+    <span class="header__brand">TaskFlow</span>
+    <div class="crumbs"><span>Administration</span><span aria-hidden="true">/</span><strong id="crumb">Employee Management</strong></div>
+    <span class="header__spacer"></span>
+    <button class="icon-btn" type="button" aria-label="Notifications"><svg class="i"><use href="#i-bell"/></svg><span class="dot"></span></button>
+  </header>
+
+  <main class="content">
+    <div class="page">
+      <div class="mock-note"><b>Mockup</b> Change <code>app-shell-and-admin-ui</code>. Use the menu button to collapse the sidebar (on a narrow window it opens a drawer). Switch screens from the menu. Sample data only.</div>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div id="layer"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function () {
+  const NAV = [
+    { group: 'Overview' },
+    { id: 'dash', label: 'Dashboard', icon: 'home' },
+    { group: 'Administration' },
+    { id: 'employees', label: 'Employee Management', icon: 'users' },
+    { id: 'departments', label: 'Department Management', icon: 'building' },
+    { group: 'Work' },
+    { id: 'tasks', label: 'Task Management', icon: 'tasks', soon: true }
+  ];
+  const DEPTS = [
+    { id: 1, name: 'Engineering', description: 'Builds and maintains the TaskFlow platform and internal tools.', count: 9 },
+    { id: 2, name: 'Quality Assurance', description: 'Test planning, regression runs and release sign-off.', count: 4 },
+    { id: 3, name: 'Human Resources', description: 'Hiring, onboarding and employee records.', count: 3 },
+    { id: 4, name: 'Finance', description: 'Budgets, payroll and vendor payments.', count: 2 },
+    { id: 5, name: 'Customer Support', description: 'First-line help desk and escalations for client accounts.', count: 5 },
+    { id: 6, name: 'Research', description: '', count: 0 }
+  ];
+  let EMPS = [
+    { id: 1, code: 'EMP-001', name: 'System Admin', username: 'admin', email: 'admin@taskflow.local', role: 'Administrator', dept: null, active: true, created: '2026-09-01', last: '2026-10-12 09:14' },
+    { id: 2, code: 'EMP-014', name: 'Anupama Nair', username: 'anupama.n', email: 'anupama.nair@taskflow.local', role: 'Manager', dept: 1, active: true, created: '2026-09-03', last: '2026-10-12 08:52' },
+    { id: 3, code: 'EMP-022', name: 'Rahul Menon', username: 'rahul.m', email: 'rahul.menon@taskflow.local', role: 'Employee', dept: 1, active: true, created: '2026-09-05', last: '2026-10-11 18:03' },
+    { id: 4, code: 'EMP-031', name: 'Fathima Rasheed', username: 'fathima.r', email: 'fathima.rasheed@taskflow.local', role: 'Employee', dept: 2, active: true, created: '2026-09-08', last: '2026-10-10 16:40' },
+    { id: 5, code: 'EMP-035', name: 'Arjun Pillai', username: 'arjun.p', email: 'arjun.pillai@taskflow.local', role: 'Manager', dept: 5, active: true, created: '2026-09-10', last: '2026-10-12 07:58' },
+    { id: 6, code: 'EMP-040', name: 'Meera Thomas', username: 'meera.t', email: 'meera.thomas@taskflow.local', role: 'Employee', dept: 3, active: false, created: '2026-09-12', last: '2026-09-30 11:20' },
+    { id: 7, code: 'EMP-044', name: 'Joseph Kurian', username: 'joseph.k', email: 'joseph.kurian@taskflow.local', role: 'Employee', dept: 4, active: true, created: '2026-09-15', last: '2026-10-09 14:05' },
+    { id: 8, code: 'EMP-047', name: 'Divya Krishnan', username: 'divya.k', email: 'divya.krishnan@taskflow.local', role: 'Employee', dept: 5, active: true, created: '2026-09-18', last: '—' }
+  ];
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ic = (n) => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+  const initials = (n) => n.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+  const deptName = (id) => (DEPTS.find((d) => d.id === id) || {}).name;
+  const AV = ['#2563eb', '#0d9488', '#7c3aed', '#c2410c', '#0369a1', '#be123c'];
+
+  // ---------- shell ----------
+  const shell = $('#shell'), toggle = $('#toggle'), backdrop = $('#backdrop');
+  const wide = matchMedia('(min-width: 992px)');
+  let collapsed = false, mobileOpen = false, current = 'employees';
+  try { collapsed = localStorage.getItem('tf.sidebar.collapsed') === 'true'; } catch (e) {}
+
+  function syncShell() {
+    shell.classList.toggle('is-collapsed', collapsed);
+    shell.classList.toggle('is-open', mobileOpen && !wide.matches);
+    backdrop.hidden = !(mobileOpen && !wide.matches);
+    const expanded = wide.matches ? !collapsed : mobileOpen;
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', wide.matches ? (collapsed ? 'Expand navigation' : 'Collapse navigation') : (mobileOpen ? 'Close navigation' : 'Open navigation'));
+    $('#toggle-icon use').setAttribute('href', wide.matches ? (collapsed ? '#i-panel-open' : '#i-panel') : '#i-menu');
+  }
+  toggle.addEventListener('click', () => {
+    if (wide.matches) { collapsed = !collapsed; try { localStorage.setItem('tf.sidebar.collapsed', String(collapsed)); } catch (e) {} }
+    else mobileOpen = !mobileOpen;
+    syncShell();
+  });
+  backdrop.addEventListener('click', () => { mobileOpen = false; syncShell(); toggle.focus(); });
+  wide.addEventListener('change', () => { mobileOpen = false; syncShell(); });
+
+  function renderNav() {
+    $('#nav').innerHTML = NAV.map((n) => n.group
+      ? `<div class="nav__label">${n.group}</div>`
+      : n.soon
+        ? `<span class="nav__item" role="link" aria-disabled="true" tabindex="0" aria-label="${n.label} (coming soon)">${ic(n.icon)}<span class="nav__text">${n.label}</span><span class="soon">Soon</span><span class="tip">${n.label} · soon</span></span>`
+        : `<a href="#${n.id}" class="nav__item" data-go="${n.id}" ${n.id === current ? 'aria-current="page"' : ''} aria-label="${n.label}">${ic(n.icon)}<span class="nav__text">${n.label}</span><span class="tip">${n.label}</span></a>`
+    ).join('');
+  }
+  $('#nav').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-go]');
+    if (!a) return;
+    e.preventDefault();
+    if (a.dataset.go === 'dash') { toast('The dashboard keeps its current design. Only the shell changes.'); return; }
+    go(a.dataset.go);
+    mobileOpen = false; syncShell();
+  });
+  function go(id, opts = {}) {
+    current = id;
+    if (opts.dept !== undefined) F.dept = String(opts.dept);
+    $('#crumb').textContent = id === 'employees' ? 'Employee Management' : 'Department Management';
+    renderNav(); render();
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- toasts / overlays ----------
+  function toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.innerHTML = ic('check') + esc(msg);
+    $('#toasts').appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+  let lastFocus = null;
+  function openLayer(html, focusSel) {
+    lastFocus = document.activeElement;
+    $('#layer').innerHTML = `<div class="overlay" data-close></div>${html}`;
+    const f = focusSel && $(focusSel, $('#layer'));
+    (f || $('#layer [data-close]:not(.overlay)') || $('#layer')).focus?.();
+  }
+  function closeLayer() { $('#layer').innerHTML = ''; lastFocus?.focus?.(); }
+  $('#layer').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeLayer(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('#layer').innerHTML) closeLayer();
+    else if (mobileOpen) { mobileOpen = false; syncShell(); toggle.focus(); }
+  });
+
+  // ---------- Employees ----------
+  const F = { q: '', dept: '', role: '', status: '' };
+  function filtered() {
+    const q = F.q.trim().toLowerCase();
+    return EMPS.filter((e) =>
+      (!q || e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q)) &&
+      (!F.dept || String(e.dept) === F.dept) &&
+      (!F.role || e.role === F.role) &&
+      (!F.status || String(e.active) === F.status));
+  }
+  const opts = (list, val) => list.map(([v, l]) => `<option value="${v}" ${String(v) === val ? 'selected' : ''}>${l}</option>`).join('');
+  function renderEmployees() {
+    const rows = filtered();
+    const anyFilter = F.q || F.dept || F.role || F.status;
+    $('#view').innerHTML = `
+      <div class="page" style="gap:1.25rem">
+        <div class="page-header">
+          <div><h1>Employee Management</h1><p>${rows.length} employee${rows.length === 1 ? '' : 's'}${anyFilter ? ' match these filters' : ' across ' + DEPTS.length + ' departments'}</p></div>
+          <button class="btn btn--primary" type="button" data-act="add">${ic('plus')}Add employee</button>
+        </div>
+        <section class="card">
+          <form class="toolbar" id="filters" onsubmit="return false">
+            <div class="field"><label for="f-q">Search</label><div class="search">${ic('search')}<input id="f-q" class="input" type="search" placeholder="Name or email" value="${esc(F.q)}"></div></div>
+            <div class="field"><label for="f-dept">Department</label><select id="f-dept" class="select">${opts([['', 'All departments'], ...DEPTS.map((d) => [d.id, d.name])], F.dept)}</select></div>
+            <div class="field"><label for="f-role">Role</label><select id="f-role" class="select">${opts([['', 'All roles'], ['Administrator', 'Administrator'], ['Manager', 'Manager'], ['Employee', 'Employee']], F.role)}</select></div>
+            <div class="field"><label for="f-status">Status</label><select id="f-status" class="select">${opts([['', 'All statuses'], ['true', 'Active'], ['false', 'Inactive']], F.status)}</select></div>
+            <button class="btn btn--ghost reset" type="button" data-act="reset" ${anyFilter ? '' : 'disabled'}>${ic('reset')}Reset</button>
+          </form>
+          <div class="table-wrap" style="border-top:1px solid var(--tf-border)">
+          ${rows.length ? `
+            <table class="table">
+              <thead><tr><th>Employee</th><th>Email</th><th>Department</th><th>Role</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody>${rows.map((e) => `
+                <tr>
+                  <td class="cell-person"><div class="person"><span class="avatar" style="background:${AV[e.id % AV.length]}" aria-hidden="true">${initials(e.name)}</span>
+                    <div style="min-width:0"><button class="person__name" type="button" data-act="view" data-id="${e.id}">${esc(e.name)}</button><div class="person__sub">@${esc(e.username)}</div></div></div></td>
+                  <td class="cell-email muted" data-label="Email">${esc(e.email)}</td>
+                  <td data-label="Department">${e.dept ? esc(deptName(e.dept)) : '<span class="unassigned">Unassigned</span>'}</td>
+                  <td data-label="Role"><span class="badge badge--${e.role}">${e.role}</span></td>
+                  <td data-label="Status"><span class="badge ${e.active ? 'badge--active">Active' : 'badge--inactive">Inactive'}</span></td>
+                  <td class="cell-actions"><div class="actions">
+                    <button class="btn btn--icon" type="button" title="Edit" aria-label="Edit ${esc(e.name)}" data-act="edit" data-id="${e.id}">${ic('edit')}</button>
+                    <button class="btn btn--icon ${e.active ? 'danger' : ''}" type="button" title="${e.active ? 'Deactivate' : 'Activate'}" aria-label="${e.active ? 'Deactivate' : 'Activate'} ${esc(e.name)}" data-act="status" data-id="${e.id}">${ic('power')}</button>
+                  </div></td>
+                </tr>`).join('')}</tbody>
+            </table>
+            <div class="table-foot"><span>Showing ${rows.length} of ${EMPS.length}</span><span>Click a name to see full details</span></div>`
+          : `<div class="empty">${ic('users')}<strong>No employees match these filters</strong><span>Try a different search or clear the filters.</span><button class="btn btn--ghost btn--sm" type="button" data-act="reset">Clear filters</button></div>`}
+          </div>
+        </section>
+      </div>`;
+  }
+
+  let qTimer;
+  $('#view').addEventListener('input', (e) => {
+    if (e.target.id === 'f-q') {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => { F.q = e.target.value; const pos = e.target.selectionStart; renderEmployees(); const inp = $('#f-q'); inp.focus(); inp.setSelectionRange(pos, pos); }, 300);
+    }
+    if (e.target.id === 'd-q') { D.q = e.target.value; renderDeptGrid(); }
+  });
+  $('#view').addEventListener('change', (e) => {
+    const map = { 'f-dept': 'dept', 'f-role': 'role', 'f-status': 'status' };
+    if (map[e.target.id]) { F[map[e.target.id]] = e.target.value; renderEmployees(); $('#' + e.target.id).focus(); }
+  });
+
+  function empForm(emp) {
+    const isNew = !emp;
+    const v = emp || { name: '', username: '', email: '', role: 'Employee', dept: null, active: true };
+    openLayer(`
+      <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title">
+        <div class="drawer__head"><h2 id="dr-title">${isNew ? 'Add employee' : 'Edit employee'}</h2><button class="btn btn--icon" type="button" aria-label="Close" data-close>${ic('x')}</button></div>
+        <form class="drawer__body" id="emp-form" novalidate>
+          <div id="emp-err"></div>
+          <div class="field"><label for="e-name">Full name <span class="req">*</span></label><input id="e-name" class="input" value="${esc(v.name)}" required><span class="error" hidden>Full name is required.</span></div>
+          <div class="grid-2">
+            <div class="field"><label for="e-user">Username <span class="req">*</span></label><input id="e-user" class="input" value="${esc(v.username)}" required><span class="error" hidden>Username is required.</span></div>
+            <div class="field"><label for="e-code">Employee code</label><input id="e-code" class="input" value="${esc(emp?.code || '')}" placeholder="EMP-050"></div>
+          </div>
+          <div class="field"><label for="e-email">Email <span class="req">*</span></label><input id="e-email" class="input" type="email" value="${esc(v.email)}" required><span class="error" hidden>Enter a valid email address.</span></div>
+          ${isNew ? `<div class="field"><label for="e-pass">Temporary password <span class="req">*</span></label><input id="e-pass" class="input" type="password" required><span class="hint">The employee changes it after first sign-in.</span><span class="error" hidden>Password is required.</span></div>` : ''}
+          <div class="grid-2">
+            <div class="field"><label for="e-role">Role</label><select id="e-role" class="select">${opts([['Employee', 'Employee'], ['Manager', 'Manager'], ['Administrator', 'Administrator']], v.role)}</select></div>
+            <div class="field"><label for="e-dept">Department</label><select id="e-dept" class="select">${opts([['', 'Unassigned'], ...DEPTS.map((d) => [d.id, d.name])], v.dept ? String(v.dept) : '')}</select></div>
+          </div>
+          ${isNew ? `<div class="field"><label for="e-active">Initial status</label><select id="e-active" class="select"><option value="true">Active, can sign in</option><option value="false">Inactive</option></select></div>` : ''}
+        </form>
+        <div class="drawer__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit" form="emp-form">${isNew ? 'Create employee' : 'Save changes'}</button></div>
+      </aside>`, '#e-name');
+    $('#emp-form').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      let ok = true;
+      ['e-name', 'e-user', 'e-email', 'e-pass'].forEach((id) => {
+        const el = $('#' + id); if (!el) return;
+        const bad = !el.value.trim() || (el.type === 'email' && !/^\S+@\S+\.\S+$/.test(el.value));
+        el.classList.toggle('is-invalid', bad); el.nextElementSibling.hidden = !bad;
+        if (id === 'e-pass') el.parentElement.querySelector('.error').hidden = !bad;
+        if (bad) ok = false;
+      });
+      if (!ok) return;
+      const email = $('#e-email').value.trim().toLowerCase();
+      if (EMPS.some((x) => x.email === email && x.id !== emp?.id)) {
+        $('#emp-err').innerHTML = `<div class="alert" role="alert">${ic('alert')}<span>An account with the email ${esc(email)} already exists. Use a different email.</span></div>`;
+        return;
+      }
+      const data = { name: $('#e-name').value.trim(), username: $('#e-user').value.trim(), email, code: $('#e-code').value.trim(), role: $('#e-role').value, dept: $('#e-dept').value ? +$('#e-dept').value : null };
+      if (isNew) EMPS.push({ id: EMPS.length + 10, created: '2026-10-12', last: '—', active: $('#e-active').value === 'true', ...data });
+      else Object.assign(emp, data);
+      closeLayer(); renderEmployees();
+      toast(isNew ? `${data.name} added` : 'Changes saved');
+    });
+  }
+
+  function empDetails(e) {
+    openLayer(`
+      <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dt-title">
+        <div class="drawer__head"><h2 id="dt-title">Employee details</h2><button class="btn btn--icon" type="button" aria-label="Close" data-close>${ic('x')}</button></div>
+        <div class="drawer__body">
+          <div class="details-hero"><span class="avatar" style="background:${AV[e.id % AV.length]}" aria-hidden="true">${initials(e.name)}</span>
+            <div><div style="font-size:1.125rem;font-weight:600">${esc(e.name)}</div><div style="display:flex;gap:.375rem;margin-top:.25rem"><span class="badge badge--${e.role}">${e.role}</span><span class="badge ${e.active ? 'badge--active">Active' : 'badge--inactive">Inactive'}</span></div></div></div>
+          <dl class="dl">
+            <dt>Employee code</dt><dd>${esc(e.code || '—')}</dd>
+            <dt>Username</dt><dd>@${esc(e.username)}</dd>
+            <dt>Email</dt><dd>${esc(e.email)}</dd>
+            <dt>Department</dt><dd>${e.dept ? esc(deptName(e.dept)) : '<span class="unassigned">Unassigned</span>'}</dd>
+            <dt>Created</dt><dd>${e.created}</dd>
+            <dt>Last sign-in</dt><dd>${e.last}</dd>
+          </dl>
+        </div>
+        <div class="drawer__foot"><button class="btn btn--ghost" type="button" data-close>Close</button><button class="btn btn--primary" type="button" data-act="edit" data-id="${e.id}">${ic('edit')}Edit</button></div>
+      </aside>`, '[data-close]');
+  }
+
+  function confirmBox({ title, body, label, onYes }) {
+    openLayer(`
+      <div class="modal modal--confirm" role="alertdialog" aria-modal="true" aria-labelledby="cf-title">
+        <div class="modal__body"><span class="warn-icon">${ic('alert')}</span><div><h2 id="cf-title">${title}</h2><p>${body}</p></div></div>
+        <div class="modal__foot"><button class="btn btn--ghost" type="button" data-close id="cf-no">Cancel</button><button class="btn btn--danger" type="button" id="cf-yes">${label}</button></div>
+      </div>`, '#cf-no');
+    $('#cf-yes').addEventListener('click', () => { closeLayer(); onYes(); });
+  }
+
+  // ---------- Departments ----------
+  const D = { q: '' };
+  function renderDepartments() {
+    $('#view').innerHTML = `
+      <div class="page" style="gap:1.25rem">
+        <div class="page-header">
+          <div><h1>Department Management</h1><p>${DEPTS.length} departments · ${DEPTS.reduce((a, d) => a + d.count, 0)} employees assigned</p></div>
+          <button class="btn btn--primary" type="button" data-act="dadd">${ic('plus')}Add department</button>
+        </div>
+        <div class="dept-tools"><div class="search"><label class="sr" for="d-q">Search departments</label>${ic('search')}<input id="d-q" class="input" type="search" placeholder="Search by name or description" value="${esc(D.q)}"></div></div>
+        <div id="dept-grid"></div>
+      </div>`;
+    renderDeptGrid();
+  }
+  function renderDeptGrid() {
+    const q = D.q.trim().toLowerCase();
+    const list = DEPTS.filter((d) => !q || d.name.toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q));
+    $('#dept-grid').innerHTML = list.length ? `<div class="dept-grid">${list.map((d) => `
+      <article class="card dept">
+        <div class="dept__top"><span class="dept__icon">${ic('building')}</span>
+          <div style="min-width:0;flex:1"><h3 class="dept__name">${esc(d.name)}</h3><p class="dept__desc ${d.description ? '' : 'none'}">${d.description ? esc(d.description) : 'No description'}</p></div></div>
+        <div class="dept__count"><strong>${d.count}</strong><span class="muted">employee${d.count === 1 ? '' : 's'}</span></div>
+        <div class="dept__foot">
+          <button class="btn btn--text" type="button" data-act="dview" data-id="${d.id}">View employees ${ic('arrow')}</button>
+          <div class="acts">
+            <button class="btn btn--icon" type="button" title="Edit" aria-label="Edit ${esc(d.name)}" data-act="dedit" data-id="${d.id}">${ic('edit')}</button>
+            <button class="btn btn--icon danger" type="button" data-act="ddel" data-id="${d.id}" ${d.count ? `aria-disabled="true" title="Reassign its ${d.count} employee${d.count === 1 ? '' : 's'} before deleting"` : 'title="Delete"'} aria-label="Delete ${esc(d.name)}">${ic('trash')}</button>
+          </div>
+        </div>
+      </article>`).join('')}</div>`
+      : `<div class="card empty">${ic('building')}<strong>No departments match "${esc(D.q)}"</strong><span>Check the spelling or search by description.</span></div>`;
+  }
+  function deptForm(d) {
+    const isNew = !d;
+    openLayer(`
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dm-title">
+        <div class="modal__head"><h2 id="dm-title">${isNew ? 'Add department' : 'Edit department'}</h2><button class="btn btn--icon" type="button" aria-label="Close" data-close>${ic('x')}</button></div>
+        <form class="modal__body" id="dept-form" novalidate>
+          <div id="dept-err"></div>
+          <div class="field"><label for="dn">Name <span class="req">*</span></label><input id="dn" class="input" value="${esc(d?.name || '')}" maxlength="100"><span class="error" hidden>Name is required.</span></div>
+          <div class="field"><label for="dd">Description</label><textarea id="dd" class="textarea" maxlength="500">${esc(d?.description || '')}</textarea><span class="hint">Optional. Shown on the department card.</span></div>
+        </form>
+        <div class="modal__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit" form="dept-form">${isNew ? 'Create department' : 'Save changes'}</button></div>
+      </div>`, '#dn');
+    $('#dept-form').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const name = $('#dn').value.trim();
+      $('#dn').classList.toggle('is-invalid', !name); $('#dn').nextElementSibling.hidden = !!name;
+      if (!name) return;
+      if (DEPTS.some((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== d?.id)) {
+        $('#dept-err').innerHTML = `<div class="alert" role="alert">${ic('alert')}<span>A department named ${esc(name)} already exists.</span></div>`;
+        return;
+      }
+      if (isNew) DEPTS.push({ id: DEPTS.length + 10, name, description: $('#dd').value.trim(), count: 0 });
+      else Object.assign(d, { name, description: $('#dd').value.trim() });
+      closeLayer(); renderDepartments();
+      toast(isNew ? `${name} created` : 'Changes saved');
+    });
+  }
+
+  // ---------- actions ----------
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b || b.getAttribute('aria-disabled') === 'true') return;
+    const id = +b.dataset.id, emp = EMPS.find((x) => x.id === id), dept = DEPTS.find((x) => x.id === id);
+    switch (b.dataset.act) {
+      case 'add': empForm(); break;
+      case 'edit': empForm(emp); break;
+      case 'view': empDetails(emp); break;
+      case 'reset': Object.assign(F, { q: '', dept: '', role: '', status: '' }); renderEmployees(); break;
+      case 'status':
+        if (emp.active) confirmBox({ title: `Deactivate ${esc(emp.name)}?`, body: `${esc(emp.name)} will not be able to sign in until you activate the account again. Their tasks and history stay as they are.`, label: 'Deactivate', onYes: () => { emp.active = false; renderEmployees(); toast(`${emp.name} deactivated`); } });
+        else { emp.active = true; renderEmployees(); toast(`${emp.name} activated`); }
+        break;
+      case 'dadd': deptForm(); break;
+      case 'dedit': deptForm(dept); break;
+      case 'dview': Object.assign(F, { q: '', role: '', status: '' }); go('employees', { dept: id }); break;
+      case 'ddel': confirmBox({ title: `Delete ${esc(dept.name)}?`, body: 'This department has no employees. Deleting it removes it from filters and reports.', label: 'Delete department', onYes: () => { DEPTS.splice(DEPTS.indexOf(dept), 1); renderDepartments(); toast(`${dept.name} deleted`); } }); break;
+    }
+  });
+
+  function render() { current === 'employees' ? renderEmployees() : renderDepartments(); }
+  const start = location.hash.replace('#', '');
+  if (start === 'departments') current = 'departments';
+  $('#crumb').textContent = current === 'employees' ? 'Employee Management' : 'Department Management';
+  syncShell(); renderNav(); render();
+})();
+</script>

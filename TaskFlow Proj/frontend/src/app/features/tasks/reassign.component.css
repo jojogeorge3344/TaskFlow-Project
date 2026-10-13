@@ -1,0 +1,29 @@
+.tf-back {
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tf-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.reassign {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  max-width: 40rem;
+  padding: var(--tf-space-5);
+}
+
+.reassign__skeleton {
+  height: 3rem;
+  width: 100%;
+}
+
+.reassign__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tf-space-2);
+  margin-top: var(--tf-space-2);
+}

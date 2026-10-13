@@ -1,0 +1,139 @@
+<form class="employee-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="tf-drawer__body">
+    @if (serverError()) {
+      <div class="tf-alert" role="alert">{{ serverError() }}</div>
+    }
+
+    <div class="tf-field">
+      <label for="emp-name">Full name <span class="tf-field__required" aria-hidden="true">*</span></label>
+      <input
+        id="emp-name"
+        class="tf-input"
+        formControlName="fullName"
+        autocomplete="name"
+        [class.is-invalid]="showError('fullName')"
+        [attr.aria-invalid]="showError('fullName')"
+        aria-describedby="emp-name-error"
+      />
+      @if (showError('fullName')) {
+        <span id="emp-name-error" class="tf-field__error">Full name is required.</span>
+      }
+    </div>
+
+    <div class="tf-form-grid">
+      <div class="tf-field">
+        <label for="emp-code">Employee code</label>
+        <input id="emp-code" class="tf-input" formControlName="employeeCode" placeholder="EMP-050" />
+      </div>
+      <div class="tf-field">
+        <label for="emp-username">Username <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <input
+          id="emp-username"
+          class="tf-input"
+          formControlName="username"
+          autocomplete="off"
+          [class.is-invalid]="showError('username')"
+          [attr.aria-invalid]="showError('username')"
+          aria-describedby="emp-username-error"
+        />
+        @if (showError('username')) {
+          <span id="emp-username-error" class="tf-field__error">Username is required.</span>
+        }
+      </div>
+    </div>
+
+    <div class="tf-field">
+      <label for="emp-email">Email <span class="tf-field__required" aria-hidden="true">*</span></label>
+      <input
+        id="emp-email"
+        class="tf-input"
+        type="email"
+        formControlName="email"
+        autocomplete="off"
+        [class.is-invalid]="showError('email')"
+        [attr.aria-invalid]="showError('email')"
+        aria-describedby="emp-email-error"
+      />
+      @if (showError('email')) {
+        <span id="emp-email-error" class="tf-field__error">
+          {{ form.controls.email.hasError('required') ? 'Email is required.' : 'Enter a valid email address.' }}
+        </span>
+      }
+    </div>
+
+    <div class="tf-form-grid">
+      <div class="tf-field">
+        <label for="emp-role">Role</label>
+        <select id="emp-role" class="tf-select" formControlName="role">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+      </div>
+      <div class="tf-field">
+        <label for="emp-department">Department</label>
+        <select id="emp-department" class="tf-select" formControlName="departmentId">
+          <option [ngValue]="null">Unassigned</option>
+          @for (department of departments(); track department.id) {
+            <option [ngValue]="department.id">{{ department.name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="tf-form-grid">
+      <div class="tf-field">
+        <label for="emp-password">
+          @if (isCreate()) {
+            Temporary password <span class="tf-field__required" aria-hidden="true">*</span>
+          } @else {
+            New password
+          }
+        </label>
+        <input
+          id="emp-password"
+          class="tf-input"
+          type="password"
+          formControlName="password"
+          autocomplete="new-password"
+          [placeholder]="isCreate() ? '' : 'Leave blank to keep'"
+          [class.is-invalid]="showError('password')"
+          [attr.aria-invalid]="showError('password')"
+          aria-describedby="emp-password-error emp-password-hint"
+        />
+        @if (showError('password')) {
+          <span id="emp-password-error" class="tf-field__error">
+            {{
+              form.controls.password.hasError('blank')
+                ? 'Password cannot be only spaces.'
+                : form.controls.password.hasError('minlength')
+                  ? 'Use at least ' + minPasswordLength + ' characters.'
+                  : 'Password is required.'
+            }}
+          </span>
+        }
+      </div>
+      @if (isCreate()) {
+        <div class="tf-field">
+          <label for="emp-status">Status</label>
+          <select id="emp-status" class="tf-select" formControlName="isActive">
+            <option [ngValue]="true">Active</option>
+            <option [ngValue]="false">Inactive</option>
+          </select>
+        </div>
+      }
+    </div>
+    @if (!isCreate()) {
+      <span id="emp-password-hint" class="tf-field__hint">
+        Changing the username, password or role signs this employee out. They must sign in again.
+      </span>
+    }
+  </div>
+
+  <div class="tf-drawer__foot">
+    <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelled.emit()">Cancel</button>
+    <button type="submit" class="tf-btn tf-btn--primary" [disabled]="saving()">
+      {{ saving() ? 'Saving…' : isCreate() ? 'Add employee' : 'Save changes' }}
+    </button>
+  </div>
+</form>

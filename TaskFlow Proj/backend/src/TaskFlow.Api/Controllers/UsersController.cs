@@ -17,8 +17,10 @@ public class UsersController : ControllerBase
         _userService = userService;
     }
 
+    /// <summary>Read-only user list. Managers need it to pick assignees and recipients when
+    /// creating or reassigning tasks; changes to users stay Administrator-only.</summary>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
     public async Task<ActionResult<IReadOnlyCollection<UserDto>>> GetAll(
         [FromQuery] string? search,
         [FromQuery] int? departmentId,

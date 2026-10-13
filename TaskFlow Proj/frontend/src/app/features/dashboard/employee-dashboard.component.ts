@@ -2,12 +2,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmployeeDashboardStats } from '../../core/models';
 import { DashboardService } from '../../core/services/dashboard.service';
-import { DashboardLayoutComponent } from './dashboard-layout.component';
 
 @Component({
   selector: 'app-employee-dashboard',
   standalone: true,
-  imports: [DashboardLayoutComponent],
   templateUrl: './employee-dashboard.component.html'
 })
 export class EmployeeDashboardComponent implements OnInit {

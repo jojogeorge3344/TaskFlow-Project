@@ -1,0 +1,225 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <button type="button" class="tf-btn tf-btn--ghost tf-back" (click)="backToBoard()">
+        <tf-icon name="arrow" />
+        Back to board
+      </button>
+      <h1>{{ loading() || error() ? 'Task details' : task()?.title }}</h1>
+      @if (task(); as current) {
+        <p class="tf-page-subtitle">
+          <span class="tf-chip tf-chip--muted">{{ current.taskCode }}</span>
+          <span class="tf-chip" [class]="stageClass(current.stage)">{{ stageLabel(current.stage) }}</span>
+        </p>
+      }
+    </div>
+
+    @if (isManager() && task(); as current) {
+      <div class="tf-page-actions">
+        <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
+          <tf-icon name="users" />
+          Reassign
+        </a>
+        @if (!editing()) {
+          <button type="button" class="tf-btn tf-btn--primary" (click)="startEdit()" data-action="edit-task">
+            <tf-icon name="edit" />
+            Edit task
+          </button>
+        }
+      </div>
+    }
+  </header>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading() || !task()) {
+    <div class="tf-grid tf-grid--details" aria-busy="true">
+      <div class="tf-card tf-skeleton tf-details__skeleton"></div>
+    </div>
+  } @else {
+    @if (task(); as current) {
+      @if (editing()) {
+        <form class="tf-card tf-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+        <h2 class="tf-card-title">Edit {{ current.taskCode }}</h2>
+
+        <div class="tf-field">
+          <label for="edit-title">Title</label>
+          <input
+            id="edit-title"
+            class="tf-input"
+            type="text"
+            formControlName="title"
+            data-field="title"
+            autocomplete="off"
+          />
+          @if (editForm.controls.title.invalid && editForm.controls.title.touched) {
+            <p class="tf-field__error">Title is required.</p>
+          }
+        </div>
+
+        <div class="tf-field">
+          <label for="edit-description">Description</label>
+          <textarea
+            id="edit-description"
+            class="tf-input"
+            rows="4"
+            formControlName="description"
+            data-field="description"
+          ></textarea>
+        </div>
+
+        <div class="tf-form-row">
+          <div class="tf-field">
+            <label for="edit-priority">Priority</label>
+            <select id="edit-priority" class="tf-input" formControlName="priority" data-field="priority">
+              @for (priority of ['Low', 'Medium', 'High', 'Critical']; track priority) {
+                <option [value]="priority">{{ priorityLabel(priority) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="tf-field">
+            <label for="edit-hours">Estimated hours</label>
+            <input
+              id="edit-hours"
+              class="tf-input"
+              type="number"
+              min="0.5"
+              step="0.5"
+              formControlName="estimatedHours"
+              data-field="estimatedHours"
+            />
+            @if (editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched) {
+              <p class="tf-field__error">Enter at least 0.5 hours.</p>
+            }
+          </div>
+        </div>
+
+        <div class="tf-form-row">
+          <div class="tf-field">
+            <label for="edit-start">Start date</label>
+            <input id="edit-start" class="tf-input" type="datetime-local" formControlName="startDate" data-field="startDate" />
+          </div>
+
+          <div class="tf-field">
+            <label for="edit-deadline">Deadline</label>
+            <input id="edit-deadline" class="tf-input" type="datetime-local" formControlName="deadline" data-field="deadline" />
+          </div>
+        </div>
+
+        @if (editForm.errors?.['deadlineBeforeStart']) {
+          <p class="tf-field__error">Deadline must be after the start date.</p>
+        }
+
+        <div class="tf-form-actions">
+          <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelEdit()">Cancel</button>
+          <button type="submit" class="tf-btn tf-btn--primary" [disabled]="editForm.invalid || saving()">
+            {{ saving() ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    <div class="tf-grid tf-grid--details">
+      <div class="tf-card tf-details">
+        @if (current.description) {
+          <p class="tf-details__description">{{ current.description }}</p>
+        } @else {
+          <p class="tf-details__description tf-details__description--empty">No description provided.</p>
+        }
+
+        <dl class="tf-details__meta">
+          <div>
+            <dt>Assignee</dt>
+            <dd>{{ current.assignedToName || 'Unassigned' }}</dd>
+          </div>
+          <div>
+            <dt>Created by</dt>
+            <dd>{{ current.createdByName }}</dd>
+          </div>
+          <div>
+            <dt>Priority</dt>
+            <dd>{{ priorityLabel(current.priority) }}</dd>
+          </div>
+          <div>
+            <dt>Start date</dt>
+            <dd>{{ dateLabel(current.startDate) }}</dd>
+          </div>
+          <div>
+            <dt>Deadline</dt>
+            <dd>{{ dateLabel(current.deadline) }}</dd>
+          </div>
+          <div>
+            <dt>Estimated hours</dt>
+            <dd>{{ current.estimatedHours }}h</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>{{ current.status }}</dd>
+          </div>
+          <div>
+            <dt>Last updated</dt>
+            <dd>{{ dateLabel(current.updatedAt) }}</dd>
+          </div>
+        </dl>
+
+        @if (current.recipients.length > 0) {
+          <h3 class="tf-details__section-title">Also notified</h3>
+          <ul class="tf-tag-list">
+            @for (recipient of current.recipients; track recipient.userId) {
+              <li class="tf-chip tf-chip--muted">{{ recipient.fullName }}</li>
+            }
+          </ul>
+        }
+      </div>
+
+      <aside class="tf-card tf-side">
+        <h3 class="tf-side__title">Links</h3>
+        <ul class="tf-side__links">
+          <li>
+            <a [routerLink]="['/tasks', current.id, 'discussion']">
+              <tf-icon name="users" />
+              Discussion
+            </a>
+          </li>
+          <li>
+            <a [routerLink]="['/tasks', current.id, 'activity']">
+              <tf-icon name="chart" />
+              Activity history
+            </a>
+          </li>
+          @if (isManager()) {
+            <li>
+              <a [routerLink]="['/tasks', current.id, 'reassign']">
+                <tf-icon name="users" />
+                Reassign task
+              </a>
+            </li>
+          }
+        </ul>
+
+        @if (allowedNext(current.status).length > 0) {
+          <h3 class="tf-side__title">Move to</h3>
+          <div class="tf-side__actions">
+            @for (next of allowedNext(current.status); track next) {
+              <button
+                type="button"
+                class="tf-btn tf-btn--ghost"
+                [disabled]="changingStatus() !== null"
+                (click)="changeStatus(next)"
+                [attr.data-action]="'status-' + next"
+              >
+                {{ next }}
+              </button>
+            }
+          </div>
+        }
+      </aside>
+    </div>
+    }
+  }
+</section>

@@ -57,6 +57,14 @@ export class AuthService {
     );
   }
 
+  /**
+   * Asks the API whether the current session is still valid. A 401 (e.g. the user's username or
+   * password was changed) is handled by the auth interceptor, which signs the user out.
+   */
+  checkSession(): Observable<unknown> {
+    return this.http.get(`${this.baseUrl}/me`);
+  }
+
   getAccessToken(): string | null {
     return this.tokenStore.token;
   }

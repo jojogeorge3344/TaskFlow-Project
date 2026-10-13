@@ -1,0 +1,194 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>{{ canManage() ? 'Task Management' : 'My Tasks' }}</h1>
+      <p>
+        @if (loading() && tasks().length === 0) {
+          Loading tasks…
+        } @else {
+          {{ rangeLabel() }}{{ hasFilters() ? ' match the current filters' : '' }}
+        }
+      </p>
+    </div>
+    <div class="tf-page-actions">
+      <a class="tf-btn tf-btn--ghost" routerLink="/board" data-action="board">
+        <tf-icon name="kanban" />
+        Board view
+      </a>
+      @if (canManage()) {
+        <a class="tf-btn tf-btn--primary" routerLink="/tasks/new" data-action="create">
+          <tf-icon name="plus" />
+          Create task
+        </a>
+      }
+    </div>
+  </header>
+
+  <div class="tf-card tf-toolbar task-toolbar" role="search" aria-label="Filter tasks">
+    <div class="tf-field">
+      <label for="task-search">Search</label>
+      <div class="tf-search">
+        <tf-icon name="search" />
+        <input
+          id="task-search"
+          class="tf-input"
+          type="search"
+          placeholder="Task code or title"
+          autocomplete="off"
+          [value]="searchText()"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </div>
+    </div>
+    @if (canManage()) {
+      <div class="tf-field">
+        <label for="task-filter-assignee">Employee</label>
+        <select id="task-filter-assignee" class="tf-select" (change)="setAssignee($any($event.target).value)">
+          <option value="" [selected]="assignedToUserId() === null">All employees</option>
+          @for (assignee of assignees(); track assignee.userId) {
+            <option [value]="assignee.userId" [selected]="assignee.userId === assignedToUserId()">{{ assignee.fullName }}</option>
+          }
+        </select>
+      </div>
+    }
+    <div class="tf-field">
+      <label for="task-filter-status">Status</label>
+      <select id="task-filter-status" class="tf-select" (change)="setStatus($any($event.target).value)">
+        <option value="" [selected]="status() === ''">All statuses</option>
+        @for (option of statuses; track option) {
+          <option [value]="option" [selected]="option === status()">{{ statusLabels[option] }}</option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="task-filter-priority">Priority</label>
+      <select id="task-filter-priority" class="tf-select" (change)="setPriority($any($event.target).value)">
+        <option value="" [selected]="priority() === ''">All priorities</option>
+        @for (option of priorities; track option) {
+          <option [value]="option" [selected]="option === priority()">{{ option }}</option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="task-filter-from">Deadline from</label>
+      <input
+        id="task-filter-from"
+        class="tf-input"
+        type="date"
+        [value]="deadlineFrom()"
+        [max]="deadlineTo() || null"
+        (change)="setDeadlineFrom($any($event.target).value)"
+      />
+    </div>
+    <div class="tf-field">
+      <label for="task-filter-to">Deadline to</label>
+      <input
+        id="task-filter-to"
+        class="tf-input"
+        type="date"
+        [value]="deadlineTo()"
+        [min]="deadlineFrom() || null"
+        (change)="setDeadlineTo($any($event.target).value)"
+      />
+    </div>
+    <button type="button" class="tf-btn tf-btn--ghost" [disabled]="!hasFilters() && !searchText()" (click)="resetFilters()">
+      <tf-icon name="reset" />
+      Reset
+    </button>
+  </div>
+
+  <div class="tf-card">
+    @if (error()) {
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ error() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+      </div>
+    } @else if (!loading() && tasks().length === 0) {
+      <div class="tf-empty">
+        <tf-icon name="tasks" />
+        @if (hasFilters()) {
+          <strong>No tasks match these filters</strong>
+          <p>Try a different search or clear the filters.</p>
+          <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">Clear filters</button>
+        } @else if (canManage()) {
+          <strong>No tasks yet</strong>
+          <p>Create the first task and assign it to an employee.</p>
+          <a class="tf-btn tf-btn--primary" routerLink="/tasks/new">Create task</a>
+        } @else {
+          <strong>No tasks yet</strong>
+          <p>Tasks assigned to you will appear here.</p>
+        }
+      </div>
+    } @else {
+      <div class="tf-table-wrap">
+        <table class="tf-table" [attr.aria-busy]="loading()">
+          <thead>
+            <tr>
+              <th scope="col">Code</th>
+              <th scope="col">Title</th>
+              <th scope="col">Assignee</th>
+              <th scope="col">Creator</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Start</th>
+              <th scope="col">Deadline</th>
+              <th scope="col">Est. hours</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (loading()) {
+              @for (row of [1, 2, 3, 4, 5]; track row) {
+                <tr class="skeleton-row" aria-hidden="true">
+                  @for (cell of [5, 12, 8, 8, 4, 5, 5, 3, 5]; track $index) {
+                    <td><span class="tf-skeleton" [style.width.rem]="cell"></span></td>
+                  }
+                </tr>
+              }
+            } @else {
+              @for (task of tasks(); track task.id) {
+                <tr class="task-row" [class.task-row--overdue]="task.isOverdue">
+                  <td data-label="Code" class="cell-code">{{ task.taskCode }}</td>
+                  <td data-label="Title" class="cell-title">
+                    <a [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
+                  </td>
+                  <td data-label="Assignee">{{ task.assignedToName }}</td>
+                  <td data-label="Creator">{{ task.createdByName }}</td>
+                  <td data-label="Priority"><span [class]="priorityClass(task.priority)">{{ task.priority }}</span></td>
+                  <td data-label="Start">{{ date(task.startDate) }}</td>
+                  <td data-label="Deadline" class="cell-deadline">
+                    <span>{{ date(task.deadline) }}</span>
+                    @if (stageLabel(task); as label) {
+                      <span [class]="'tf-chip tf-chip--' + task.stage.toLowerCase()" data-stage>{{ label }}</span>
+                    }
+                  </td>
+                  <td data-label="Est. hours">{{ task.estimatedHours }}</td>
+                  <td data-label="Status">{{ statusLabels[task.status] }}</td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (pageCount() > 1) {
+        <nav class="pager" aria-label="Task list pages">
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="prev" [disabled]="page() === 1 || loading()" (click)="goToPage(page() - 1)">
+            Previous
+          </button>
+          <span class="pager__label">Page {{ page() }} of {{ pageCount() }}</span>
+          <button
+            type="button"
+            class="tf-btn tf-btn--ghost"
+            data-action="next"
+            [disabled]="page() === pageCount() || loading()"
+            (click)="goToPage(page() + 1)"
+          >
+            Next
+          </button>
+        </nav>
+      }
+    }
+  </div>
+</section>

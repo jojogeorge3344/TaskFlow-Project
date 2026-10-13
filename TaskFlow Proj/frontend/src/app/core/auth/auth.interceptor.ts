@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { LOGIN_REASON_SESSION_ENDED } from './login-reasons';
 
 const CREDENTIAL_ENDPOINTS = ['/auth/login', '/auth/refresh'];
 
@@ -30,7 +31,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         ),
         catchError((refreshError: unknown) => {
           authService.clearSession();
-          void router.navigateByUrl('/login');
+          void router.navigate(['/login'], { queryParams: { reason: LOGIN_REASON_SESSION_ENDED } });
           return throwError(() => refreshError);
         })
       );

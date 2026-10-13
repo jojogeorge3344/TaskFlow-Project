@@ -1,0 +1,90 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+        <tf-icon name="arrow" />
+        Back to task #{{ taskId }}
+      </a>
+      <h1>Activity history</h1>
+      <p>Append-only log of every change on this task, oldest first.</p>
+    </div>
+  </header>
+
+  <form class="tf-card activity__filters" (ngSubmit)="load()">
+    <div class="tf-field">
+      <label for="activity-event">Event type</label>
+      <select id="activity-event" class="tf-input" [value]="eventType()" (change)="eventType.set($any($event.target).value)">
+        <option value="">All events</option>
+        @for (type of eventTypes(); track type) {
+          <option [value]="type">{{ type }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="tf-field">
+      <label for="activity-search">Search</label>
+      <input
+        id="activity-search"
+        class="tf-input"
+        type="search"
+        placeholder="Search messages…"
+        autocomplete="off"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+      />
+    </div>
+
+    <div class="tf-field">
+      <label for="activity-from">From</label>
+      <input id="activity-from" class="tf-input" type="date" [value]="from()" (change)="from.set($any($event.target).value)" />
+    </div>
+
+    <div class="tf-field">
+      <label for="activity-to">To</label>
+      <input id="activity-to" class="tf-input" type="date" [value]="to()" (change)="to.set($any($event.target).value)" />
+    </div>
+
+    <div class="activity__filter-actions">
+      <button type="button" class="tf-btn tf-btn--ghost" (click)="clearFilters()">Clear</button>
+      <button type="submit" class="tf-btn tf-btn--primary">Apply</button>
+    </div>
+  </form>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card activity__skeleton" aria-busy="true"></div>
+  } @else if (entries().length === 0) {
+    <div class="tf-card tf-empty">
+      <tf-icon name="chart" />
+      <strong>No activity found</strong>
+      <p>No activity matches the current filters.</p>
+    </div>
+  } @else {
+    <ol class="activity__list">
+      @for (entry of entries(); track entry.id) {
+        <li class="activity__item">
+          <span class="activity__dot" aria-hidden="true"></span>
+          <div class="activity__card">
+            <header class="activity__head">
+              <span class="tf-chip tf-chip--muted">{{ entry.eventType }}</span>
+              <time class="activity__time" [attr.datetime]="entry.createdAt">{{ timeLabel(entry.createdAt) }}</time>
+            </header>
+            <p class="activity__message">{{ entry.message }}</p>
+            @if (changeLabel(entry)) {
+              <p class="activity__change">{{ changeLabel(entry) }}</p>
+            }
+            <footer class="activity__actor">
+              <tf-icon name="users" />
+              {{ entry.actorName || `User #${entry.actorUserId}` }}
+            </footer>
+          </div>
+        </li>
+      }
+    </ol>
+  }
+</section>

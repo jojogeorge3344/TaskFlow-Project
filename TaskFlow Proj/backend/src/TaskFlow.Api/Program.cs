@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskFlow.Api;
+using TaskFlow.Api.Authentication;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Auth;
@@ -19,7 +21,9 @@ using TaskFlow.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Enums (Role, TaskStatus, TaskPriority) travel as their names, matching the SPA's string unions.
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
@@ -35,6 +39,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<TaskFlow.Application.Departments.IDepartmentService, TaskFlow.Infrastructure.Services.DepartmentService>();
 builder.Services.AddScoped<TaskFlow.Application.Users.IUserService, TaskFlow.Infrastructure.Services.UserService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.IDashboardService, TaskFlow.Infrastructure.Services.DashboardService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskService, TaskFlow.Infrastructure.Services.TaskService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskCommentService, TaskFlow.Infrastructure.Services.TaskCommentService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskActivityService, TaskFlow.Infrastructure.Services.TaskActivityService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.INotificationPublisher, TaskFlow.Infrastructure.Services.NotificationPublisher>();
+builder.Services.AddScoped<IAuthorizationHandler, TaskAccessHandler>();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
@@ -62,6 +71,10 @@ builder.Services
             NameClaimType = ClaimTypes.Name,
             RoleClaimType = ClaimTypes.Role
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = SessionValidation.ValidateAsync
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -71,6 +84,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(AuthPolicies.ManagerOrAdmin, policy =>
         policy.RequireRole(nameof(Role.Administrator), nameof(Role.Manager)));
+
+    options.AddPolicy(AuthPolicies.TaskAccess, policy =>
+        policy.Requirements.Add(new TaskAccessRequirement()));
 });
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

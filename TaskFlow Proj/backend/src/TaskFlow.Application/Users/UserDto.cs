@@ -32,7 +32,9 @@ public record UpdateUserRequest(
     string Username,
     string Email,
     Role Role,
-    int? DepartmentId);
+    int? DepartmentId,
+    // Optional new password; null or empty keeps the current one.
+    string? Password = null);
 
 public record UserStatusRequest(bool IsActive);
 
