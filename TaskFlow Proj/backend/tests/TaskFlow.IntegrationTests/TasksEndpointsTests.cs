@@ -376,6 +376,180 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Contains(extra.Id, userIds);
     }
 
+    [Fact]
+    public async Task Create_AsManager_Returns201AndPersistsTask()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-create-mgr", Role.Manager);
+        var employee = await SeedUserAsync("tek-create-emp");
+        var extra = await SeedUserAsync("tek-create-extra");
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", manager.Token,
+            JsonContent.Create(new
+            {
+                title = "Draft launch plan",
+                description = "Screen 8 create flow",
+                assignedToUserId = employee.Id,
+                priority = "High",
+                startDate = DateTime.UtcNow.AddDays(1),
+                deadline = DateTime.UtcNow.AddDays(4),
+                estimatedHours = 12,
+                additionalRecipientUserIds = new[] { extra.Id },
+                firstReminderDays = 3,
+                secondReminderDays = 1,
+                overdueReminderFrequency = "Weekly"
+            }));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var created = document.RootElement;
+        Assert.StartsWith("TSK-", created.GetProperty("taskCode").GetString());
+        Assert.Equal("Draft launch plan", created.GetProperty("title").GetString());
+        Assert.Equal(employee.Id, created.GetProperty("assignedToUserId").GetInt32());
+        Assert.Equal($"{employee.Username} full name", created.GetProperty("assignedToName").GetString());
+        Assert.Equal(2, created.GetProperty("recipients").GetArrayLength());
+
+        var id = created.GetProperty("id").GetInt32();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.Tasks.SingleAsync(task => task.Id == id);
+        Assert.Equal(3, stored.FirstReminderDays);
+        Assert.Equal(ReminderFrequency.Weekly, stored.OverdueReminderFrequency);
+        Assert.Equal(2, await db.TaskRecipients.CountAsync(recipient => recipient.TaskId == id));
+    }
+
+    [Fact]
+    public async Task Create_AsEmployee_IsForbidden()
+    {
+        var client = _factory.CreateClient();
+        await SeedUserAsync("tek-create-mgr2");
+        var assignee = await SeedUserAsync("tek-create-assignee2");
+        var token = await LoginAsync(client, "tek-create-mgr2", Role.Employee);
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", token,
+            JsonContent.Create(new
+            {
+                title = "Should not exist",
+                assignedToUserId = assignee.Id,
+                priority = "Low",
+                startDate = DateTime.UtcNow.AddDays(1),
+                deadline = DateTime.UtcNow.AddDays(2),
+                estimatedHours = 2
+            }));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_InvalidBody_Returns400()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-create-mgr3", Role.Manager);
+        var employee = await SeedUserAsync("tek-create-emp3");
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", manager.Token,
+            JsonContent.Create(new
+            {
+                title = "   ",
+                assignedToUserId = employee.Id,
+                priority = "Low",
+                startDate = DateTime.UtcNow.AddDays(2),
+                deadline = DateTime.UtcNow.AddDays(1),
+                estimatedHours = 0
+            }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_AsEmployee_ReturnsOnlyAccessibleTasks()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr", Role.Manager);
+        var employee = await SeedUserAsync("tek-list-emp");
+        var other = await SeedUserAsync("tek-list-other");
+        await CreateTaskAsync("Mine to see", employee.Id, manager.Id);
+        await CreateTaskAsync("Hidden from me", other.Id, manager.Id);
+
+        var token = await LoginAsync(client, "tek-list-emp", Role.Employee);
+        var response = await SendWithTokenAsync(client, HttpMethod.Get, "/api/v1/tasks", token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var items = document.RootElement.GetProperty("items").EnumerateArray().ToList();
+        var item = Assert.Single(items);
+        Assert.Equal("Mine to see", item.GetProperty("title").GetString());
+        Assert.Equal(1, document.RootElement.GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task List_SearchAndFilters_ReturnMatches()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr2", Role.Manager);
+        var employee = await SeedUserAsync("tek-list-emp2");
+        await CreateTaskAsync("Zeta milestone zz9", employee.Id, manager.Id, TaskStatus.InProgress);
+        await CreateTaskAsync("Unrelated chore", employee.Id, manager.Id, TaskStatus.ToDo);
+
+        var search = await SendWithTokenAsync(client, HttpMethod.Get,
+            "/api/v1/tasks?search=zz9", manager.Token);
+        Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+
+        using var searchDocument = await JsonDocument.ParseAsync(await search.Content.ReadAsStreamAsync());
+        var matches = searchDocument.RootElement.GetProperty("items").EnumerateArray().ToList();
+        Assert.Contains(matches, item => item.GetProperty("title").GetString() == "Zeta milestone zz9");
+
+        var byStatus = await SendWithTokenAsync(client, HttpMethod.Get,
+            "/api/v1/tasks?status=InProgress&assignedToUserId=" + employee.Id, manager.Token);
+        Assert.Equal(HttpStatusCode.OK, byStatus.StatusCode);
+
+        using var statusDocument = await JsonDocument.ParseAsync(await byStatus.Content.ReadAsStreamAsync());
+        var statusItems = statusDocument.RootElement.GetProperty("items").EnumerateArray().ToList();
+        Assert.All(statusItems, item => Assert.Equal("InProgress", item.GetProperty("status").GetString()));
+    }
+
+    [Fact]
+    public async Task List_DeadlineRange_ReturnsOnlyTasksInRange()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr4", Role.Manager);
+        var employee = await SeedUserAsync("tek-list-emp4");
+        await CreateTaskAsync("Range inside", employee.Id, manager.Id, deadline: new DateTime(2031, 3, 10, 0, 0, 0, DateTimeKind.Utc));
+        await CreateTaskAsync("Range outside", employee.Id, manager.Id, deadline: new DateTime(2031, 6, 10, 0, 0, 0, DateTimeKind.Utc));
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            $"/api/v1/tasks?assignedToUserId={employee.Id}&deadlineFrom=2031-03-01&deadlineTo=2031-03-31", manager.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var item = Assert.Single(document.RootElement.GetProperty("items").EnumerateArray().ToList());
+        Assert.Equal("Range inside", item.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task List_ReturnsPagingMetadata()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr3", Role.Manager);
+        var employee = await SeedUserAsync("tek-list-emp3");
+        await CreateTaskAsync("Page one", employee.Id, manager.Id);
+        await CreateTaskAsync("Page two", employee.Id, manager.Id);
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get, "/api/v1/tasks?page=1&pageSize=1", manager.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Equal(1, document.RootElement.GetProperty("page").GetInt32());
+        Assert.Equal(1, document.RootElement.GetProperty("pageSize").GetInt32());
+        Assert.True(document.RootElement.GetProperty("total").GetInt32() >= 2);
+        Assert.Equal(1, document.RootElement.GetProperty("items").GetArrayLength());
+    }
+
     private async Task<string> LoginAsync(HttpClient client, string username, Role role)
     {
         const string password = "P@ssw0rd!";
@@ -429,7 +603,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var task = new TaskEntity
         {
-            TaskCode = $"TSK-{Random.Shared.Next(10000, 99999)}",
+            TaskCode = $"SEED-{Guid.NewGuid():N}"[..24],
             Title = title,
             AssignedToUserId = assignedToUserId,
             CreatedByUserId = createdByUserId,

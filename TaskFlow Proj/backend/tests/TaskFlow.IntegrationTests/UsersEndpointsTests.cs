@@ -19,6 +19,28 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task List_AsManager_ReturnsUsers()
+    {
+        var client = _factory.CreateClient();
+        var token = (await LoginAsync(client, "users-mgr-list", Role.Manager)).AccessToken;
+
+        var response = await SendAsync(client, HttpMethod.Get, "/api/v1/users?role=Employee&isActive=true", token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_AsEmployee_IsForbidden()
+    {
+        var client = _factory.CreateClient();
+        var token = (await LoginAsync(client, "users-emp-list", Role.Employee)).AccessToken;
+
+        var response = await SendAsync(client, HttpMethod.Get, "/api/v1/users", token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_WithRoleName_ReturnsRoleName()
     {
         var client = _factory.CreateClient();

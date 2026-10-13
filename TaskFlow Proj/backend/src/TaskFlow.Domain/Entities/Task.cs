@@ -19,6 +19,9 @@ public class Task
     public DateTime Deadline { get; set; }
     public decimal EstimatedHours { get; set; }
     public Enums.TaskStatus Status { get; set; }
+    public int FirstReminderDays { get; set; } = 2;
+    public int SecondReminderDays { get; set; } = 1;
+    public ReminderFrequency OverdueReminderFrequency { get; set; } = ReminderFrequency.Daily;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

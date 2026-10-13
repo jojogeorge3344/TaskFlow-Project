@@ -3,7 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import {
   ActivityEntry,
+  CreateTaskRequest,
+  PagedResult,
   TaskCard,
+  TaskListItem,
   TaskComment,
   TaskDetails,
   TaskRecipient,
@@ -24,6 +27,86 @@ describe('TaskService', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('lists a page of tasks with filter query params', () => {
+    const page: PagedResult<TaskListItem> = {
+      items: [
+        {
+          id: 1,
+          taskCode: 'TSK-000001',
+          title: 'Design mockups',
+          assignedToUserId: 3,
+          assignedToName: 'Joe',
+          createdByUserId: 1,
+          createdByName: 'Boss',
+          priority: 'High',
+          startDate: '2026-10-10T08:00:00Z',
+          deadline: '2026-10-20T10:00:00Z',
+          estimatedHours: 6,
+          status: 'InProgress',
+          stage: 'Upcoming',
+          isOverdue: false
+        }
+      ],
+      total: 1,
+      page: 2,
+      pageSize: 10
+    };
+    let result: PagedResult<TaskListItem> | undefined;
+
+    service
+      .list({ search: 'design', assignedToUserId: 3, status: 'InProgress', priority: null, deadlineFrom: '', page: 2, pageSize: 10 })
+      .subscribe((value) => (result = value));
+
+    const request = http.expectOne('/api/v1/tasks?search=design&assignedToUserId=3&status=InProgress&page=2&pageSize=10');
+    expect(request.request.method).toBe('GET');
+    request.flush(page);
+    expect(result).toEqual(page);
+  });
+
+  it('lists tasks without params when no filter is given', () => {
+    service.list().subscribe();
+
+    const request = http.expectOne('/api/v1/tasks');
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush({ items: [], total: 0, page: 1, pageSize: 20 });
+  });
+
+  it('loads the assignee options', () => {
+    let result: TaskRecipient[] | undefined;
+
+    service.getAssignees().subscribe((value) => (result = value));
+
+    const request = http.expectOne('/api/v1/tasks/assignees');
+    expect(request.request.method).toBe('GET');
+    request.flush([{ userId: 3, fullName: 'Joe' }]);
+    expect(result).toEqual([{ userId: 3, fullName: 'Joe' }]);
+  });
+
+  it('creates a task', () => {
+    const body: CreateTaskRequest = {
+      title: 'Plan launch',
+      description: null,
+      assignedToUserId: 3,
+      priority: 'Medium',
+      startDate: '2026-10-14T00:00:00.000Z',
+      deadline: '2026-10-18T00:00:00.000Z',
+      estimatedHours: 4,
+      additionalRecipientUserIds: [9],
+      firstReminderDays: 2,
+      secondReminderDays: 1,
+      overdueReminderFrequency: 'Daily'
+    };
+    let createdId: number | undefined;
+
+    service.create(body).subscribe((value) => (createdId = value.id));
+
+    const request = http.expectOne('/api/v1/tasks');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(body);
+    request.flush({ id: 42 }, { status: 201, statusText: 'Created' });
+    expect(createdId).toBe(42);
+  });
 
   it('loads the board list', () => {
     const cards: TaskCard[] = [

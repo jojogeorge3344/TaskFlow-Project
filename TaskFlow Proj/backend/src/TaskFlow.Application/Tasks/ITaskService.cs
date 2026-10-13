@@ -10,6 +10,18 @@ public interface ITaskService
     /// client-side).</summary>
     Task<IReadOnlyCollection<TaskCardDto>> GetBoardAsync(int currentUserId, string currentUserRole, CancellationToken cancellationToken);
 
+    /// <summary>A page of tasks the caller may access, filtered and searched (Screen 7).
+    /// Scope follows the same rule as the board.</summary>
+    Task<PagedResult<TaskListItemDto>> ListAsync(TaskListFilter filter, int currentUserId, string currentUserRole, CancellationToken cancellationToken);
+
+    /// <summary>The distinct employees assigned to tasks the caller may access, for the list's
+    /// employee filter.</summary>
+    Task<IReadOnlyCollection<TaskRecipientDto>> GetAssigneesAsync(int currentUserId, string currentUserRole, CancellationToken cancellationToken);
+
+    /// <summary>Creates a task assigned to an employee (Screen 8). Manager/Administrator only;
+    /// throws on unauthorized access or invalid input.</summary>
+    Task<TaskDetailsDto> CreateAsync(CreateTaskRequest request, int currentUserId, string currentUserRole, CancellationToken cancellationToken);
+
     /// <summary>Edits an editable task (Manager/Administrator). Returns null when not found;
     /// throws when the caller lacks scope or the edit violates task rules.</summary>
     Task<TaskDetailsDto?> UpdateAsync(int taskId, UpdateTaskRequest request, int currentUserId, string currentUserRole, CancellationToken cancellationToken);
