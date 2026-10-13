@@ -368,6 +368,79 @@ textarea {
   color: #334155;
 }
 
+/* ---------- Chips ---------- */
+.tf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tf-chip--muted {
+  background: var(--tf-bg);
+  color: var(--tf-muted);
+}
+
+.tf-chip--upcoming {
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary-hover);
+}
+
+.tf-chip--duetoday {
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
+}
+
+.tf-chip--overdue {
+  background: var(--tf-danger-soft);
+  color: var(--tf-danger-strong);
+}
+
+.tf-chip--completed {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+.tf-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Layout helpers ---------- */
+.tf-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  flex-wrap: wrap;
+}
+
+.tf-form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--tf-space-3);
+}
+
+@media (min-width: 640px) {
+  .tf-form-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.tf-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tf-space-2);
+  margin-top: var(--tf-space-2);
+}
+
 /* ---------- Avatar ---------- */
 .tf-avatar {
   width: 2.25rem;

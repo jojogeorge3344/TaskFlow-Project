@@ -39,6 +39,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<TaskFlow.Application.Departments.IDepartmentService, TaskFlow.Infrastructure.Services.DepartmentService>();
 builder.Services.AddScoped<TaskFlow.Application.Users.IUserService, TaskFlow.Infrastructure.Services.UserService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.IDashboardService, TaskFlow.Infrastructure.Services.DashboardService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskService, TaskFlow.Infrastructure.Services.TaskService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskCommentService, TaskFlow.Infrastructure.Services.TaskCommentService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskActivityService, TaskFlow.Infrastructure.Services.TaskActivityService>();
+builder.Services.AddScoped<TaskFlow.Application.Tasks.INotificationPublisher, TaskFlow.Infrastructure.Services.NotificationPublisher>();
+builder.Services.AddScoped<IAuthorizationHandler, TaskAccessHandler>();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
@@ -79,6 +84,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy(AuthPolicies.ManagerOrAdmin, policy =>
         policy.RequireRole(nameof(Role.Administrator), nameof(Role.Manager)));
+
+    options.AddPolicy(AuthPolicies.TaskAccess, policy =>
+        policy.Requirements.Add(new TaskAccessRequirement()));
 });
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

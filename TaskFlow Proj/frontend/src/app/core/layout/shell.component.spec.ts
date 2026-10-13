@@ -77,7 +77,7 @@ describe('ShellComponent', () => {
     localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
   });
 
-  it('shows the administrator navigation menu with icons and a disabled Soon item', () => {
+  it('shows the administrator navigation menu with icons and the enabled task entry', () => {
     mockViewport(true);
     asUser('Administrator');
     const fixture = createComponent();
@@ -85,14 +85,12 @@ describe('ShellComponent', () => {
     const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
     const labels = links.map((link) => link.querySelector('.nav__text')?.textContent?.trim());
 
-    expect(labels).toEqual(['Dashboard', 'Employee Management', 'Department Management']);
+    expect(labels).toEqual(['Dashboard', 'Task Management', 'Employee Management', 'Department Management']);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
-    const disabled = el(fixture).querySelector('.nav__item--disabled')!;
-    expect(disabled.getAttribute('aria-disabled')).toBe('true');
-    expect(disabled.querySelector('.nav__text')?.textContent).toContain('Task Management');
-    expect(disabled.querySelector('.nav__soon')?.textContent).toContain('Soon');
-    expect(disabled.hasAttribute('href')).toBeFalse();
+    const taskLink = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Task Management')!;
+    expect(taskLink.getAttribute('href')).toBe('/board');
+    expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
   });
 
   it('limits the employee navigation menu to their own links', () => {
@@ -104,8 +102,8 @@ describe('ShellComponent', () => {
       node.textContent?.trim()
     );
 
-    expect(links).toEqual(['Dashboard']);
-    expect(el(fixture).querySelector('.nav__item--disabled')?.textContent).toContain('My Tasks');
+    expect(links).toEqual(['Dashboard', 'My Tasks']);
+    expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
   });
 

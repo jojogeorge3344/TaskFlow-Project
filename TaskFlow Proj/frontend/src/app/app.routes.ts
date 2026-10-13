@@ -50,6 +50,31 @@ export const routes: Routes = [
         data: { roles: ['Administrator'] },
         loadComponent: () =>
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
+      },
+      {
+        path: 'board',
+        loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
+      },
+      {
+        path: 'tasks/:id',
+        loadComponent: () =>
+          import('./features/tasks/task-details.component').then((m) => m.TaskDetailsComponent)
+      },
+      {
+        path: 'tasks/:id/discussion',
+        loadComponent: () =>
+          import('./features/tasks/task-discussion.component').then((m) => m.TaskDiscussionComponent)
+      },
+      {
+        path: 'tasks/:id/activity',
+        loadComponent: () => import('./features/tasks/activity.component').then((m) => m.ActivityComponent)
+      },
+      {
+        path: 'tasks/:id/reassign',
+        canActivate: [roleGuard],
+        data: { roles: ['Manager', 'Administrator'] },
+        loadComponent: () =>
+          import('./features/tasks/reassign.component').then((m) => m.TaskReassignComponent)
       }
     ]
   },

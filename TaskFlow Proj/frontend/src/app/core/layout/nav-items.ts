@@ -15,16 +15,16 @@ export interface NavItem {
 export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
   Administrator: [
     { label: 'Dashboard', icon: 'home', route: '/admin' },
+    { label: 'Task Management', icon: 'tasks', route: '/board' },
     { label: 'Employee Management', icon: 'users', route: '/employees' },
-    { label: 'Department Management', icon: 'building', route: '/departments' },
-    { label: 'Task Management', icon: 'tasks' }
+    { label: 'Department Management', icon: 'building', route: '/departments' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },
-    { label: 'Task Management', icon: 'tasks' }
+    { label: 'Task Management', icon: 'tasks', route: '/board' }
   ],
   Employee: [
     { label: 'Dashboard', icon: 'home', route: '/me' },
-    { label: 'My Tasks', icon: 'tasks' }
+    { label: 'My Tasks', icon: 'tasks', route: '/board' }
   ]
 };

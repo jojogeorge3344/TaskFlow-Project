@@ -1,0 +1,78 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+        <tf-icon name="arrow" />
+        Back to task #{{ taskId }}
+      </a>
+      <h1>Reassign task</h1>
+      @if (task(); as current) {
+        <p>
+          {{ current.taskCode }} · {{ current.title }} · currently assigned to
+          {{ current.assignedToName || 'no one' }}
+        </p>
+      }
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="loadTask()">Retry</button>
+    </div>
+  } @else if (loading() || employeesLoading() || !task()) {
+    <div class="tf-card tf-empty" aria-busy="true">
+      <div class="tf-skeleton reassign__skeleton"></div>
+      <div class="tf-skeleton reassign__skeleton"></div>
+    </div>
+  } @else {
+    @if (task(); as current) {
+      <form class="tf-card reassign" (ngSubmit)="confirm()">
+      <div class="tf-field">
+        <label for="reassign-user">New assignee</label>
+        <select
+          id="reassign-user"
+          class="tf-input"
+          data-field="assignee"
+          [value]="selectedUserId() ?? ''"
+          (change)="onAssigneeChange($any($event.target).value)"
+        >
+          <option value="">Select an active employee…</option>
+          @for (employee of eligibleEmployees(); track employee.id) {
+            <option [value]="employee.id">{{ employee.fullName }} ({{ employee.employeeCode || employee.username }})</option>
+          }
+        </select>
+        @if (eligibleEmployees().length === 0) {
+          <p class="tf-field__hint">There are no other active employees to assign this task to.</p>
+        }
+      </div>
+
+      <div class="tf-field">
+        <label for="reassign-reason">Reason</label>
+        <textarea
+          id="reassign-reason"
+          class="tf-input tf-textarea"
+          rows="3"
+          maxlength="500"
+          placeholder="Why is this task moving to a new assignee?"
+          data-field="reason"
+          [value]="reason()"
+          (input)="reason.set($any($event.target).value)"
+        ></textarea>
+        <p class="tf-field__hint">The reason is recorded in the activity history and shared with the new assignee.</p>
+      </div>
+
+      <div class="reassign__actions">
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="cancel()">Cancel</button>
+        <button type="submit" class="tf-btn tf-btn--primary" [disabled]="!canSubmit() || submitting()" data-action="reassign">
+          <tf-icon name="users" />
+          {{ submitting() ? 'Reassigning…' : 'Reassign' }}
+        </button>
+      </div>
+      </form>
+    }
+  }
+
+  <tf-confirm-dialog />
+</section>

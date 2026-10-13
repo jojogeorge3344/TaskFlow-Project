@@ -1,0 +1,119 @@
+.tf-back {
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tf-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.tf-details,
+.tf-side {
+  padding: var(--tf-space-5);
+}
+
+.tf-details__skeleton {
+  height: 22rem;
+}
+
+.tf-details__description {
+  margin: 0 0 var(--tf-space-5);
+  white-space: pre-wrap;
+  color: var(--tf-text-secondary);
+}
+
+.tf-details__description--empty {
+  color: var(--tf-muted);
+  font-style: italic;
+}
+
+.tf-details__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tf-space-4);
+  margin: 0;
+}
+
+.tf-details__meta dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--tf-muted);
+  text-transform: uppercase;
+}
+
+.tf-details__meta dd {
+  margin: 0.125rem 0 0;
+  font-weight: 600;
+}
+
+.tf-details__section-title {
+  margin: var(--tf-space-5) 0 var(--tf-space-2);
+  font-size: 0.875rem;
+}
+
+.tf-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+}
+
+.tf-side__title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--tf-muted);
+  text-transform: uppercase;
+}
+
+.tf-side__links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tf-side__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-2) 0;
+  color: var(--tf-text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.tf-side__links a:hover {
+  color: var(--tf-primary);
+}
+
+.tf-side__links tf-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--tf-subtle);
+}
+
+.tf-side__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+}
+
+.tf-side__actions .tf-btn {
+  height: 2rem;
+  font-size: 0.8125rem;
+}
+
+.tf-grid--details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--tf-space-4);
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .tf-grid--details {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+  }
+}
