@@ -48,6 +48,39 @@
   text-overflow: ellipsis;
 }
 
+.header__spacer {
+  flex: 1;
+}
+
+/* Bell button with an unread dot, matching the approved header mockup's .icon-btn/.dot. */
+.header__bell {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--tf-muted);
+  cursor: pointer;
+}
+
+.header__bell:hover {
+  background: var(--tf-bg);
+  color: var(--tf-text);
+}
+
+.header__dot {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tf-danger);
+  border: 2px solid var(--tf-surface);
+}
+
 .sidebar {
   position: fixed;
   top: 0;

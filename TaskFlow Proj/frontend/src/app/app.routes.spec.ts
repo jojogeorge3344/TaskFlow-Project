@@ -7,6 +7,7 @@ import { EmployeeDashboardComponent } from './features/dashboard/employee-dashbo
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
+import { NotificationCenterComponent } from './features/notifications/notification-center.component';
 import { ActivityComponent } from './features/tasks/activity.component';
 import { KanbanComponent } from './features/tasks/kanban.component';
 import { TaskReassignComponent } from './features/tasks/reassign.component';
@@ -62,6 +63,7 @@ describe('app routes', () => {
       'me',
       'departments',
       'employees',
+      'notifications',
       'board',
       'tasks',
       'tasks/new',
@@ -104,6 +106,12 @@ describe('app routes', () => {
     expect(await load(childRoute('me'))).toBe(EmployeeDashboardComponent);
     expect(await load(childRoute('employees'))).toBe(EmployeeListComponent);
     expect(await load(childRoute('departments'))).toBe(DepartmentListComponent);
+  });
+
+  it('registers the notification center for every authenticated role', async () => {
+    const notifications = childRoute('notifications');
+    expect(notifications.canActivate).toBeUndefined();
+    expect(await load(notifications)).toBe(NotificationCenterComponent);
   });
 
   it('registers the board for every authenticated role', () => {

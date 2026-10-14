@@ -62,6 +62,19 @@
     </button>
     <span class="header__brand">TaskFlow</span>
     <span class="header__title">{{ pageTitle() }}</span>
+    <span class="header__spacer"></span>
+    <a
+      class="header__bell"
+      routerLink="/notifications"
+      aria-label="Notifications"
+      title="Notifications"
+      data-action="notifications"
+    >
+      <tf-icon name="bell" />
+      @if (unreadCount() > 0) {
+        <span class="header__dot" data-dot aria-hidden="true"></span>
+      }
+    </a>
   </header>
 
   <main class="content">
