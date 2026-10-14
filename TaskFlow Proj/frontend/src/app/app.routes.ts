@@ -52,6 +52,13 @@ export const routes: Routes = [
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
+        path: 'notifications',
+        loadComponent: () =>
+          import('./features/notifications/notification-center.component').then(
+            (m) => m.NotificationCenterComponent
+          )
+      },
+      {
         path: 'board',
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },

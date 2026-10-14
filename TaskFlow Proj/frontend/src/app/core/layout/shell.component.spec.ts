@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthUser, UserRole } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../services/notification.service';
 import { SIDEBAR_COLLAPSED_KEY, WIDE_VIEWPORT_QUERY } from './layout.service';
 import { SESSION_CHECK_INTERVAL_MS, ShellComponent } from './shell.component';
 
@@ -14,6 +15,8 @@ describe('ShellComponent', () => {
   const userSignal = signal<AuthUser | null>(null);
   const logoutSpy = jasmine.createSpy('logout');
   const checkSessionSpy = jasmine.createSpy('checkSession');
+  const unreadCountSignal = signal(0);
+  const refreshUnreadCountSpy = jasmine.createSpy('refreshUnreadCount');
 
   function asUser(role: UserRole): void {
     userSignal.set({
@@ -57,17 +60,24 @@ describe('ShellComponent', () => {
     logoutSpy.and.returnValue(of(undefined));
     checkSessionSpy.calls.reset();
     checkSessionSpy.and.returnValue(of({}));
+    unreadCountSignal.set(0);
+    refreshUnreadCountSpy.calls.reset();
 
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
         provideRouter([
           { path: 'employees', component: PageStubComponent },
-          { path: 'admin', component: PageStubComponent }
+          { path: 'admin', component: PageStubComponent },
+          { path: 'notifications', component: PageStubComponent }
         ]),
         {
           provide: AuthService,
           useValue: { currentUser: userSignal.asReadonly(), logout: logoutSpy, checkSession: checkSessionSpy }
+        },
+        {
+          provide: NotificationService,
+          useValue: { unreadCount: unreadCountSignal.asReadonly(), refreshUnreadCount: refreshUnreadCountSpy }
         }
       ]
     }).compileComponents();
@@ -85,7 +95,7 @@ describe('ShellComponent', () => {
     const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
     const labels = links.map((link) => link.querySelector('.nav__text')?.textContent?.trim());
 
-    expect(labels).toEqual(['Dashboard', 'Task Management', 'Employee Management', 'Department Management']);
+    expect(labels).toEqual(['Dashboard', 'Task Management', 'Employee Management', 'Department Management', 'Notifications']);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
     const taskLink = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Task Management')!;
@@ -102,7 +112,7 @@ describe('ShellComponent', () => {
       node.textContent?.trim()
     );
 
-    expect(links).toEqual(['Dashboard', 'My Tasks']);
+    expect(links).toEqual(['Dashboard', 'My Tasks', 'Notifications']);
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
   });
@@ -215,6 +225,53 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.account__avatar')?.textContent?.trim()).toBe('TU');
     expect(el(fixture).querySelector('.account__name')?.textContent).toContain('Test User');
     expect(el(fixture).querySelector('.account__role')?.textContent).toContain('Manager');
+  });
+
+  it('shows the notification bell linking to the center and hides the dot when there are none', () => {
+    mockViewport(true);
+    asUser('Manager');
+    const fixture = createComponent();
+
+    const bell = el(fixture).querySelector('[data-action="notifications"]') as HTMLAnchorElement;
+    expect(bell).not.toBeNull();
+    expect(bell.getAttribute('href')).toBe('/notifications');
+    expect(bell.getAttribute('aria-label')).toBe('Notifications');
+    expect(el(fixture).querySelector('[data-dot]')).toBeNull();
+  });
+
+  it('shows the unread dot when the count is greater than zero', () => {
+    mockViewport(true);
+    asUser('Manager');
+    unreadCountSignal.set(3);
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('[data-dot]')).not.toBeNull();
+  });
+
+  it('refreshes the unread count on the interval', fakeAsync(() => {
+    mockViewport(true);
+    asUser('Manager');
+    createComponent();
+
+    // Refresh on mount so the badge is accurate as soon as the shell appears.
+    expect(refreshUnreadCountSpy).toHaveBeenCalled();
+
+    refreshUnreadCountSpy.calls.reset();
+    tick(SESSION_CHECK_INTERVAL_MS);
+    expect(refreshUnreadCountSpy).toHaveBeenCalledTimes(1);
+
+    discardPeriodicTasks();
+  }));
+
+  it('resolves the header title for the notifications route', async () => {
+    mockViewport(true);
+    asUser('Manager');
+    const fixture = createComponent();
+
+    await TestBed.inject(Router).navigateByUrl('/notifications');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Notifications');
   });
 
   it('re-checks the session every minute and when the tab becomes visible', fakeAsync(() => {

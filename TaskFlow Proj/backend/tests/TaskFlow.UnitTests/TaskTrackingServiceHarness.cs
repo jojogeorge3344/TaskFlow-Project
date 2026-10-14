@@ -21,6 +21,7 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
 
         ActivityService = new TaskActivityService(db, TimeProvider.System);
         NotificationPublisher = new NotificationPublisher(db, TimeProvider.System);
+        NotificationService = new NotificationService(db);
         TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System);
         CommentService = new TaskCommentService(db, ActivityService, TimeProvider.System);
     }
@@ -30,6 +31,8 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
     public TaskActivityService ActivityService { get; }
 
     public NotificationPublisher NotificationPublisher { get; }
+
+    public NotificationService NotificationService { get; }
 
     public TaskService TaskService { get; }
 

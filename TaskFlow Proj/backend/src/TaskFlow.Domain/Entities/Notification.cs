@@ -2,8 +2,8 @@ using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Domain.Entities;
 
-/// <summary>An in-app notification targeting a user. Written by INotificationPublisher; the
-/// notification center (Screen 12) reads and marks these read in a later change.</summary>
+/// <summary>An in-app notification targeting a user. Written by INotificationPublisher and read
+/// and marked read by INotificationService in the notification center (Screen 12).</summary>
 public class Notification
 {
     public int Id { get; set; }
