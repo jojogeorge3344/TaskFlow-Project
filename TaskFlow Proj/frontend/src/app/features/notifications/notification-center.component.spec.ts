@@ -148,4 +148,37 @@ describe('NotificationCenterComponent', () => {
 
     expect(el().querySelectorAll('.notifications__item').length).toBe(1);
   });
+
+  it('falls back to the last page when a filtered page empties after marking read', () => {
+    initPage([item({ id: 1 })], 21); // 21 unread rows across two pages
+    const component = fixture.componentInstance;
+
+    component.setReadState('unread'); // resets to page one and re-queries
+    httpMock
+      .expectOne((candidate) => candidate.url === '/api/v1/notifications')
+      .flush(page([item({ id: 1 })], 21));
+    fixture.detectChanges();
+
+    component.goToPage(2); // the last page holds the 21st row
+    httpMock
+      .expectOne((candidate) => candidate.url === '/api/v1/notifications')
+      .flush(page([item({ id: 21 })], 21));
+    fixture.detectChanges();
+
+    // Marking the only row on page two read reloads the filtered list, which now fits one page.
+    component.markRead(item({ id: 21 }));
+    httpMock.expectOne('/api/v1/notifications/21/read').flush(null);
+
+    const shrink = httpMock.expectOne((candidate) => candidate.url === '/api/v1/notifications');
+    expect(shrink.request.params.get('page')).toBe('2');
+    shrink.flush(page([], 20));
+
+    const fallback = httpMock.expectOne((candidate) => candidate.url === '/api/v1/notifications');
+    expect(fallback.request.params.get('page')).toBe('1');
+    fallback.flush(page([item({ id: 20 })], 20));
+    fixture.detectChanges();
+
+    expect(component.page()).toBe(1);
+    expect(el().querySelectorAll('.notifications__item').length).toBe(1);
+  });
 });

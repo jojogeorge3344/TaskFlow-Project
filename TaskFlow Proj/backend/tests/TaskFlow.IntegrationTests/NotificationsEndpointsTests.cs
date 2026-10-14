@@ -151,6 +151,9 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var readAll = await client.PostAsync("/api/v1/notifications/read-all", null);
         Assert.Equal(HttpStatusCode.Unauthorized, readAll.StatusCode);
+
+        var markRead = await client.PostAsync("/api/v1/notifications/1/read", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, markRead.StatusCode);
     }
 
     private async Task<int> GetUnreadCountAsync(HttpClient client, string token)

@@ -72,7 +72,8 @@ export class NotificationCenterComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    const filter: NotificationFilter = { page: this.page(), pageSize: PAGE_SIZE };
+    const requestedPage = this.page();
+    const filter: NotificationFilter = { page: requestedPage, pageSize: PAGE_SIZE };
     if (this.type()) {
       filter.type = this.type() as NotificationType;
     }
@@ -84,6 +85,18 @@ export class NotificationCenterComponent implements OnInit {
 
     this.notificationService.list(filter).subscribe({
       next: (result: PagedResult<NotificationItem>) => {
+        // A filtered reload can leave the current page past the end of the list (for example,
+        // marking the last row of a filtered page read). Fall back to the last page that still
+        // has rows so the view never shows a stale, impossible page.
+        const lastPage = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+        if (requestedPage > lastPage) {
+          this.page.set(lastPage);
+          if (result.total > 0) {
+            this.load();
+            return;
+          }
+        }
+
         this.items.set(result.items);
         this.total.set(result.total);
         this.loading.set(false);
