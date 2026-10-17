@@ -50,7 +50,33 @@ public class MailAttachmentService : IMailAttachmentService
             throw new MailValidationException("File", $"Files of type {extension} are not allowed.");
         }
 
-        var (key, size) = await _store.SaveAsync(content, MailRules.MaxAttachmentBytes, cancellationToken);
+        // Uploads that never reach a mail are kept, so cap how many a user can leave lying around.
+        var pending = await _dbContext.MailAttachments
+            .Where(file => file.UploadedByUserId == callerId && file.MessageId == null)
+            .GroupBy(_ => 1)
+            .Select(group => new { Count = group.Count(), Bytes = group.Sum(file => file.SizeBytes) })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (pending is not null && pending.Count >= MailRules.MaxPendingUploads)
+        {
+            throw new MailValidationException("File", $"You have {pending.Count} files waiting to be attached. Send or discard a mail before uploading more.");
+        }
+
+        var room = MailRules.MaxPendingUploadBytes - (pending?.Bytes ?? 0);
+        if (room <= 0)
+        {
+            throw new MailValidationException("File", "Your files waiting to be attached already total 100 MB. Send or discard a mail before uploading more.");
+        }
+
+        Guid key;
+        long size;
+        try
+        {
+            (key, size) = await _store.SaveAsync(content, Math.Min(MailRules.MaxAttachmentBytes, room), cancellationToken);
+        }
+        catch (MailValidationException) when (room < MailRules.MaxAttachmentBytes)
+        {
+            throw new MailValidationException("File", "This file would take your files waiting to be attached past 100 MB. Send or discard a mail first.");
+        }
         if (size == 0)
         {
             throw new MailValidationException("File", "The file is empty.");

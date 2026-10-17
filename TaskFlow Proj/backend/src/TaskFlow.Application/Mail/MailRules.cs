@@ -15,6 +15,10 @@ public static class MailRules
     public const long MaxAttachmentBytes = 10L * 1024 * 1024;
     public const long MaxTotalAttachmentBytes = 25L * 1024 * 1024;
 
+    /// <summary>Uploads not yet on any mail or draft, per user; keeps abandoned uploads from filling the disk.</summary>
+    public const int MaxPendingUploads = 20;
+    public const long MaxPendingUploadBytes = 100L * 1024 * 1024;
+
     public const string SystemSenderName = "TaskFlow";
     public const string ReplyPrefix = "Re: ";
     public const string ForwardPrefix = "Fwd: ";

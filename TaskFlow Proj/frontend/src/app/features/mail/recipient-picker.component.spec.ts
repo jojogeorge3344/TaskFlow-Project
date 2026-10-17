@@ -100,4 +100,17 @@ describe('RecipientPickerComponent', () => {
 
     expect(fixture.componentInstance.chips()).toEqual([]);
   });
+
+  it('commits typed text as a chip on demand', () => {
+    mail.contacts.and.returnValue(of([priya]));
+    const fixture = create();
+    input(fixture).value = 'priya@taskflow.local';
+    input(fixture).dispatchEvent(new Event('input'));
+
+    fixture.componentInstance.commitPending();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.local', name: 'Priya', valid: true }]);
+    expect(fixture.componentInstance.text()).toBe('');
+  });
 });

@@ -202,4 +202,52 @@ describe('ComposeDialogComponent', () => {
 
     expect(el(fixture).querySelector('[data-error="To"]')?.textContent).toContain('gone@taskflow.local');
   });
+
+  function typeInTo(fixture: ComponentFixture<ComposeDialogComponent>, text: string): void {
+    const input = el(fixture).querySelector('#compose-to') as HTMLInputElement;
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  it('includes an address still being typed when Send is clicked', () => {
+    mail.contacts.and.callFake((email: string) => of(email === 'kiran@taskflow.local' ? [{ id: 4, fullName: 'Kiran', email }] : []));
+    const fixture = create();
+    fixture.componentInstance.to.set([priya]);
+    write(fixture, 'Hello', 'Body');
+    typeInTo(fixture, 'kiran@taskflow.local');
+
+    click(fixture, 'send');
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    expect(mail.send.calls.mostRecent().args[0].to).toEqual(['priya@taskflow.local', 'kiran@taskflow.local']);
+    expect(fixture.componentInstance.sendWhenChecked()).toBeFalse();
+  });
+
+  it('does not send when the typed address turns out not to be a TaskFlow user', () => {
+    mail.contacts.and.returnValue(of([]));
+    const fixture = create();
+    fixture.componentInstance.to.set([priya]);
+    write(fixture, 'Hello', 'Body');
+    typeInTo(fixture, 'someone@gmail.com');
+
+    click(fixture, 'send');
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(mail.send).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.to().map((chip) => chip.email)).toContain('someone@gmail.com');
+    expect(el(fixture).querySelector('[data-error="To"]')?.textContent).toContain('not TaskFlow users');
+  });
+
+  it('keeps a typed address when saving a draft', () => {
+    const fixture = create();
+    typeInTo(fixture, 'half-typed@taskflow.local');
+
+    click(fixture, 'save-draft');
+
+    expect(mail.createDraft).toHaveBeenCalledWith(jasmine.objectContaining({ to: ['half-typed@taskflow.local'] }));
+  });
 });

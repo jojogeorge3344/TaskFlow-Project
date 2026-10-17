@@ -110,6 +110,14 @@ export class RecipientPickerComponent {
     }, 150);
   }
 
+  /** Turns any typed-but-uncommitted text into a chip right away, so an action like Send never misses an address
+   * the user typed but did not confirm. The new chip is checked like any other. */
+  commitPending(): void {
+    if (this.text().trim()) {
+      this.addTyped(this.text());
+    }
+  }
+
   pick(contact: MailContact): void {
     this.add({ email: contact.email.toLowerCase(), name: contact.fullName, valid: true });
   }

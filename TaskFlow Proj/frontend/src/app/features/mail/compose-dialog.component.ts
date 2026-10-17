@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal, untracked, viewChildren } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IconComponent } from '../../core/layout/icon.component';
 import { MAIL_LIMITS, MailAttachment, MailComposeMode } from '../../core/models';
@@ -31,6 +31,7 @@ type ComposeField = 'To' | 'Cc' | 'Subject' | 'Body' | 'AttachmentIds' | 'Mode' 
 export class ComposeDialogComponent {
   private readonly mailService = inject(MailService);
   private readonly toast = inject(ToastService);
+  private readonly pickers = viewChildren(RecipientPickerComponent);
 
   readonly request = input<ComposeRequest | null>(null);
   readonly closed = output<ComposeResult>();
@@ -49,6 +50,8 @@ export class ComposeDialogComponent {
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly fieldErrors = signal<Partial<Record<ComposeField, string>>>({});
+  /** Send was pressed while a just-added recipient was still being checked; send once the checks finish. */
+  readonly sendWhenChecked = signal(false);
 
   private draftMessageId: number | null = null;
   private draftItemId: number | null = null;
@@ -73,6 +76,16 @@ export class ComposeDialogComponent {
     effect(() => {
       const request = this.request();
       untracked(() => this.start(request));
+    });
+
+    effect(() => {
+      const checking = [...this.to(), ...this.cc()].some((chip) => chip.valid === null);
+      if (this.sendWhenChecked() && !checking) {
+        untracked(() => {
+          this.sendWhenChecked.set(false);
+          this.send();
+        });
+      }
     });
   }
 
@@ -115,8 +128,15 @@ export class ComposeDialogComponent {
   send(): void {
     this.error.set(null);
     this.fieldErrors.set({});
+    // An address still sitting in a picker's text box is part of the mail, not something to drop.
+    this.pickers().forEach((picker) => picker.commitPending());
     if (this.to().length + this.cc().length === 0) {
       this.setFieldError('To', 'Add at least one recipient.');
+      return;
+    }
+    if ([...this.to(), ...this.cc()].some((chip) => chip.valid === null)) {
+      this.sendWhenChecked.set(true);
+      this.setFieldError('To', 'Checking recipients…');
       return;
     }
     if (this.hasBlockingRecipients()) {
@@ -158,6 +178,7 @@ export class ComposeDialogComponent {
     if (this.busy() || this.uploading() > 0) {
       return;
     }
+    this.pickers().forEach((picker) => picker.commitPending());
     this.error.set(null);
     this.busy.set(true);
     const draft = {
@@ -260,6 +281,7 @@ export class ComposeDialogComponent {
     this.fieldErrors.set({});
     this.busy.set(false);
     this.loading.set(false);
+    this.sendWhenChecked.set(false);
     this.draftMessageId = null;
     this.draftItemId = null;
     this.parentItemId = null;

@@ -170,4 +170,58 @@ public sealed class MailAttachmentTests : IDisposable
         Assert.True(await service.DeleteAsync(mail.Ravi.Id, drop.Id));
         Assert.False(await service.DeleteAsync(mail.Ravi.Id, keep.Id));
     }
+
+    [Fact]
+    public async Task Pending_uploads_are_capped_per_user_and_free_up_once_sent()
+    {
+        await using var mail = MailTestHarness.Create();
+        var service = Attachments(mail);
+        var uploads = new List<int>();
+        for (var i = 0; i < MailRules.MaxPendingUploads; i++)
+        {
+            uploads.Add((await service.UploadAsync(mail.Ravi.Id, Bytes(10), $"f{i}.txt")).Id);
+        }
+
+        var error = await Assert.ThrowsAsync<MailValidationException>(() => service.UploadAsync(mail.Ravi.Id, Bytes(10), "one-more.txt"));
+        Assert.Contains("waiting to be attached", error.Message);
+        Assert.Equal(MailRules.MaxPendingUploads, await mail.Tracking.Db.MailAttachments.CountAsync());
+
+        // Another user is not affected.
+        await service.UploadAsync(mail.Priya.Id, Bytes(10), "hers.txt");
+
+        await mail.SendAsync(mail.Ravi, MailTestHarness.To([mail.Priya]) with { AttachmentIds = uploads.Take(5).ToList() });
+        await service.UploadAsync(mail.Ravi.Id, Bytes(10), "now-fits.txt");
+    }
+
+    [Fact]
+    public async Task Pending_uploads_are_capped_by_total_size()
+    {
+        await using var mail = MailTestHarness.Create();
+        for (var i = 0; i < 10; i++)
+        {
+            MailDraftAndThreadTests.AddUpload(mail, mail.Ravi, $"big{i}.pdf", 10L * 1024 * 1024);
+        }
+
+        var error = await Assert.ThrowsAsync<MailValidationException>(() => Attachments(mail).UploadAsync(mail.Ravi.Id, Bytes(10), "small.txt"));
+
+        Assert.Contains("100 MB", error.Message);
+    }
+
+    [Fact]
+    public async Task File_that_would_pass_the_pending_size_cap_is_rejected_clearly()
+    {
+        await using var mail = MailTestHarness.Create();
+        for (var i = 0; i < 9; i++)
+        {
+            MailDraftAndThreadTests.AddUpload(mail, mail.Ravi, $"big{i}.pdf", 10L * 1024 * 1024);
+        }
+
+        MailDraftAndThreadTests.AddUpload(mail, mail.Ravi, "almost.pdf", 9L * 1024 * 1024);
+
+        var error = await Assert.ThrowsAsync<MailValidationException>(() =>
+            Attachments(mail).UploadAsync(mail.Ravi.Id, Bytes(2 * 1024 * 1024), "two-mb.pdf"));
+
+        Assert.Contains("past 100 MB", error.Message);
+        Assert.Empty(Directory.Exists(_root) ? Directory.GetFiles(_root, "*", SearchOption.AllDirectories) : []);
+    }
 }
