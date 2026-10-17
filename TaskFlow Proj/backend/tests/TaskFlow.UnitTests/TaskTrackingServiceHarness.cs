@@ -1,9 +1,11 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Services;
+using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
@@ -21,7 +23,10 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
 
         ActivityService = new TaskActivityService(db, TimeProvider.System);
         NotificationPublisher = new NotificationPublisher(db, TimeProvider.System);
-        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System);
+        NotificationService = new NotificationService(db);
+        ReminderSettings = new ReminderSettingsService(db, TimeProvider.System, Options.Create(new ApplicationOptions()));
+        Clock = new AppClock(db, TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
+        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock);
         CommentService = new TaskCommentService(db, ActivityService, TimeProvider.System);
     }
 
@@ -30,6 +35,12 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
     public TaskActivityService ActivityService { get; }
 
     public NotificationPublisher NotificationPublisher { get; }
+
+    public NotificationService NotificationService { get; }
+
+    public ReminderSettingsService ReminderSettings { get; }
+
+    public AppClock Clock { get; }
 
     public TaskService TaskService { get; }
 

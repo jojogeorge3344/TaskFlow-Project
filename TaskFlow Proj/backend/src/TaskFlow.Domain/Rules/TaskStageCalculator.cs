@@ -15,19 +15,25 @@ public enum TaskStage
 
 public static class TaskStageCalculator
 {
-    public static TaskStage Calculate(TaskStatus status, DateTime deadline, DateTime utcNow)
+    /// <summary>Compares calendar days in <paramref name="timeZone"/> (the application timezone, BR-17), so
+    /// "due today" agrees with the deadline reminders. Without a timezone, days are UTC days.</summary>
+    public static TaskStage Calculate(TaskStatus status, DateTime deadline, DateTime utcNow, TimeZoneInfo? timeZone = null)
     {
         if (status is TaskStatus.Completed or TaskStatus.Cancelled)
         {
             return TaskStage.Completed;
         }
 
-        if (deadline.Date < utcNow.Date)
+        var zone = timeZone ?? TimeZoneInfo.Utc;
+        var deadlineDay = ReminderCalculator.LocalDate(deadline, zone);
+        var today = ReminderCalculator.LocalDate(utcNow, zone);
+
+        if (deadlineDay < today)
         {
             return TaskStage.Overdue;
         }
 
-        if (deadline.Date == utcNow.Date)
+        if (deadlineDay == today)
         {
             return TaskStage.DueToday;
         }

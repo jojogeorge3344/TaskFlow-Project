@@ -113,4 +113,25 @@ public class DashboardServiceTests
         Assert.Equal(0, stats.InProgressTasks);
         Assert.Equal(0, stats.CompletedTasks);
     }
+
+    [Fact]
+    public async Task DueToday_UsesTheApplicationTimezoneDay()
+    {
+        // 19:00 UTC on 1 June is 00:30 IST on 2 June.
+        await using var harness = DashboardServiceHarness.Create(new DateTimeOffset(2026, 6, 1, 19, 0, 0, TimeSpan.Zero), "Asia/Kolkata");
+        var employee = harness.AddUser("ist-employee");
+
+        // 05:00 UTC on 2 June is 10:30 IST on 2 June: due today in IST, tomorrow in UTC.
+        harness.AddTask(employee.Id, new DateTime(2026, 6, 2, 5, 0, 0), TaskStatus.ToDo);
+
+        // 20:00 UTC on 2 June is 01:30 IST on 3 June: upcoming in IST.
+        harness.AddTask(employee.Id, new DateTime(2026, 6, 2, 20, 0, 0), TaskStatus.ToDo);
+
+        var manager = await harness.Service.GetManagerStatsAsync(CancellationToken.None);
+        var mine = await harness.Service.GetEmployeeStatsAsync(employee.Id, CancellationToken.None);
+
+        Assert.Equal(1, manager.TasksDueToday);
+        Assert.Equal(1, manager.UpcomingDeadlines);
+        Assert.Equal(1, mine.TasksDueToday);
+    }
 }

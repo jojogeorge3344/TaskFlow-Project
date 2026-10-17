@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
@@ -80,6 +81,96 @@ public class TaskManagementServiceTests
         var stored = await harness.Db.Tasks.SingleAsync(task => task.Id == details.Id);
         Assert.Equal(2, stored.FirstReminderDays);
         Assert.Equal(1, stored.SecondReminderDays);
+        Assert.Equal(ReminderFrequency.Daily, stored.OverdueReminderFrequency);
+    }
+
+    [Fact]
+    public async Task CreateAsync_OmittedReminders_UseConfiguredDefaults_AndExistingTasksKeepTheirs()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tm-mgr-defaults", Role.Manager);
+        var assignee = harness.AddUser("tm-assignee-defaults");
+        var request = new CreateTaskRequest(
+            "Configured defaults",
+            null,
+            assignee.Id,
+            TaskPriority.Medium,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow.AddDays(5),
+            4m);
+
+        var before = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+        await harness.ReminderSettings.UpdateAsync(
+            manager.Id,
+            new UpdateReminderSettingsRequest(true, true, 3, 1, ReminderFrequency.Weekly, false));
+        var after = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+
+        var created = await harness.Db.Tasks.AsNoTracking().SingleAsync(task => task.Id == after.Id);
+        Assert.Equal(3, created.FirstReminderDays);
+        Assert.Equal(1, created.SecondReminderDays);
+        Assert.Equal(ReminderFrequency.Weekly, created.OverdueReminderFrequency);
+
+        var existing = await harness.Db.Tasks.AsNoTracking().SingleAsync(task => task.Id == before.Id);
+        Assert.Equal(2, existing.FirstReminderDays);
+        Assert.Equal(ReminderFrequency.Daily, existing.OverdueReminderFrequency);
+    }
+
+    [Fact]
+    public async Task CreateAsync_PartialReminders_MixedWithDefaults_MustStayOrdered()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tm-mgr-mixed", Role.Manager);
+        var assignee = harness.AddUser("tm-assignee-mixed");
+        await harness.ReminderSettings.UpdateAsync(
+            manager.Id,
+            new UpdateReminderSettingsRequest(true, true, 3, 1, ReminderFrequency.Daily, false));
+
+        var request = new CreateTaskRequest(
+            "Mixed reminders",
+            null,
+            assignee.Id,
+            TaskPriority.Medium,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow.AddDays(5),
+            4m,
+            SecondReminderDays: 5);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+
+        Assert.Equal("The second reminder cannot come before the first reminder.", error.Message);
+        Assert.False(await harness.Db.Tasks.AnyAsync(task => task.Title == "Mixed reminders"));
+    }
+
+    [Fact]
+    public async Task CreateAsync_ExplicitReminders_OverrideConfiguredDefaults()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tm-mgr-explicit", Role.Manager);
+        var assignee = harness.AddUser("tm-assignee-explicit");
+        await harness.ReminderSettings.UpdateAsync(
+            manager.Id,
+            new UpdateReminderSettingsRequest(true, true, 3, 1, ReminderFrequency.Weekly, false));
+
+        var details = await harness.TaskService.CreateAsync(
+            new CreateTaskRequest(
+                "Explicit reminders",
+                null,
+                assignee.Id,
+                TaskPriority.Medium,
+                DateTime.UtcNow.AddDays(1),
+                DateTime.UtcNow.AddDays(5),
+                4m,
+                FirstReminderDays: 1,
+                SecondReminderDays: 0,
+                OverdueReminderFrequency: ReminderFrequency.Daily),
+            manager.Id,
+            nameof(Role.Manager),
+            CancellationToken.None);
+
+        var stored = await harness.Db.Tasks.AsNoTracking().SingleAsync(task => task.Id == details.Id);
+        Assert.Equal(1, stored.FirstReminderDays);
+        Assert.Equal(0, stored.SecondReminderDays);
         Assert.Equal(ReminderFrequency.Daily, stored.OverdueReminderFrequency);
     }
 
@@ -216,7 +307,7 @@ public class TaskManagementServiceTests
         var manager = harness.AddUser("tm-mgr5", Role.Manager);
         var assignee = harness.AddUser("tm-assignee5");
         var service = new TaskFlow.Infrastructure.Services.TaskService(
-            harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System);
+            harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System, harness.ReminderSettings, harness.Clock);
 
         var request = new CreateTaskRequest(
             "Never persisted", null, assignee.Id, TaskPriority.Low,

@@ -1,0 +1,142 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Notifications</h1>
+      <p>
+        @if (loading() && items().length === 0) {
+          Loading notifications…
+        } @else {
+          {{ rangeLabel() }}{{ hasFilters() ? ' match the current filters' : '' }}
+        }
+      </p>
+    </div>
+    <div class="tf-page-actions">
+      <button
+        type="button"
+        class="tf-btn tf-btn--ghost"
+        data-action="mark-all"
+        [disabled]="unreadCount() === 0"
+        (click)="markAllRead()"
+      >
+        <tf-icon name="check" />
+        Mark all as read
+      </button>
+    </div>
+  </header>
+
+  <div class="tf-card tf-toolbar notification-toolbar" role="search" aria-label="Filter notifications">
+    <div class="tf-field">
+      <label for="notification-filter-type">Type</label>
+      <select id="notification-filter-type" class="tf-select" (change)="setType($any($event.target).value)">
+        <option value="" [selected]="type() === ''">All types</option>
+        @for (option of types; track option) {
+          <option [value]="option" [selected]="option === type()">{{ typeLabels[option] }}</option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="notification-filter-read">Read state</label>
+      <select id="notification-filter-read" class="tf-select" (change)="setReadState($any($event.target).value)">
+        <option value="" [selected]="readState() === ''">All</option>
+        <option value="unread" [selected]="readState() === 'unread'">Unread</option>
+        <option value="read" [selected]="readState() === 'read'">Read</option>
+      </select>
+    </div>
+    <button type="button" class="tf-btn tf-btn--ghost" [disabled]="!hasFilters()" (click)="resetFilters()">
+      <tf-icon name="reset" />
+      Reset
+    </button>
+  </div>
+
+  <div class="tf-card">
+    @if (error()) {
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ error() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+      </div>
+    } @else if (!loading() && items().length === 0) {
+      <div class="tf-empty">
+        <tf-icon name="bell" />
+        @if (hasFilters()) {
+          <strong>No notifications match these filters</strong>
+          <p>Try a different type or clear the filters.</p>
+          <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">Clear filters</button>
+        } @else {
+          <strong>No notifications yet</strong>
+          <p>Tasks assigned or reassigned to you will appear here.</p>
+        }
+      </div>
+    } @else {
+      <ul class="notifications">
+        @if (loading()) {
+          @for (row of [1, 2, 3]; track row) {
+            <li class="notifications__item" aria-hidden="true">
+              <span class="tf-skeleton notifications__skeleton"></span>
+            </li>
+          }
+        } @else {
+          @for (item of items(); track item.id) {
+            <li
+              class="notifications__item"
+              [class.notifications__item--unread]="!item.isRead"
+              [attr.data-type]="item.type"
+            >
+              <span class="notifications__marker" aria-hidden="true"></span>
+              <div class="notifications__body">
+                <div class="notifications__head">
+                  <span class="tf-chip tf-chip--muted">{{ typeLabels[item.type] }}</span>
+                  <span class="notifications__time">{{ date(item.createdAt) }}</span>
+                </div>
+                <p class="notifications__message">{{ item.message }}</p>
+                <div class="notifications__meta">
+                  @if (item.taskId !== null) {
+                    <a class="notifications__task" [routerLink]="['/tasks', item.taskId]" data-task-link>
+                      <tf-icon name="tasks" />
+                      {{ item.taskCode }}
+                    </a>
+                  }
+                  @if (!item.isRead) {
+                    <button
+                      type="button"
+                      class="tf-btn tf-btn--ghost notifications__read"
+                      data-action="mark-read"
+                      (click)="markRead(item)"
+                    >
+                      Mark as read
+                    </button>
+                  }
+                </div>
+              </div>
+            </li>
+          }
+        }
+      </ul>
+
+      @if (pageCount() > 1) {
+        <nav class="pager" aria-label="Notification pages">
+          <button
+            type="button"
+            class="tf-btn tf-btn--ghost"
+            data-action="prev"
+            [disabled]="page() === 1 || loading()"
+            (click)="goToPage(page() - 1)"
+          >
+            Previous
+          </button>
+          <span class="pager__label">Page {{ page() }} of {{ pageCount() }}</span>
+          <button
+            type="button"
+            class="tf-btn tf-btn--ghost"
+            data-action="next"
+            [disabled]="page() === pageCount() || loading()"
+            (click)="goToPage(page() + 1)"
+          >
+            Next
+          </button>
+        </nav>
+      }
+    }
+  </div>
+</section>

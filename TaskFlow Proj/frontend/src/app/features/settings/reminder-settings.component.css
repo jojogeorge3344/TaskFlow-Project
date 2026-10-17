@@ -1,0 +1,76 @@
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  max-width: 48rem;
+  padding: var(--tf-space-5);
+}
+
+.settings-form__skeleton {
+  display: block;
+  height: 2.5rem;
+}
+
+.settings-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+  margin: 0;
+  padding: var(--tf-space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--tf-border);
+}
+
+.settings-form__group:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.settings-form__group legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.settings-form__group .tf-form-row {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tf-space-3);
+  cursor: pointer;
+}
+
+.settings-toggle input {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  accent-color: var(--tf-primary);
+}
+
+.settings-toggle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.settings-form__timezone {
+  max-width: 20rem;
+}
+
+.settings-form__timezone .tf-input[readonly] {
+  background: var(--tf-surface-alt);
+  color: var(--tf-muted);
+}
+
+.settings-form__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-space-1);
+  margin-right: auto;
+  color: var(--tf-success);
+  font-size: 0.875rem;
+  font-weight: 600;
+}

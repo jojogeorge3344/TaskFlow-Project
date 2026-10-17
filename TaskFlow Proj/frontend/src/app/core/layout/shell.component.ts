@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { EMPTY, catchError, exhaustMap, filter, fromEvent, interval, merge } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../services/notification.service';
 import { ToastHostComponent } from '../../shared/ui/toast-host.component';
 import { initials } from '../../shared/ui/initials';
 import { IconComponent } from './icon.component';
@@ -22,11 +23,15 @@ export const SESSION_CHECK_INTERVAL_MS = 60_000;
 export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
   private readonly toggleButton = viewChild.required<ElementRef<HTMLButtonElement>>('toggleButton');
 
   readonly layout = inject(LayoutService);
   readonly user = this.authService.currentUser;
   readonly userInitials = computed(() => initials(this.user()?.fullName));
+
+  /** Unread count the header bell shows as a dot (design D6/D7). */
+  readonly unreadCount = this.notificationService.unreadCount;
 
   readonly navItems = computed<NavItem[]>(() => {
     const role = this.user()?.role;
@@ -54,6 +59,9 @@ export class ShellComponent {
   constructor() {
     const destroyRef = inject(DestroyRef);
 
+    // Show the badge as soon as the shell mounts, then keep it fresh.
+    this.notificationService.refreshUnreadCount();
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -62,6 +70,7 @@ export class ShellComponent {
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
         this.layout.closeMobile();
+        this.notificationService.refreshUnreadCount();
       });
 
     // Re-check the session periodically and whenever the tab becomes visible, so a user whose
@@ -75,6 +84,15 @@ export class ShellComponent {
         takeUntilDestroyed(destroyRef)
       )
       .subscribe();
+
+    // Refresh the unread badge on the same cadence, so a notification received while the tab is
+    // open is reflected without a fast new timer.
+    merge(
+      interval(SESSION_CHECK_INTERVAL_MS),
+      fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible'))
+    )
+      .pipe(takeUntilDestroyed(destroyRef))
+      .subscribe(() => this.notificationService.refreshUnreadCount());
   }
 
   toggleMenu(): void {

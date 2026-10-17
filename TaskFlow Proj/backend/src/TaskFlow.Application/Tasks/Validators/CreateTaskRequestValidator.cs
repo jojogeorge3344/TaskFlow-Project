@@ -1,4 +1,5 @@
 using FluentValidation;
+using TaskFlow.Domain.Rules;
 
 namespace TaskFlow.Application.Tasks.Validators;
 
@@ -37,11 +38,17 @@ public class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
             .GreaterThan(0)
             .When(task => task.AdditionalRecipientUserIds is not null);
 
+        // Reminder fields are optional; null takes the configured default and is not validated here.
         RuleFor(task => task.FirstReminderDays)
             .InclusiveBetween(0, 30);
 
         RuleFor(task => task.SecondReminderDays)
             .InclusiveBetween(0, 30);
+
+        RuleFor(task => task.SecondReminderDays)
+            .Must((task, second) => ReminderIntervals.AreOrdered(task.FirstReminderDays!.Value, second!.Value))
+            .WithMessage(ReminderIntervals.OrderMessage)
+            .When(task => task.FirstReminderDays is not null && task.SecondReminderDays is not null);
 
         RuleFor(task => task.OverdueReminderFrequency)
             .IsInEnum();

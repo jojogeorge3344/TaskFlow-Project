@@ -6,8 +6,8 @@ using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Infrastructure.Services;
 
-/// <summary>Writes in-app notifications. The notification center (Screen 12, later change)
-/// reads and marks these read.</summary>
+/// <summary>Writes in-app notifications. The notification center (Screen 12) reads and marks these
+/// read through INotificationService.</summary>
 public class NotificationPublisher : INotificationPublisher
 {
     private readonly AppDbContext _dbContext;
