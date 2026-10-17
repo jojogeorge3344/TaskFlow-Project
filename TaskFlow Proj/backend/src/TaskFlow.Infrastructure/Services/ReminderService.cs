@@ -17,11 +17,9 @@ namespace TaskFlow.Infrastructure.Services;
 /// notification is written only when that insert actually added a row.</summary>
 public class ReminderService : IReminderService
 {
-    // Widest pre-deadline interval (30 days) plus timezone slack.
+    // Widest pre-deadline interval (30 days) plus timezone slack. There is no lower bound: overdue tasks
+    // keep receiving reminders for as long as they stay open.
     private static readonly TimeSpan UpcomingWindow = TimeSpan.FromDays(32);
-
-    // How far back overdue tasks keep receiving reminders.
-    private static readonly TimeSpan OverdueWindow = TimeSpan.FromDays(400);
 
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
@@ -50,7 +48,6 @@ public class ReminderService : IReminderService
 
         var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
         var nowUtc = _clock.UtcNow;
-        var from = nowUtc - OverdueWindow;
         var to = nowUtc + UpcomingWindow;
 
         var candidates = await _dbContext.Tasks
@@ -58,7 +55,6 @@ public class ReminderService : IReminderService
             .Where(task => !task.IsDeleted
                 && task.Status != TaskStatus.Completed
                 && task.Status != TaskStatus.Cancelled
-                && task.Deadline >= from
                 && task.Deadline <= to)
             .Select(task => new
             {
@@ -95,6 +91,8 @@ public class ReminderService : IReminderService
             dueTasks.ToDictionary(task => task.Id, task => task.CreatedByUserId),
             cancellationToken);
 
+        var delivered = await LoadDeliveredAsync(dueTasks.Select(task => task.Id).ToList(), dueTasks.SelectMany(task => task.Reminders), cancellationToken);
+
         var written = 0;
         foreach (var task in dueTasks)
         {
@@ -103,7 +101,13 @@ public class ReminderService : IReminderService
                 var message = BuildMessage(task.Title, task.Snapshot.DeadlineUtc, reminder, timeZone);
                 foreach (var recipientId in recipientsByTask[task.Id])
                 {
-                    if (await TryDeliverAsync(task.Id, recipientId, reminder, message, nowUtc, cancellationToken))
+                    // Already delivered earlier today: skip without opening a write transaction.
+                    if (delivered.Contains((task.Id, recipientId, reminder.Type, reminder.ScheduledForUtc)))
+                    {
+                        continue;
+                    }
+
+                    if (await TryDeliverAsync(task.Id, task.Snapshot.DeadlineUtc, recipientId, reminder, message, nowUtc, cancellationToken))
                     {
                         written++;
                     }
@@ -117,6 +121,24 @@ public class ReminderService : IReminderService
         }
 
         return written;
+    }
+
+    /// <summary>Reminders already in the history for today's slots, so a pass can skip them without taking the
+    /// SQLite write lock. The unique index still guards against anything this read misses.</summary>
+    private async Task<HashSet<(int TaskId, int RecipientId, ReminderType Type, DateTime ScheduledFor)>> LoadDeliveredAsync(
+        IReadOnlyCollection<int> taskIds,
+        IEnumerable<DueReminder> reminders,
+        CancellationToken cancellationToken)
+    {
+        var earliestSlot = reminders.Min(reminder => reminder.ScheduledForUtc);
+        var rows = await _dbContext.ReminderHistory
+            .AsNoTracking()
+            .Where(row => taskIds.Contains(row.TaskId) && row.ScheduledFor >= earliestSlot)
+            .Select(row => new { row.TaskId, row.RecipientUserId, row.ReminderType, row.ScheduledFor })
+            .ToListAsync(cancellationToken);
+
+        // DateTime equality ignores Kind, so slots read back from the database match the computed UTC slots.
+        return rows.Select(row => (row.TaskId, row.RecipientUserId, row.ReminderType, row.ScheduledFor)).ToHashSet();
     }
 
     /// <summary>Reminder recipients per task: its notification recipients (the assignee is always one) plus
@@ -157,9 +179,11 @@ public class ReminderService : IReminderService
     }
 
     /// <summary>Records the reminder and writes its notification in one transaction. Returns false when the
-    /// same reminder was already delivered, in which case nothing is written.</summary>
+    /// same reminder was already delivered, or when the task was completed, cancelled, deleted or rescheduled
+    /// since this pass read it; in either case nothing is written.</summary>
     private async Task<bool> TryDeliverAsync(
         int taskId,
+        DateTime deadlineUtc,
         int recipientId,
         DueReminder reminder,
         string message,
@@ -170,10 +194,19 @@ public class ReminderService : IReminderService
 
         var reminderType = reminder.Type.ToString();
         var sent = ReminderStatus.Sent.ToString();
+        // Task.Status is stored as its integer value (no string conversion on Tasks).
+        var completed = (int)TaskStatus.Completed;
+        var cancelled = (int)TaskStatus.Cancelled;
         var inserted = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
             INSERT INTO "ReminderHistory" ("TaskId", "RecipientUserId", "ReminderType", "ScheduledFor", "Status", "ProcessedAt", "DeliveryAttempts")
-            VALUES ({taskId}, {recipientId}, {reminderType}, {reminder.ScheduledForUtc}, {sent}, {nowUtc}, 0)
+            SELECT {taskId}, {recipientId}, {reminderType}, {reminder.ScheduledForUtc}, {sent}, {nowUtc}, 0
+            WHERE EXISTS (
+                SELECT 1 FROM "Tasks"
+                WHERE "Id" = {taskId}
+                  AND "IsDeleted" = 0
+                  AND "Status" NOT IN ({completed}, {cancelled})
+                  AND "Deadline" = {deadlineUtc})
             ON CONFLICT ("TaskId", "RecipientUserId", "ReminderType", "ScheduledFor") DO NOTHING
             """,
             cancellationToken);

@@ -221,6 +221,13 @@ public class TaskService : ITaskService
                 ? await _reminderSettings.GetAsync(cancellationToken)
                 : null;
 
+        var firstReminderDays = request.FirstReminderDays ?? reminderDefaults!.DefaultFirstDays;
+        var secondReminderDays = request.SecondReminderDays ?? reminderDefaults!.DefaultSecondDays;
+        if (!ReminderIntervals.AreOrdered(firstReminderDays, secondReminderDays))
+        {
+            throw new InvalidOperationException(ReminderIntervals.OrderMessage);
+        }
+
         var now = Now;
         var task = new TaskEntity
         {
@@ -236,8 +243,8 @@ public class TaskService : ITaskService
             Deadline = request.Deadline,
             EstimatedHours = request.EstimatedHours,
             Status = TaskStatus.ToDo,
-            FirstReminderDays = request.FirstReminderDays ?? reminderDefaults!.DefaultFirstDays,
-            SecondReminderDays = request.SecondReminderDays ?? reminderDefaults!.DefaultSecondDays,
+            FirstReminderDays = firstReminderDays,
+            SecondReminderDays = secondReminderDays,
             OverdueReminderFrequency = request.OverdueReminderFrequency ?? reminderDefaults!.DefaultOverdueFrequency,
             CreatedAt = now,
             UpdatedAt = now

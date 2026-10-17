@@ -116,6 +116,33 @@ public class TaskManagementServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_PartialReminders_MixedWithDefaults_MustStayOrdered()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tm-mgr-mixed", Role.Manager);
+        var assignee = harness.AddUser("tm-assignee-mixed");
+        await harness.ReminderSettings.UpdateAsync(
+            manager.Id,
+            new UpdateReminderSettingsRequest(true, true, 3, 1, ReminderFrequency.Daily, false));
+
+        var request = new CreateTaskRequest(
+            "Mixed reminders",
+            null,
+            assignee.Id,
+            TaskPriority.Medium,
+            DateTime.UtcNow.AddDays(1),
+            DateTime.UtcNow.AddDays(5),
+            4m,
+            SecondReminderDays: 5);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+
+        Assert.Equal("The second reminder cannot come before the first reminder.", error.Message);
+        Assert.False(await harness.Db.Tasks.AnyAsync(task => task.Title == "Mixed reminders"));
+    }
+
+    [Fact]
     public async Task CreateAsync_ExplicitReminders_OverrideConfiguredDefaults()
     {
         await using var harness = TaskTrackingServiceHarness.Create();

@@ -60,13 +60,14 @@
               formControlName="defaultFirstDays"
               [class.is-invalid]="fieldError('defaultFirstDays')"
               [attr.aria-invalid]="!!fieldError('defaultFirstDays')"
+              [attr.aria-describedby]="fieldError('defaultFirstDays') ? 'settings-first-reminder-error' : null"
             >
               @for (option of firstReminderOptions(); track option.days) {
                 <option [ngValue]="option.days">{{ option.label }}</option>
               }
             </select>
             @if (fieldError('defaultFirstDays'); as message) {
-              <span class="tf-field__error" data-error="defaultFirstDays">{{ message }}</span>
+              <span id="settings-first-reminder-error" class="tf-field__error" data-error="defaultFirstDays">{{ message }}</span>
             }
           </div>
           <div class="tf-field">
@@ -77,24 +78,32 @@
               formControlName="defaultSecondDays"
               [class.is-invalid]="fieldError('defaultSecondDays')"
               [attr.aria-invalid]="!!fieldError('defaultSecondDays')"
+              [attr.aria-describedby]="fieldError('defaultSecondDays') ? 'settings-second-reminder-error' : null"
             >
               @for (option of secondReminderOptions(); track option.days) {
                 <option [ngValue]="option.days">{{ option.label }}</option>
               }
             </select>
             @if (fieldError('defaultSecondDays'); as message) {
-              <span class="tf-field__error" data-error="defaultSecondDays">{{ message }}</span>
+              <span id="settings-second-reminder-error" class="tf-field__error" data-error="defaultSecondDays">{{ message }}</span>
             }
           </div>
           <div class="tf-field">
             <label for="settings-overdue-frequency">After the deadline</label>
-            <select id="settings-overdue-frequency" class="tf-select" formControlName="defaultOverdueFrequency">
+            <select
+              id="settings-overdue-frequency"
+              class="tf-select"
+              formControlName="defaultOverdueFrequency"
+              [class.is-invalid]="fieldError('defaultOverdueFrequency')"
+              [attr.aria-invalid]="!!fieldError('defaultOverdueFrequency')"
+              [attr.aria-describedby]="fieldError('defaultOverdueFrequency') ? 'settings-overdue-frequency-error' : null"
+            >
               @for (option of overdueFrequencyOptions; track option.value) {
                 <option [ngValue]="option.value">{{ option.label }}</option>
               }
             </select>
             @if (fieldError('defaultOverdueFrequency'); as message) {
-              <span class="tf-field__error" data-error="defaultOverdueFrequency">{{ message }}</span>
+              <span id="settings-overdue-frequency-error" class="tf-field__error" data-error="defaultOverdueFrequency">{{ message }}</span>
             }
           </div>
         </div>

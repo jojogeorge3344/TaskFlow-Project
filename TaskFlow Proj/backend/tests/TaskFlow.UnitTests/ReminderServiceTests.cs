@@ -186,4 +186,19 @@ public class ReminderServiceTests
 
         Assert.Equal(0, written);
     }
+
+    [Fact]
+    public async Task Long_overdue_tasks_keep_receiving_overdue_reminders()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var creator = harness.AddUser("rs-old-creator", Role.Manager);
+        var assignee = harness.AddUser("rs-old-assignee");
+        var task = harness.AddTask(assignee.Id, creator.Id, deadline: Deadline.AddDays(-500));
+        harness.AddRecipient(task.Id, assignee.Id);
+
+        await Service(harness, new FixedTimeProvider(SecondReminderDay)).GenerateDueAsync();
+
+        var notification = await harness.Db.Notifications.SingleAsync(n => n.UserId == assignee.Id);
+        Assert.Equal(NotificationType.Overdue, notification.Type);
+    }
 }

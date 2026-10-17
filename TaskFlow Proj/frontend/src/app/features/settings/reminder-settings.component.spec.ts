@@ -108,6 +108,32 @@ describe('ReminderSettingsComponent', () => {
     expect(fixture.componentInstance.form.controls.enabled.value).toBeFalse();
   });
 
+  it('hides the Saved confirmation again once a field is edited', () => {
+    saveSpy.and.callFake((body) => of({ ...body, timezone: 'Asia/Kolkata' }));
+    const fixture = create();
+
+    submit(fixture);
+    expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
+
+    fixture.componentInstance.form.controls.emailEnabled.setValue(false);
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('[data-status="saved"]')).toBeNull();
+  });
+
+  it('links a field error to its select for screen readers', () => {
+    const fixture = create();
+
+    fixture.componentInstance.form.patchValue({ defaultFirstDays: 1, defaultSecondDays: 1 });
+    fixture.detectChanges();
+
+    const second = select(fixture, 'settings-second-reminder');
+    expect(second.getAttribute('aria-invalid')).toBe('true');
+    expect(second.getAttribute('aria-describedby')).toBe('settings-second-reminder-error');
+    expect(el(fixture).querySelector('#settings-second-reminder-error')?.textContent).toContain('The first reminder must come earlier');
+    expect(select(fixture, 'settings-first-reminder').getAttribute('aria-describedby')).toBeNull();
+  });
+
   it('blocks a second interval that is not shorter than the first', () => {
     const fixture = create();
 

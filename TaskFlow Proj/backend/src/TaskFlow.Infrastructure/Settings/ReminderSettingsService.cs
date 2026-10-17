@@ -57,6 +57,17 @@ public class ReminderSettingsService : IReminderSettingsService
         UpdateReminderSettingsRequest request,
         CancellationToken cancellationToken = default)
     {
+        // The validator guarantees every field is present; fail loudly rather than store a default.
+        if (request.Enabled is not { } enabled
+            || request.DeadlineDayEnabled is not { } deadlineDayEnabled
+            || request.DefaultFirstDays is not { } firstDays
+            || request.DefaultSecondDays is not { } secondDays
+            || request.DefaultOverdueFrequency is not { } overdueFrequency
+            || request.EmailEnabled is not { } emailEnabled)
+        {
+            throw new ArgumentException("Every reminder setting must be provided.", nameof(request));
+        }
+
         var existing = await _dbContext.ApplicationSettings
             .Where(setting => ReminderKeys.Contains(setting.Key))
             .ToDictionaryAsync(setting => setting.Key, cancellationToken);
@@ -76,12 +87,12 @@ public class ReminderSettingsService : IReminderSettingsService
             setting.UpdatedAt = now;
         }
 
-        Set(SettingKeys.ReminderEnabled, SettingsInitializer.Format(request.Enabled), SettingKeys.ReminderCategory);
-        Set(SettingKeys.ReminderDeadlineDayEnabled, SettingsInitializer.Format(request.DeadlineDayEnabled), SettingKeys.ReminderCategory);
-        Set(SettingKeys.ReminderDefaultFirstDays, SettingsInitializer.Format(request.DefaultFirstDays), SettingKeys.ReminderCategory);
-        Set(SettingKeys.ReminderDefaultSecondDays, SettingsInitializer.Format(request.DefaultSecondDays), SettingKeys.ReminderCategory);
-        Set(SettingKeys.ReminderDefaultOverdueFrequency, request.DefaultOverdueFrequency.ToString(), SettingKeys.ReminderCategory);
-        Set(SettingKeys.NotificationEmailEnabled, SettingsInitializer.Format(request.EmailEnabled), SettingKeys.NotificationCategory);
+        Set(SettingKeys.ReminderEnabled, SettingsInitializer.Format(enabled), SettingKeys.ReminderCategory);
+        Set(SettingKeys.ReminderDeadlineDayEnabled, SettingsInitializer.Format(deadlineDayEnabled), SettingKeys.ReminderCategory);
+        Set(SettingKeys.ReminderDefaultFirstDays, SettingsInitializer.Format(firstDays), SettingKeys.ReminderCategory);
+        Set(SettingKeys.ReminderDefaultSecondDays, SettingsInitializer.Format(secondDays), SettingKeys.ReminderCategory);
+        Set(SettingKeys.ReminderDefaultOverdueFrequency, overdueFrequency.ToString(), SettingKeys.ReminderCategory);
+        Set(SettingKeys.NotificationEmailEnabled, SettingsInitializer.Format(emailEnabled), SettingKeys.NotificationCategory);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

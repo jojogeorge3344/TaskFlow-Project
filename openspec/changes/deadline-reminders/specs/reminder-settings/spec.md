@@ -78,6 +78,11 @@ MUST return field-level errors and leave the stored settings unchanged.
 - **WHEN** a save request has a first interval of 1 day and a second interval of 2 days
 - **THEN** the save is rejected with an error explaining that the first reminder must come earlier
 
+#### Scenario: Missing field is rejected
+
+- **WHEN** a save request omits any setting, such as whether reminders are enabled
+- **THEN** the save is rejected with an error for each missing field and nothing changes
+
 ### Requirement: Default intervals apply to new tasks
 
 When a task is created without reminder intervals, the system SHALL use the default intervals
@@ -88,6 +93,11 @@ intervals already stored on existing tasks.
 
 - **WHEN** the defaults are 3 days, 1 day and weekly, and a task is created without reminder intervals
 - **THEN** the task is stored with intervals of 3 and 1 days and a weekly overdue frequency
+
+#### Scenario: Mixed explicit and default intervals stay ordered
+
+- **WHEN** the defaults are 3 and 1 days and a task is created with only a second interval of 5 days
+- **THEN** the task is rejected because its second reminder would come before its first
 
 #### Scenario: Existing tasks keep their intervals
 

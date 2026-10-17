@@ -162,6 +162,11 @@
 
     <fieldset class="task-form__group">
       <legend>Reminders</legend>
+      @if (reminderDefaultsUnavailable()) {
+        <p class="tf-field__hint" data-hint="reminder-defaults">
+          The configured reminder defaults could not be loaded. Fields you leave unchanged will use them when the task is saved.
+        </p>
+      }
       <div class="tf-form-row">
         <div class="tf-field">
           <label for="task-first-reminder">First reminder</label>

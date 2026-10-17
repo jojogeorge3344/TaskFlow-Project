@@ -58,13 +58,21 @@ public static class ReminderCalculator
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(AsUtc(utc), timeZone));
 
     /// <summary>The UTC instant at which <paramref name="day"/> starts in the given timezone. When a DST
-    /// gap removes local midnight, the earliest valid local time that day is used.</summary>
+    /// gap removes local midnight, the earliest valid local time that day is used; when a DST fall-back makes
+    /// local midnight occur twice, the earlier of the two instants is used.</summary>
     public static DateTime LocalMidnightUtc(DateOnly day, TimeZoneInfo timeZone)
     {
         var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
         while (timeZone.IsInvalidTime(local))
         {
             local = local.AddMinutes(1);
+        }
+
+        if (timeZone.IsAmbiguousTime(local))
+        {
+            // The larger offset is the daylight interpretation, which happens first.
+            var offset = timeZone.GetAmbiguousTimeOffsets(local).Max();
+            return DateTime.SpecifyKind(local - offset, DateTimeKind.Utc);
         }
 
         return TimeZoneInfo.ConvertTimeToUtc(local, timeZone);

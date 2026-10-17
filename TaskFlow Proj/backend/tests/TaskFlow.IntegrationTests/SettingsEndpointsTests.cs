@@ -120,6 +120,31 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task Put_MissingFields_Returns400_AndDoesNotSwitchRemindersOff()
+    {
+        var client = _factory.CreateClient();
+        var token = await LoginAsync(client, "set-partial-manager", Role.Manager);
+
+        var response = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
+        {
+            defaultFirstDays = 3,
+            defaultSecondDays = 1
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using (var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync()))
+        {
+            var errors = document.RootElement.GetProperty("errors");
+            Assert.True(errors.TryGetProperty("Enabled", out _));
+            Assert.True(errors.TryGetProperty("DefaultOverdueFrequency", out _));
+        }
+
+        var reload = await SendAsync(client, HttpMethod.Get, Url, token);
+        using var current = await JsonDocument.ParseAsync(await reload.Content.ReadAsStreamAsync());
+        Assert.True(current.RootElement.GetProperty("enabled").GetBoolean());
+    }
+
+    [Fact]
     public async Task Employee_IsForbidden()
     {
         var client = _factory.CreateClient();

@@ -1,4 +1,6 @@
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
@@ -153,9 +155,52 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
         Assert.All(history, row => Assert.Equal(new DateTime(2026, 10, 18), row.ScheduledFor));
     }
 
-    private async Task RunPassAsync()
+    [Fact]
+    public async Task Later_passes_the_same_day_skip_delivered_reminders_without_writing()
+    {
+        await RunPassAsync();
+        var interceptor = new HistoryInsertInterceptor();
+
+        await RunPassAsync(interceptor);
+        await RunPassAsync(interceptor);
+
+        Assert.Equal(0, interceptor.HistoryInserts);
+        Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+    }
+
+    [Fact]
+    public async Task Task_completed_during_a_pass_gets_no_reminder()
+    {
+        var interceptor = new HistoryInsertInterceptor();
+        var edit = new ConcurrentEditInterceptor(() => ExecuteAsync($"UPDATE \"Tasks\" SET \"Status\" = {(int)TaskStatus.Completed}"));
+
+        await RunPassAsync(interceptor, edit);
+
+        Assert.True(interceptor.HistoryInserts > 0);
+        Assert.Equal(0, await CountAsync(db => db.ReminderHistory));
+        Assert.Equal(0, await CountAsync(db => db.Notifications));
+    }
+
+    [Fact]
+    public async Task Task_rescheduled_during_a_pass_gets_no_reminder_for_the_old_deadline()
+    {
+        var edit = new ConcurrentEditInterceptor(() => ExecuteAsync("UPDATE \"Tasks\" SET \"Deadline\" = '2026-11-30 17:00:00'"));
+
+        await RunPassAsync(new HistoryInsertInterceptor(), edit);
+
+        Assert.Equal(0, await CountAsync(db => db.Notifications));
+    }
+
+    /// <summary>Runs SQL on its own connection, like another request committing a change.</summary>
+    private async Task ExecuteAsync(string sql)
     {
         await using var db = NewContext();
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private async Task RunPassAsync(params IInterceptor[] interceptors)
+    {
+        await using var db = NewContext(interceptors);
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
         var service = new ReminderService(
             db,
@@ -172,10 +217,59 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
         return await query(db).CountAsync();
     }
 
-    private AppDbContext NewContext() =>
-        new(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_databasePath};Default Timeout=30")
-            .Options);
+    private AppDbContext NewContext(params IInterceptor[] interceptors)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite($"Data Source={_databasePath};Default Timeout=30");
+        if (interceptors.Length > 0)
+        {
+            options.AddInterceptors(interceptors);
+        }
+
+        return new AppDbContext(options.Options);
+    }
+
+    /// <summary>Runs an edit on another connection just before the pass opens its first delivery transaction,
+    /// i.e. after the pass has already read its candidate tasks.</summary>
+    private sealed class ConcurrentEditInterceptor(Func<Task> edit) : DbTransactionInterceptor
+    {
+        private Func<Task>? _edit = edit;
+
+        public override async ValueTask<InterceptionResult<DbTransaction>> TransactionStartingAsync(
+            DbConnection connection,
+            TransactionStartingEventData eventData,
+            InterceptionResult<DbTransaction> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (_edit is { } pending)
+            {
+                _edit = null;
+                await pending();
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>Counts reminder-history insert attempts.</summary>
+    private sealed class HistoryInsertInterceptor : DbCommandInterceptor
+    {
+        public int HistoryInserts { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("INSERT INTO \"ReminderHistory\"", StringComparison.Ordinal))
+            {
+                HistoryInserts++;
+            }
+
+            return await base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
 
     private static User AddUser(AppDbContext db, string username, Role role)
     {

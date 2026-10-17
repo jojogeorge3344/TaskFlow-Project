@@ -128,7 +128,7 @@ describe('TaskCreateComponent', () => {
     expect(first.selectedOptions[0].textContent?.trim()).toBe('7 days before the deadline');
   });
 
-  it('keeps the built-in reminder defaults when the settings cannot be loaded', () => {
+  it('stays usable and says so when the reminder defaults cannot be loaded', () => {
     getSettingsSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
     const fixture = create();
 
@@ -137,6 +137,39 @@ describe('TaskCreateComponent', () => {
     expect(value.secondReminderDays).toBe(1);
     expect(value.overdueReminderFrequency).toBe('Daily');
     expect(el(fixture).querySelector('.tf-alert')).toBeNull();
+    expect(el(fixture).querySelector('[data-hint="reminder-defaults"]')).not.toBeNull();
+  });
+
+  it('sends untouched reminder fields as null when the defaults were not loaded, so the server applies them', () => {
+    getSettingsSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    createSpy.and.returnValue(of({ id: 7, taskCode: 'TSK-000007', assignedToName: 'Joe Thomas' } as TaskDetails));
+    const fixture = create();
+    fillValid(fixture);
+
+    const overdue = fixture.componentInstance.form.controls.overdueReminderFrequency;
+    overdue.setValue('Weekly');
+    overdue.markAsDirty();
+    submit(fixture);
+
+    const body = createSpy.calls.mostRecent().args[0];
+    expect(body.firstReminderDays).toBeNull();
+    expect(body.secondReminderDays).toBeNull();
+    expect(body.overdueReminderFrequency).toBe('Weekly');
+  });
+
+  it('sends the pre-filled reminder values once the defaults have loaded', () => {
+    getSettingsSpy.and.returnValue(of(settings({ defaultFirstDays: 3 })));
+    createSpy.and.returnValue(of({ id: 8, taskCode: 'TSK-000008', assignedToName: 'Joe Thomas' } as TaskDetails));
+    const fixture = create();
+    fillValid(fixture);
+
+    submit(fixture);
+
+    const body = createSpy.calls.mostRecent().args[0];
+    expect(body.firstReminderDays).toBe(3);
+    expect(body.secondReminderDays).toBe(1);
+    expect(body.overdueReminderFrequency).toBe('Daily');
+    expect(el(fixture).querySelector('[data-hint="reminder-defaults"]')).toBeNull();
   });
 
   it('defaults the priority, dates and reminder options', () => {

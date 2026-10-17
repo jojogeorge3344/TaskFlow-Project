@@ -12,11 +12,13 @@ public record ReminderSettingsDto(
     bool EmailEnabled,
     string Timezone);
 
-/// <summary>A save of the reminder settings. There is deliberately no timezone field.</summary>
+/// <summary>A save of the reminder settings. There is deliberately no timezone field. Every field is
+/// nullable only so that an omitted field is reported as a validation error instead of silently
+/// binding to false/0; the validator requires all of them.</summary>
 public record UpdateReminderSettingsRequest(
-    bool Enabled,
-    bool DeadlineDayEnabled,
-    int DefaultFirstDays,
-    int DefaultSecondDays,
-    ReminderFrequency DefaultOverdueFrequency,
-    bool EmailEnabled);
+    bool? Enabled,
+    bool? DeadlineDayEnabled,
+    int? DefaultFirstDays,
+    int? DefaultSecondDays,
+    ReminderFrequency? DefaultOverdueFrequency,
+    bool? EmailEnabled);

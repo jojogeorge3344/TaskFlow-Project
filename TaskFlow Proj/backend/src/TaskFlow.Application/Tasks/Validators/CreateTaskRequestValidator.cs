@@ -1,4 +1,5 @@
 using FluentValidation;
+using TaskFlow.Domain.Rules;
 
 namespace TaskFlow.Application.Tasks.Validators;
 
@@ -43,6 +44,11 @@ public class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
 
         RuleFor(task => task.SecondReminderDays)
             .InclusiveBetween(0, 30);
+
+        RuleFor(task => task.SecondReminderDays)
+            .Must((task, second) => ReminderIntervals.AreOrdered(task.FirstReminderDays!.Value, second!.Value))
+            .WithMessage(ReminderIntervals.OrderMessage)
+            .When(task => task.FirstReminderDays is not null && task.SecondReminderDays is not null);
 
         RuleFor(task => task.OverdueReminderFrequency)
             .IsInEnum();

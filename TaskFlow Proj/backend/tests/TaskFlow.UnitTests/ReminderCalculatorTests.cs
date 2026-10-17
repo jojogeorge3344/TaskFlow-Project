@@ -205,4 +205,23 @@ public class ReminderCalculatorTests
 
         Assert.Equal(ReminderType.SecondReminder, Single(Task(deadline: unspecified), On(14)));
     }
+
+    [Fact]
+    public void Ambiguous_local_midnight_uses_the_earlier_instant()
+    {
+        // A zone (UTC+0, +1 in summer) whose summer time ends at 01:00 local on 1 November, so 00:00-01:00 that
+        // day happens twice.
+        var rule = TimeZoneInfo.AdjustmentRule.CreateAdjustmentRule(
+            new DateTime(2026, 1, 1),
+            new DateTime(2026, 12, 31),
+            TimeSpan.FromHours(1),
+            TimeZoneInfo.TransitionTime.CreateFixedDateRule(new DateTime(1, 1, 1, 2, 0, 0), 3, 29),
+            TimeZoneInfo.TransitionTime.CreateFixedDateRule(new DateTime(1, 1, 1, 1, 0, 0), 11, 1));
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test/MidnightFallBack", TimeSpan.Zero, "Test", "Test", "Test DST", [rule]);
+
+        var start = ReminderCalculator.LocalMidnightUtc(new DateOnly(2026, 11, 1), zone);
+
+        Assert.True(zone.IsAmbiguousTime(new DateTime(2026, 11, 1, 0, 0, 0)));
+        Assert.Equal(new DateTime(2026, 10, 31, 23, 0, 0, DateTimeKind.Utc), start);
+    }
 }

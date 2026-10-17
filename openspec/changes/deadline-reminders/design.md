@@ -62,7 +62,8 @@ works: a day that has ended can never be "today" again. The rules are:
 - Overdue: today > `deadlineDay` and `(today − deadlineDay) % step == 0`, where the step is 1 day
   for Daily and 7 days for Weekly.
 - `scheduledForUtc` = local midnight of `day` converted to UTC (`TimeZoneInfo.ConvertTimeToUtc`,
-  handling invalid or ambiguous DST times by taking the earliest valid instant). This is the
+  handling a DST gap by taking the earliest valid local time, and an ambiguous midnight by taking the
+  earlier, daylight-time instant). This is the
   deterministic slot used in the dedup key.
 
 Alternative: put the logic in the Infrastructure service with LINQ date math. Rejected because
@@ -81,10 +82,14 @@ future use, but this change writes only `Sent`.
 
 **D3 - Dedup with the unique index and insert-or-ignore inside one transaction per
 (task, recipient, reminder).** For each due reminder and recipient, `ReminderService`:
-1. begins a transaction;
-2. runs `INSERT INTO reminder_history (...) VALUES (...) ON CONFLICT (TaskId, RecipientUserId, ReminderType, ScheduledFor) DO NOTHING`
-   through `ExecuteSqlInterpolatedAsync`, which returns the affected row count;
-3. only when the row count is 1, adds the `Notification` and saves, then commits.
+1. skips the pair if a history row for today's slot was already loaded at the start of the pass (one
+   read per pass), so reminders delivered earlier in the day do not take the SQLite write lock again;
+2. begins a transaction;
+3. runs `INSERT INTO ReminderHistory (...) SELECT ... WHERE EXISTS (task still not deleted, not
+   Completed/Cancelled, same Deadline) ON CONFLICT (TaskId, RecipientUserId, ReminderType, ScheduledFor) DO NOTHING`
+   through `ExecuteSqlInterpolatedAsync`, which returns the affected row count. The `EXISTS` guard
+   closes the window where a task is completed, cancelled or rescheduled after the pass read it;
+4. only when the row count is 1, adds the `Notification` and saves, then commits.
 
 This makes concurrent ticks, overlapping instances and restarts idempotent at the database level.
 Alternative: check-then-insert with a `DbUpdateException` catch. That works too, but a failed
@@ -115,10 +120,10 @@ passes inside a single process. Integration tests set `SchedulerEnabled=false` a
 `GenerateDueAsync` directly with a fake `TimeProvider`, which keeps them deterministic.
 Alternatives: Hangfire or Quartz. Rejected as new dependencies that the TDD explicitly avoids.
 
-**D7 - Candidate query.** `GenerateDueAsync` loads open, non-deleted tasks whose `Deadline` falls
-in the window `[nowUtc − 400 days, nowUtc + 32 days]`, using `AsNoTracking()` and selecting only
-the needed columns. The upper bound covers the maximum interval of 30 days plus timezone slack.
-Weekly overdue tasks are bounded by the lower limit, which is generous for an office app. The
+**D7 - Candidate query.** `GenerateDueAsync` loads open, non-deleted tasks whose `Deadline` is at
+most `nowUtc + 32 days`, using `AsNoTracking()` and selecting only the needed columns. The upper
+bound covers the maximum interval of 30 days plus timezone slack. There is no lower bound, so overdue
+tasks keep receiving reminders for as long as they stay open, as the spec requires. The
 `Deadline` index serves this query. It reads `ReminderSettings` once per pass and resolves
 `TimeZoneInfo` once.
 
@@ -139,7 +144,9 @@ migration for every new setting that Screens 14 and 20 add.
 **D9 - API.** A `SettingsController` at `/api/v1/settings/reminders` exposes `GET` and `PUT`.
 Both use `[Authorize(Policy = AuthPolicies.ManagerOrAdmin)]`, and the controller stays thin. `PUT`
 takes `UpdateReminderSettingsRequest(Enabled, DeadlineDayEnabled, DefaultFirstDays,
-DefaultSecondDays, DefaultOverdueFrequency, EmailEnabled)` and returns the saved DTO. The
+DefaultSecondDays, DefaultOverdueFrequency, EmailEnabled)` and returns the saved DTO. The fields are
+nullable and the validator requires each one, so an omitted field is a 400 rather than silently
+binding to `false`/`0`. The
 timezone is simply not part of the request, so it cannot be changed here. A FluentValidation
 `UpdateReminderSettingsRequestValidator` enforces: first 1–30, second 0–30, first > second, and a
 valid enum. Errors return as `ValidationProblemDetails`, matching the other controllers. The save
@@ -148,9 +155,13 @@ records `UpdatedByUserId` (taken from the token) and `UpdatedAt`.
 **D10 - Task-creation defaults.** Make `FirstReminderDays`, `SecondReminderDays` and
 `OverdueReminderFrequency` on `CreateTaskRequest` **nullable**. `TaskService.CreateAsync` fills
 nulls from `IReminderSettingsService.GetAsync()`. The validator rules apply only to non-null
-values. This is backward compatible: clients that send values keep their exact values. On the
-frontend, `TaskCreateComponent` fetches the reminder settings when it loads and patches the three
-controls. If that fetch fails, it keeps its current hard-coded defaults, so the form stays usable.
+values. This is backward compatible: clients that send values keep their exact values. After the
+defaults are applied, the second interval may not exceed a non-zero first interval
+(`ReminderIntervals.AreOrdered`, enforced by the validator for explicit pairs and by `CreateAsync`
+for mixed explicit/default pairs). On the frontend, `TaskCreateComponent` fetches the reminder
+settings when it loads and patches the three controls. If that fetch fails, the form stays usable,
+shows a hint, and sends untouched reminder fields as `null` so the server still applies the
+configured defaults.
 
 **D11 - Frontend.** Add a `ReminderSettings` model and a root-provided `ReminderSettingsService`
 in `core/` (`get()` and `save()`), plus a lazy-loaded `features/settings/reminder-settings.component`

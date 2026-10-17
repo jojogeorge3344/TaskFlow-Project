@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors } from '@angular/forms';
 import { IconComponent } from '../../core/layout/icon.component';
 import { ReminderFrequency, ReminderSettings } from '../../core/models';
@@ -60,6 +61,11 @@ export class ReminderSettingsComponent implements OnInit {
     },
     { validators: [firstBeforeSecond] }
   );
+
+  constructor() {
+    // A later edit makes the "Saved" confirmation stale.
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.savedAt.set(null));
+  }
 
   ngOnInit(): void {
     this.load();

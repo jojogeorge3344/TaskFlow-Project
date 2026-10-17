@@ -59,4 +59,24 @@ public class ReminderSettingsValidatorTests
         _validator.TestValidate(Valid() with { DefaultOverdueFrequency = (ReminderFrequency)99 })
             .ShouldHaveValidationErrorFor(settings => settings.DefaultOverdueFrequency);
     }
+
+    [Fact]
+    public void Missing_fields_are_invalid_instead_of_defaulting()
+    {
+        var result = _validator.TestValidate(new UpdateReminderSettingsRequest(null, null, 3, 1, null, null));
+
+        result.ShouldHaveValidationErrorFor(settings => settings.Enabled);
+        result.ShouldHaveValidationErrorFor(settings => settings.DeadlineDayEnabled);
+        result.ShouldHaveValidationErrorFor(settings => settings.DefaultOverdueFrequency);
+        result.ShouldHaveValidationErrorFor(settings => settings.EmailEnabled);
+    }
+
+    [Fact]
+    public void Missing_intervals_are_invalid()
+    {
+        var result = _validator.TestValidate(Valid() with { DefaultFirstDays = null, DefaultSecondDays = null });
+
+        result.ShouldHaveValidationErrorFor(settings => settings.DefaultFirstDays);
+        result.ShouldHaveValidationErrorFor(settings => settings.DefaultSecondDays);
+    }
 }

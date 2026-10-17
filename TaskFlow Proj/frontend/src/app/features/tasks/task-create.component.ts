@@ -71,6 +71,10 @@ export class TaskCreateComponent implements OnInit {
   readonly submitted = signal(false);
   readonly serverError = signal<string | null>(null);
   readonly recipientIds = signal<number[]>([]);
+  /** Whether the configured reminder defaults reached the form. Until they do, untouched reminder fields
+   * are sent as null so the server applies the configured defaults rather than the built-in ones. */
+  readonly reminderDefaultsLoaded = signal(false);
+  readonly reminderDefaultsUnavailable = signal(false);
 
   readonly form = new FormGroup(
     {
@@ -121,8 +125,9 @@ export class TaskCreateComponent implements OnInit {
     });
   }
 
-  /** Pre-fills the reminder fields from the configured defaults (Screen 13). If they cannot be read,
-   * the form keeps its built-in defaults, and fields the user already changed are left alone. */
+  /** Pre-fills the reminder fields from the configured defaults (Screen 13). Fields the user already
+   * changed are left alone. If the defaults cannot be read, a hint says so and untouched fields are sent
+   * as null on submit, so the server still applies the configured defaults. */
   private loadReminderDefaults(): void {
     this.reminderSettings.get().subscribe({
       next: (settings) => {
@@ -138,8 +143,9 @@ export class TaskCreateComponent implements OnInit {
         if (overdueReminderFrequency.pristine) {
           overdueReminderFrequency.setValue(settings.defaultOverdueFrequency);
         }
+        this.reminderDefaultsLoaded.set(true);
       },
-      error: () => undefined
+      error: () => this.reminderDefaultsUnavailable.set(true)
     });
   }
 
@@ -180,6 +186,8 @@ export class TaskCreateComponent implements OnInit {
 
     const value = this.form.getRawValue();
     const assigneeId = value.assignedToUserId!;
+    const { firstReminderDays, secondReminderDays, overdueReminderFrequency } = this.form.controls;
+    const useServerDefault = (control: AbstractControl) => !this.reminderDefaultsLoaded() && control.pristine;
     const request: CreateTaskRequest = {
       title: value.title.trim(),
       description: value.description.trim() || null,
@@ -189,9 +197,9 @@ export class TaskCreateComponent implements OnInit {
       deadline: new Date(value.deadline).toISOString(),
       estimatedHours: Number(value.estimatedHours),
       additionalRecipientUserIds: this.recipientIds().filter((id) => id !== assigneeId),
-      firstReminderDays: Number(value.firstReminderDays),
-      secondReminderDays: Number(value.secondReminderDays),
-      overdueReminderFrequency: value.overdueReminderFrequency
+      firstReminderDays: useServerDefault(firstReminderDays) ? null : Number(value.firstReminderDays),
+      secondReminderDays: useServerDefault(secondReminderDays) ? null : Number(value.secondReminderDays),
+      overdueReminderFrequency: useServerDefault(overdueReminderFrequency) ? null : value.overdueReminderFrequency
     };
 
     this.saving.set(true);
