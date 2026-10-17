@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
@@ -17,17 +18,23 @@ public class TaskService : ITaskService
     private readonly ITaskActivityService _activityService;
     private readonly INotificationPublisher _notificationPublisher;
     private readonly TimeProvider _timeProvider;
+    private readonly IReminderSettingsService _reminderSettings;
+    private readonly IAppClock _clock;
 
     public TaskService(
         AppDbContext dbContext,
         ITaskActivityService activityService,
         INotificationPublisher notificationPublisher,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IReminderSettingsService reminderSettings,
+        IAppClock clock)
     {
         _dbContext = dbContext;
         _activityService = activityService;
         _notificationPublisher = notificationPublisher;
         _timeProvider = timeProvider;
+        _reminderSettings = reminderSettings;
+        _clock = clock;
     }
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
@@ -53,7 +60,7 @@ public class TaskService : ITaskService
             return null;
         }
 
-        return ToDetails(task, recipients);
+        return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
     }
 
     public async Task<IReadOnlyCollection<TaskCardDto>> GetBoardAsync(
@@ -130,7 +137,8 @@ public class TaskService : ITaskService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var items = tasks.Select(task => ToListItem(task, now)).ToList();
+        var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
+        var items = tasks.Select(task => ToListItem(task, now, timeZone)).ToList();
         return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
     }
 
@@ -206,6 +214,13 @@ public class TaskService : ITaskService
             }
         }
 
+        // Omitted reminder fields take the configured defaults; existing tasks keep what they stored.
+        var reminderDefaults = request.FirstReminderDays is null
+            || request.SecondReminderDays is null
+            || request.OverdueReminderFrequency is null
+                ? await _reminderSettings.GetAsync(cancellationToken)
+                : null;
+
         var now = Now;
         var task = new TaskEntity
         {
@@ -221,9 +236,9 @@ public class TaskService : ITaskService
             Deadline = request.Deadline,
             EstimatedHours = request.EstimatedHours,
             Status = TaskStatus.ToDo,
-            FirstReminderDays = request.FirstReminderDays,
-            SecondReminderDays = request.SecondReminderDays,
-            OverdueReminderFrequency = request.OverdueReminderFrequency,
+            FirstReminderDays = request.FirstReminderDays ?? reminderDefaults!.DefaultFirstDays,
+            SecondReminderDays = request.SecondReminderDays ?? reminderDefaults!.DefaultSecondDays,
+            OverdueReminderFrequency = request.OverdueReminderFrequency ?? reminderDefaults!.DefaultOverdueFrequency,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -278,7 +293,7 @@ public class TaskService : ITaskService
 
         var created = await LoadTaskAsync(task.Id, cancellationToken) ?? task;
         var createdRecipients = await LoadRecipientsAsync(task.Id, cancellationToken);
-        return ToDetails(created, createdRecipients);
+        return ToDetails(created, createdRecipients, await _clock.GetTimeZoneAsync(cancellationToken));
     }
 
     public async Task<TaskDetailsDto?> UpdateAsync(
@@ -341,7 +356,7 @@ public class TaskService : ITaskService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return ToDetails(task, recipients);
+        return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
     }
 
     public async Task<TaskCardDto?> ChangeStatusAsync(
@@ -482,7 +497,7 @@ public class TaskService : ITaskService
             cancellationToken);
 
         var updatedRecipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        return ToDetails(task, updatedRecipients);
+        return ToDetails(task, updatedRecipients, await _clock.GetTimeZoneAsync(cancellationToken));
     }
 
     public async Task<IReadOnlyCollection<TaskRecipientDto>?> GetRecipientsAsync(
@@ -625,9 +640,9 @@ public class TaskService : ITaskService
         }
     }
 
-    private TaskDetailsDto ToDetails(TaskEntity task, IReadOnlyCollection<TaskRecipientDto> recipients)
+    private TaskDetailsDto ToDetails(TaskEntity task, IReadOnlyCollection<TaskRecipientDto> recipients, TimeZoneInfo timeZone)
     {
-        var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, Now).ToString();
+        var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, Now, timeZone).ToString();
 
         return new TaskDetailsDto(
             task.Id,
@@ -667,9 +682,9 @@ public class TaskService : ITaskService
             isOverdue);
     }
 
-    private TaskListItemDto ToListItem(TaskEntity task, DateTime utcNow)
+    private TaskListItemDto ToListItem(TaskEntity task, DateTime utcNow, TimeZoneInfo timeZone)
     {
-        var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, utcNow);
+        var stage = TaskStageCalculator.Calculate(task.Status, task.Deadline, utcNow, timeZone);
 
         return new TaskListItemDto(
             task.Id,

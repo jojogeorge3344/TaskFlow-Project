@@ -421,6 +421,64 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithoutReminderFields_StoresConfiguredDefaults()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-defaults-mgr", Role.Manager);
+        var employee = await SeedUserAsync("tek-defaults-emp");
+
+        var configure = await SendWithTokenAsync(client, HttpMethod.Put, "/api/v1/settings/reminders", manager.Token,
+            JsonContent.Create(new
+            {
+                enabled = true,
+                deadlineDayEnabled = true,
+                defaultFirstDays = 3,
+                defaultSecondDays = 1,
+                defaultOverdueFrequency = "Weekly",
+                emailEnabled = false
+            }));
+        Assert.Equal(HttpStatusCode.OK, configure.StatusCode);
+
+        try
+        {
+            var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", manager.Token,
+                JsonContent.Create(new
+                {
+                    title = "Uses configured reminders",
+                    assignedToUserId = employee.Id,
+                    priority = "Medium",
+                    startDate = DateTime.UtcNow.AddDays(1),
+                    deadline = DateTime.UtcNow.AddDays(6),
+                    estimatedHours = 4
+                }));
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+            using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            var id = document.RootElement.GetProperty("id").GetInt32();
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var stored = await db.Tasks.SingleAsync(task => task.Id == id);
+            Assert.Equal(3, stored.FirstReminderDays);
+            Assert.Equal(1, stored.SecondReminderDays);
+            Assert.Equal(ReminderFrequency.Weekly, stored.OverdueReminderFrequency);
+        }
+        finally
+        {
+            await SendWithTokenAsync(client, HttpMethod.Put, "/api/v1/settings/reminders", manager.Token,
+                JsonContent.Create(new
+                {
+                    enabled = true,
+                    deadlineDayEnabled = true,
+                    defaultFirstDays = 2,
+                    defaultSecondDays = 1,
+                    defaultOverdueFrequency = "Daily",
+                    emailEnabled = false
+                }));
+        }
+    }
+
+    [Fact]
     public async Task Create_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();

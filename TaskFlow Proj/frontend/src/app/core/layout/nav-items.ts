@@ -18,12 +18,14 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
     { label: 'Employee Management', icon: 'users', route: '/employees' },
     { label: 'Department Management', icon: 'building', route: '/departments' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' }
+    { label: 'Notifications', icon: 'bell', route: '/notifications' },
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' }
+    { label: 'Notifications', icon: 'bell', route: '/notifications' },
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
   ],
   Employee: [
     { label: 'Dashboard', icon: 'home', route: '/me' },

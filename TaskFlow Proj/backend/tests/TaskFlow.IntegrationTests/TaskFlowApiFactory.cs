@@ -29,7 +29,9 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Jwt:RefreshTokenDays"] = "7",
                 ["ConnectionStrings:Default"] = $"Data Source={_databasePath}",
                 ["Cors:AllowedOrigins:0"] = "http://localhost:4200",
-                ["Seed:Enabled"] = "false"
+                ["Seed:Enabled"] = "false",
+                // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
+                ["Reminders:SchedulerEnabled"] = "false"
             });
         });
     }

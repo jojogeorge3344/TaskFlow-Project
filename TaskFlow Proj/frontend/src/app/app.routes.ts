@@ -59,6 +59,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'settings/reminders',
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator', 'Manager'] },
+        loadComponent: () =>
+          import('./features/settings/reminder-settings.component').then((m) => m.ReminderSettingsComponent)
+      },
+      {
         path: 'board',
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },

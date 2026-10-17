@@ -1,0 +1,132 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Reminder settings</h1>
+      <p>Control the automatic deadline reminders sent to assignees, task creators and selected recipients.</p>
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-card">
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ loadError() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card settings-form" aria-busy="true">
+      <span class="tf-skeleton settings-form__skeleton"></span>
+      <span class="tf-skeleton settings-form__skeleton"></span>
+      <span class="tf-skeleton settings-form__skeleton"></span>
+    </div>
+  } @else {
+    <form class="tf-card settings-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      @if (saveError()) {
+        <div class="tf-alert" role="alert">
+          <tf-icon name="alert" />
+          <span>{{ saveError() }}</span>
+        </div>
+      }
+
+      <fieldset class="settings-form__group">
+        <legend>Automatic reminders</legend>
+        <label class="settings-toggle">
+          <input type="checkbox" formControlName="enabled" data-field="enabled" />
+          <span>
+            <strong>Send deadline reminders</strong>
+            <span class="tf-field__hint">When off, no reminders are generated for any task.</span>
+          </span>
+        </label>
+        <label class="settings-toggle">
+          <input type="checkbox" formControlName="deadlineDayEnabled" data-field="deadlineDayEnabled" />
+          <span>
+            <strong>Remind on the deadline day</strong>
+            <span class="tf-field__hint">Sends a "due today" reminder while the task is still open.</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset class="settings-form__group">
+        <legend>Defaults for new tasks</legend>
+        <p class="tf-field__hint">Create Task starts with these values. Existing tasks keep the intervals they were created with.</p>
+        <div class="tf-form-row">
+          <div class="tf-field">
+            <label for="settings-first-reminder">First reminder</label>
+            <select
+              id="settings-first-reminder"
+              class="tf-select"
+              formControlName="defaultFirstDays"
+              [class.is-invalid]="fieldError('defaultFirstDays')"
+              [attr.aria-invalid]="!!fieldError('defaultFirstDays')"
+            >
+              @for (option of firstReminderOptions(); track option.days) {
+                <option [ngValue]="option.days">{{ option.label }}</option>
+              }
+            </select>
+            @if (fieldError('defaultFirstDays'); as message) {
+              <span class="tf-field__error" data-error="defaultFirstDays">{{ message }}</span>
+            }
+          </div>
+          <div class="tf-field">
+            <label for="settings-second-reminder">Second reminder</label>
+            <select
+              id="settings-second-reminder"
+              class="tf-select"
+              formControlName="defaultSecondDays"
+              [class.is-invalid]="fieldError('defaultSecondDays')"
+              [attr.aria-invalid]="!!fieldError('defaultSecondDays')"
+            >
+              @for (option of secondReminderOptions(); track option.days) {
+                <option [ngValue]="option.days">{{ option.label }}</option>
+              }
+            </select>
+            @if (fieldError('defaultSecondDays'); as message) {
+              <span class="tf-field__error" data-error="defaultSecondDays">{{ message }}</span>
+            }
+          </div>
+          <div class="tf-field">
+            <label for="settings-overdue-frequency">After the deadline</label>
+            <select id="settings-overdue-frequency" class="tf-select" formControlName="defaultOverdueFrequency">
+              @for (option of overdueFrequencyOptions; track option.value) {
+                <option [ngValue]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (fieldError('defaultOverdueFrequency'); as message) {
+              <span class="tf-field__error" data-error="defaultOverdueFrequency">{{ message }}</span>
+            }
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="settings-form__group">
+        <legend>Delivery</legend>
+        <label class="settings-toggle">
+          <input type="checkbox" formControlName="emailEnabled" data-field="emailEnabled" />
+          <span>
+            <strong>Also send reminders by email</strong>
+            <span class="tf-field__hint">In-app notifications are always sent. Email delivery is configured separately.</span>
+          </span>
+        </label>
+        <div class="tf-field settings-form__timezone">
+          <label for="settings-timezone">Application timezone</label>
+          <input id="settings-timezone" class="tf-input" [value]="timezone()" readonly data-field="timezone" />
+          <span class="tf-field__hint">Decides which calendar day a reminder belongs to. Changed in Application Settings.</span>
+        </div>
+      </fieldset>
+
+      <div class="tf-form-actions">
+        @if (savedAt()) {
+          <span class="settings-form__saved" role="status" data-status="saved">
+            <tf-icon name="check" />
+            Saved
+          </span>
+        }
+        <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save settings' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

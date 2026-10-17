@@ -37,6 +37,7 @@ public class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
             .GreaterThan(0)
             .When(task => task.AdditionalRecipientUserIds is not null);
 
+        // Reminder fields are optional; null takes the configured default and is not validated here.
         RuleFor(task => task.FirstReminderDays)
             .InclusiveBetween(0, 30);
 

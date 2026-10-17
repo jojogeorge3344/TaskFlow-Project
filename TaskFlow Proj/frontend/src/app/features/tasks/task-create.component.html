@@ -166,7 +166,7 @@
         <div class="tf-field">
           <label for="task-first-reminder">First reminder</label>
           <select id="task-first-reminder" class="tf-select" formControlName="firstReminderDays">
-            @for (option of firstReminderOptions; track option.days) {
+            @for (option of firstReminderOptions(); track option.days) {
               <option [ngValue]="option.days">{{ option.label }}</option>
             }
           </select>
@@ -174,7 +174,7 @@
         <div class="tf-field">
           <label for="task-second-reminder">Second reminder</label>
           <select id="task-second-reminder" class="tf-select" formControlName="secondReminderDays">
-            @for (option of secondReminderOptions; track option.days) {
+            @for (option of secondReminderOptions(); track option.days) {
               <option [ngValue]="option.days">{{ option.label }}</option>
             }
           </select>

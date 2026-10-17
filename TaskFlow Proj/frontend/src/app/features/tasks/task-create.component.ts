@@ -4,28 +4,21 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validatio
 import { Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
 import { CreateTaskRequest, ReminderFrequency, TASK_PRIORITIES, TaskPriority, User } from '../../core/models';
+import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
+import {
+  FIRST_REMINDER_OPTIONS,
+  OVERDUE_FREQUENCY_OPTIONS,
+  ReminderDayOption,
+  SECOND_REMINDER_OPTIONS,
+  withReminderDay
+} from './reminder-options';
 import { TaskService } from './task.service';
 
 export const TITLE_MAX_LENGTH = 200;
 export const DESCRIPTION_MAX_LENGTH = 4000;
-
-/** Predefined reminder choices (Screen 8 FR-9); the defaults match the server (2 / 1 / Daily). */
-export const FIRST_REMINDER_OPTIONS = [
-  { days: 3, label: '3 days before the deadline' },
-  { days: 2, label: '2 days before the deadline' },
-  { days: 1, label: '1 day before the deadline' }
-];
-export const SECOND_REMINDER_OPTIONS = [
-  { days: 1, label: '1 day before the deadline' },
-  { days: 0, label: 'On the deadline day' }
-];
-export const OVERDUE_FREQUENCY_OPTIONS: { value: ReminderFrequency; label: string }[] = [
-  { value: 'Daily', label: 'Every day' },
-  { value: 'Weekly', label: 'Every week' }
-];
 
 /** Required, ignoring surrounding whitespace. */
 function requiredText(control: AbstractControl<string>): ValidationErrors | null {
@@ -60,12 +53,13 @@ type FieldName = 'title' | 'description' | 'assignedToUserId' | 'startDate' | 'd
 export class TaskCreateComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
+  private readonly reminderSettings = inject(ReminderSettingsService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly priorities: TaskPriority[] = TASK_PRIORITIES;
-  readonly firstReminderOptions = FIRST_REMINDER_OPTIONS;
-  readonly secondReminderOptions = SECOND_REMINDER_OPTIONS;
+  readonly firstReminderOptions = signal<ReminderDayOption[]>(FIRST_REMINDER_OPTIONS);
+  readonly secondReminderOptions = signal<ReminderDayOption[]>(SECOND_REMINDER_OPTIONS);
   readonly overdueFrequencyOptions = OVERDUE_FREQUENCY_OPTIONS;
   readonly titleMaxLength = TITLE_MAX_LENGTH;
   readonly descriptionMaxLength = DESCRIPTION_MAX_LENGTH;
@@ -113,6 +107,8 @@ export class TaskCreateComponent implements OnInit {
     deadline.setDate(deadline.getDate() + 3);
     this.form.patchValue({ startDate: toLocalInput(start), deadline: toLocalInput(deadline) });
 
+    this.loadReminderDefaults();
+
     this.userService.getAll({ isActive: true }).subscribe({
       next: (users) => {
         this.users.set(users);
@@ -122,6 +118,28 @@ export class TaskCreateComponent implements OnInit {
         this.usersError.set(true);
         this.usersLoading.set(false);
       }
+    });
+  }
+
+  /** Pre-fills the reminder fields from the configured defaults (Screen 13). If they cannot be read,
+   * the form keeps its built-in defaults, and fields the user already changed are left alone. */
+  private loadReminderDefaults(): void {
+    this.reminderSettings.get().subscribe({
+      next: (settings) => {
+        const { firstReminderDays, secondReminderDays, overdueReminderFrequency } = this.form.controls;
+        if (firstReminderDays.pristine) {
+          this.firstReminderOptions.set(withReminderDay(FIRST_REMINDER_OPTIONS, settings.defaultFirstDays));
+          firstReminderDays.setValue(settings.defaultFirstDays);
+        }
+        if (secondReminderDays.pristine) {
+          this.secondReminderOptions.set(withReminderDay(SECOND_REMINDER_OPTIONS, settings.defaultSecondDays));
+          secondReminderDays.setValue(settings.defaultSecondDays);
+        }
+        if (overdueReminderFrequency.pristine) {
+          overdueReminderFrequency.setValue(settings.defaultOverdueFrequency);
+        }
+      },
+      error: () => undefined
     });
   }
 

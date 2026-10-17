@@ -54,6 +54,17 @@ public class TaskStatusTransitionsTests
 
 public class TaskStageCalculatorTests
 {
+    [Fact]
+    public void Calculate_UsesTheApplicationTimezoneDay()
+    {
+        var india = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+        var now = new DateTime(2026, 10, 14, 19, 0, 0, DateTimeKind.Utc); // 00:30 IST on 15 October
+        var deadline = new DateTime(2026, 10, 15, 5, 0, 0, DateTimeKind.Utc); // 10:30 IST on 15 October
+
+        Assert.Equal(TaskStage.DueToday, TaskStageCalculator.Calculate(TaskStatus.ToDo, deadline, now, india));
+        Assert.Equal(TaskStage.Upcoming, TaskStageCalculator.Calculate(TaskStatus.ToDo, deadline, now));
+    }
+
     private static readonly DateTime Today = new(2026, 10, 13, 12, 0, 0, DateTimeKind.Utc);
 
     [Fact]

@@ -69,7 +69,8 @@ describe('ShellComponent', () => {
         provideRouter([
           { path: 'employees', component: PageStubComponent },
           { path: 'admin', component: PageStubComponent },
-          { path: 'notifications', component: PageStubComponent }
+          { path: 'notifications', component: PageStubComponent },
+          { path: 'settings/reminders', component: PageStubComponent }
         ]),
         {
           provide: AuthService,
@@ -95,7 +96,14 @@ describe('ShellComponent', () => {
     const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
     const labels = links.map((link) => link.querySelector('.nav__text')?.textContent?.trim());
 
-    expect(labels).toEqual(['Dashboard', 'Task Management', 'Employee Management', 'Department Management', 'Notifications']);
+    expect(labels).toEqual([
+      'Dashboard',
+      'Task Management',
+      'Employee Management',
+      'Department Management',
+      'Notifications',
+      'Reminder Settings'
+    ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
     const taskLink = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Task Management')!;
@@ -115,6 +123,7 @@ describe('ShellComponent', () => {
     expect(links).toEqual(['Dashboard', 'My Tasks', 'Notifications']);
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
+    expect(el(fixture).textContent).not.toContain('Reminder Settings');
   });
 
   it('highlights the active item with aria-current', async () => {
@@ -272,6 +281,21 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
 
     expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Notifications');
+  });
+
+  it('shows Reminder Settings to Managers and resolves its header title', async () => {
+    mockViewport(true);
+    asUser('Manager');
+    const fixture = createComponent();
+
+    const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
+    const settings = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Reminder Settings');
+    expect(settings?.getAttribute('href')).toBe('/settings/reminders');
+
+    await TestBed.inject(Router).navigateByUrl('/settings/reminders');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Reminder Settings');
   });
 
   it('re-checks the session every minute and when the tab becomes visible', fakeAsync(() => {
