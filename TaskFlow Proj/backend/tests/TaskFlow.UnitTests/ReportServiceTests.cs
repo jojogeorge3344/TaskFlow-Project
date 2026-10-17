@@ -86,6 +86,27 @@ public class ReportServiceTests
     }
 
     [Fact]
+    public async Task GetSummaryAsync_LocalKindDeadlineBound_MatchesTheSameUtcInstant()
+    {
+        await using var harness = WorkloadReportHarness.Create(Now);
+        var alice = harness.AddUser("alice");
+        harness.AddTask(alice.Id, new DateTime(2026, 6, 1), TaskStatus.ToDo);
+        harness.AddTask(alice.Id, new DateTime(2026, 6, 2), TaskStatus.ToDo);
+
+        var utcBound = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        // A `Z`-suffixed query value binds to a local-kind DateTime holding the same instant.
+        var localBound = utcBound.ToLocalTime();
+
+        var fromUtc = await harness.Reports.GetSummaryAsync(
+            new ReportFilter(DeadlineFrom: utcBound), CancellationToken.None);
+        var fromLocal = await harness.Reports.GetSummaryAsync(
+            new ReportFilter(DeadlineFrom: localBound), CancellationToken.None);
+
+        Assert.Equal(2, fromUtc.TotalTasks);
+        Assert.Equal(fromUtc.TotalTasks, fromLocal.TotalTasks);
+    }
+
+    [Fact]
     public async Task GetSummaryAsync_OverdueMatchesTheDashboardRule()
     {
         await using var harness = WorkloadReportHarness.Create(Now);

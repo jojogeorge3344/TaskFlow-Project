@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,8 +125,6 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
             header);
         Assert.Contains("Exportable task", body);
     }
-
-    [Fact]
     public async Task Export_EscapesFormulaInjectionInTitles()
     {
         var client = _factory.CreateClient();

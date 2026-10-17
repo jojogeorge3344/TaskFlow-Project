@@ -12,6 +12,10 @@ namespace TaskFlow.Infrastructure.Services;
 /// shared status and overdue rules (D7). Department is the assignee's department.</summary>
 public class ReportService : IReportService
 {
+    /// <summary>Upper bound on exported rows, so an unfiltered export cannot exhaust memory or
+    /// produce an unbounded response.</summary>
+    public const int MaxExportRows = 50_000;
+
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
 
@@ -24,18 +28,26 @@ public class ReportService : IReportService
     public async Task<ReportSummaryDto> GetSummaryAsync(ReportFilter filter, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
-        var scope = Scope(filter);
 
-        var total = await scope.CountAsync(cancellationToken);
-        var pending = await scope.CountAsync(
-            task => task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled,
-            cancellationToken);
-        var completed = await scope.CountAsync(task => task.Status == TaskStatus.Completed, cancellationToken);
-        var overdue = await scope.CountAsync(
-            task => task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled && task.Deadline < now,
-            cancellationToken);
+        var summary = await Scope(filter)
+            .Select(task => new
+            {
+                Total = 1,
+                Pending = task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled ? 1 : 0,
+                Completed = task.Status == TaskStatus.Completed ? 1 : 0,
+                Overdue = task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled && task.Deadline < now
+                    ? 1
+                    : 0
+            })
+            .GroupBy(_ => 1)
+            .Select(group => new ReportSummaryDto(
+                group.Sum(row => row.Total),
+                group.Sum(row => row.Pending),
+                group.Sum(row => row.Completed),
+                group.Sum(row => row.Overdue)))
+            .SingleOrDefaultAsync(cancellationToken);
 
-        return new ReportSummaryDto(total, pending, completed, overdue);
+        return summary ?? new ReportSummaryDto(0, 0, 0, 0);
     }
 
     public async Task<IReadOnlyCollection<ReportRowDto>> GetRowsAsync(
@@ -45,6 +57,7 @@ public class ReportService : IReportService
         return await Scope(filter)
             .OrderBy(task => task.Deadline)
             .ThenBy(task => task.Id)
+            .Take(MaxExportRows)
             .Select(task => new ReportRowDto(
                 task.TaskCode,
                 task.Title,
@@ -65,14 +78,16 @@ public class ReportService : IReportService
     {
         var tasks = _dbContext.Tasks.Where(task => !task.IsDeleted);
 
-        if (filter.DeadlineFrom is not null)
+        var deadlineFrom = AsUtc(filter.DeadlineFrom);
+        if (deadlineFrom is not null)
         {
-            tasks = tasks.Where(task => task.Deadline >= filter.DeadlineFrom);
+            tasks = tasks.Where(task => task.Deadline >= deadlineFrom);
         }
 
-        if (filter.DeadlineTo is not null)
+        var deadlineTo = AsUtc(filter.DeadlineTo);
+        if (deadlineTo is not null)
         {
-            tasks = tasks.Where(task => task.Deadline <= filter.DeadlineTo);
+            tasks = tasks.Where(task => task.Deadline <= deadlineTo);
         }
 
         if (filter.AssignedToUserId is not null)
@@ -97,4 +112,15 @@ public class ReportService : IReportService
 
         return tasks;
     }
+
+    /// <summary>Deadline bounds arrive as query-string values. A `Z`-suffixed instant binds to a
+    /// local-kind <see cref="DateTime"/> that preserves the instant but shifts the wall clock, so the
+    /// range would drift by the host's UTC offset. Normalise every bound to its UTC instant before
+    /// filtering; a value with no offset is treated as UTC, matching how deadlines are stored.</summary>
+    private static DateTime? AsUtc(DateTime? value) => value?.Kind switch
+    {
+        DateTimeKind.Local => value.Value.ToUniversalTime(),
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc),
+        _ => value
+    };
 }

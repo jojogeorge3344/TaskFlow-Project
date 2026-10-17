@@ -1,6 +1,6 @@
-/* Department filter plus its reset. */
+/* Department and employee filters plus their reset. */
 .workload-toolbar {
-  grid-template-columns: minmax(14rem, 1fr) auto;
+  grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 1fr) auto;
   justify-content: start;
 }
 

@@ -86,6 +86,21 @@ public class WorkloadServiceTests
     }
 
     [Fact]
+    public async Task GetWorkloadAsync_ExcludesNonEmployeeRoles()
+    {
+        await using var harness = WorkloadReportHarness.Create(Now);
+        var employee = harness.AddUser("emp", fullName: "Emma Employee");
+        harness.AddUser("boss", role: Role.Manager, fullName: "Boss Manager");
+        harness.AddUser("admin", role: Role.Administrator, fullName: "Admin User");
+        harness.AddTask(employee.Id, Future, TaskStatus.ToDo);
+
+        var workload = await harness.Workload.GetWorkloadAsync(null, CancellationToken.None);
+
+        var only = Assert.Single(workload);
+        Assert.Equal(employee.Id, only.UserId);
+    }
+
+    [Fact]
     public async Task GetWorkloadAsync_ExcludesDeletedTasksFromCounts()
     {
         await using var harness = WorkloadReportHarness.Create(Now);

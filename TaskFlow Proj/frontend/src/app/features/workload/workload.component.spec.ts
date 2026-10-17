@@ -84,6 +84,23 @@ describe('WorkloadComponent', () => {
     expect(getAllSpy).toHaveBeenCalled();
   });
 
+  it('narrows the workload to a single employee', () => {
+    const fixture = create();
+
+    fixture.componentInstance.setEmployee('3');
+    fixture.detectChanges();
+
+    const rows = el(fixture).querySelectorAll('tr.workload-row');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Sam Overloaded');
+    expect(el(fixture).textContent).toContain('1 employee');
+
+    fixture.componentInstance.setEmployee('');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelectorAll('tr.workload-row').length).toBe(3);
+  });
+
   it('highlights employees at or above twice the average active count', () => {
     const fixture = create();
     const rows = el(fixture).querySelectorAll('tr.workload-row');

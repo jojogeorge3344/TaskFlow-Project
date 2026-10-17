@@ -8,8 +8,9 @@ using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
 
-/// <summary>Per-employee workload aggregation (Screen 16). Organization-wide for a
-/// Manager/Administrator, matching the dashboards' scoping (see the change design, D3).</summary>
+/// <summary>Per-employee workload aggregation (Screen 16). Covers every active employee
+/// (<see cref="Role.Employee"/>), organization-wide for a Manager/Administrator, matching the
+/// dashboards' scoping (see the change design, D3).</summary>
 public class WorkloadService : IWorkloadService
 {
     private readonly AppDbContext _dbContext;
@@ -27,7 +28,7 @@ public class WorkloadService : IWorkloadService
     {
         var now = _clock.UtcNow;
 
-        var usersQuery = _dbContext.Users.Where(user => user.IsActive);
+        var usersQuery = _dbContext.Users.Where(user => user.IsActive && user.Role == Role.Employee);
         if (departmentId is not null)
         {
             usersQuery = usersQuery.Where(user => user.DepartmentId == departmentId);

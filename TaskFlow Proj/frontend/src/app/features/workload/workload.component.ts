@@ -23,9 +23,16 @@ export class WorkloadComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly departmentId = signal<number | null>(null);
+  readonly employeeId = signal<number | null>(null);
+
+  /** Rows narrowed by the in-page employee filter; the summary and bars follow the same subset. */
+  readonly filteredRows = computed<EmployeeWorkload[]>(() => {
+    const employeeId = this.employeeId();
+    return employeeId === null ? this.rows() : this.rows().filter((row) => row.userId === employeeId);
+  });
 
   readonly summary = computed<WorkloadSummary>(() => {
-    const rows = this.rows();
+    const rows = this.filteredRows();
     const headcount = rows.length;
     const totalActive = rows.reduce((sum, row) => sum + row.activeTasks, 0);
     const averageActive = headcount === 0 ? 0 : totalActive / headcount;
@@ -33,7 +40,7 @@ export class WorkloadComponent implements OnInit {
   });
 
   /** The busiest active count, used to scale the CSS bars (never zero to avoid dividing by zero). */
-  readonly maxActive = computed(() => Math.max(1, ...this.rows().map((row) => row.activeTasks)));
+  readonly maxActive = computed(() => Math.max(1, ...this.filteredRows().map((row) => row.activeTasks)));
 
   ngOnInit(): void {
     this.departmentService.getAll().subscribe({
@@ -61,6 +68,17 @@ export class WorkloadComponent implements OnInit {
 
   setDepartment(value: string): void {
     this.departmentId.set(value ? Number(value) : null);
+    this.employeeId.set(null);
+    this.load();
+  }
+
+  setEmployee(value: string): void {
+    this.employeeId.set(value ? Number(value) : null);
+  }
+
+  reset(): void {
+    this.departmentId.set(null);
+    this.employeeId.set(null);
     this.load();
   }
 
