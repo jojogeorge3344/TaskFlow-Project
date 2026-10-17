@@ -21,6 +21,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
     public DbSet<TaskActivityLog> TaskActivityLogs => Set<TaskActivityLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ReminderHistory> ReminderHistory => Set<ReminderHistory>();
+    public DbSet<ApplicationSetting> ApplicationSettings => Set<ApplicationSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -186,6 +188,44 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .WithMany()
                 .HasForeignKey(notification => notification.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReminderHistory>(entity =>
+        {
+            entity.HasKey(reminder => reminder.Id);
+            entity.Property(reminder => reminder.ReminderType).HasConversion<string>().HasMaxLength(32);
+            entity.Property(reminder => reminder.Status).HasConversion<string>().HasMaxLength(32);
+
+            // BRD §3.5: one reminder event per task, recipient, type and slot, however often the scheduler runs.
+            entity.HasIndex(reminder => new
+            {
+                reminder.TaskId,
+                reminder.RecipientUserId,
+                reminder.ReminderType,
+                reminder.ScheduledFor
+            }).IsUnique();
+
+            entity
+                .HasOne(reminder => reminder.Task)
+                .WithMany()
+                .HasForeignKey(reminder => reminder.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(reminder => reminder.RecipientUser)
+                .WithMany()
+                .HasForeignKey(reminder => reminder.RecipientUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApplicationSetting>(entity =>
+        {
+            entity.HasKey(setting => setting.Id);
+            entity.Property(setting => setting.Key).IsRequired().HasMaxLength(128);
+            entity.Property(setting => setting.Value).IsRequired().HasMaxLength(1024);
+            entity.Property(setting => setting.Category).IsRequired().HasMaxLength(64);
+
+            entity.HasIndex(setting => setting.Key).IsUnique();
         });
     }
 }

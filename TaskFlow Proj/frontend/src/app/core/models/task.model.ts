@@ -136,7 +136,8 @@ export interface CreateTaskRequest {
   deadline: string;
   estimatedHours: number;
   additionalRecipientUserIds: number[];
-  firstReminderDays: number;
-  secondReminderDays: number;
-  overdueReminderFrequency: ReminderFrequency;
+  /** null lets the server apply the configured reminder defaults. */
+  firstReminderDays: number | null;
+  secondReminderDays: number | null;
+  overdueReminderFrequency: ReminderFrequency | null;
 }

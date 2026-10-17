@@ -8,6 +8,7 @@ import { ManagerDashboardComponent } from './features/dashboard/manager-dashboar
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
 import { NotificationCenterComponent } from './features/notifications/notification-center.component';
+import { ReminderSettingsComponent } from './features/settings/reminder-settings.component';
 import { ActivityComponent } from './features/tasks/activity.component';
 import { KanbanComponent } from './features/tasks/kanban.component';
 import { TaskReassignComponent } from './features/tasks/reassign.component';
@@ -64,6 +65,7 @@ describe('app routes', () => {
       'departments',
       'employees',
       'notifications',
+      'settings/reminders',
       'board',
       'tasks',
       'tasks/new',
@@ -112,6 +114,14 @@ describe('app routes', () => {
     const notifications = childRoute('notifications');
     expect(notifications.canActivate).toBeUndefined();
     expect(await load(notifications)).toBe(NotificationCenterComponent);
+  });
+
+  it('protects reminder settings for Administrators and Managers only', async () => {
+    const settings = childRoute('settings/reminders');
+    expect(settings.canActivate).toEqual([roleGuard]);
+    expect(settings.data?.['roles']).toEqual(['Administrator', 'Manager']);
+    expect(settings.data?.['roles']).not.toContain('Employee');
+    expect(await load(settings)).toBe(ReminderSettingsComponent);
   });
 
   it('registers the board for every authenticated role', () => {

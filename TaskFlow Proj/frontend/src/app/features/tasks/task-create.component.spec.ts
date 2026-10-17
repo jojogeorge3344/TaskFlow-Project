@@ -2,7 +2,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { TaskDetails, User } from '../../core/models';
+import { ReminderSettings, TaskDetails, User } from '../../core/models';
+import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskCreateComponent, toLocalInput } from './task-create.component';
@@ -23,6 +24,19 @@ describe('TaskCreateComponent', () => {
     };
   }
 
+  function settings(overrides: Partial<ReminderSettings>): ReminderSettings {
+    return {
+      enabled: true,
+      deadlineDayEnabled: true,
+      defaultFirstDays: 2,
+      defaultSecondDays: 1,
+      defaultOverdueFrequency: 'Daily',
+      emailEnabled: false,
+      timezone: 'Asia/Kolkata',
+      ...overrides
+    };
+  }
+
   const users: User[] = [
     user({}),
     user({ id: 4, fullName: 'Ann Varghese', username: 'ann', employeeCode: 'EMP-004' }),
@@ -31,6 +45,7 @@ describe('TaskCreateComponent', () => {
 
   let createSpy: jasmine.Spy;
   let getAllSpy: jasmine.Spy;
+  let getSettingsSpy: jasmine.Spy;
   let toast: jasmine.SpyObj<ToastService>;
   let navigateSpy: jasmine.Spy;
 
@@ -41,6 +56,7 @@ describe('TaskCreateComponent', () => {
         provideRouter([]),
         { provide: TaskService, useValue: { create: createSpy } },
         { provide: UserService, useValue: { getAll: getAllSpy } },
+        { provide: ReminderSettingsService, useValue: { get: getSettingsSpy } },
         { provide: ToastService, useValue: toast }
       ]
     });
@@ -78,6 +94,7 @@ describe('TaskCreateComponent', () => {
 
   beforeEach(() => {
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(users));
+    getSettingsSpy = jasmine.createSpy('get').and.returnValue(of(settings({})));
     createSpy = jasmine.createSpy('create');
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
   });
@@ -88,6 +105,71 @@ describe('TaskCreateComponent', () => {
     expect(getAllSpy).toHaveBeenCalledWith({ isActive: true });
     const options = Array.from(el(fixture).querySelectorAll('#task-assignee option')).map((option) => option.textContent?.trim());
     expect(options).toEqual(['Select an employee…', 'Joe Thomas (EMP-003)', 'Ann Varghese (EMP-004)']);
+  });
+
+  it('pre-fills the reminder fields from the configured defaults', () => {
+    getSettingsSpy.and.returnValue(of(settings({ defaultFirstDays: 3, defaultSecondDays: 0, defaultOverdueFrequency: 'Weekly' })));
+    const fixture = create();
+
+    const value = fixture.componentInstance.form.getRawValue();
+    expect(getSettingsSpy).toHaveBeenCalled();
+    expect(value.firstReminderDays).toBe(3);
+    expect(value.secondReminderDays).toBe(0);
+    expect(value.overdueReminderFrequency).toBe('Weekly');
+    const first = el(fixture).querySelector('#task-first-reminder') as HTMLSelectElement;
+    expect(first.selectedOptions[0].textContent?.trim()).toBe('3 days before the deadline');
+  });
+
+  it('offers a configured default that is not a predefined option', () => {
+    getSettingsSpy.and.returnValue(of(settings({ defaultFirstDays: 7 })));
+    const fixture = create();
+
+    const first = el(fixture).querySelector('#task-first-reminder') as HTMLSelectElement;
+    expect(first.selectedOptions[0].textContent?.trim()).toBe('7 days before the deadline');
+  });
+
+  it('stays usable and says so when the reminder defaults cannot be loaded', () => {
+    getSettingsSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+    const fixture = create();
+
+    const value = fixture.componentInstance.form.getRawValue();
+    expect(value.firstReminderDays).toBe(2);
+    expect(value.secondReminderDays).toBe(1);
+    expect(value.overdueReminderFrequency).toBe('Daily');
+    expect(el(fixture).querySelector('.tf-alert')).toBeNull();
+    expect(el(fixture).querySelector('[data-hint="reminder-defaults"]')).not.toBeNull();
+  });
+
+  it('sends untouched reminder fields as null when the defaults were not loaded, so the server applies them', () => {
+    getSettingsSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    createSpy.and.returnValue(of({ id: 7, taskCode: 'TSK-000007', assignedToName: 'Joe Thomas' } as TaskDetails));
+    const fixture = create();
+    fillValid(fixture);
+
+    const overdue = fixture.componentInstance.form.controls.overdueReminderFrequency;
+    overdue.setValue('Weekly');
+    overdue.markAsDirty();
+    submit(fixture);
+
+    const body = createSpy.calls.mostRecent().args[0];
+    expect(body.firstReminderDays).toBeNull();
+    expect(body.secondReminderDays).toBeNull();
+    expect(body.overdueReminderFrequency).toBe('Weekly');
+  });
+
+  it('sends the pre-filled reminder values once the defaults have loaded', () => {
+    getSettingsSpy.and.returnValue(of(settings({ defaultFirstDays: 3 })));
+    createSpy.and.returnValue(of({ id: 8, taskCode: 'TSK-000008', assignedToName: 'Joe Thomas' } as TaskDetails));
+    const fixture = create();
+    fillValid(fixture);
+
+    submit(fixture);
+
+    const body = createSpy.calls.mostRecent().args[0];
+    expect(body.firstReminderDays).toBe(3);
+    expect(body.secondReminderDays).toBe(1);
+    expect(body.overdueReminderFrequency).toBe('Daily');
+    expect(el(fixture).querySelector('[data-hint="reminder-defaults"]')).toBeNull();
   });
 
   it('defaults the priority, dates and reminder options', () => {

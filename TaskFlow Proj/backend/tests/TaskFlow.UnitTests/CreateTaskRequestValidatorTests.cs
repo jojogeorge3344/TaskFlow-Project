@@ -85,6 +85,44 @@ public class CreateTaskRequestValidatorTests
         result.ShouldNotHaveAnyValidationErrors();
     }
 
+    [Theory]
+    [InlineData(3, 5, false)]
+    [InlineData(1, 2, false)]
+    [InlineData(1, 1, true)]
+    [InlineData(3, 0, true)]
+    [InlineData(0, 1, true)]
+    public void CreateTaskRequest_SecondReminderBeforeFirst_IsValidated(int first, int second, bool valid)
+    {
+        var validator = new CreateTaskRequestValidator();
+
+        var result = validator.TestValidate(ValidCreate() with { FirstReminderDays = first, SecondReminderDays = second });
+
+        if (valid)
+        {
+            result.ShouldNotHaveValidationErrorFor(task => task.SecondReminderDays);
+        }
+        else
+        {
+            result.ShouldHaveValidationErrorFor(task => task.SecondReminderDays)
+                .WithErrorMessage("The second reminder cannot come before the first reminder.");
+        }
+    }
+
+    [Fact]
+    public void CreateTaskRequest_OmittedReminders_AreValid()
+    {
+        var validator = new CreateTaskRequestValidator();
+
+        var result = validator.TestValidate(ValidCreate() with
+        {
+            FirstReminderDays = null,
+            SecondReminderDays = null,
+            OverdueReminderFrequency = null
+        });
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
     private static CreateTaskRequest ValidCreate() => new(
         "Prepare report",
         "October figures",

@@ -44,10 +44,19 @@ builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskCommentService, TaskF
 builder.Services.AddScoped<TaskFlow.Application.Tasks.ITaskActivityService, TaskFlow.Infrastructure.Services.TaskActivityService>();
 builder.Services.AddScoped<TaskFlow.Application.Tasks.INotificationPublisher, TaskFlow.Infrastructure.Services.NotificationPublisher>();
 builder.Services.AddScoped<TaskFlow.Application.Notifications.INotificationService, TaskFlow.Infrastructure.Services.NotificationService>();
+builder.Services.AddScoped<TaskFlow.Application.Reminders.IReminderService, TaskFlow.Infrastructure.Services.ReminderService>();
+builder.Services.Configure<TaskFlow.Infrastructure.Services.ReminderEngineOptions>(
+    builder.Configuration.GetSection(TaskFlow.Infrastructure.Services.ReminderEngineOptions.SectionName));
+builder.Services.AddHostedService<TaskFlow.Infrastructure.Services.ReminderSchedulerService>();
 builder.Services.AddScoped<IAuthorizationHandler, TaskAccessHandler>();
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
+builder.Services.Configure<TaskFlow.Infrastructure.Settings.ApplicationOptions>(
+    builder.Configuration.GetSection(TaskFlow.Infrastructure.Settings.ApplicationOptions.SectionName));
+builder.Services.AddScoped<TaskFlow.Application.Settings.IAppClock, TaskFlow.Infrastructure.Settings.AppClock>();
+builder.Services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsService, TaskFlow.Infrastructure.Settings.ReminderSettingsService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 builder.Services
@@ -107,6 +116,7 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Settings.SettingsInitializer>().InitializeAsync();
 
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
 }

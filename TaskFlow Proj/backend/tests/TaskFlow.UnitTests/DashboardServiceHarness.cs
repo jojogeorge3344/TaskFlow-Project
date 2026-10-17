@@ -1,9 +1,12 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Infrastructure.Persistence;
 using TaskFlow.Infrastructure.Services;
+using TaskFlow.Infrastructure.Settings;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
@@ -43,7 +46,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
 
     public FakeTimeProvider Clock { get; }
 
-    public static DashboardServiceHarness Create(DateTimeOffset? now = null)
+    public static DashboardServiceHarness Create(DateTimeOffset? now = null, string timezone = "UTC")
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         connection.Open();
@@ -56,7 +59,8 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
         db.Database.EnsureCreated();
 
         var clock = new FakeTimeProvider(now ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
-        var service = new DashboardService(db, clock);
+        var appClock = new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
+        var service = new DashboardService(db, appClock);
 
         return new DashboardServiceHarness(connection, db, service, clock);
     }
