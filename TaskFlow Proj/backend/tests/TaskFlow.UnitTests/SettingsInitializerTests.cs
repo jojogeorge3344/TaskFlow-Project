@@ -22,7 +22,7 @@ public class SettingsInitializerTests
         Assert.Equal(7, keys.Count);
         Assert.Equal(keys.Count, keys.Distinct().Count());
         Assert.Contains(SettingKeys.ReminderEnabled, keys);
-        Assert.Contains(SettingKeys.NotificationEmailEnabled, keys);
+        Assert.Contains(SettingKeys.NotificationMailEnabled, keys);
     }
 
     [Fact]

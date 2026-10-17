@@ -15,6 +15,10 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), $"taskflow-tests-{Guid.NewGuid():N}.db");
 
+    /// <summary>Attachment files for this factory's mail tests, removed on dispose.</summary>
+    public string AttachmentsPath { get; } =
+        Path.Combine(Path.GetTempPath(), $"taskflow-mail-tests-{Guid.NewGuid():N}");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -31,7 +35,8 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Cors:AllowedOrigins:0"] = "http://localhost:4200",
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
-                ["Reminders:SchedulerEnabled"] = "false"
+                ["Reminders:SchedulerEnabled"] = "false",
+                ["Mail:AttachmentsPath"] = AttachmentsPath
             });
         });
     }
@@ -75,6 +80,17 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+
+        if (disposing && Directory.Exists(AttachmentsPath))
+        {
+            try
+            {
+                Directory.Delete(AttachmentsPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
 
         if (disposing && File.Exists(_databasePath))
         {

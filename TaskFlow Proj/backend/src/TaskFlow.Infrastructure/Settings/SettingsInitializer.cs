@@ -60,7 +60,7 @@ public class SettingsInitializer
         yield return (SettingKeys.ReminderDefaultFirstDays, Format(SettingKeys.DefaultFirstDays), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDefaultSecondDays, Format(SettingKeys.DefaultSecondDays), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDefaultOverdueFrequency, SettingKeys.DefaultOverdueFrequency, SettingKeys.ReminderCategory);
-        yield return (SettingKeys.NotificationEmailEnabled, Format(SettingKeys.DefaultEmailEnabled), SettingKeys.NotificationCategory);
+        yield return (SettingKeys.NotificationMailEnabled, Format(SettingKeys.DefaultMailEnabled), SettingKeys.NotificationCategory);
     }
 
     internal static string Format(bool value) => value ? "true" : "false";

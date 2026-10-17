@@ -7,6 +7,7 @@ import { EmployeeDashboardComponent } from './features/dashboard/employee-dashbo
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
+import { MailComponent } from './features/mail/mail.component';
 import { NotificationCenterComponent } from './features/notifications/notification-center.component';
 import { ReminderSettingsComponent } from './features/settings/reminder-settings.component';
 import { ActivityComponent } from './features/tasks/activity.component';
@@ -64,6 +65,7 @@ describe('app routes', () => {
       'me',
       'departments',
       'employees',
+      'mail',
       'notifications',
       'settings/reminders',
       'board',
@@ -122,6 +124,12 @@ describe('app routes', () => {
     expect(settings.data?.['roles']).toEqual(['Administrator', 'Manager']);
     expect(settings.data?.['roles']).not.toContain('Employee');
     expect(await load(settings)).toBe(ReminderSettingsComponent);
+  });
+
+  it('registers Mail for every signed-in user', async () => {
+    const mail = childRoute('mail');
+    expect(mail.canActivate).toBeUndefined();
+    expect(await load(mail)).toBe(MailComponent);
   });
 
   it('registers the board for every authenticated role', () => {

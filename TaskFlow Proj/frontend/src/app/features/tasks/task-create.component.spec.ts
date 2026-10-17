@@ -31,7 +31,7 @@ describe('TaskCreateComponent', () => {
       defaultFirstDays: 2,
       defaultSecondDays: 1,
       defaultOverdueFrequency: 'Daily',
-      emailEnabled: false,
+      mailEnabled: false,
       timezone: 'Asia/Kolkata',
       ...overrides
     };

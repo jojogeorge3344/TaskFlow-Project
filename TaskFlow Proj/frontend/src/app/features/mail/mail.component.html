@@ -1,0 +1,58 @@
+<section class="tf-page mail-page">
+  <div class="mail" [class.mail--narrow]="narrow()" [attr.data-pane]="narrow() ? pane() : 'all'">
+    <aside class="mail__folders" aria-label="Mail folders">
+      <button type="button" class="tf-btn tf-btn--primary mail__compose" data-action="compose" (click)="newMail()">
+        <tf-icon name="edit" /> Compose
+      </button>
+      <nav>
+        <ul class="mail__folder-list">
+          @for (item of folders; track item.view) {
+            <li>
+              <button
+                type="button"
+                class="mail__folder"
+                [class.mail__folder--active]="item.view === folder()"
+                [attr.aria-current]="item.view === folder() ? 'page' : null"
+                [attr.data-folder]="item.view"
+                (click)="selectFolder(item.view)"
+              >
+                <tf-icon [name]="item.icon" />
+                <span class="mail__folder-name">{{ item.label }}</span>
+                @if (count(item) > 0) {
+                  <span class="mail__count" [attr.data-count]="item.view">{{ count(item) }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="mail__list">
+      @if (narrow()) {
+        <div class="mail__list-head">
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="show-folders" (click)="foldersOpen.set(true)">
+            <tf-icon name="menu" /> {{ currentFolderLabel() }}
+          </button>
+          <button type="button" class="tf-btn tf-btn--primary" data-action="compose-narrow" (click)="newMail()">
+            <tf-icon name="edit" /> Compose
+          </button>
+        </div>
+      }
+      <app-mail-list [folder]="folder()" [selectedItemId]="itemId()" [refreshToken]="refreshToken()" (opened)="openItem($event)" (changed)="changed()" />
+    </div>
+
+    <div class="mail__reader">
+      @if (itemId(); as id) {
+        <app-mail-reader [itemId]="id" (back)="closeItem()" (reply)="replyTo($event)" (changed)="changed()" (closed)="closeItem()" />
+      } @else {
+        <div class="tf-empty mail__placeholder">
+          <tf-icon name="mail" />
+          <p>Select a mail to read it.</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <app-compose-dialog [request]="compose()" (closed)="onComposeClosed($event)" />
+</section>

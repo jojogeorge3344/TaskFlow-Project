@@ -14,7 +14,7 @@ public static class SettingKeys
     public const string ReminderDefaultFirstDays = "Reminder.DefaultFirstDays";
     public const string ReminderDefaultSecondDays = "Reminder.DefaultSecondDays";
     public const string ReminderDefaultOverdueFrequency = "Reminder.DefaultOverdueFrequency";
-    public const string NotificationEmailEnabled = "Notification.EmailEnabled";
+    public const string NotificationMailEnabled = "Notification.MailEnabled";
 
     public const string FallbackTimezone = "UTC";
     public const bool DefaultReminderEnabled = true;
@@ -22,5 +22,5 @@ public static class SettingKeys
     public const int DefaultFirstDays = 2;
     public const int DefaultSecondDays = 1;
     public const string DefaultOverdueFrequency = "Daily";
-    public const bool DefaultEmailEnabled = false;
+    public const bool DefaultMailEnabled = true;
 }

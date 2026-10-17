@@ -1,11 +1,14 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using TaskFlow.Application.Mail;
 using TaskFlow.Application.Reminders;
 using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
+using TaskFlow.Infrastructure.Mail;
 using TaskFlow.Infrastructure.Persistence;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
@@ -24,17 +27,20 @@ public class ReminderService : IReminderService
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
     private readonly IReminderSettingsService _settingsService;
+    private readonly MailOptions _mailOptions;
     private readonly ILogger<ReminderService> _logger;
 
     public ReminderService(
         AppDbContext dbContext,
         IAppClock clock,
         IReminderSettingsService settingsService,
+        IOptions<MailOptions> mailOptions,
         ILogger<ReminderService> logger)
     {
         _dbContext = dbContext;
         _clock = clock;
         _settingsService = settingsService;
+        _mailOptions = mailOptions.Value;
         _logger = logger;
     }
 
@@ -99,6 +105,7 @@ public class ReminderService : IReminderService
             foreach (var reminder in task.Reminders)
             {
                 var message = BuildMessage(task.Title, task.Snapshot.DeadlineUtc, reminder, timeZone);
+                (string Subject, string Body)? mail = settings.MailEnabled ? BuildMail(task.Id, task.Title, reminder, message) : null;
                 foreach (var recipientId in recipientsByTask[task.Id])
                 {
                     // Already delivered earlier today: skip without opening a write transaction.
@@ -107,7 +114,7 @@ public class ReminderService : IReminderService
                         continue;
                     }
 
-                    if (await TryDeliverAsync(task.Id, task.Snapshot.DeadlineUtc, recipientId, reminder, message, nowUtc, cancellationToken))
+                    if (await TryDeliverAsync(task.Id, task.Snapshot.DeadlineUtc, recipientId, reminder, message, mail, nowUtc, cancellationToken))
                     {
                         written++;
                     }
@@ -178,15 +185,16 @@ public class ReminderService : IReminderService
             pair => (IReadOnlyList<int>)pair.Value.Where(activeUserIds.Contains).ToList());
     }
 
-    /// <summary>Records the reminder and writes its notification in one transaction. Returns false when the
-    /// same reminder was already delivered, or when the task was completed, cancelled, deleted or rescheduled
-    /// since this pass read it; in either case nothing is written.</summary>
+    /// <summary>Records the reminder and writes its notification, and its Inbox mail when one is given, in one
+    /// transaction. Returns false when the same reminder was already delivered, or when the task was completed,
+    /// cancelled, deleted or rescheduled since this pass read it; in either case nothing is written.</summary>
     private async Task<bool> TryDeliverAsync(
         int taskId,
         DateTime deadlineUtc,
         int recipientId,
         DueReminder reminder,
         string message,
+        (string Subject, string Body)? mail,
         DateTime nowUtc,
         CancellationToken cancellationToken)
     {
@@ -228,11 +236,66 @@ public class ReminderService : IReminderService
         };
 
         _dbContext.Notifications.Add(notification);
+
+        if (mail is { } reminderMail)
+        {
+            var historyId = await _dbContext.ReminderHistory
+                .Where(row => row.TaskId == taskId
+                    && row.RecipientUserId == recipientId
+                    && row.ReminderType == reminder.Type
+                    && row.ScheduledFor == reminder.ScheduledForUtc)
+                .Select(row => row.Id)
+                .SingleAsync(cancellationToken);
+
+            // From the TaskFlow system sender; the unique ReminderHistoryId backs up the history dedup.
+            var mailMessage = new MailMessage
+            {
+                ConversationId = Guid.NewGuid(),
+                IsSystem = true,
+                Subject = reminderMail.Subject,
+                Body = reminderMail.Body,
+                TaskId = taskId,
+                ReminderHistoryId = historyId,
+                CreatedAt = nowUtc,
+                UpdatedAt = nowUtc,
+                SentAt = nowUtc
+            };
+            _dbContext.MailMessages.Add(mailMessage);
+            _dbContext.MailRecipients.Add(new MailRecipient { Message = mailMessage, UserId = recipientId, Kind = MailRecipientKind.To });
+            _dbContext.MailboxItems.Add(new MailboxItem { Message = mailMessage, OwnerUserId = recipientId, Folder = MailFolder.Inbox, SortAt = nowUtc });
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        _dbContext.Entry(notification).State = EntityState.Detached;
+        _dbContext.ChangeTracker.Clear();
 
         return true;
+    }
+
+    /// <summary>The Inbox mail for a reminder: a subject naming the kind of reminder, the notification text and,
+    /// when the app address is configured, a link to the task.</summary>
+    private (string Subject, string Body) BuildMail(int taskId, string title, DueReminder reminder, string message)
+    {
+        var prefix = reminder.Type switch
+        {
+            ReminderType.Overdue => "Overdue task: ",
+            ReminderType.DueToday => "Task due today: ",
+            _ => "Task reminder: "
+        };
+        var subject = prefix + title;
+        if (subject.Length > MailRules.MaxSubjectLength)
+        {
+            subject = subject[..MailRules.MaxSubjectLength];
+        }
+
+        var body = new System.Text.StringBuilder().AppendLine(message);
+        if (!string.IsNullOrWhiteSpace(_mailOptions.AppBaseUrl))
+        {
+            body.AppendLine().Append("Open the task: ").Append(_mailOptions.AppBaseUrl.TrimEnd('/')).Append("/tasks/").Append(taskId).AppendLine();
+        }
+
+        body.AppendLine().Append("This is an automatic reminder from TaskFlow.");
+        return (subject, body.ToString());
     }
 
     private static string BuildMessage(string title, DateTime deadlineUtc, DueReminder reminder, TimeZoneInfo timeZone)

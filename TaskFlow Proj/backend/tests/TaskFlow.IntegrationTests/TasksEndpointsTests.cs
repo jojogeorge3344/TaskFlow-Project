@@ -435,7 +435,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
                 defaultFirstDays = 3,
                 defaultSecondDays = 1,
                 defaultOverdueFrequency = "Weekly",
-                emailEnabled = false
+                mailEnabled = false
             }));
         Assert.Equal(HttpStatusCode.OK, configure.StatusCode);
 
@@ -473,7 +473,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
                     defaultFirstDays = 2,
                     defaultSecondDays = 1,
                     defaultOverdueFrequency = "Daily",
-                    emailEnabled = false
+                    mailEnabled = false
                 }));
         }
     }

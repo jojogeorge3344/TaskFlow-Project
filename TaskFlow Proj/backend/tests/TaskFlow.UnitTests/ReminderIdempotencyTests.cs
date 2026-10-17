@@ -81,6 +81,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
 
         Assert.Equal(_recipientCount, await CountAsync(db => db.ReminderHistory));
         Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailMessages));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailboxItems));
     }
 
     [Fact]
@@ -91,6 +93,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
 
         Assert.Equal(_recipientCount, await CountAsync(db => db.ReminderHistory));
         Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailMessages));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailboxItems));
     }
 
     [Fact]
@@ -206,6 +210,7 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
             db,
             new AppClock(db, _clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(db, _clock, options),
+            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 
         await service.GenerateDueAsync();

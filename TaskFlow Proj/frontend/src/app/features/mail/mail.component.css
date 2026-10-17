@@ -1,0 +1,164 @@
+.mail-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mail {
+  display: grid;
+  grid-template-columns: 13rem minmax(16rem, 22rem) minmax(0, 1fr);
+  height: calc(100vh - var(--tf-header-h) - 3rem);
+  min-height: 28rem;
+  overflow: hidden;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-surface);
+}
+
+.mail__folders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3);
+  border-right: 1px solid var(--tf-border);
+  overflow-y: auto;
+}
+
+.mail__compose {
+  justify-content: center;
+}
+
+.mail__folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mail__folder {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 0;
+  border-radius: var(--tf-radius-md);
+  background: none;
+  color: var(--tf-text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mail__folder:hover {
+  background: var(--tf-surface-alt);
+}
+
+.mail__folder--active {
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary-hover);
+  font-weight: 600;
+}
+
+.mail__folder tf-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.mail__folder-name {
+  flex: 1;
+}
+
+.mail__count {
+  min-width: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--tf-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mail__list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--tf-border);
+}
+
+.mail__list app-mail-list {
+  flex: 1;
+}
+
+.mail__list-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-2) var(--tf-space-3);
+  border-bottom: 1px solid var(--tf-border);
+}
+
+.mail__reader {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mail__reader app-mail-reader {
+  flex: 1;
+}
+
+.mail__placeholder {
+  flex: 1;
+  align-self: center;
+}
+
+/* Wide screens never show the reader's back button. */
+.mail:not(.mail--narrow) ::ng-deep .reader__back {
+  display: none;
+}
+
+/* Medium screens: folders + list + reader would be cramped, so the rail narrows to icons. */
+@media (max-width: 1199.98px) and (min-width: 768px) {
+  .mail {
+    grid-template-columns: 3.5rem minmax(15rem, 20rem) minmax(0, 1fr);
+  }
+
+  .mail__folder-name,
+  .mail__compose {
+    font-size: 0;
+  }
+
+  .mail__compose tf-icon {
+    margin: 0;
+  }
+
+  .mail__count {
+    display: none;
+  }
+}
+
+/* Narrow screens: one pane at a time, chosen by data-pane. */
+.mail--narrow {
+  display: block;
+  height: auto;
+  min-height: calc(100vh - var(--tf-header-h) - 2rem);
+}
+
+.mail--narrow .mail__folders,
+.mail--narrow .mail__list,
+.mail--narrow .mail__reader {
+  display: none;
+  border-right: 0;
+}
+
+.mail--narrow[data-pane='folders'] .mail__folders,
+.mail--narrow[data-pane='list'] .mail__list,
+.mail--narrow[data-pane='reader'] .mail__reader {
+  display: flex;
+  min-height: calc(100vh - var(--tf-header-h) - 2rem);
+}

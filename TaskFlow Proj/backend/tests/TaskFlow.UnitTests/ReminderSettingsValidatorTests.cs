@@ -68,7 +68,7 @@ public class ReminderSettingsValidatorTests
         result.ShouldHaveValidationErrorFor(settings => settings.Enabled);
         result.ShouldHaveValidationErrorFor(settings => settings.DeadlineDayEnabled);
         result.ShouldHaveValidationErrorFor(settings => settings.DefaultOverdueFrequency);
-        result.ShouldHaveValidationErrorFor(settings => settings.EmailEnabled);
+        result.ShouldHaveValidationErrorFor(settings => settings.MailEnabled);
     }
 
     [Fact]

@@ -7,7 +7,7 @@ export interface ReminderSettings {
   defaultFirstDays: number;
   defaultSecondDays: number;
   defaultOverdueFrequency: ReminderFrequency;
-  emailEnabled: boolean;
+  mailEnabled: boolean;
   timezone: string;
 }
 

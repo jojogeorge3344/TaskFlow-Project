@@ -52,6 +52,11 @@ export const routes: Routes = [
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
+        // Every signed-in user has a mailbox.
+        path: 'mail',
+        loadComponent: () => import('./features/mail/mail.component').then((m) => m.MailComponent)
+      },
+      {
         path: 'notifications',
         loadComponent: () =>
           import('./features/notifications/notification-center.component').then(

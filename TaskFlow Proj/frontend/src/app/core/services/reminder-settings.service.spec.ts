@@ -14,7 +14,7 @@ describe('ReminderSettingsService', () => {
     defaultFirstDays: 2,
     defaultSecondDays: 1,
     defaultOverdueFrequency: 'Daily',
-    emailEnabled: false,
+    mailEnabled: false,
     timezone: 'Asia/Kolkata'
   };
 
@@ -47,7 +47,7 @@ describe('ReminderSettingsService', () => {
       defaultFirstDays: 3,
       defaultSecondDays: 0,
       defaultOverdueFrequency: 'Weekly',
-      emailEnabled: true
+      mailEnabled: true
     };
     let result: ReminderSettings | undefined;
     service.save(update).subscribe((settings) => (result = settings));

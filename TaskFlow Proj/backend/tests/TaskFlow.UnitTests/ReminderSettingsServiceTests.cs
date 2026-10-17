@@ -20,7 +20,7 @@ public class ReminderSettingsServiceTests
 
         var settings = await database.ReminderSettings().GetAsync();
 
-        Assert.Equal(new ReminderSettingsDto(true, true, 2, 1, ReminderFrequency.Daily, false, "Asia/Kolkata"), settings);
+        Assert.Equal(new ReminderSettingsDto(true, true, 2, 1, ReminderFrequency.Daily, true, "Asia/Kolkata"), settings);
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public class ReminderSettingsServiceTests
 
         var settings = await database.ReminderSettings(configuredTimezone: "Asia/Kolkata").GetAsync();
 
-        Assert.Equal(new ReminderSettingsDto(true, true, 2, 1, ReminderFrequency.Daily, false, "Asia/Kolkata"), settings);
+        Assert.Equal(new ReminderSettingsDto(true, true, 2, 1, ReminderFrequency.Daily, true, "Asia/Kolkata"), settings);
     }
 
     [Fact]
