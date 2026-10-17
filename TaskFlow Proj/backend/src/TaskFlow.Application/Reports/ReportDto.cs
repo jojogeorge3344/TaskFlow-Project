@@ -1,0 +1,34 @@
+using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+
+namespace TaskFlow.Application.Reports;
+
+/// <summary>Filters for a task report (Screen 17). Every field is optional; an omitted filter leaves
+/// that dimension unrestricted. The date range filters the task deadline inclusively.</summary>
+public record ReportFilter(
+    DateTime? DeadlineFrom = null,
+    DateTime? DeadlineTo = null,
+    int? AssignedToUserId = null,
+    int? DepartmentId = null,
+    TaskStatus? Status = null,
+    TaskPriority? Priority = null);
+
+/// <summary>Totals for the filtered scope, used for the headline figures and the completion summary.</summary>
+public record ReportSummaryDto(
+    int TotalTasks,
+    int PendingTasks,
+    int CompletedTasks,
+    int OverdueTasks);
+
+/// <summary>One exported task row. Department is the assignee's department, matching the report filter.</summary>
+public record ReportRowDto(
+    string TaskCode,
+    string Title,
+    string Assignee,
+    string Department,
+    TaskPriority Priority,
+    TaskStatus Status,
+    DateTime StartDate,
+    DateTime Deadline,
+    decimal EstimatedHours,
+    DateTime? CompletedAt);

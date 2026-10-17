@@ -109,6 +109,8 @@ describe('ShellComponent', () => {
       'Dashboard',
       'Mail',
       'Task Management',
+      'Employee Workload',
+      'Reports',
       'Employee Management',
       'Department Management',
       'Notifications',

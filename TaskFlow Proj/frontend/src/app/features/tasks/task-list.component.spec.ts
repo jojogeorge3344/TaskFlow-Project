@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthUser, PagedResult, TaskListItem, UserRole } from '../../core/models';
@@ -35,12 +35,13 @@ describe('TaskListComponent', () => {
   let listSpy: jasmine.Spy;
   let assigneesSpy: jasmine.Spy;
 
-  function create(role: UserRole): ComponentFixture<TaskListComponent> {
+  function create(role: UserRole, queryParams: Record<string, string> = {}): ComponentFixture<TaskListComponent> {
     const user: AuthUser = { id: 1, fullName: 'Test', username: 'test', email: 't@x', role, employeeCode: null };
     TestBed.configureTestingModule({
       imports: [TaskListComponent],
       providers: [
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
         { provide: TaskService, useValue: { list: listSpy, getAssignees: assigneesSpy } },
         { provide: AuthService, useValue: { currentUser: signal(user).asReadonly() } }
       ]
@@ -142,6 +143,19 @@ describe('TaskListComponent', () => {
       deadlineFrom: new Date(2026, 9, 1).toISOString(),
       deadlineTo: new Date(2026, 9, 31, 23, 59, 59, 999).toISOString()
     });
+  });
+
+  it('opens pre-filtered to the employee linked from the workload screen', () => {
+    create('Manager', { assignedToUserId: '3' });
+
+    expect(lastFilter()['assignedToUserId']).toBe(3);
+  });
+
+  it('ignores an invalid assignedToUserId query parameter', () => {
+    const fixture = create('Manager', { assignedToUserId: 'abc' });
+
+    expect(fixture.componentInstance.assignedToUserId()).toBeNull();
+    expect(lastFilter()['assignedToUserId']).toBeUndefined();
   });
 
   it('builds deadline bounds from local calendar days', () => {

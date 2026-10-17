@@ -2,7 +2,7 @@
 
 ## 1. Design tokens and UI primitives
 
-- [ ] 1.1 Add `:root` design tokens and base element styles to `frontend/src/styles.css` (D4), then switch the existing dashboard and stat-card rules to use the tokens. Verify with `npm run build` and confirm the dashboards look unchanged.
+- [x] 1.1 Add `:root` design tokens and base element styles to `frontend/src/styles.css` (D4), then switch the existing dashboard and stat-card rules to use the tokens. Verify with `npm run build` and confirm the dashboards look unchanged.
 - [x] 1.2 Add the primitives `.tf-btn*`, `.tf-input`/`.tf-select`/`.tf-field`, `.tf-badge*`, `.tf-card`, `.tf-table`, `.tf-page-header`, `.tf-toolbar`, `.tf-empty`, `.tf-skeleton`, `.tf-drawer`, `.tf-modal`, `.tf-backdrop` and `.tf-toast` to `styles.css`, including focus-visible rings and the 768px/576px responsive rules. Verify the build passes.
 
 ## 2. Application shell
@@ -16,7 +16,7 @@
 ## 3. Routing migration
 
 - [x] 3.1 Restructure `app.routes.ts` so all authenticated routes are children of `ShellComponent` with `authGuard` on the parent and `roleGuard` on each child (D1). Verify `app.routes.spec.ts` is updated and passes, and that `/login` still renders without the shell.
-- [ ] 3.2 Remove the `<app-dashboard-layout>` wrapper from the admin, manager and employee dashboard templates and imports, then delete `features/dashboard/dashboard-layout.component.*`. Verify the dashboard specs pass and each dashboard shows inside the shell in `npm start`.
+- [x] 3.2 Remove the `<app-dashboard-layout>` wrapper from the admin, manager and employee dashboard templates and imports, then delete `features/dashboard/dashboard-layout.component.*`. Verify the dashboard specs pass and each dashboard shows inside the shell in `npm start`.
 
 ## 4. Shared overlays
 
@@ -25,14 +25,14 @@
 
 ## 5. Employee Management redesign
 
-- [ ] 5.1 Rewrite `employee-list.component.html/.css` with the page header (title, count subtitle, "Add employee"), the filter toolbar (search, department, role, status, Reset) and the `.tf-table` with avatar, badges, "Unassigned" fallback and row actions. Add the <768px card-row transform. Verify at 390px, 768px and 1280px with no horizontal scroll.
+- [x] 5.1 Rewrite `employee-list.component.html/.css` with the page header (title, count subtitle, "Add employee"), the filter toolbar (search, department, role, status, Reset) and the `.tf-table` with avatar, badges, "Unassigned" fallback and row actions. Add the <768px card-row transform. Verify at 390px, 768px and 1280px with no horizontal scroll.
 - [x] 5.2 Refactor `employee-list.component.ts`: filter signals, 300ms debounced search, select filters applied on change, `switchMap` loading, `departmentId` read from and written to query params, and loading/empty/error states with Retry and Clear filters (D6). Verify by creating `employee-list.component.spec.ts` (it does not exist yet) covering debounce, query-param prefilter, empty state and retry.
 - [x] 5.3 Create `employee-form-panel` (Reactive Forms, optional employee code field, inline errors, password and status fields only in create mode, server error shown in the panel, Save disabled while saving) and `employee-details-panel` (read-only fields + Edit). Verify with specs for create-mode vs edit-mode fields, required/email errors, a kept-open panel on a 409 error, and the success toast.
 - [x] 5.4 Wire Deactivate through `ConfirmDialogComponent` (no confirmation for Activate) and show toasts. Verify with a spec showing a cancelled confirmation does not call `updateStatus`.
 
 ## 6. Department Management redesign
 
-- [ ] 6.1 Rewrite `department-list.component.html/.css`: page header with count and "Add department", search field, and a card grid (1 column / 2 columns at ≥576px / auto-fill at ≥1200px) with name, description fallback, employee count, Edit, guarded Delete with tooltip, and View employees (`/employees?departmentId=`). Verify at 390px, 768px and 1280px.
+- [x] 6.1 Rewrite `department-list.component.html/.css`: page header with count and "Add department", search field, and a card grid (1 column / 2 columns at ≥576px / auto-fill at ≥1200px) with name, description fallback, employee count, Edit, guarded Delete with tooltip, and View employees (`/employees?departmentId=`). Verify at 390px, 768px and 1280px.
 - [x] 6.2 Refactor `department-list.component.ts`: client-side `computed()` search, loading/empty/no-match/error states, and replace `confirm()` with `ConfirmDialogComponent` (D7). Verify by creating `department-list.component.spec.ts` (it does not exist yet) covering search filtering, the disabled delete when employees > 0, and the confirm flow.
 - [x] 6.3 Create `department-form-dialog` (native `<dialog>`, required Name, server error kept inside the dialog, toast on success). Verify with a spec for the required-name error and a duplicate-name error that keeps the dialog open.
 

@@ -9,7 +9,9 @@ import { DepartmentListComponent } from './features/departments/department-list.
 import { EmployeeListComponent } from './features/employees/employee-list.component';
 import { MailComponent } from './features/mail/mail.component';
 import { NotificationCenterComponent } from './features/notifications/notification-center.component';
+import { ReportComponent } from './features/reports/report.component';
 import { ReminderSettingsComponent } from './features/settings/reminder-settings.component';
+import { WorkloadComponent } from './features/workload/workload.component';
 import { ActivityComponent } from './features/tasks/activity.component';
 import { KanbanComponent } from './features/tasks/kanban.component';
 import { TaskReassignComponent } from './features/tasks/reassign.component';
@@ -65,6 +67,8 @@ describe('app routes', () => {
       'me',
       'departments',
       'employees',
+      'workload',
+      'reports',
       'mail',
       'notifications',
       'settings/reminders',
@@ -116,6 +120,17 @@ describe('app routes', () => {
     const notifications = childRoute('notifications');
     expect(notifications.canActivate).toBeUndefined();
     expect(await load(notifications)).toBe(NotificationCenterComponent);
+  });
+
+  it('protects the workload and reports screens for Administrators and Managers only', async () => {
+    for (const path of ['workload', 'reports']) {
+      const route = childRoute(path);
+      expect(route.canActivate).toEqual([roleGuard]);
+      expect(route.data?.['roles']).toEqual(['Administrator', 'Manager']);
+      expect(route.data?.['roles']).not.toContain('Employee');
+    }
+    expect(await load(childRoute('workload'))).toBe(WorkloadComponent);
+    expect(await load(childRoute('reports'))).toBe(ReportComponent);
   });
 
   it('protects reminder settings for Administrators and Managers only', async () => {

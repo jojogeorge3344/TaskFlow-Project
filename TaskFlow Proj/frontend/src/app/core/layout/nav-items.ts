@@ -19,6 +19,8 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Dashboard', icon: 'home', route: '/admin' },
     { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
+    { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+    { label: 'Reports', icon: 'chart', route: '/reports' },
     { label: 'Employee Management', icon: 'users', route: '/employees' },
     { label: 'Department Management', icon: 'building', route: '/departments' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
@@ -28,6 +30,8 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Dashboard', icon: 'home', route: '/manager' },
     { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
+    { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+    { label: 'Reports', icon: 'chart', route: '/reports' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
     { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
   ],

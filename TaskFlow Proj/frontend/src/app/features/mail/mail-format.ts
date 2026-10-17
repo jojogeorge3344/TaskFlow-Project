@@ -1,6 +1,8 @@
 import { IconName } from '../../core/layout/icon.component';
 import { MailAddress, MailView } from '../../core/models';
 
+export { saveBlob } from '../../shared/ui/save-blob';
+
 export interface MailFolderDef {
   view: MailView;
   label: string;
@@ -51,14 +53,4 @@ export function formatSize(bytes: number): string {
 
 export function displayName(person: MailAddress): string {
   return person.email ? `${person.name} <${person.email}>` : person.name;
-}
-
-/** Saves a downloaded blob under the given file name. */
-export function saveBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

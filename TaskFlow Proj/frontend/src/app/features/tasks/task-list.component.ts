@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { IconComponent } from '../../core/layout/icon.component';
+import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import {
   PagedResult,
   TASK_PRIORITIES,
@@ -17,6 +18,8 @@ import {
 } from '../../core/models';
 import { TaskService } from './task.service';
 
+export { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
+
 export const SEARCH_DEBOUNCE_MS = 300;
 export const PAGE_SIZE = 20;
 
@@ -27,18 +30,6 @@ export const STATUS_LABELS: Record<TaskStatus, string> = {
   Completed: 'Completed',
   Cancelled: 'Cancelled'
 };
-
-/** UTC instant of local midnight at the start of a `yyyy-MM-dd` day. */
-export function startOfLocalDay(day: string): string {
-  return new Date(`${day}T00:00`).toISOString();
-}
-
-/** UTC instant of the last millisecond of a local `yyyy-MM-dd` day. */
-export function endOfLocalDay(day: string): string {
-  const next = new Date(`${day}T00:00`);
-  next.setDate(next.getDate() + 1);
-  return new Date(next.getTime() - 1).toISOString();
-}
 
 const STAGE_LABELS: Partial<Record<TaskStage, string>> = {
   Overdue: 'Overdue',
@@ -57,6 +48,7 @@ const STAGE_LABELS: Partial<Record<TaskStage, string>> = {
 export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
 
   private readonly searchInput$ = new Subject<string>();
   private readonly reload$ = new Subject<void>();
@@ -109,6 +101,12 @@ export class TaskListComponent implements OnInit {
   });
 
   constructor() {
+    // The workload screen links here with `?assignedToUserId=` to open one employee's task list.
+    const assignedToUserId = Number(this.route.snapshot.queryParamMap.get('assignedToUserId'));
+    if (Number.isInteger(assignedToUserId) && assignedToUserId > 0) {
+      this.assignedToUserId.set(assignedToUserId);
+    }
+
     this.searchInput$
       .pipe(
         debounceTime(SEARCH_DEBOUNCE_MS),

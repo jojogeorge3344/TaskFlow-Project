@@ -52,6 +52,20 @@ export const routes: Routes = [
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
+        path: 'workload',
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator', 'Manager'] },
+        loadComponent: () =>
+          import('./features/workload/workload.component').then((m) => m.WorkloadComponent)
+      },
+      {
+        path: 'reports',
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator', 'Manager'] },
+        loadComponent: () =>
+          import('./features/reports/report.component').then((m) => m.ReportComponent)
+      },
+      {
         // Every signed-in user has a mailbox.
         path: 'mail',
         loadComponent: () => import('./features/mail/mail.component').then((m) => m.MailComponent)
