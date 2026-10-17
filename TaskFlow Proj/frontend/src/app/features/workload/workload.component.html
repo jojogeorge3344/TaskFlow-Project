@@ -1,0 +1,111 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Employee Workload</h1>
+      <p>
+        @if (loading() && rows().length === 0) {
+          Loading workload…
+        } @else {
+          {{ summary().headcount }} {{ summary().headcount === 1 ? 'employee' : 'employees' }} · average
+          {{ averageLabel() }} active tasks
+        }
+      </p>
+    </div>
+  </header>
+
+  <div class="tf-card tf-toolbar workload-toolbar">
+    <div class="tf-field">
+      <label for="workload-department">Department</label>
+      <select id="workload-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
+        <option value="" [selected]="departmentId() === null">All departments</option>
+        @for (department of departments(); track department.id) {
+          <option [value]="department.id" [selected]="department.id === departmentId()">
+            {{ department.name }}
+          </option>
+        }
+      </select>
+    </div>
+    <button
+      type="button"
+      class="tf-btn tf-btn--ghost"
+      [disabled]="departmentId() === null"
+      (click)="setDepartment('')"
+    >
+      <tf-icon name="reset" />
+      Reset
+    </button>
+  </div>
+
+  <div class="tf-card">
+    @if (error()) {
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ error() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+      </div>
+    } @else if (!loading() && rows().length === 0) {
+      <div class="tf-empty">
+        <tf-icon name="users" />
+        <strong>No employees to show</strong>
+        <p>There are no active employees in this department.</p>
+      </div>
+    } @else {
+      <div class="tf-table-wrap">
+        <table class="tf-table workload-table" [class.is-loading]="loading()">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Department</th>
+              <th class="num">Active</th>
+              <th class="num">High priority</th>
+              <th class="num">Overdue</th>
+              <th class="num">Completed</th>
+              <th>Workload</th>
+              <th><span class="tf-sr-only">Task list</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.userId) {
+              <tr class="workload-row" [class.workload-row--high]="isHighLoad(row)" [attr.data-user-id]="row.userId">
+                <td class="workload-row__name">
+                  {{ row.fullName }}
+                  @if (isHighLoad(row)) {
+                    <span class="tf-badge workload-badge--high" data-high-load>High load</span>
+                  }
+                </td>
+                <td>{{ row.departmentName ?? '—' }}</td>
+                <td class="num">{{ row.activeTasks }}</td>
+                <td class="num">{{ row.highPriorityTasks }}</td>
+                <td class="num" [class.workload-cell--overdue]="row.overdueTasks > 0">{{ row.overdueTasks }}</td>
+                <td class="num">{{ row.completedTasks }}</td>
+                <td class="workload-bar-cell">
+                  <div class="workload-bar" role="img" [attr.aria-label]="row.activeTasks + ' active tasks'">
+                    <span class="workload-bar__fill" [style.width.%]="barWidth(row)"></span>
+                  </div>
+                </td>
+                <td>
+                  <a
+                    class="tf-btn tf-btn--link"
+                    [routerLink]="['/tasks']"
+                    [queryParams]="{ assignedToUserId: row.userId }"
+                    [attr.aria-label]="'Open ' + row.fullName + '’s task list'"
+                    data-open-tasks
+                  >
+                    Tasks
+                    <tf-icon name="arrow" />
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="workload-legend">
+        <span class="workload-legend__swatch"></span>
+        Highlighted rows carry at least twice the average active load ({{ averageLabel() }} active tasks).
+      </p>
+    }
+  </div>
+</section>
