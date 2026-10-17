@@ -7,8 +7,8 @@ import { EmployeeDashboardComponent } from './features/dashboard/employee-dashbo
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
+import { MailComponent } from './features/mail/mail.component';
 import { NotificationCenterComponent } from './features/notifications/notification-center.component';
-import { EmailSettingsComponent } from './features/settings/email-settings.component';
 import { ReminderSettingsComponent } from './features/settings/reminder-settings.component';
 import { ActivityComponent } from './features/tasks/activity.component';
 import { KanbanComponent } from './features/tasks/kanban.component';
@@ -65,9 +65,9 @@ describe('app routes', () => {
       'me',
       'departments',
       'employees',
+      'mail',
       'notifications',
       'settings/reminders',
-      'settings/email',
       'board',
       'tasks',
       'tasks/new',
@@ -126,11 +126,10 @@ describe('app routes', () => {
     expect(await load(settings)).toBe(ReminderSettingsComponent);
   });
 
-  it('protects email settings for Administrators only', async () => {
-    const settings = childRoute('settings/email');
-    expect(settings.canActivate).toEqual([roleGuard]);
-    expect(settings.data?.['roles']).toEqual(['Administrator']);
-    expect(await load(settings)).toBe(EmailSettingsComponent);
+  it('registers Mail for every signed-in user', async () => {
+    const mail = childRoute('mail');
+    expect(mail.canActivate).toBeUndefined();
+    expect(await load(mail)).toBe(MailComponent);
   });
 
   it('registers the board for every authenticated role', () => {

@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Email;
 using TaskFlow.Application.Reminders;
 using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
@@ -21,22 +20,10 @@ public class ReminderSchedulerServiceTests
         }
     }
 
-    private sealed class CountingDispatcher(bool fail) : IEmailDispatcher
-    {
-        public int Calls { get; private set; }
-
-        public Task<int> DispatchDueAsync(CancellationToken cancellationToken = default)
-        {
-            Calls++;
-            return fail ? throw new InvalidOperationException("smtp broke") : Task.FromResult(0);
-        }
-    }
-
-    private static ReminderSchedulerService Scheduler(IReminderService reminders, IEmailDispatcher dispatcher)
+    private static ReminderSchedulerService Scheduler(IReminderService reminders)
     {
         var services = new ServiceCollection()
             .AddSingleton(reminders)
-            .AddSingleton(dispatcher)
             .BuildServiceProvider();
 
         return new ReminderSchedulerService(
@@ -46,28 +33,14 @@ public class ReminderSchedulerServiceTests
     }
 
     [Fact]
-    public async Task Failing_dispatcher_does_not_stop_reminder_passes()
+    public async Task Failing_pass_is_logged_and_the_next_pass_still_runs()
     {
-        var reminders = new CountingReminders(fail: false);
-        var dispatcher = new CountingDispatcher(fail: true);
-        var scheduler = Scheduler(reminders, dispatcher);
+        var reminders = new CountingReminders(fail: true);
+        var scheduler = Scheduler(reminders);
 
         await scheduler.RunPassAsync(CancellationToken.None);
         await scheduler.RunPassAsync(CancellationToken.None);
 
         Assert.Equal(2, reminders.Calls);
-        Assert.Equal(2, dispatcher.Calls);
-    }
-
-    [Fact]
-    public async Task Failing_reminder_pass_still_dispatches_emails()
-    {
-        var reminders = new CountingReminders(fail: true);
-        var dispatcher = new CountingDispatcher(fail: false);
-
-        await Scheduler(reminders, dispatcher).RunPassAsync(CancellationToken.None);
-
-        Assert.Equal(1, reminders.Calls);
-        Assert.Equal(1, dispatcher.Calls);
     }
 }

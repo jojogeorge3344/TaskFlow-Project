@@ -1,0 +1,56 @@
+<div class="picker" [class.picker--invalid]="invalidChips().length > 0">
+  <label class="picker__label" [for]="inputId()">{{ label() }}</label>
+  <div class="picker__box">
+    @for (chip of chips(); track chip.email) {
+      <span
+        class="picker__chip"
+        [class.picker__chip--invalid]="chip.valid === false"
+        [class.picker__chip--checking]="chip.valid === null"
+        [attr.data-chip]="chip.email"
+        [title]="chip.valid === false ? 'Not a TaskFlow user' : chip.email"
+      >
+        {{ chip.name ?? chip.email }}
+        <button type="button" class="picker__remove" [attr.aria-label]="'Remove ' + chip.email" (click)="remove(chip)">
+          <tf-icon name="x" />
+        </button>
+      </span>
+    }
+    <input
+      class="picker__input"
+      type="text"
+      autocomplete="off"
+      [id]="inputId()"
+      [value]="text()"
+      [attr.aria-expanded]="suggestions().length > 0"
+      aria-autocomplete="list"
+      [attr.data-field]="inputId()"
+      (input)="onInput($any($event.target).value)"
+      (keydown)="onKeydown($event)"
+      (blur)="onBlur()"
+    />
+  </div>
+
+  @if (suggestions().length) {
+    <ul class="picker__suggestions" role="listbox">
+      @for (contact of suggestions(); track contact.id; let index = $index) {
+        <li
+          role="option"
+          class="picker__suggestion"
+          [class.picker__suggestion--active]="index === activeIndex()"
+          [attr.aria-selected]="index === activeIndex()"
+          [attr.data-contact]="contact.email"
+          (mousedown)="$event.preventDefault(); pick(contact)"
+        >
+          <strong>{{ contact.fullName }}</strong>
+          <span>{{ contact.email }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (invalidChips().length) {
+    <span class="tf-field__error" [attr.data-error]="inputId()">
+      Not a TaskFlow user: {{ invalidEmails() }}. Mail can only go to people in TaskFlow.
+    </span>
+  }
+</div>

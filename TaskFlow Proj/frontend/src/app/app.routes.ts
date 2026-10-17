@@ -52,6 +52,11 @@ export const routes: Routes = [
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
+        // Every signed-in user has a mailbox.
+        path: 'mail',
+        loadComponent: () => import('./features/mail/mail.component').then((m) => m.MailComponent)
+      },
+      {
         path: 'notifications',
         loadComponent: () =>
           import('./features/notifications/notification-center.component').then(
@@ -64,13 +69,6 @@ export const routes: Routes = [
         data: { roles: ['Administrator', 'Manager'] },
         loadComponent: () =>
           import('./features/settings/reminder-settings.component').then((m) => m.ReminderSettingsComponent)
-      },
-      {
-        path: 'settings/email',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator'] },
-        loadComponent: () =>
-          import('./features/settings/email-settings.component').then((m) => m.EmailSettingsComponent)
       },
       {
         path: 'board',

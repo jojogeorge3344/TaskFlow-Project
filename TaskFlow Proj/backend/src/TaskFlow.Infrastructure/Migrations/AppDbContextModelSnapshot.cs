@@ -81,55 +81,84 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.EmailDeliveryLog", b =>
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("Attempts")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Body")
+                    b.Property<string>("ContentType")
                         .IsRequired()
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreatedByUserId")
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MessageId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ExpiresAt")
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("StorageKey")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Kind")
+                    b.Property<int>("UploadedByUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.ToTable("MailAttachments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
                         .IsRequired()
-                        .HasMaxLength(16)
+                        .HasMaxLength(20000)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("LastAttemptAt")
+                    b.Property<Guid>("ConversationId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("LastError")
-                        .HasMaxLength(1000)
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("NextAttemptAt")
+                    b.Property<string>("DraftCc")
+                        .HasMaxLength(4000)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("RecipientUserId")
+                    b.Property<string>("DraftTo")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ParentMessageId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("ReminderHistoryId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("SentAt")
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("INTEGER");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
+                    b.Property<DateTime?>("SentAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Subject")
@@ -137,32 +166,99 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("TaskDeadline")
-                        .HasColumnType("TEXT");
-
                     b.Property<int?>("TaskId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("ToAddress")
-                        .IsRequired()
-                        .HasMaxLength(320)
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
+                    b.HasIndex("ConversationId");
 
-                    b.HasIndex("RecipientUserId");
+                    b.HasIndex("ParentMessageId");
 
                     b.HasIndex("ReminderHistoryId")
                         .IsUnique()
                         .HasFilter("\"ReminderHistoryId\" IS NOT NULL");
 
+                    b.HasIndex("SenderUserId");
+
                     b.HasIndex("TaskId");
 
-                    b.HasIndex("Status", "NextAttemptAt");
+                    b.ToTable("MailMessages");
+                });
 
-                    b.ToTable("EmailDeliveryLogs");
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MessageId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("MailRecipients");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsImportant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsStarred")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PurgedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SortAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("TrashedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId", "OwnerUserId", "Folder")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "Folder", "PurgedAt", "TrashedAt", "SortAt");
+
+                    b.ToTable("MailboxItems");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
@@ -516,11 +612,29 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.EmailDeliveryLog", b =>
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "RecipientUser")
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany("Attachments")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "UploadedByUser")
                         .WithMany()
-                        .HasForeignKey("RecipientUserId")
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("UploadedByUser");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "ParentMessage")
+                        .WithMany()
+                        .HasForeignKey("ParentMessageId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("TaskFlow.Domain.Entities.ReminderHistory", "ReminderHistory")
@@ -528,16 +642,61 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasForeignKey("ReminderHistoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("TaskFlow.Domain.Entities.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("RecipientUser");
+                    b.Navigation("ParentMessage");
 
                     b.Navigation("ReminderHistory");
 
+                    b.Navigation("SenderUser");
+
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany("Recipients")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("OwnerUser");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
@@ -684,6 +843,13 @@ namespace TaskFlow.Infrastructure.Migrations
             modelBuilder.Entity("TaskFlow.Domain.Entities.Department", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>

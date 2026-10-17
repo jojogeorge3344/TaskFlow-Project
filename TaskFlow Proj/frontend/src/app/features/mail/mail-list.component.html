@@ -1,0 +1,91 @@
+<div class="mail-list">
+  <div class="mail-list__search">
+    <tf-icon name="search" />
+    <input
+      class="tf-input"
+      type="search"
+      [formControl]="search"
+      [attr.aria-label]="'Search ' + folderLabel()"
+      [placeholder]="'Search ' + folderLabel().toLowerCase()"
+      data-field="search"
+    />
+  </div>
+
+  @if (error()) {
+    <div class="tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="reload()">Retry</button>
+    </div>
+  } @else if (loading() && items().length === 0) {
+    <div class="mail-list__rows" aria-busy="true">
+      @for (row of [1, 2, 3, 4]; track row) {
+        <div class="mail-row mail-row--skeleton"><span class="tf-skeleton"></span></div>
+      }
+    </div>
+  } @else if (items().length === 0) {
+    <div class="tf-empty" data-status="empty">
+      <tf-icon name="inbox" />
+      <p>{{ search.value ? 'No mail matches your search.' : 'Nothing in ' + folderLabel() + '.' }}</p>
+    </div>
+  } @else {
+    <ul class="mail-list__rows" [attr.aria-busy]="loading()" [attr.aria-label]="folderLabel()">
+      @for (item of items(); track item.itemId) {
+        <li>
+          <div
+            class="mail-row"
+            role="button"
+            tabindex="0"
+            [class.mail-row--unread]="!item.isRead"
+            [class.mail-row--selected]="item.itemId === selectedItemId()"
+            [attr.data-item]="item.itemId"
+            (click)="open(item)"
+            (keydown.enter)="open(item)"
+          >
+            <button
+              type="button"
+              class="mail-row__star"
+              [class.mail-row__star--on]="item.isStarred"
+              [attr.aria-label]="item.isStarred ? 'Unstar' : 'Star'"
+              [attr.aria-pressed]="item.isStarred"
+              data-action="star"
+              (click)="toggleStar(item, $event)"
+            >
+              <tf-icon name="star" />
+            </button>
+            <div class="mail-row__main">
+              <div class="mail-row__top">
+                <span class="mail-row__who">
+                  @if (item.isSystem) {
+                    <span class="mail-row__system">TaskFlow</span>
+                  } @else {
+                    {{ who(item) }}
+                  }
+                </span>
+                <span class="mail-row__date">{{ date(item) }}</span>
+              </div>
+              <div class="mail-row__subject">
+                @if (item.isImportant) {
+                  <tf-icon name="flag" class="mail-row__important" aria-label="Important" />
+                }
+                <span>{{ item.subject || '(no subject)' }}</span>
+                @if (item.hasAttachments) {
+                  <tf-icon name="paperclip" class="mail-row__clip" aria-label="Has attachments" />
+                }
+              </div>
+              <div class="mail-row__preview">{{ item.preview }}</div>
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (total() > pageSize) {
+    <div class="mail-list__pager">
+      <span>Page {{ page() }} of {{ pageCount() }}</span>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="previous" [disabled]="page() === 1" (click)="previous()">Previous</button>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="next" [disabled]="page() >= pageCount()" (click)="next()">Next</button>
+    </div>
+  }
+</div>

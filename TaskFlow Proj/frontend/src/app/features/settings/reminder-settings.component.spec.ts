@@ -1,9 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { AuthService } from '../../core/auth/auth.service';
-import { UserRole } from '../../core/models';
 import { ReminderSettings } from '../../core/models';
 import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -16,7 +13,7 @@ describe('ReminderSettingsComponent', () => {
     defaultFirstDays: 3,
     defaultSecondDays: 1,
     defaultOverdueFrequency: 'Weekly',
-    emailEnabled: true,
+    mailEnabled: true,
     timezone: 'Asia/Kolkata'
   };
 
@@ -30,12 +27,10 @@ describe('ReminderSettingsComponent', () => {
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
   });
 
-  function create(role: UserRole = 'Manager'): ComponentFixture<ReminderSettingsComponent> {
+  function create(): ComponentFixture<ReminderSettingsComponent> {
     TestBed.configureTestingModule({
       imports: [ReminderSettingsComponent],
       providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: { currentUser: () => ({ role }) } },
         { provide: ReminderSettingsService, useValue: { get: getSpy, save: saveSpy } },
         { provide: ToastService, useValue: toast }
       ]
@@ -68,14 +63,14 @@ describe('ReminderSettingsComponent', () => {
     expect(getSpy).toHaveBeenCalled();
     expect(checkbox(fixture, 'enabled').checked).toBeTrue();
     expect(checkbox(fixture, 'deadlineDayEnabled').checked).toBeFalse();
-    expect(checkbox(fixture, 'emailEnabled').checked).toBeTrue();
+    expect(checkbox(fixture, 'mailEnabled').checked).toBeTrue();
     expect(fixture.componentInstance.form.getRawValue()).toEqual({
       enabled: true,
       deadlineDayEnabled: false,
       defaultFirstDays: 3,
       defaultSecondDays: 1,
       defaultOverdueFrequency: 'Weekly',
-      emailEnabled: true
+      mailEnabled: true
     });
     expect(select(fixture, 'settings-first-reminder').selectedOptions[0].textContent?.trim()).toBe('3 days before the deadline');
 
@@ -106,7 +101,7 @@ describe('ReminderSettingsComponent', () => {
       defaultFirstDays: 3,
       defaultSecondDays: 0,
       defaultOverdueFrequency: 'Daily',
-      emailEnabled: true
+      mailEnabled: true
     });
     expect(toast.success).toHaveBeenCalledWith('Reminder settings saved');
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
@@ -120,7 +115,7 @@ describe('ReminderSettingsComponent', () => {
     submit(fixture);
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
 
-    fixture.componentInstance.form.controls.emailEnabled.setValue(false);
+    fixture.componentInstance.form.controls.mailEnabled.setValue(false);
     fixture.detectChanges();
 
     expect(el(fixture).querySelector('[data-status="saved"]')).toBeNull();
@@ -184,16 +179,11 @@ describe('ReminderSettingsComponent', () => {
     expect(checkbox(fixture, 'timezone').value).toBe('Asia/Kolkata');
   });
 
-  it('links Administrators to Email Settings', () => {
-    const fixture = create('Administrator');
+  it('offers delivering reminders to Mail', () => {
+    const fixture = create();
 
-    const link = el(fixture).querySelector('[data-action="configure-email"]');
-    expect(link?.getAttribute('href')).toBe('/settings/email');
-  });
-
-  it('does not show the Email Settings link to Managers', () => {
-    const fixture = create('Manager');
-
-    expect(el(fixture).querySelector('[data-action="configure-email"]')).toBeNull();
+    const toggle = checkbox(fixture, 'mailEnabled');
+    expect(toggle.closest('label')?.textContent).toContain('Also deliver reminders to Mail');
+    expect(toggle.checked).toBeTrue();
   });
 });

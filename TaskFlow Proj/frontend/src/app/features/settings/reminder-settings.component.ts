@@ -1,9 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { AuthService } from '../../core/auth/auth.service';
 import { IconComponent } from '../../core/layout/icon.component';
 import { ReminderFrequency, ReminderSettings } from '../../core/models';
 import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
@@ -33,17 +31,13 @@ type SettingsField = 'defaultFirstDays' | 'defaultSecondDays' | 'defaultOverdueF
 @Component({
   selector: 'app-reminder-settings',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [ReactiveFormsModule, IconComponent],
   templateUrl: './reminder-settings.component.html',
   styleUrl: './reminder-settings.component.css'
 })
 export class ReminderSettingsComponent implements OnInit {
   private readonly settingsService = inject(ReminderSettingsService);
   private readonly toast = inject(ToastService);
-  private readonly authService = inject(AuthService);
-
-  /** Only Administrators can open Email Settings, so only they get the link. */
-  readonly canConfigureEmail = computed(() => this.authService.currentUser()?.role === 'Administrator');
 
   readonly overdueFrequencyOptions = OVERDUE_FREQUENCY_OPTIONS;
   readonly firstReminderOptions = signal<ReminderDayOption[]>(FIRST_REMINDER_OPTIONS);
@@ -63,7 +57,7 @@ export class ReminderSettingsComponent implements OnInit {
       defaultFirstDays: new FormControl(2, { nonNullable: true }),
       defaultSecondDays: new FormControl(1, { nonNullable: true }),
       defaultOverdueFrequency: new FormControl<ReminderFrequency>('Daily', { nonNullable: true }),
-      emailEnabled: new FormControl(false, { nonNullable: true })
+      mailEnabled: new FormControl(true, { nonNullable: true })
     },
     { validators: [firstBeforeSecond] }
   );
@@ -120,7 +114,7 @@ export class ReminderSettingsComponent implements OnInit {
         defaultFirstDays: Number(value.defaultFirstDays),
         defaultSecondDays: Number(value.defaultSecondDays),
         defaultOverdueFrequency: value.defaultOverdueFrequency,
-        emailEnabled: value.emailEnabled
+        mailEnabled: value.mailEnabled
       })
       .subscribe({
         next: (settings) => {
@@ -147,7 +141,7 @@ export class ReminderSettingsComponent implements OnInit {
       defaultFirstDays: settings.defaultFirstDays,
       defaultSecondDays: settings.defaultSecondDays,
       defaultOverdueFrequency: settings.defaultOverdueFrequency,
-      emailEnabled: settings.emailEnabled
+      mailEnabled: settings.mailEnabled
     });
   }
 

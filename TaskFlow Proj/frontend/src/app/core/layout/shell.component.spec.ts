@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthUser, UserRole } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
 import { SIDEBAR_COLLAPSED_KEY, WIDE_VIEWPORT_QUERY } from './layout.service';
 import { SESSION_CHECK_INTERVAL_MS, ShellComponent } from './shell.component';
@@ -17,6 +18,8 @@ describe('ShellComponent', () => {
   const checkSessionSpy = jasmine.createSpy('checkSession');
   const unreadCountSignal = signal(0);
   const refreshUnreadCountSpy = jasmine.createSpy('refreshUnreadCount');
+  const mailUnreadSignal = signal(0);
+  const refreshMailCountSpy = jasmine.createSpy('refreshMailCount');
 
   function asUser(role: UserRole): void {
     userSignal.set({
@@ -62,6 +65,8 @@ describe('ShellComponent', () => {
     checkSessionSpy.and.returnValue(of({}));
     unreadCountSignal.set(0);
     refreshUnreadCountSpy.calls.reset();
+    mailUnreadSignal.set(0);
+    refreshMailCountSpy.calls.reset();
 
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
@@ -79,6 +84,10 @@ describe('ShellComponent', () => {
         {
           provide: NotificationService,
           useValue: { unreadCount: unreadCountSignal.asReadonly(), refreshUnreadCount: refreshUnreadCountSpy }
+        },
+        {
+          provide: MailService,
+          useValue: { unreadCount: mailUnreadSignal.asReadonly(), refreshUnreadCount: refreshMailCountSpy }
         }
       ]
     }).compileComponents();
@@ -98,12 +107,12 @@ describe('ShellComponent', () => {
 
     expect(labels).toEqual([
       'Dashboard',
+      'Mail',
       'Task Management',
       'Employee Management',
       'Department Management',
       'Notifications',
-      'Reminder Settings',
-      'Email Settings'
+      'Reminder Settings'
     ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
@@ -121,11 +130,10 @@ describe('ShellComponent', () => {
       node.textContent?.trim()
     );
 
-    expect(links).toEqual(['Dashboard', 'My Tasks', 'Notifications']);
+    expect(links).toEqual(['Dashboard', 'Mail', 'My Tasks', 'Notifications']);
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
     expect(el(fixture).textContent).not.toContain('Reminder Settings');
-    expect(el(fixture).textContent).not.toContain('Email Settings');
   });
 
   it('highlights the active item with aria-current', async () => {
@@ -270,6 +278,7 @@ describe('ShellComponent', () => {
     refreshUnreadCountSpy.calls.reset();
     tick(SESSION_CHECK_INTERVAL_MS);
     expect(refreshUnreadCountSpy).toHaveBeenCalledTimes(1);
+    expect(refreshMailCountSpy).toHaveBeenCalled();
 
     discardPeriodicTasks();
   }));
@@ -298,7 +307,6 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
 
     expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Reminder Settings');
-    expect(links.some((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Email Settings')).toBeFalse();
   });
 
   it('re-checks the session every minute and when the tab becomes visible', fakeAsync(() => {
@@ -328,5 +336,29 @@ describe('ShellComponent', () => {
 
     expect(logoutSpy).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalledWith('/login');
+  });
+
+  for (const role of ['Administrator', 'Manager', 'Employee'] as const) {
+    it(`shows the Mail entry with its unread badge to ${role}s`, () => {
+      mockViewport(true);
+      asUser(role);
+      mailUnreadSignal.set(4);
+      const fixture = createComponent();
+
+      const mail = Array.from(el(fixture).querySelectorAll('a.nav__item')).find(
+        (link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Mail'
+      );
+      expect(mail?.getAttribute('href')).toBe('/mail');
+      expect(mail?.querySelector('[data-badge="mail"]')?.textContent?.trim()).toBe('4');
+      expect(refreshMailCountSpy).toHaveBeenCalled();
+    });
+  }
+
+  it('hides the Mail badge when nothing is unread', () => {
+    mockViewport(true);
+    asUser('Employee');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('[data-badge="mail"]')).toBeNull();
   });
 });

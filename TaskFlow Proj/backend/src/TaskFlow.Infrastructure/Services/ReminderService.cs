@@ -2,13 +2,14 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TaskFlow.Application.Mail;
 using TaskFlow.Application.Reminders;
 using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
+using TaskFlow.Infrastructure.Mail;
 using TaskFlow.Infrastructure.Persistence;
-using TaskFlow.Infrastructure.Settings;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
@@ -16,44 +17,32 @@ namespace TaskFlow.Infrastructure.Services;
 /// <summary>Turns the reminders <see cref="ReminderCalculator"/> says are due today into reminder history
 /// rows and in-app notifications. Duplicate prevention lives in the database: the history insert is an
 /// insert-or-ignore on the unique (TaskId, RecipientUserId, ReminderType, ScheduledFor) index, and the
-/// notification is written only when that insert actually added a row. When email is enabled, the reminder
-/// email is queued in the same transaction; <see cref="EmailDispatcher"/> sends it later.</summary>
+/// notification is written only when that insert actually added a row.</summary>
 public class ReminderService : IReminderService
 {
     // Widest pre-deadline interval (30 days) plus timezone slack. There is no lower bound: overdue tasks
     // keep receiving reminders for as long as they stay open.
     private static readonly TimeSpan UpcomingWindow = TimeSpan.FromDays(32);
 
-    private const int MaxSubjectLength = 200;
-
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
     private readonly IReminderSettingsService _settingsService;
-    private readonly IEmailSettingsService _emailSettingsService;
-    private readonly EmailOptions _emailOptions;
+    private readonly MailOptions _mailOptions;
     private readonly ILogger<ReminderService> _logger;
 
     public ReminderService(
         AppDbContext dbContext,
         IAppClock clock,
         IReminderSettingsService settingsService,
-        IEmailSettingsService emailSettingsService,
-        IOptions<EmailOptions> emailOptions,
+        IOptions<MailOptions> mailOptions,
         ILogger<ReminderService> logger)
     {
         _dbContext = dbContext;
         _clock = clock;
         _settingsService = settingsService;
-        _emailSettingsService = emailSettingsService;
-        _emailOptions = emailOptions.Value;
+        _mailOptions = mailOptions.Value;
         _logger = logger;
     }
-
-    /// <summary>One person a reminder goes to. An empty email means in-app only.</summary>
-    private sealed record Recipient(int Id, string FullName, string Email);
-
-    /// <summary>The email to queue with a reminder, or null when email is off.</summary>
-    private sealed record QueuedEmail(string ToAddress, string Subject, string Body, DateTime NextAttemptAt, DateTime ExpiresAt);
 
     public async Task<int> GenerateDueAsync(CancellationToken cancellationToken = default)
     {
@@ -109,7 +98,6 @@ public class ReminderService : IReminderService
             cancellationToken);
 
         var delivered = await LoadDeliveredAsync(dueTasks.Select(task => task.Id).ToList(), dueTasks.SelectMany(task => task.Reminders), cancellationToken);
-        var emailSchedule = await _emailSettingsService.GetScheduleAsync(cancellationToken);
 
         var written = 0;
         foreach (var task in dueTasks)
@@ -117,19 +105,16 @@ public class ReminderService : IReminderService
             foreach (var reminder in task.Reminders)
             {
                 var message = BuildMessage(task.Title, task.Snapshot.DeadlineUtc, reminder, timeZone);
-                foreach (var recipient in recipientsByTask[task.Id])
+                (string Subject, string Body)? mail = settings.MailEnabled ? BuildMail(task.Id, task.Title, reminder, message) : null;
+                foreach (var recipientId in recipientsByTask[task.Id])
                 {
                     // Already delivered earlier today: skip without opening a write transaction.
-                    if (delivered.Contains((task.Id, recipient.Id, reminder.Type, reminder.ScheduledForUtc)))
+                    if (delivered.Contains((task.Id, recipientId, reminder.Type, reminder.ScheduledForUtc)))
                     {
                         continue;
                     }
 
-                    var email = emailSchedule.Enabled && !string.IsNullOrWhiteSpace(recipient.Email)
-                        ? BuildEmail(task.Id, task.Title, recipient, reminder, message, emailSchedule.SendTime, timeZone, nowUtc)
-                        : null;
-
-                    if (await TryDeliverAsync(task.Id, task.Snapshot.DeadlineUtc, recipient.Id, reminder, message, email, nowUtc, cancellationToken))
+                    if (await TryDeliverAsync(task.Id, task.Snapshot.DeadlineUtc, recipientId, reminder, message, mail, nowUtc, cancellationToken))
                     {
                         written++;
                     }
@@ -165,7 +150,7 @@ public class ReminderService : IReminderService
 
     /// <summary>Reminder recipients per task: its notification recipients (the assignee is always one) plus
     /// the creator, de-duplicated and limited to active, non-deleted users.</summary>
-    private async Task<Dictionary<int, IReadOnlyList<Recipient>>> LoadRecipientsAsync(
+    private async Task<Dictionary<int, IReadOnlyList<int>>> LoadRecipientsAsync(
         IReadOnlyDictionary<int, int> creatorByTask,
         CancellationToken cancellationToken)
     {
@@ -188,30 +173,28 @@ public class ReminderService : IReminderService
         var allUserIds = candidatesByTask.Values.SelectMany(ids => ids).Distinct().ToList();
 
         // Inactive or deleted users receive no reminders.
-        var activeUsers = await _dbContext.Users
-            .AsNoTracking()
-            .Where(user => allUserIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
-            .Select(user => new Recipient(user.Id, user.FullName, user.Email))
-            .ToDictionaryAsync(user => user.Id, cancellationToken);
+        var activeUserIds = (await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => allUserIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+                .Select(user => user.Id)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
 
         return candidatesByTask.ToDictionary(
             pair => pair.Key,
-            pair => (IReadOnlyList<Recipient>)pair.Value
-                .Where(activeUsers.ContainsKey)
-                .Select(id => activeUsers[id])
-                .ToList());
+            pair => (IReadOnlyList<int>)pair.Value.Where(activeUserIds.Contains).ToList());
     }
 
-    /// <summary>Records the reminder and writes its notification, plus its queued email when there is one, in
-    /// one transaction. Returns false when the same reminder was already delivered, or when the task was
-    /// completed, cancelled, deleted or rescheduled since this pass read it; in either case nothing is written.</summary>
+    /// <summary>Records the reminder and writes its notification, and its Inbox mail when one is given, in one
+    /// transaction. Returns false when the same reminder was already delivered, or when the task was completed,
+    /// cancelled, deleted or rescheduled since this pass read it; in either case nothing is written.</summary>
     private async Task<bool> TryDeliverAsync(
         int taskId,
         DateTime deadlineUtc,
         int recipientId,
         DueReminder reminder,
         string message,
-        QueuedEmail? email,
+        (string Subject, string Body)? mail,
         DateTime nowUtc,
         CancellationToken cancellationToken)
     {
@@ -254,8 +237,7 @@ public class ReminderService : IReminderService
 
         _dbContext.Notifications.Add(notification);
 
-        EmailDeliveryLog? queued = null;
-        if (email is not null)
+        if (mail is { } reminderMail)
         {
             var historyId = await _dbContext.ReminderHistory
                 .Where(row => row.TaskId == taskId
@@ -265,47 +247,34 @@ public class ReminderService : IReminderService
                 .Select(row => row.Id)
                 .SingleAsync(cancellationToken);
 
-            queued = new EmailDeliveryLog
+            // From the TaskFlow system sender; the unique ReminderHistoryId backs up the history dedup.
+            var mailMessage = new MailMessage
             {
-                Kind = EmailKind.Reminder,
-                ReminderHistoryId = historyId,
+                ConversationId = Guid.NewGuid(),
+                IsSystem = true,
+                Subject = reminderMail.Subject,
+                Body = reminderMail.Body,
                 TaskId = taskId,
-                RecipientUserId = recipientId,
-                ToAddress = email.ToAddress,
-                Subject = email.Subject,
-                Body = email.Body,
-                Status = EmailDeliveryStatus.Pending,
-                Attempts = 0,
-                NextAttemptAt = email.NextAttemptAt,
-                ExpiresAt = email.ExpiresAt,
-                TaskDeadline = deadlineUtc,
-                CreatedAt = nowUtc
+                ReminderHistoryId = historyId,
+                CreatedAt = nowUtc,
+                UpdatedAt = nowUtc,
+                SentAt = nowUtc
             };
-            _dbContext.EmailDeliveryLogs.Add(queued);
+            _dbContext.MailMessages.Add(mailMessage);
+            _dbContext.MailRecipients.Add(new MailRecipient { Message = mailMessage, UserId = recipientId, Kind = MailRecipientKind.To });
+            _dbContext.MailboxItems.Add(new MailboxItem { Message = mailMessage, OwnerUserId = recipientId, Folder = MailFolder.Inbox, SortAt = nowUtc });
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        _dbContext.Entry(notification).State = EntityState.Detached;
-        if (queued is not null)
-        {
-            _dbContext.Entry(queued).State = EntityState.Detached;
-        }
+        _dbContext.ChangeTracker.Clear();
 
         return true;
     }
 
-    /// <summary>The reminder email for one recipient. It waits until the send time on the reminder's day (or
-    /// goes on the next pass if that has passed) and expires at the end of that day.</summary>
-    private QueuedEmail BuildEmail(
-        int taskId,
-        string title,
-        Recipient recipient,
-        DueReminder reminder,
-        string message,
-        TimeOnly sendTime,
-        TimeZoneInfo timeZone,
-        DateTime nowUtc)
+    /// <summary>The Inbox mail for a reminder: a subject naming the kind of reminder, the notification text and,
+    /// when the app address is configured, a link to the task.</summary>
+    private (string Subject, string Body) BuildMail(int taskId, string title, DueReminder reminder, string message)
     {
         var prefix = reminder.Type switch
         {
@@ -314,33 +283,19 @@ public class ReminderService : IReminderService
             _ => "Task reminder: "
         };
         var subject = prefix + title;
-        if (subject.Length > MaxSubjectLength)
+        if (subject.Length > MailRules.MaxSubjectLength)
         {
-            subject = subject[..MaxSubjectLength];
+            subject = subject[..MailRules.MaxSubjectLength];
         }
 
-        var body = new System.Text.StringBuilder()
-            .Append("Hello ").Append(string.IsNullOrWhiteSpace(recipient.FullName) ? "there" : recipient.FullName).AppendLine(",")
-            .AppendLine()
-            .AppendLine(message);
-        if (!string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl))
+        var body = new System.Text.StringBuilder().AppendLine(message);
+        if (!string.IsNullOrWhiteSpace(_mailOptions.AppBaseUrl))
         {
-            body.AppendLine()
-                .Append("Open the task: ").Append(_emailOptions.AppBaseUrl.TrimEnd('/')).Append("/tasks/").Append(taskId).AppendLine();
+            body.AppendLine().Append("Open the task: ").Append(_mailOptions.AppBaseUrl.TrimEnd('/')).Append("/tasks/").Append(taskId).AppendLine();
         }
 
-        body.AppendLine()
-            .AppendLine("This is an automatic reminder from TaskFlow.");
-
-        var sendAt = ReminderCalculator.LocalTimeUtc(reminder.Day, sendTime, timeZone);
-        var expiresAt = ReminderCalculator.LocalMidnightUtc(reminder.Day.AddDays(1), timeZone);
-
-        return new QueuedEmail(
-            recipient.Email.Trim(),
-            subject,
-            body.ToString(),
-            sendAt > nowUtc ? sendAt : nowUtc,
-            expiresAt);
+        body.AppendLine().Append("This is an automatic reminder from TaskFlow.");
+        return (subject, body.ToString());
     }
 
     private static string BuildMessage(string title, DateTime deadlineUtc, DueReminder reminder, TimeZoneInfo timeZone)

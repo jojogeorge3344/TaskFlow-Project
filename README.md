@@ -1,65 +1,39 @@
 # TaskFlow
 
-## Email notifications
+## Mail
 
-TaskFlow sends deadline reminders in the app and, optionally, by email over SMTP.
-In-app notifications are always created. Email is an add-on, and a broken mail server never stops them.
+TaskFlow has its own internal mail, like Gmail but only between TaskFlow users. Open **Mail** in the side menu,
+available to every role.
 
-### 1. Set the SMTP password (server only)
+- **Folders:** Inbox, Starred, Important, Sent, Drafts and Trash, with unread counts. The Mail menu entry shows how
+  many Inbox mails are unread.
+- **Compose:** write to one or more colleagues in **To** and **Cc**. Recipients are picked from TaskFlow users by name
+  or email. An address that is not an active TaskFlow user (for example a Gmail address) is rejected, and nothing
+  ever leaves TaskFlow.
+- **Reply, Reply all and Forward** keep mails together as one conversation. Forwarding includes the original
+  attachments.
+- **Drafts:** save, edit and send later, or discard.
+- **Trash:** restore mail, or delete it forever. These actions affect only your own copy.
+- **Search:** search your own mailbox by subject, text, sender or recipient.
+- **Privacy:** each person sees only their own mail. Administrators have no access to other people's mail.
 
-The password is never stored in the database, shown in the UI, returned by the API or written to logs.
-Set it in server configuration instead.
+### Attachments
 
-Development (user-secrets, run from `TaskFlow Proj/backend`):
+| Limit | Value |
+|---|---|
+| Per file | 10 MB |
+| Per mail | 5 files, 25 MB in total |
+| Blocked types | `.exe .dll .bat .cmd .com .msi .ps1 .sh .js .vbs .scr` |
 
-```bash
-dotnet user-secrets set Email:SmtpPassword "your-app-password" --project src/TaskFlow.Api
-```
+Files are stored under generated names in the folder set by `Mail:AttachmentsPath` in `appsettings.json`. The
+default is `../database/mail-attachments`, resolved from the backend folder like the database, so it sits next to
+`database/taskflow.db`. Only the uploader and people who have the mail in their mailbox can download a file.
+**Back up this folder together with the database.**
 
-Production or any other host: set the environment variable `Email__SmtpPassword`.
+### Deadline reminders in Mail
 
-Restart the API afterwards. Email Settings then shows **SMTP password: Configured**.
+Every automatic deadline reminder also arrives in the recipient's Inbox as a mail from **TaskFlow**, with a link to
+the task. These mails cannot be replied to, but they can be forwarded. To turn this off, clear
+**Reminder Settings → Also deliver reminders to Mail**. Bell notifications are always sent either way.
 
-### 2. Configure the server in the app
-
-Sign in as an Administrator and open **Email Settings**. Fill in:
-- the SMTP server, port and security
-- the sender address and name
-- the username, if the server needs a login
-- the daily send time
-
-Save, then use **Send test email** to check delivery. When the test succeeds, switch on
-**Send deadline reminders by email**. This is the same switch as "Also send reminders by email" in Reminder Settings.
-
-| Provider | Server | Port / security | Notes |
-|---|---|---|---|
-| Gmail | `smtp.gmail.com` | 587 / STARTTLS | Needs 2-step verification and an **app password**; your normal password is rejected. |
-| Outlook / Office 365 | `smtp.office365.com` | 587 / STARTTLS | Your tenant must allow SMTP AUTH; use an app password if MFA is on. |
-| Local demo (smtp4dev, Papercut) | `localhost` | 25 / None | No username or password needed. The emails appear in the tool's inbox. |
-
-For a credential-free demo, run [smtp4dev](https://github.com/rnwood/smtp4dev):
-
-```bash
-dotnet tool install -g Rnwood.Smtp4dev
-smtp4dev
-```
-
-Then use server `localhost`, port `25`, security **None** and an empty username. Open http://localhost:5000 to see the inbox.
-
-### How delivery works
-
-- **Send time.** Reminders are generated just after local midnight, and the in-app notification appears immediately.
-  The email waits until the send time (default 09:00, application timezone). A reminder created later in the day is emailed on the next scheduler run, within about a minute.
-- **Retries.** A failed send is retried after 5 minutes and again after 15 minutes. After 3 failed attempts the email is marked **Failed** with a readable reason.
-- **Skipped emails.** An email that has not gone out by the end of its reminder day is marked **Skipped** and never sent late.
-  The same happens if its task is completed, cancelled or rescheduled first, or if email is switched off.
-- **Delivery log.** Every attempt is recorded in the delivery log. The latest 20 appear under **Recent deliveries** on Email Settings.
-
-Optional configuration (`appsettings.json`, section `Email`):
-
-| Key | Default | Meaning |
-|---|---|---|
-| `SmtpHost`, `SmtpPort`, `SmtpSecurity`, `SenderAddress`, `SenderName`, `SmtpUsername`, `SendTime` | Gmail account | First values for Email Settings on a new database; after that the screen owns them |
-| `TimeoutSeconds` | 30 | Connect/send timeout per email |
-| `MaxAttempts` | 3 | Attempts before an email is marked failed |
-| `AppBaseUrl` | `http://localhost:4200` | When set, reminder emails link to the task |
+`Mail:AppBaseUrl` sets the address used for the task link (default `http://localhost:4200`).

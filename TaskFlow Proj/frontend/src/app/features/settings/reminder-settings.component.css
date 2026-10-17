@@ -74,11 +74,3 @@
   font-size: 0.875rem;
   font-weight: 600;
 }
-
-.settings-form__link {
-  align-self: flex-start;
-  margin-left: calc(1.125rem + var(--tf-space-3));
-  color: var(--tf-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}

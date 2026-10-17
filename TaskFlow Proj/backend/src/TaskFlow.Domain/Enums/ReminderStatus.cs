@@ -1,7 +1,7 @@
 namespace TaskFlow.Domain.Enums;
 
-/// <summary>Processing state of a reminder history row. The reminder engine writes only Sent (the in-app
-/// reminder was generated); email delivery has its own status on <c>EmailDeliveryLog</c>.</summary>
+/// <summary>Processing state of a reminder history row. The reminder engine writes only Sent;
+/// the other states are reserved for email delivery (Screen 14).</summary>
 public enum ReminderStatus
 {
     Pending,

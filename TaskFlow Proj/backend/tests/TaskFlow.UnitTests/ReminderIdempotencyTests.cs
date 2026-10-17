@@ -81,6 +81,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
 
         Assert.Equal(_recipientCount, await CountAsync(db => db.ReminderHistory));
         Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailMessages));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailboxItems));
     }
 
     [Fact]
@@ -91,28 +93,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
 
         Assert.Equal(_recipientCount, await CountAsync(db => db.ReminderHistory));
         Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
-    }
-
-    [Fact]
-    public async Task Concurrent_passes_queue_one_email_per_reminder()
-    {
-        await using (var db = NewContext())
-        {
-            db.ApplicationSettings.Add(new ApplicationSetting
-            {
-                Key = TaskFlow.Application.Settings.SettingKeys.NotificationEmailEnabled,
-                Value = "true",
-                Category = "Notification",
-                UpdatedAt = DateTime.UtcNow
-            });
-            await db.SaveChangesAsync();
-        }
-
-        await Task.WhenAll(RunPassAsync(), RunPassAsync(), RunPassAsync());
-        await RunPassAsync();
-
-        Assert.Equal(_recipientCount, await CountAsync(db => db.EmailDeliveryLogs));
-        Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailMessages));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.MailboxItems));
     }
 
     [Fact]
@@ -228,8 +210,7 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
             db,
             new AppClock(db, _clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(db, _clock, options),
-            new EmailSettingsService(db, _clock, Options.Create(new EmailOptions())),
-            Options.Create(new EmailOptions()),
+            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 
         await service.GenerateDueAsync();

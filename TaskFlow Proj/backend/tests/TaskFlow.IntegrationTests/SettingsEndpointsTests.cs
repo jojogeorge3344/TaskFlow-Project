@@ -33,7 +33,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var root = document.RootElement;
         Assert.True(root.TryGetProperty("enabled", out _));
         Assert.True(root.TryGetProperty("deadlineDayEnabled", out _));
-        Assert.True(root.TryGetProperty("emailEnabled", out _));
+        Assert.True(root.TryGetProperty("mailEnabled", out _));
         Assert.InRange(root.GetProperty("defaultFirstDays").GetInt32(), 1, 30);
         Assert.InRange(root.GetProperty("defaultSecondDays").GetInt32(), 0, 30);
         Assert.Contains(root.GetProperty("defaultOverdueFrequency").GetString(), new[] { "Daily", "Weekly" });
@@ -54,7 +54,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 3,
             defaultSecondDays = 1,
             defaultOverdueFrequency = "Weekly",
-            emailEnabled = true,
+            mailEnabled = false,
             timezone = "America/New_York"
         }));
         Assert.Equal(HttpStatusCode.OK, save.StatusCode);
@@ -67,7 +67,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             Assert.Equal(3, root.GetProperty("defaultFirstDays").GetInt32());
             Assert.Equal(1, root.GetProperty("defaultSecondDays").GetInt32());
             Assert.Equal("Weekly", root.GetProperty("defaultOverdueFrequency").GetString());
-            Assert.True(root.GetProperty("emailEnabled").GetBoolean());
+            Assert.False(root.GetProperty("mailEnabled").GetBoolean());
             Assert.Equal(before, root.GetProperty("timezone").GetString());
         }
 
@@ -90,7 +90,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 45,
             defaultSecondDays = 1,
             defaultOverdueFrequency = "Daily",
-            emailEnabled = false
+            mailEnabled = false
         }));
         Assert.Equal(HttpStatusCode.BadRequest, outOfRange.StatusCode);
 
@@ -106,7 +106,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 1,
             defaultSecondDays = 2,
             defaultOverdueFrequency = "Daily",
-            emailEnabled = false
+            mailEnabled = false
         }));
         Assert.Equal(HttpStatusCode.BadRequest, wrongOrder.StatusCode);
 
@@ -174,7 +174,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         defaultFirstDays = 2,
         defaultSecondDays = 1,
         defaultOverdueFrequency = "Daily",
-        emailEnabled = false
+        mailEnabled = true
     });
 
     private static async Task<string?> GetTimezoneAsync(HttpClient client, string token)

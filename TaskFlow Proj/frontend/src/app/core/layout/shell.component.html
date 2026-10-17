@@ -17,6 +17,11 @@
           >
             <tf-icon [name]="item.icon" />
             <span class="nav__text">{{ item.label }}</span>
+            @if (item.badge === 'mail' && mailUnreadCount() > 0) {
+              <span class="nav__badge" data-badge="mail" [attr.aria-label]="mailUnreadCount() + ' unread mails'">
+                {{ mailUnreadCount() > 99 ? '99+' : mailUnreadCount() }}
+              </span>
+            }
             <span class="nav__tip tf-tooltip">{{ item.label }}</span>
           </a>
         } @else {

@@ -22,8 +22,7 @@ public class ReminderServiceTests
             harness.Db,
             new AppClock(harness.Db, clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(harness.Db, clock, options),
-            new EmailSettingsService(harness.Db, clock, Options.Create(new EmailOptions())),
-            Options.Create(new EmailOptions()),
+            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
     }
 
@@ -202,5 +201,61 @@ public class ReminderServiceTests
 
         var notification = await harness.Db.Notifications.SingleAsync(n => n.UserId == assignee.Id);
         Assert.Equal(NotificationType.Overdue, notification.Type);
+    }
+
+    [Fact]
+    public async Task Each_recipient_gets_one_unread_reminder_mail_from_taskflow()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var (creator, assignee, task) = SeedTask(harness, "rs-mail");
+
+        await Service(harness, new FixedTimeProvider(SecondReminderDay)).GenerateDueAsync();
+
+        var items = await harness.Db.MailboxItems.Include(item => item.Message).ToListAsync();
+        Assert.Equal(new[] { assignee.Id, creator.Id }.Order(), items.Select(item => item.OwnerUserId).Order());
+        Assert.All(items, item =>
+        {
+            Assert.Equal(TaskFlow.Domain.Enums.MailFolder.Inbox, item.Folder);
+            Assert.False(item.IsRead);
+            Assert.True(item.Message!.IsSystem);
+            Assert.Null(item.Message.SenderUserId);
+            Assert.Equal(task.Id, item.Message.TaskId);
+            Assert.NotNull(item.Message.ReminderHistoryId);
+            Assert.Equal("Task reminder: Prepare Monthly Report", item.Message.Subject);
+            Assert.Contains("is due in 1 day", item.Message.Body);
+            Assert.Contains($"http://localhost:4200/tasks/{task.Id}", item.Message.Body);
+        });
+        Assert.Equal(2, await harness.Db.Notifications.CountAsync());
+    }
+
+    [Fact]
+    public async Task Mail_delivery_switched_off_creates_bell_notifications_only()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        SeedTask(harness, "rs-nomail");
+        harness.Db.ApplicationSettings.Add(new TaskFlow.Domain.Entities.ApplicationSetting
+        {
+            Key = SettingKeys.NotificationMailEnabled,
+            Value = "false",
+            Category = SettingKeys.NotificationCategory,
+            UpdatedAt = DateTime.UtcNow
+        });
+        harness.Db.SaveChanges();
+
+        await Service(harness, new FixedTimeProvider(SecondReminderDay)).GenerateDueAsync();
+
+        Assert.Equal(2, await harness.Db.Notifications.CountAsync());
+        Assert.Equal(0, await harness.Db.MailMessages.CountAsync());
+    }
+
+    [Fact]
+    public async Task Completed_task_gets_no_reminder_mail()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        SeedTask(harness, "rs-done-mail", TaskStatus.Completed);
+
+        await Service(harness, new FixedTimeProvider(SecondReminderDay)).GenerateDueAsync();
+
+        Assert.Equal(0, await harness.Db.MailMessages.CountAsync());
     }
 }

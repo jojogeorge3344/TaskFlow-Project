@@ -5,3 +5,4 @@ export * from './notification.model';
 export * from './settings.model';
 export * from './task.model';
 export * from './user.model';
+export * from './mail.model';

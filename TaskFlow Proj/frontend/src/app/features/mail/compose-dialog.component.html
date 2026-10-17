@@ -1,0 +1,89 @@
+<tf-drawer [open]="open()" [title]="title()" (closed)="cancel()">
+  <form class="compose" (submit)="$event.preventDefault()" novalidate>
+    <div class="compose__fields">
+      @if (error()) {
+        <div class="tf-alert" role="alert">
+          <tf-icon name="alert" />
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      @if (loading()) {
+        <span class="tf-skeleton compose__skeleton" aria-busy="true"></span>
+      }
+
+      <div class="compose__recipients">
+        <app-recipient-picker class="compose__to" label="To" inputId="compose-to" [(chips)]="to" />
+        @if (!showCc()) {
+          <button type="button" class="tf-btn tf-btn--link compose__cc-toggle" data-action="show-cc" (click)="showCc.set(true)">Cc</button>
+        }
+      </div>
+      @if (fieldError('To'); as message) {
+        <span class="tf-field__error" data-error="To">{{ message }}</span>
+      }
+
+      @if (showCc()) {
+        <app-recipient-picker label="Cc" inputId="compose-cc" [(chips)]="cc" />
+        @if (fieldError('Cc'); as message) {
+          <span class="tf-field__error" data-error="Cc">{{ message }}</span>
+        }
+      }
+
+      <div class="tf-field">
+        <label for="compose-subject">Subject</label>
+        <input id="compose-subject" class="tf-input" [formControl]="subject" data-field="subject" [maxlength]="limits.maxSubjectLength" />
+        @if (fieldError('Subject'); as message) {
+          <span class="tf-field__error" data-error="Subject">{{ message }}</span>
+        }
+      </div>
+
+      <div class="tf-field compose__body">
+        <label for="compose-body">Message</label>
+        <textarea id="compose-body" class="tf-textarea" rows="10" [formControl]="body" data-field="body" [maxlength]="limits.maxBodyLength"></textarea>
+        @if (fieldError('Body'); as message) {
+          <span class="tf-field__error" data-error="Body">{{ message }}</span>
+        }
+      </div>
+
+      <div class="compose__files">
+        @for (file of forwarded(); track file.id) {
+          <span class="compose__file compose__file--forwarded" [attr.data-forwarded]="file.id" title="Included from the original mail">
+            <tf-icon name="paperclip" /> {{ file.fileName }} <small>{{ formatSize(file.sizeBytes) }}</small>
+          </span>
+        }
+        @for (file of attachments(); track file.id) {
+          <span class="compose__file" [attr.data-attachment]="file.id">
+            <tf-icon name="paperclip" /> {{ file.fileName }} <small>{{ formatSize(file.sizeBytes) }}</small>
+            <button type="button" class="compose__remove" [attr.aria-label]="'Remove ' + file.fileName" (click)="removeAttachment(file)">
+              <tf-icon name="x" />
+            </button>
+          </span>
+        }
+        @if (uploading() > 0) {
+          <span class="compose__file compose__file--uploading" data-status="uploading">Uploading…</span>
+        }
+      </div>
+      @if (fieldError('File') ?? fieldError('AttachmentIds'); as message) {
+        <span class="tf-field__error" data-error="File">{{ message }}</span>
+      }
+      @if (fieldError('Mode'); as message) {
+        <span class="tf-field__error" data-error="Mode">{{ message }}</span>
+      }
+    </div>
+
+    <div class="tf-form-actions compose__actions">
+      <label class="tf-btn tf-btn--ghost compose__attach">
+        <tf-icon name="paperclip" /> Attach
+        <input type="file" multiple class="tf-sr-only" data-field="files" (change)="onFiles($any($event.target))" />
+      </label>
+      <span class="compose__spacer"></span>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="discard" [disabled]="busy()" (click)="discard()">Discard</button>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="save-draft" [disabled]="busy() || uploading() > 0" (click)="saveDraft()">
+        Save draft
+      </button>
+      <button type="button" class="tf-btn tf-btn--primary" data-action="send" (click)="send()" [disabled]="busy() || uploading() > 0 || loading()">
+        <tf-icon name="send" /> {{ busy() ? 'Sending…' : 'Send' }}
+      </button>
+    </div>
+  </form>
+</tf-drawer>

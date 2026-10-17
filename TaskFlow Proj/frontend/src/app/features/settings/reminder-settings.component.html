@@ -112,15 +112,12 @@
       <fieldset class="settings-form__group">
         <legend>Delivery</legend>
         <label class="settings-toggle">
-          <input type="checkbox" formControlName="emailEnabled" data-field="emailEnabled" />
+          <input type="checkbox" formControlName="mailEnabled" data-field="mailEnabled" />
           <span>
-            <strong>Also send reminders by email</strong>
-            <span class="tf-field__hint">In-app notifications are always sent. Email delivery is configured separately.</span>
+            <strong>Also deliver reminders to Mail</strong>
+            <span class="tf-field__hint">Each reminder also arrives in the recipient's Mail inbox from "TaskFlow". Bell notifications are always sent.</span>
           </span>
         </label>
-        @if (canConfigureEmail()) {
-          <a class="settings-form__link" routerLink="/settings/email" data-action="configure-email">Configure email delivery</a>
-        }
         <div class="tf-field settings-form__timezone">
           <label for="settings-timezone">Application timezone</label>
           <input id="settings-timezone" class="tf-input" [value]="timezone()" readonly data-field="timezone" />

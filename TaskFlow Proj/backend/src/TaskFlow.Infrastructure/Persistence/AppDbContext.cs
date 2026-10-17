@@ -23,7 +23,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ReminderHistory> ReminderHistory => Set<ReminderHistory>();
     public DbSet<ApplicationSetting> ApplicationSettings => Set<ApplicationSetting>();
-    public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
+    public DbSet<MailMessage> MailMessages => Set<MailMessage>();
+    public DbSet<MailRecipient> MailRecipients => Set<MailRecipient>();
+    public DbSet<MailboxItem> MailboxItems => Set<MailboxItem>();
+    public DbSet<MailAttachment> MailAttachments => Set<MailAttachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -229,39 +232,102 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(setting => setting.Key).IsUnique();
         });
 
-        modelBuilder.Entity<EmailDeliveryLog>(entity =>
+        modelBuilder.Entity<MailMessage>(entity =>
         {
-            entity.HasKey(email => email.Id);
-            entity.Property(email => email.Kind).HasConversion<string>().HasMaxLength(16);
-            entity.Property(email => email.Status).HasConversion<string>().HasMaxLength(16);
-            entity.Property(email => email.ToAddress).IsRequired().HasMaxLength(320);
-            entity.Property(email => email.Subject).IsRequired().HasMaxLength(200);
-            entity.Property(email => email.Body).IsRequired();
-            entity.Property(email => email.LastError).HasMaxLength(1000);
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(message => message.Body).IsRequired().HasMaxLength(20000);
+            entity.Property(message => message.DraftTo).HasMaxLength(4000);
+            entity.Property(message => message.DraftCc).HasMaxLength(4000);
 
-            // At most one email per generated reminder, however often the scheduler runs.
-            entity.HasIndex(email => email.ReminderHistoryId)
+            entity.HasIndex(message => message.ConversationId);
+
+            // A reminder event yields at most one mail, however often the scheduler runs.
+            entity.HasIndex(message => message.ReminderHistoryId)
                 .IsUnique()
                 .HasFilter("\"ReminderHistoryId\" IS NOT NULL");
-            entity.HasIndex(email => new { email.Status, email.NextAttemptAt });
-            entity.HasIndex(email => email.CreatedAt);
 
             entity
-                .HasOne(email => email.ReminderHistory)
+                .HasOne(message => message.ParentMessage)
                 .WithMany()
-                .HasForeignKey(email => email.ReminderHistoryId)
+                .HasForeignKey(message => message.ParentMessageId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity
-                .HasOne(email => email.Task)
+                .HasOne(message => message.SenderUser)
                 .WithMany()
-                .HasForeignKey(email => email.TaskId)
+                .HasForeignKey(message => message.SenderUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity
-                .HasOne(email => email.RecipientUser)
+                .HasOne(message => message.Task)
                 .WithMany()
-                .HasForeignKey(email => email.RecipientUserId)
+                .HasForeignKey(message => message.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(message => message.ReminderHistory)
+                .WithMany()
+                .HasForeignKey(message => message.ReminderHistoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailRecipient>(entity =>
+        {
+            entity.HasKey(recipient => recipient.Id);
+            entity.Property(recipient => recipient.Kind).HasConversion<string>().HasMaxLength(8);
+            entity.HasIndex(recipient => new { recipient.MessageId, recipient.UserId }).IsUnique();
+
+            entity
+                .HasOne(recipient => recipient.Message)
+                .WithMany(message => message.Recipients)
+                .HasForeignKey(recipient => recipient.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(recipient => recipient.User)
+                .WithMany()
+                .HasForeignKey(recipient => recipient.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailboxItem>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Folder).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(item => new { item.MessageId, item.OwnerUserId, item.Folder }).IsUnique();
+            entity.HasIndex(item => new { item.OwnerUserId, item.Folder, item.PurgedAt, item.TrashedAt, item.SortAt });
+
+            entity
+                .HasOne(item => item.Message)
+                .WithMany()
+                .HasForeignKey(item => item.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(item => item.OwnerUser)
+                .WithMany()
+                .HasForeignKey(item => item.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailAttachment>(entity =>
+        {
+            entity.HasKey(attachment => attachment.Id);
+            entity.Property(attachment => attachment.FileName).IsRequired().HasMaxLength(255);
+            entity.Property(attachment => attachment.ContentType).IsRequired().HasMaxLength(128);
+            entity.HasIndex(attachment => attachment.MessageId);
+
+            entity
+                .HasOne(attachment => attachment.Message)
+                .WithMany(message => message.Attachments)
+                .HasForeignKey(attachment => attachment.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(attachment => attachment.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(attachment => attachment.UploadedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

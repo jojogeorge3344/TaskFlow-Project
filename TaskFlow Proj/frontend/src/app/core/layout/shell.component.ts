@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { EMPTY, catchError, exhaustMap, filter, fromEvent, interval, merge } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
 import { ToastHostComponent } from '../../shared/ui/toast-host.component';
 import { initials } from '../../shared/ui/initials';
@@ -24,6 +25,7 @@ export class ShellComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notificationService = inject(NotificationService);
+  private readonly mailService = inject(MailService);
   private readonly toggleButton = viewChild.required<ElementRef<HTMLButtonElement>>('toggleButton');
 
   readonly layout = inject(LayoutService);
@@ -32,6 +34,9 @@ export class ShellComponent {
 
   /** Unread count the header bell shows as a dot (design D6/D7). */
   readonly unreadCount = this.notificationService.unreadCount;
+
+  /** Unread Inbox mails, shown on the Mail menu entry. */
+  readonly mailUnreadCount = this.mailService.unreadCount;
 
   readonly navItems = computed<NavItem[]>(() => {
     const role = this.user()?.role;
@@ -61,6 +66,7 @@ export class ShellComponent {
 
     // Show the badge as soon as the shell mounts, then keep it fresh.
     this.notificationService.refreshUnreadCount();
+    this.mailService.refreshUnreadCount();
 
     this.router.events
       .pipe(
@@ -71,6 +77,7 @@ export class ShellComponent {
         this.currentUrl.set(event.urlAfterRedirects);
         this.layout.closeMobile();
         this.notificationService.refreshUnreadCount();
+    this.mailService.refreshUnreadCount();
       });
 
     // Re-check the session periodically and whenever the tab becomes visible, so a user whose
@@ -92,7 +99,10 @@ export class ShellComponent {
       fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible'))
     )
       .pipe(takeUntilDestroyed(destroyRef))
-      .subscribe(() => this.notificationService.refreshUnreadCount());
+      .subscribe(() => {
+        this.notificationService.refreshUnreadCount();
+        this.mailService.refreshUnreadCount();
+      });
   }
 
   toggleMenu(): void {

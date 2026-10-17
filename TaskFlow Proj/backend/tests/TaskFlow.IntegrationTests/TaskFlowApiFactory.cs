@@ -1,13 +1,9 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using TaskFlow.Application.Email;
-using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Infrastructure.Persistence;
@@ -16,14 +12,12 @@ namespace TaskFlow.IntegrationTests;
 
 public class TaskFlowApiFactory : WebApplicationFactory<Program>
 {
-    /// <summary>The SMTP password the API sees; tests assert it never appears in a response.</summary>
-    public const string SmtpPassword = "integration-smtp-secret-7731";
-
-    /// <summary>Replaces the MailKit sender so no test opens a socket.</summary>
-    public FakeEmailSender EmailSender { get; } = new();
-
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), $"taskflow-tests-{Guid.NewGuid():N}.db");
+
+    /// <summary>Attachment files for this factory's mail tests, removed on dispose.</summary>
+    public string AttachmentsPath { get; } =
+        Path.Combine(Path.GetTempPath(), $"taskflow-mail-tests-{Guid.NewGuid():N}");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -42,14 +36,8 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
-                ["Email:SmtpPassword"] = SmtpPassword
+                ["Mail:AttachmentsPath"] = AttachmentsPath
             });
-        });
-
-        builder.ConfigureTestServices(services =>
-        {
-            services.RemoveAll<IEmailSender>();
-            services.AddSingleton<IEmailSender>(EmailSender);
         });
     }
 
@@ -93,6 +81,17 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
 
+        if (disposing && Directory.Exists(AttachmentsPath))
+        {
+            try
+            {
+                Directory.Delete(AttachmentsPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+
         if (disposing && File.Exists(_databasePath))
         {
             try
@@ -103,25 +102,5 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
             {
             }
         }
-    }
-}
-
-/// <summary>Records sent emails and returns <see cref="NextResult"/> (success by default).</summary>
-public sealed class FakeEmailSender : IEmailSender
-{
-    private readonly List<EmailMessage> _sent = [];
-
-    public EmailSendResult NextResult { get; set; } = EmailSendResult.Sent;
-
-    public IReadOnlyList<EmailMessage> Sent { get { lock (_sent) { return _sent.ToList(); } } }
-
-    public Task<EmailSendResult> SendAsync(EmailMessage message, SmtpSettings settings, CancellationToken cancellationToken = default)
-    {
-        lock (_sent)
-        {
-            _sent.Add(message);
-        }
-
-        return System.Threading.Tasks.Task.FromResult(NextResult);
     }
 }

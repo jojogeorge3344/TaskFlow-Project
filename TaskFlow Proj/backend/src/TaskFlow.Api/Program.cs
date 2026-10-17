@@ -54,12 +54,11 @@ builder.Services.Configure<TaskFlow.Infrastructure.Settings.ApplicationOptions>(
     builder.Configuration.GetSection(TaskFlow.Infrastructure.Settings.ApplicationOptions.SectionName));
 builder.Services.AddScoped<TaskFlow.Application.Settings.IAppClock, TaskFlow.Infrastructure.Settings.AppClock>();
 builder.Services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsService, TaskFlow.Infrastructure.Settings.ReminderSettingsService>();
-builder.Services.AddScoped<TaskFlow.Application.Settings.IEmailSettingsService, TaskFlow.Infrastructure.Settings.EmailSettingsService>();
-builder.Services.AddScoped<TaskFlow.Application.Email.IEmailSender, TaskFlow.Infrastructure.Email.MailKitEmailSender>();
-builder.Services.AddScoped<TaskFlow.Application.Email.IEmailDispatcher, TaskFlow.Infrastructure.Services.EmailDispatcher>();
-builder.Services.AddScoped<TaskFlow.Application.Email.IEmailDeliveryService, TaskFlow.Infrastructure.Services.EmailDeliveryService>();
-builder.Services.Configure<TaskFlow.Infrastructure.Settings.EmailOptions>(
-    builder.Configuration.GetSection(TaskFlow.Infrastructure.Settings.EmailOptions.SectionName));
+builder.Services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();
+builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, TaskFlow.Infrastructure.Services.MailAttachmentService>();
+builder.Services.AddSingleton<TaskFlow.Application.Mail.IMailFileStore, TaskFlow.Infrastructure.Mail.LocalMailFileStore>();
+builder.Services.Configure<TaskFlow.Infrastructure.Mail.MailOptions>(
+    builder.Configuration.GetSection(TaskFlow.Infrastructure.Mail.MailOptions.SectionName));
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();

@@ -6,6 +6,8 @@ export interface NavItem {
   icon: IconName;
   /** Route to navigate to. When omitted the item is rendered as a disabled "Soon" placeholder. */
   route?: string;
+  /** Shows a live count next to the label: `mail` is the unread Inbox count. */
+  badge?: 'mail';
 }
 
 /**
@@ -15,21 +17,23 @@ export interface NavItem {
 export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
   Administrator: [
     { label: 'Dashboard', icon: 'home', route: '/admin' },
+    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
     { label: 'Employee Management', icon: 'users', route: '/employees' },
     { label: 'Department Management', icon: 'building', route: '/departments' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
-    { label: 'Email Settings', icon: 'mail', route: '/settings/email' }
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },
+    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'Task Management', icon: 'tasks', route: '/tasks' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
     { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
   ],
   Employee: [
     { label: 'Dashboard', icon: 'home', route: '/me' },
+    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'My Tasks', icon: 'tasks', route: '/tasks' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' }
   ]

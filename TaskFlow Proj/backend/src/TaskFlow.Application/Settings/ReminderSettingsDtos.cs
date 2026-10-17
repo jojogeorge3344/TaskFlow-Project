@@ -9,7 +9,7 @@ public record ReminderSettingsDto(
     int DefaultFirstDays,
     int DefaultSecondDays,
     ReminderFrequency DefaultOverdueFrequency,
-    bool EmailEnabled,
+    bool MailEnabled,
     string Timezone);
 
 /// <summary>A save of the reminder settings. There is deliberately no timezone field. Every field is
@@ -21,4 +21,4 @@ public record UpdateReminderSettingsRequest(
     int? DefaultFirstDays,
     int? DefaultSecondDays,
     ReminderFrequency? DefaultOverdueFrequency,
-    bool? EmailEnabled);
+    bool? MailEnabled);
