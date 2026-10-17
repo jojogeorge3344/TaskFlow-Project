@@ -23,6 +23,7 @@ public class EmailDispatcher : IEmailDispatcher
     public const string ExpiredReason = "Reminder day ended before the email could be sent.";
     public const string TaskChangedReason = "Task changed before sending.";
     public const string EmailDisabledReason = "Email notifications were disabled.";
+    public const string RecipientInactiveReason = "Recipient is no longer active.";
     public const string ConfigurationPrefix = "Email configuration is incomplete: ";
 
     // Wait after the 1st and 2nd failed attempts; the last value is reused if more attempts are configured.
@@ -76,7 +77,9 @@ public class EmailDispatcher : IEmailDispatcher
                 TaskMissing = email.Task == null,
                 TaskDeleted = email.Task != null && email.Task.IsDeleted,
                 TaskStatus = email.Task != null ? email.Task.Status : (TaskStatus?)null,
-                TaskDeadlineNow = email.Task != null ? email.Task.Deadline : (DateTime?)null
+                TaskDeadlineNow = email.Task != null ? email.Task.Deadline : (DateTime?)null,
+                // Soft-deleted users are hidden by the Users query filter, so the navigation is null for them too.
+                RecipientInactive = email.RecipientUserId != null && (email.RecipientUser == null || !email.RecipientUser.IsActive)
             })
             .ToListAsync(cancellationToken);
 
@@ -105,6 +108,11 @@ public class EmailDispatcher : IEmailDispatcher
                     || (email.TaskDeadline is { } queuedDeadline && email.TaskDeadlineNow != queuedDeadline))
                 {
                     skipReason = TaskChangedReason;
+                }
+                else if (email.RecipientInactive)
+                {
+                    // Deactivated or deleted after the reminder was generated.
+                    skipReason = RecipientInactiveReason;
                 }
                 else if (!schedule.Enabled)
                 {

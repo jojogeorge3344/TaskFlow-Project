@@ -93,9 +93,9 @@ and never sent again.
 ### Requirement: Stale reminder emails are not sent
 
 The system SHALL NOT send a reminder email after the end of its reminder day in the application
-timezone. If the reminder's task has been completed, cancelled, deleted or rescheduled, or email
-has been disabled before the email is sent, the email SHALL be marked skipped with a reason instead
-of being sent.
+timezone. If the reminder's task has been completed, cancelled, deleted or rescheduled, the
+recipient has been deactivated or deleted, or email has been disabled before the email is sent, the
+email SHALL be marked skipped with a reason instead of being sent.
 
 #### Scenario: Application down all day
 
@@ -106,6 +106,11 @@ of being sent.
 
 - **WHEN** a reminder email is waiting for the send time and the task is completed before then
 - **THEN** the email is marked skipped and not sent
+
+#### Scenario: Recipient deactivated before sending
+
+- **WHEN** a reminder email is waiting for the send time and its recipient is deactivated before then
+- **THEN** that email is marked skipped and not sent, and the other recipients still receive theirs
 
 #### Scenario: Email disabled before sending
 

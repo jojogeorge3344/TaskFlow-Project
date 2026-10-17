@@ -326,6 +326,41 @@ public class EmailDispatcherTests
     }
 
     [Fact]
+    public async Task Recipient_deactivated_before_the_send_time_is_skipped()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var assignee = await fixture.Harness.Db.Users.SingleAsync(user => user.Username == "disp-assignee");
+        assignee.IsActive = false;
+        await fixture.Harness.Db.SaveChangesAsync();
+
+        await fixture.DispatchAtAsync(SendTime);
+
+        var emails = await fixture.EmailsAsync();
+        var skipped = Assert.Single(emails, email => email.RecipientUserId == assignee.Id);
+        Assert.Equal(EmailDeliveryStatus.Skipped, skipped.Status);
+        Assert.Equal(EmailDispatcher.RecipientInactiveReason, skipped.LastError);
+        Assert.Equal(0, skipped.Attempts);
+        Assert.Single(emails, email => email.RecipientUserId != assignee.Id && email.Status == EmailDeliveryStatus.Sent);
+        Assert.DoesNotContain(fixture.Sender.Sent, message => message.ToAddress == assignee.Email);
+    }
+
+    [Fact]
+    public async Task Recipient_deleted_before_the_send_time_is_skipped()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var creator = await fixture.Harness.Db.Users.SingleAsync(user => user.Username == "disp-creator");
+        creator.IsDeleted = true;
+        await fixture.Harness.Db.SaveChangesAsync();
+
+        await fixture.DispatchAtAsync(SendTime);
+
+        var skipped = Assert.Single(await fixture.EmailsAsync(), email => email.RecipientUserId == creator.Id);
+        Assert.Equal(EmailDeliveryStatus.Skipped, skipped.Status);
+        Assert.Equal(EmailDispatcher.RecipientInactiveReason, skipped.LastError);
+        Assert.Single(fixture.Sender.Sent);
+    }
+
+    [Fact]
     public async Task Email_claimed_by_another_worker_is_not_sent_twice()
     {
         await using var fixture = await Fixture.CreateAsync();
