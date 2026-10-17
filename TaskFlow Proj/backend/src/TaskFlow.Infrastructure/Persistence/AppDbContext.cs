@@ -23,6 +23,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ReminderHistory> ReminderHistory => Set<ReminderHistory>();
     public DbSet<ApplicationSetting> ApplicationSettings => Set<ApplicationSetting>();
+    public DbSet<EmailDeliveryLog> EmailDeliveryLogs => Set<EmailDeliveryLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -226,6 +227,42 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(setting => setting.Category).IsRequired().HasMaxLength(64);
 
             entity.HasIndex(setting => setting.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<EmailDeliveryLog>(entity =>
+        {
+            entity.HasKey(email => email.Id);
+            entity.Property(email => email.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(email => email.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(email => email.ToAddress).IsRequired().HasMaxLength(320);
+            entity.Property(email => email.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(email => email.Body).IsRequired();
+            entity.Property(email => email.LastError).HasMaxLength(1000);
+
+            // At most one email per generated reminder, however often the scheduler runs.
+            entity.HasIndex(email => email.ReminderHistoryId)
+                .IsUnique()
+                .HasFilter("\"ReminderHistoryId\" IS NOT NULL");
+            entity.HasIndex(email => new { email.Status, email.NextAttemptAt });
+            entity.HasIndex(email => email.CreatedAt);
+
+            entity
+                .HasOne(email => email.ReminderHistory)
+                .WithMany()
+                .HasForeignKey(email => email.ReminderHistoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(email => email.Task)
+                .WithMany()
+                .HasForeignKey(email => email.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(email => email.RecipientUser)
+                .WithMany()
+                .HasForeignKey(email => email.RecipientUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

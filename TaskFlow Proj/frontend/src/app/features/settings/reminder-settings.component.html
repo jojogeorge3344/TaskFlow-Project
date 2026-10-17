@@ -118,6 +118,9 @@
             <span class="tf-field__hint">In-app notifications are always sent. Email delivery is configured separately.</span>
           </span>
         </label>
+        @if (canConfigureEmail()) {
+          <a class="settings-form__link" routerLink="/settings/email" data-action="configure-email">Configure email delivery</a>
+        }
         <div class="tf-field settings-form__timezone">
           <label for="settings-timezone">Application timezone</label>
           <input id="settings-timezone" class="tf-input" [value]="timezone()" readonly data-field="timezone" />

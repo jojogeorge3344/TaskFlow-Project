@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using TaskFlow.Application.Email;
+using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Infrastructure.Persistence;
@@ -12,6 +16,12 @@ namespace TaskFlow.IntegrationTests;
 
 public class TaskFlowApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>The SMTP password the API sees; tests assert it never appears in a response.</summary>
+    public const string SmtpPassword = "integration-smtp-secret-7731";
+
+    /// <summary>Replaces the MailKit sender so no test opens a socket.</summary>
+    public FakeEmailSender EmailSender { get; } = new();
+
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), $"taskflow-tests-{Guid.NewGuid():N}.db");
 
@@ -31,8 +41,15 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Cors:AllowedOrigins:0"] = "http://localhost:4200",
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
-                ["Reminders:SchedulerEnabled"] = "false"
+                ["Reminders:SchedulerEnabled"] = "false",
+                ["Email:SmtpPassword"] = SmtpPassword
             });
+        });
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(EmailSender);
         });
     }
 
@@ -86,5 +103,25 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
             {
             }
         }
+    }
+}
+
+/// <summary>Records sent emails and returns <see cref="NextResult"/> (success by default).</summary>
+public sealed class FakeEmailSender : IEmailSender
+{
+    private readonly List<EmailMessage> _sent = [];
+
+    public EmailSendResult NextResult { get; set; } = EmailSendResult.Sent;
+
+    public IReadOnlyList<EmailMessage> Sent { get { lock (_sent) { return _sent.ToList(); } } }
+
+    public Task<EmailSendResult> SendAsync(EmailMessage message, SmtpSettings settings, CancellationToken cancellationToken = default)
+    {
+        lock (_sent)
+        {
+            _sent.Add(message);
+        }
+
+        return System.Threading.Tasks.Task.FromResult(NextResult);
     }
 }

@@ -102,7 +102,8 @@ describe('ShellComponent', () => {
       'Employee Management',
       'Department Management',
       'Notifications',
-      'Reminder Settings'
+      'Reminder Settings',
+      'Email Settings'
     ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
@@ -124,6 +125,7 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
     expect(el(fixture).textContent).not.toContain('Reminder Settings');
+    expect(el(fixture).textContent).not.toContain('Email Settings');
   });
 
   it('highlights the active item with aria-current', async () => {
@@ -296,6 +298,7 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
 
     expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Reminder Settings');
+    expect(links.some((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Email Settings')).toBeFalse();
   });
 
   it('re-checks the session every minute and when the tab becomes visible', fakeAsync(() => {

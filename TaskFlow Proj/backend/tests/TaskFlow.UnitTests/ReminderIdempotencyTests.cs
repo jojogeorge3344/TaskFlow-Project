@@ -94,6 +94,28 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_passes_queue_one_email_per_reminder()
+    {
+        await using (var db = NewContext())
+        {
+            db.ApplicationSettings.Add(new ApplicationSetting
+            {
+                Key = TaskFlow.Application.Settings.SettingKeys.NotificationEmailEnabled,
+                Value = "true",
+                Category = "Notification",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await Task.WhenAll(RunPassAsync(), RunPassAsync(), RunPassAsync());
+        await RunPassAsync();
+
+        Assert.Equal(_recipientCount, await CountAsync(db => db.EmailDeliveryLogs));
+        Assert.Equal(_recipientCount, await CountAsync(db => db.Notifications));
+    }
+
+    [Fact]
     public async Task Next_day_brings_the_next_reminder_once()
     {
         await RunPassAsync();
@@ -206,6 +228,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
             db,
             new AppClock(db, _clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(db, _clock, options),
+            new EmailSettingsService(db, _clock, Options.Create(new EmailOptions())),
+            Options.Create(new EmailOptions()),
             NullLogger<ReminderService>.Instance);
 
         await service.GenerateDueAsync();

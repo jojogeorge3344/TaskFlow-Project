@@ -19,7 +19,8 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Employee Management', icon: 'users', route: '/employees' },
     { label: 'Department Management', icon: 'building', route: '/departments' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
+    { label: 'Email Settings', icon: 'mail', route: '/settings/email' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },

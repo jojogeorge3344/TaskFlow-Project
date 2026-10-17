@@ -66,6 +66,13 @@ export const routes: Routes = [
           import('./features/settings/reminder-settings.component').then((m) => m.ReminderSettingsComponent)
       },
       {
+        path: 'settings/email',
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator'] },
+        loadComponent: () =>
+          import('./features/settings/email-settings.component').then((m) => m.EmailSettingsComponent)
+      },
+      {
         path: 'board',
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },

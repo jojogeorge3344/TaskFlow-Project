@@ -22,6 +22,8 @@ public class ReminderServiceTests
             harness.Db,
             new AppClock(harness.Db, clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(harness.Db, clock, options),
+            new EmailSettingsService(harness.Db, clock, Options.Create(new EmailOptions())),
+            Options.Create(new EmailOptions()),
             NullLogger<ReminderService>.Instance);
     }
 

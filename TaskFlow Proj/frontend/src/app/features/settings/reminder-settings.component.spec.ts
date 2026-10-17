@@ -1,6 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { UserRole } from '../../core/models';
 import { ReminderSettings } from '../../core/models';
 import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -27,10 +30,12 @@ describe('ReminderSettingsComponent', () => {
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
   });
 
-  function create(): ComponentFixture<ReminderSettingsComponent> {
+  function create(role: UserRole = 'Manager'): ComponentFixture<ReminderSettingsComponent> {
     TestBed.configureTestingModule({
       imports: [ReminderSettingsComponent],
       providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { currentUser: () => ({ role }) } },
         { provide: ReminderSettingsService, useValue: { get: getSpy, save: saveSpy } },
         { provide: ToastService, useValue: toast }
       ]
@@ -177,5 +182,18 @@ describe('ReminderSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(checkbox(fixture, 'timezone').value).toBe('Asia/Kolkata');
+  });
+
+  it('links Administrators to Email Settings', () => {
+    const fixture = create('Administrator');
+
+    const link = el(fixture).querySelector('[data-action="configure-email"]');
+    expect(link?.getAttribute('href')).toBe('/settings/email');
+  });
+
+  it('does not show the Email Settings link to Managers', () => {
+    const fixture = create('Manager');
+
+    expect(el(fixture).querySelector('[data-action="configure-email"]')).toBeNull();
   });
 });

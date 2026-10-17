@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TaskFlow.Application.Email;
 using TaskFlow.Application.Reminders;
 
 namespace TaskFlow.Infrastructure.Services;
@@ -63,7 +64,9 @@ public class ReminderSchedulerService : BackgroundService
         }
     }
 
-    private async System.Threading.Tasks.Task RunPassAsync(CancellationToken stoppingToken)
+    /// <summary>One scheduler pass: generate due reminders, then send due emails. Each step has its own scope
+    /// and error handling, so a failure in one never blocks the other or stops the scheduler.</summary>
+    public async System.Threading.Tasks.Task RunPassAsync(CancellationToken stoppingToken)
     {
         try
         {
@@ -79,6 +82,22 @@ public class ReminderSchedulerService : BackgroundService
         {
             // One failed pass must never stop the scheduler; the next tick tries again.
             _logger.LogError(exception, "Reminder pass failed.");
+        }
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var dispatcher = scope.ServiceProvider.GetRequiredService<IEmailDispatcher>();
+            await dispatcher.DispatchDueAsync(stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Email problems never affect reminders; queued emails are retried on the next tick.
+            _logger.LogError(exception, "Email dispatch failed.");
         }
     }
 }

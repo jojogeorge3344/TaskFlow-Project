@@ -60,9 +60,14 @@ public static class ReminderCalculator
     /// <summary>The UTC instant at which <paramref name="day"/> starts in the given timezone. When a DST
     /// gap removes local midnight, the earliest valid local time that day is used; when a DST fall-back makes
     /// local midnight occur twice, the earlier of the two instants is used.</summary>
-    public static DateTime LocalMidnightUtc(DateOnly day, TimeZoneInfo timeZone)
+    public static DateTime LocalMidnightUtc(DateOnly day, TimeZoneInfo timeZone) =>
+        LocalTimeUtc(day, TimeOnly.MinValue, timeZone);
+
+    /// <summary>The UTC instant of <paramref name="time"/> on <paramref name="day"/> in the given timezone, with
+    /// the same DST handling as <see cref="LocalMidnightUtc"/>.</summary>
+    public static DateTime LocalTimeUtc(DateOnly day, TimeOnly time, TimeZoneInfo timeZone)
     {
-        var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        var local = day.ToDateTime(time, DateTimeKind.Unspecified);
         while (timeZone.IsInvalidTime(local))
         {
             local = local.AddMinutes(1);
