@@ -17,8 +17,9 @@ public static class TaskStatusTransitions
         return from switch
         {
             TaskStatus.ToDo => to is TaskStatus.InProgress or TaskStatus.Blocked or TaskStatus.Cancelled,
-            TaskStatus.InProgress => to is TaskStatus.Blocked or TaskStatus.Completed or TaskStatus.Cancelled,
+            TaskStatus.InProgress => to is TaskStatus.InQA or TaskStatus.Blocked or TaskStatus.Completed or TaskStatus.Cancelled,
             TaskStatus.Blocked => to is TaskStatus.InProgress or TaskStatus.Cancelled,
+            TaskStatus.InQA => to is TaskStatus.InProgress or TaskStatus.Completed or TaskStatus.Blocked or TaskStatus.Cancelled,
             _ => false
         };
     }

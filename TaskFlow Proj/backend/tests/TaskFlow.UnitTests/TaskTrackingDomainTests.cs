@@ -8,26 +8,37 @@ public class TaskStatusTransitionsTests
 {
     public static TheoryData<TaskStatus, TaskStatus, bool> TransitionExpectations => new()
     {
-        // ToDo: -> self, InProgress, Blocked, Cancelled (not Completed)
+        // ToDo: -> self, InProgress, Blocked, Cancelled (not Completed, not InQA)
         { TaskStatus.ToDo, TaskStatus.ToDo, true },
         { TaskStatus.ToDo, TaskStatus.InProgress, true },
         { TaskStatus.ToDo, TaskStatus.Blocked, true },
         { TaskStatus.ToDo, TaskStatus.Cancelled, true },
         { TaskStatus.ToDo, TaskStatus.Completed, false },
+        { TaskStatus.ToDo, TaskStatus.InQA, false },
 
-        // InProgress: -> self, Blocked, Completed, Cancelled (not ToDo)
+        // InProgress: -> self, InQA, Blocked, Completed, Cancelled (not ToDo)
         { TaskStatus.InProgress, TaskStatus.InProgress, true },
+        { TaskStatus.InProgress, TaskStatus.InQA, true },
         { TaskStatus.InProgress, TaskStatus.Blocked, true },
         { TaskStatus.InProgress, TaskStatus.Completed, true },
         { TaskStatus.InProgress, TaskStatus.Cancelled, true },
         { TaskStatus.InProgress, TaskStatus.ToDo, false },
 
-        // Blocked: -> self, InProgress, Cancelled (not ToDo, not Completed)
+        // InQA: -> self, InProgress (QA send-back), Completed, Blocked, Cancelled (not ToDo)
+        { TaskStatus.InQA, TaskStatus.InQA, true },
+        { TaskStatus.InQA, TaskStatus.InProgress, true },
+        { TaskStatus.InQA, TaskStatus.Completed, true },
+        { TaskStatus.InQA, TaskStatus.Blocked, true },
+        { TaskStatus.InQA, TaskStatus.Cancelled, true },
+        { TaskStatus.InQA, TaskStatus.ToDo, false },
+
+        // Blocked: -> self, InProgress, Cancelled (not ToDo, not Completed, not InQA)
         { TaskStatus.Blocked, TaskStatus.Blocked, true },
         { TaskStatus.Blocked, TaskStatus.InProgress, true },
         { TaskStatus.Blocked, TaskStatus.Cancelled, true },
         { TaskStatus.Blocked, TaskStatus.ToDo, false },
         { TaskStatus.Blocked, TaskStatus.Completed, false },
+        { TaskStatus.Blocked, TaskStatus.InQA, false },
 
         // Completed: terminal - only self
         { TaskStatus.Completed, TaskStatus.Completed, true },
@@ -35,13 +46,15 @@ public class TaskStatusTransitionsTests
         { TaskStatus.Completed, TaskStatus.InProgress, false },
         { TaskStatus.Completed, TaskStatus.Blocked, false },
         { TaskStatus.Completed, TaskStatus.Cancelled, false },
+        { TaskStatus.Completed, TaskStatus.InQA, false },
 
         // Cancelled: terminal - only self
         { TaskStatus.Cancelled, TaskStatus.Cancelled, true },
         { TaskStatus.Cancelled, TaskStatus.ToDo, false },
         { TaskStatus.Cancelled, TaskStatus.InProgress, false },
         { TaskStatus.Cancelled, TaskStatus.Blocked, false },
-        { TaskStatus.Cancelled, TaskStatus.Completed, false }
+        { TaskStatus.Cancelled, TaskStatus.Completed, false },
+        { TaskStatus.Cancelled, TaskStatus.InQA, false }
     };
 
     [Theory]

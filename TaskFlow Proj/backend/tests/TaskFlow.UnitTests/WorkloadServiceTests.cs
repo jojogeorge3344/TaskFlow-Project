@@ -47,6 +47,22 @@ public class WorkloadServiceTests
     }
 
     [Fact]
+    public async Task GetWorkloadAsync_InQaTaskCountsAsActiveNotCompleted()
+    {
+        await using var harness = WorkloadReportHarness.Create(Now);
+        var qa = harness.AddUser("qa", fullName: "QA Quinn");
+
+        harness.AddTask(qa.Id, Future, TaskStatus.InQA, TaskPriority.Medium);
+
+        var workload = await harness.Workload.GetWorkloadAsync(null, CancellationToken.None);
+        var row = Assert.Single(workload);
+
+        Assert.Equal(1, row.ActiveTasks);
+        Assert.Equal(0, row.OverdueTasks);
+        Assert.Equal(0, row.CompletedTasks);
+    }
+
+    [Fact]
     public async Task GetWorkloadAsync_DepartmentFilter_NarrowsToThatDepartment()
     {
         await using var harness = WorkloadReportHarness.Create(Now);

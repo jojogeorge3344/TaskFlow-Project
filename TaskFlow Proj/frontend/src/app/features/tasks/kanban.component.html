@@ -10,6 +10,61 @@
     </button>
   </header>
 
+  <div class="tf-card tf-toolbar kanban__filters" role="search" aria-label="Filter board">
+    @if (canManage()) {
+      <div class="tf-field">
+        <label for="board-filter-assignee">Assignee</label>
+        <select id="board-filter-assignee" class="tf-select" (change)="setAssignee($any($event.target).value)">
+          <option value="" [selected]="assigneeUserId() === null">All assignees</option>
+          @for (assignee of assignees(); track assignee.userId) {
+            <option [value]="assignee.userId" [selected]="assignee.userId === assigneeUserId()">{{ assignee.fullName }}</option>
+          }
+        </select>
+      </div>
+    }
+    <div class="tf-field">
+      <label for="board-filter-status">Status</label>
+      <select id="board-filter-status" class="tf-select" (change)="setStatus($any($event.target).value)">
+        <option value="" [selected]="status() === ''">All statuses</option>
+        @for (option of statuses; track option) {
+          <option [value]="option" [selected]="option === status()">{{ statusLabels[option] }}</option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="board-filter-from">Deadline from</label>
+      <input
+        id="board-filter-from"
+        class="tf-input"
+        type="date"
+        [value]="deadlineFrom()"
+        [max]="deadlineTo() || null"
+        (change)="setDeadlineFrom($any($event.target).value)"
+      />
+    </div>
+    <div class="tf-field">
+      <label for="board-filter-to">Deadline to</label>
+      <input
+        id="board-filter-to"
+        class="tf-input"
+        type="date"
+        [value]="deadlineTo()"
+        [min]="deadlineFrom() || null"
+        (change)="setDeadlineTo($any($event.target).value)"
+      />
+    </div>
+    <button
+      type="button"
+      class="tf-btn tf-btn--ghost"
+      [disabled]="!hasFilters()"
+      data-action="clear-filters"
+      (click)="clearFilters()"
+    >
+      <tf-icon name="reset" />
+      Clear
+    </button>
+  </div>
+
   @if (error()) {
     <div class="tf-card tf-empty" role="alert">
       <tf-icon name="alert" />
@@ -28,6 +83,14 @@
         </div>
       }
     </div>
+  } @else if (filteredEmpty()) {
+    <div class="tf-card tf-empty" data-testid="board-filtered-empty">
+      <tf-icon name="search" />
+      <p>No tasks match the current filters.</p>
+      <button type="button" class="tf-btn tf-btn--primary" data-action="clear-filters-empty" (click)="clearFilters()">
+        Clear filters
+      </button>
+    </div>
   } @else {
     <div class="kanban" cdkDropListGroup>
       @for (column of columns(); track column.status) {
@@ -39,6 +102,7 @@
 
           <div
             cdkDropList
+            [cdkDropListSortingDisabled]="true"
             class="kanban__list"
             [class.kanban__list--empty]="column.tasks.length === 0"
             [cdkDropListData]="column.tasks"

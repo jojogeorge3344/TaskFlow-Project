@@ -1,8 +1,8 @@
-export type TaskStatus = 'ToDo' | 'InProgress' | 'Blocked' | 'Completed' | 'Cancelled';
+export type TaskStatus = 'ToDo' | 'InProgress' | 'InQA' | 'Blocked' | 'Completed' | 'Cancelled';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TaskStage = 'Upcoming' | 'DueToday' | 'Overdue' | 'Completed';
 
-export const BOARD_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'Blocked', 'Completed'];
+export const BOARD_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'InQA', 'Blocked', 'Completed'];
 
 export interface TaskCard {
   id: number;
@@ -88,7 +88,7 @@ export interface SetRecipientsRequest {
 
 export type ReminderFrequency = 'Daily' | 'Weekly';
 
-export const TASK_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'Blocked', 'Completed', 'Cancelled'];
+export const TASK_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'InQA', 'Blocked', 'Completed', 'Cancelled'];
 export const TASK_PRIORITIES: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 /** A row on the paginated Task List (Screen 7); stage and overdue are derived server-side. */
