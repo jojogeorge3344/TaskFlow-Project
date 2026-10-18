@@ -95,7 +95,9 @@ public class DashboardService : IDashboardService
             task => task.Deadline >= today && task.Deadline < tomorrow,
             cancellationToken);
         var overdueTasks = await openAssigned.CountAsync(IsOverdue(now), cancellationToken);
-        var inProgressTasks = await assigned.CountAsync(task => task.Status == TaskStatus.InProgress, cancellationToken);
+        var inProgressTasks = await assigned.CountAsync(
+            task => task.Status == TaskStatus.InProgress || task.Status == TaskStatus.InQA,
+            cancellationToken);
         var completedTasks = await assigned.CountAsync(task => task.Status == TaskStatus.Completed, cancellationToken);
 
         return new EmployeeDashboardDto(

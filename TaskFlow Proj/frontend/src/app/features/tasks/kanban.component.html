@@ -102,6 +102,7 @@
 
           <div
             cdkDropList
+            [cdkDropListSortingDisabled]="true"
             class="kanban__list"
             [class.kanban__list--empty]="column.tasks.length === 0"
             [cdkDropListData]="column.tasks"

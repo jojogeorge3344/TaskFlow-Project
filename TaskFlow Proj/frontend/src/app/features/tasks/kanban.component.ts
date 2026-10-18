@@ -3,12 +3,11 @@ import {
   CdkDrag,
   CdkDragDrop,
   CdkDropList,
-  CdkDropListGroup,
-  moveItemInArray
+  CdkDropListGroup
 } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { BOARD_STATUSES, TASK_STATUSES, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
+import { BOARD_STATUSES, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -52,7 +51,7 @@ export class KanbanComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
-  readonly statuses = TASK_STATUSES;
+  readonly statuses = BOARD_STATUSES;
   readonly statusLabels = STATUS_LABELS;
 
   /** Every task the board may show; filters narrow it into `columns`. */
@@ -161,8 +160,7 @@ export class KanbanComponent implements OnInit {
 
   drop(event: CdkDragDrop<TaskCard[]>, targetStatus: TaskStatus): void {
     if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-      this.columns.update((columns) => columns.map((column) => ({ ...column, tasks: [...column.tasks] })));
+      // Columns are deadline-ordered and rebuilt from the task list, so in-column order is not user-editable.
       return;
     }
 

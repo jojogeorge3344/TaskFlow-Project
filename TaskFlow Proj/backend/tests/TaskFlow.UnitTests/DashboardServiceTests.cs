@@ -99,6 +99,19 @@ public class DashboardServiceTests
     }
 
     [Fact]
+    public async Task GetEmployeeStatsAsync_InQaTaskCountsAsInProgress()
+    {
+        await using var harness = DashboardServiceHarness.Create(Now);
+        var employee = harness.AddUser("employee");
+        harness.AddTask(employee.Id, Today.AddHours(18), TaskStatus.InQA);
+
+        var stats = await harness.Service.GetEmployeeStatsAsync(employee.Id, CancellationToken.None);
+
+        Assert.Equal(1, stats.InProgressTasks);
+        Assert.Equal(1, stats.PendingTasks);
+    }
+
+    [Fact]
     public async Task GetEmployeeStatsAsync_WithNoTasks_ReturnsZeros()
     {
         await using var harness = DashboardServiceHarness.Create(Now);
