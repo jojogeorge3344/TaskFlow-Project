@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+using System.Security.Principal;
 using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
@@ -72,5 +74,50 @@ public class KeyRingProtectionCheckTests : IDisposable
         WriteKey("revocation-1.xml", Unprotected);
 
         Assert.Equal(0, KeyRingProtectionCheck.CountUnprotectedKeys(_folder));
+    }
+
+    [WindowsOnlyFact]
+    public void AKeyFileThatCannotBeReadIsSkippedAndTheCheckDoesNotThrow()
+    {
+        WriteKey("key-a.xml", Unprotected);
+        WriteKey("key-locked.xml", Unprotected);
+        var locked = new FileInfo(Path.Combine(_folder, "key-locked.xml"));
+        var deny = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ReadData, AccessControlType.Deny);
+        var security = locked.GetAccessControl();
+        security.AddAccessRule(deny);
+        locked.SetAccessControl(security);
+        try
+        {
+            var count = KeyRingProtectionCheck.CountUnprotectedKeys(_folder);
+
+            Assert.Equal(1, count);
+        }
+        finally
+        {
+            security.RemoveAccessRule(deny);
+            locked.SetAccessControl(security);
+        }
+    }
+
+    [WindowsOnlyFact]
+    public void AFolderThatCannotBeListedGivesZeroInsteadOfThrowing()
+    {
+        WriteKey("key-a.xml", Unprotected);
+        var folder = new DirectoryInfo(_folder);
+        var deny = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ListDirectory, AccessControlType.Deny);
+        var security = folder.GetAccessControl();
+        security.AddAccessRule(deny);
+        folder.SetAccessControl(security);
+        try
+        {
+            var count = KeyRingProtectionCheck.CountUnprotectedKeys(_folder);
+
+            Assert.Equal(0, count);
+        }
+        finally
+        {
+            security.RemoveAccessRule(deny);
+            folder.SetAccessControl(security);
+        }
     }
 }

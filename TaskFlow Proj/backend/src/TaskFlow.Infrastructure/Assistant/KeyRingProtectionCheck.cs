@@ -6,30 +6,44 @@ namespace TaskFlow.Infrastructure.Assistant;
 public static class KeyRingProtectionCheck
 {
     /// <summary>The number of key files in the folder that hold a plain <c>masterKey</c> element. Zero when the folder
-    /// does not exist yet or every key is protected. Only counts: it never reads key material into the result.</summary>
+    /// does not exist yet, every key is protected, or it cannot be checked. It is advisory and best-effort: it never
+    /// throws, so it can never stop the application from starting, and it only counts: key material is never returned.</summary>
     public static int CountUnprotectedKeys(string keyRingFolder)
     {
-        if (!Directory.Exists(keyRingFolder))
-        {
-            return 0;
-        }
-
         var count = 0;
-        foreach (var file in Directory.EnumerateFiles(keyRingFolder, "key-*.xml"))
+        try
         {
-            try
+            if (!Directory.Exists(keyRingFolder))
             {
-                if (File.ReadAllText(file).Contains("<masterKey", StringComparison.Ordinal))
+                return 0;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(keyRingFolder, "key-*.xml"))
+            {
+                if (HasPlainMasterKey(file))
                 {
                     count++;
                 }
             }
-            catch (IOException)
-            {
-                // A file that cannot be read right now is skipped; the check runs again at the next start.
-            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            // The folder cannot be listed (permissions, a drive that went away). The keys counted so far are reported.
         }
 
         return count;
+    }
+
+    private static bool HasPlainMasterKey(string file)
+    {
+        try
+        {
+            return File.ReadAllText(file).Contains("<masterKey", StringComparison.Ordinal);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            // A file that cannot be read right now is skipped; the check runs again at the next start.
+            return false;
+        }
     }
 }
