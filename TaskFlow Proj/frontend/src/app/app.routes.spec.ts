@@ -57,6 +57,17 @@ describe('app routes', () => {
     expect(shellRoute().children!.some((child) => child.path === 'login')).toBeFalse();
   });
 
+  it('keeps the TFA assistant out of the login screen: it is part of the guarded shell only', async () => {
+    const login = topLevelRoute('login');
+    const loginComponent = await login.loadComponent!();
+    const shell = shellRoute();
+
+    expect(shell.canActivate).toContain(authGuard);
+    expect(login.canActivate).toBeUndefined();
+    expect(login.children).toBeUndefined();
+    expect(loginComponent).not.toBe(ShellComponent);
+  });
+
   it('wraps authenticated screens in the shell behind the auth guard', async () => {
     const shell = shellRoute();
     expect(shell.canActivate).toEqual([authGuard]);

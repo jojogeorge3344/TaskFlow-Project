@@ -27,6 +27,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<MailRecipient> MailRecipients => Set<MailRecipient>();
     public DbSet<MailboxItem> MailboxItems => Set<MailboxItem>();
     public DbSet<MailAttachment> MailAttachments => Set<MailAttachment>();
+    public DbSet<AiProviderConfig> AiProviderConfigs => Set<AiProviderConfig>();
+    public DbSet<AssistantConversation> AssistantConversations => Set<AssistantConversation>();
+    public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
+    public DbSet<AssistantPendingAction> AssistantPendingActions => Set<AssistantPendingAction>();
+    public DbSet<AssistantAudit> AssistantAudits => Set<AssistantAudit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -329,6 +334,66 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .WithMany()
                 .HasForeignKey(attachment => attachment.UploadedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AiProviderConfig>(entity =>
+        {
+            entity.HasKey(config => config.Id);
+            entity.Property(config => config.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.ModelName).IsRequired().HasMaxLength(100);
+            entity.Property(config => config.BaseUrl).HasMaxLength(300);
+            entity.Property(config => config.KeyLast4).HasMaxLength(4);
+            entity.HasIndex(config => config.Kind).IsUnique();
+        });
+
+        modelBuilder.Entity<AssistantConversation>(entity =>
+        {
+            entity.HasKey(conversation => conversation.Id);
+            entity.HasIndex(conversation => conversation.UserId);
+
+            entity
+                .HasOne(conversation => conversation.User)
+                .WithMany()
+                .HasForeignKey(conversation => conversation.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Role).HasConversion<string>().HasMaxLength(16);
+            entity.Property(message => message.ProviderKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(message => message.Content).IsRequired();
+            entity.HasIndex(message => message.ConversationId);
+
+            entity
+                .HasOne(message => message.Conversation)
+                .WithMany(conversation => conversation.Messages)
+                .HasForeignKey(message => message.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantPendingAction>(entity =>
+        {
+            entity.HasKey(action => action.Id);
+            entity.Property(action => action.Kind).HasConversion<string>().HasMaxLength(32);
+            entity.Property(action => action.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(action => action.PayloadJson).IsRequired();
+            entity.HasIndex(action => action.UserId);
+
+            entity
+                .HasOne(action => action.User)
+                .WithMany()
+                .HasForeignKey(action => action.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantAudit>(entity =>
+        {
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.Kind).HasConversion<string>().HasMaxLength(32);
+            entity.Property(audit => audit.Outcome).IsRequired().HasMaxLength(32);
+            entity.HasIndex(audit => new { audit.UserId, audit.At });
         });
     }
 }

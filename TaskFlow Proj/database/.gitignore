@@ -2,3 +2,6 @@
 *.db
 *.db-shm
 *.db-wal
+
+## Data Protection key ring that encrypts AI provider API keys. Never commit it.
+dp-keys/

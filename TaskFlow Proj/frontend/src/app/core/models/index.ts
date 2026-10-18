@@ -8,3 +8,4 @@ export * from './task.model';
 export * from './user.model';
 export * from './workload.model';
 export * from './mail.model';
+export * from './assistant.model';

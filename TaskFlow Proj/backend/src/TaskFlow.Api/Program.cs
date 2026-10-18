@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -62,6 +63,64 @@ builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, Tas
 builder.Services.AddSingleton<TaskFlow.Application.Mail.IMailFileStore, TaskFlow.Infrastructure.Mail.LocalMailFileStore>();
 builder.Services.Configure<TaskFlow.Infrastructure.Mail.MailOptions>(
     builder.Configuration.GetSection(TaskFlow.Infrastructure.Mail.MailOptions.SectionName));
+
+builder.Services.Configure<TaskFlow.Infrastructure.Assistant.AiProviderOptions>(
+    builder.Configuration.GetSection(TaskFlow.Infrastructure.Assistant.AiProviderOptions.SectionName));
+var dataProtection = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("TaskFlow");
+if (OperatingSystem.IsWindows())
+{
+    // The key ring then only decrypts for the Windows account that runs the API, so a copied folder is not enough.
+    dataProtection.ProtectKeysWithDpapi();
+}
+// The key ring folder is read from the bound options when Data Protection is first used (not while this file runs), so
+// configuration added later, such as by the integration tests, decides where the keys go.
+builder.Services
+    .AddOptions<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>()
+    .Configure<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>, ILoggerFactory>(
+        (options, aiOptions, loggerFactory) =>
+            options.XmlRepository = new Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository(
+                new DirectoryInfo(TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(aiOptions.Value.KeyRingPath)),
+                loggerFactory));
+builder.Services.AddSingleton<TaskFlow.Application.Assistant.IAiKeyProtector, TaskFlow.Infrastructure.Assistant.AiKeyProtector>();
+// The timeout is read from the bound options when a client is created. Provider clients never log request or response headers or bodies, so keys and prompts stay out of the logs.
+// Redirects are not followed: the address an administrator saved is the only one that is called, so a redirect cannot
+// lead the server on to another (for example a cloud metadata) address.
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OllamaProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.GeminiProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OpenAiProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.OllamaProvider>());
+builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.GeminiProvider>());
+builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.OpenAiProvider>());
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IChatModelProviderRegistry, TaskFlow.Infrastructure.Assistant.ChatModelProviderRegistry>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAiProviderConfigService, TaskFlow.Infrastructure.Assistant.AiProviderConfigService>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IChatModelGateway, TaskFlow.Infrastructure.Assistant.ChatModelGateway>();
+builder.Services.AddSingleton<TaskFlow.Application.Assistant.IAssistantRateLimiter, TaskFlow.Infrastructure.Assistant.AssistantRateLimiter>();
+builder.Services.AddSingleton<TaskFlow.Application.Assistant.IHelpKnowledgeBase, TaskFlow.Infrastructure.Assistant.HelpKnowledgeBase>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantTaskReader>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantUserResolver>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantManagerResolver>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantToolGate>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.GetMyTasksTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.PrioritiseTasksTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.SearchHelpTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.FindUserTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ExplainPasswordChangeTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ContactAdminGuidanceTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.DraftMailTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ProposeProfileUpdateTool>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ProposeRoleChangeTool>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantToolbox, TaskFlow.Infrastructure.Assistant.AssistantToolbox>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantAuditLog, TaskFlow.Infrastructure.Assistant.AssistantAuditLog>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionService, TaskFlow.Infrastructure.Assistant.AssistantActionService>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionCards>(
+    provider => provider.GetRequiredService<TaskFlow.Application.Assistant.IAssistantActionService>());
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantService, TaskFlow.Infrastructure.Assistant.AssistantService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();
@@ -120,6 +179,30 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (OperatingSystem.IsWindows())
+{
+    var keyRingFolder = TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(
+        app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.KeyRingPath);
+    var keyRingCheck = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.Check(keyRingFolder);
+    if (keyRingCheck.UnprotectedKeys > 0)
+    {
+        app.Logger.LogWarning(
+            "The AI key ring in {KeyRingFolder} has {Count} key(s) stored unprotected, from before DPAPI protection was turned on. "
+            + "To protect it: stop the API, delete that folder, start the API and enter the AI provider API keys again.",
+            keyRingFolder,
+            keyRingCheck.UnprotectedKeys);
+    }
+
+    if (keyRingCheck.CouldNotCheckReason is { } reason)
+    {
+        app.Logger.LogInformation(
+            "The AI key ring in {KeyRingFolder} could not be fully checked for unprotected keys: {Reason}. "
+            + "If it was created before DPAPI protection was turned on, it may still hold an unprotected key.",
+            keyRingFolder,
+            reason);
+    }
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -150,4 +233,7 @@ app.Run();
 
 public partial class Program
 {
+    private static void ConfigureAiClient(IServiceProvider services, HttpClient client) =>
+        client.Timeout = TimeSpan.FromSeconds(
+            services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.TimeoutSeconds);
 }

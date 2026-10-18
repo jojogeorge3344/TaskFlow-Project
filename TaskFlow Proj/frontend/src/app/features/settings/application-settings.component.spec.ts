@@ -1,8 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApplicationSettings } from '../../core/models';
+import { AuthService } from '../../core/auth/auth.service';
+import { AiProviderAdminService } from '../../core/services/ai-provider-admin.service';
 import { ApplicationSettingsService } from '../../core/services/application-settings.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ApplicationSettingsComponent } from './application-settings.component';
@@ -31,6 +34,9 @@ describe('ApplicationSettingsComponent', () => {
       providers: [
         { provide: ApplicationSettingsService, useValue: { get: getSpy, save: saveSpy } },
         { provide: ToastService, useValue: toast },
+        // The AI assistant section is covered by its own spec; here it only has to render.
+        { provide: AiProviderAdminService, useValue: { getConfig: () => of([]) } },
+        { provide: AuthService, useValue: { currentUser: signal({ id: 1, role: 'Administrator' }).asReadonly() } },
         provideRouter([])
       ]
     });

@@ -1,0 +1,46 @@
+<div [class]="rowClass()" [attr.data-message]="message().role.toLowerCase()" [attr.data-kind]="message().kind">
+  @if (message().role === 'Assistant') {
+    <span class="tfa-msg__mini"><tf-icon [name]="icon()" /></span>
+  }
+  <div class="tfa-msg__stack">
+    <div class="tfa-bubble" [class.tfa-bubble--deny]="message().kind === 'Refusal'" [class.tfa-bubble--notice]="message().kind === 'Notice'">
+      @if (message().kind === 'Refusal') {
+        <strong class="tfa-bubble__title">Permission required</strong>
+      }
+      <span class="tfa-bubble__text">{{ message().content }}</span>
+
+      @if (message().rankedTasks.length > 0) {
+        <ol class="tfa-ranked" data-ranked>
+          @for (task of message().rankedTasks; track task.taskId) {
+            <li [class.tfa-ranked__hot]="task.stage === 'Overdue'">
+              <span class="tfa-ranked__rank">{{ task.rank }}</span>
+              <a class="tfa-ranked__title" [routerLink]="['/tasks', task.taskId]" (click)="followLink()">
+                <b>{{ task.taskCode }} · {{ task.title }}</b>
+                <small>{{ taskMeta(task) }}</small>
+              </a>
+              <span [class]="stageClass(task)">{{ stageLabel(task) }}</span>
+            </li>
+          }
+        </ol>
+      }
+    </div>
+
+    @if (message().links.length > 0 && message().rankedTasks.length === 0) {
+      <div class="tfa-links">
+        @for (link of message().links; track link.route) {
+          <a class="tfa-link" [routerLink]="link.route" (click)="followLink()">
+            {{ link.label }} <tf-icon name="external" />
+          </a>
+        }
+      </div>
+    }
+
+    @if (message().action; as action) {
+      <app-tfa-action-card [action]="action" />
+    }
+
+    @if (message().role === 'Assistant' && message().provider) {
+      <div class="tfa-meta">TFA · {{ message().provider }}</div>
+    }
+  </div>
+</div>

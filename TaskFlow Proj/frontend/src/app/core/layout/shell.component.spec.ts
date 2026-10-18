@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { NavigationEnd, Router, provideRouter } from '@angular/router';
@@ -99,6 +101,8 @@ describe('ShellComponent', () => {
           { path: 'notifications', component: PageStubComponent },
           { path: 'settings/reminders', component: PageStubComponent }
         ]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: AuthService,
           useValue: { currentUser: userSignal.asReadonly(), logout: logoutSpy, checkSession: checkSessionSpy }
@@ -575,5 +579,14 @@ describe('ShellComponent', () => {
     expandParent(fixture, 'Communication Management');
 
     expect(el(fixture).querySelector('[data-badge="mail"]')).toBeNull();
+  });
+
+  it('offers the TFA assistant to every signed-in user', () => {
+    mockViewport(true);
+    asUser('Employee');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('[data-action="open-tfa"]')).not.toBeNull();
+    expect(el(fixture).querySelector('[data-panel="tfa"]')).not.toBeNull();
   });
 });
