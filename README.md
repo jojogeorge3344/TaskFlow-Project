@@ -85,8 +85,12 @@ explains what happened and the user chooses another one.
 "key set, ends …1234", and it is never written to the logs. Leave the key box empty to keep the stored key.
 
 The encryption key ring is stored in the folder set by `AiProviders:KeyRingPath` in `appsettings.json` (default
-`../database/dp-keys`). Keep it out of any backup that also holds the database, or protect it on the file system. If it
-is lost, the stored keys can no longer be read and must be entered again. Never commit it.
+`../database/dp-keys`). On Windows the key ring is protected with DPAPI, so it only decrypts for the Windows
+account that runs the API: a copied folder is not enough, and a restore on another machine or account means entering the
+keys again. On other systems protect the folder on the file system. Keep it out of any backup that also holds the database.
+If it is lost, the stored keys can no longer be read and must be entered again. Never commit it.
+
+The Ollama server address cannot be a link-local or cloud metadata address (for example `169.254.169.254`).
 
 ### Voice
 

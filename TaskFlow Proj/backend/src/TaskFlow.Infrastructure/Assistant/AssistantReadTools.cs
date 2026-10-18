@@ -16,6 +16,8 @@ public class AssistantTaskReader
     private const int PageSize = 100;
     private const int MaxPages = 5;
 
+    private static readonly TaskStatus[] OpenStatuses = [TaskStatus.ToDo, TaskStatus.InProgress, TaskStatus.InQA, TaskStatus.Blocked];
+
     private readonly ITaskService _tasks;
     private readonly IAppClock _clock;
 
@@ -33,22 +35,28 @@ public class AssistantTaskReader
     /// the caller; otherwise every task the caller may access.</summary>
     public async Task<IReadOnlyList<TaskListItemDto>> OpenTasksAsync(AssistantCaller caller, bool onlyMine, CancellationToken cancellationToken)
     {
-        var all = new List<TaskListItemDto>();
-        for (var page = 1; page <= MaxPages; page++)
+        var open = new List<TaskListItemDto>();
+
+        // One query per open status: the task list also holds every completed task, and those must never use up the
+        // page limit and push open tasks out of the answer.
+        foreach (var status in OpenStatuses)
         {
-            var result = await _tasks.ListAsync(
-                new TaskListFilter(AssignedToUserId: onlyMine ? caller.UserId : null, Page: page, PageSize: PageSize),
-                caller.UserId,
-                caller.Role,
-                cancellationToken);
-            all.AddRange(result.Items);
-            if (all.Count >= result.Total || result.Items.Count == 0)
+            for (var page = 1; page <= MaxPages; page++)
             {
-                break;
+                var result = await _tasks.ListAsync(
+                    new TaskListFilter(AssignedToUserId: onlyMine ? caller.UserId : null, Status: status, Page: page, PageSize: PageSize),
+                    caller.UserId,
+                    caller.Role,
+                    cancellationToken);
+                open.AddRange(result.Items);
+                if (result.Items.Count < PageSize || page * PageSize >= result.Total)
+                {
+                    break;
+                }
             }
         }
 
-        return all.Where(task => task.Status is not (TaskStatus.Completed or TaskStatus.Cancelled)).ToList();
+        return open;
     }
 }
 

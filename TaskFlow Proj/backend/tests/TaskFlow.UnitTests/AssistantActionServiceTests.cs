@@ -246,6 +246,25 @@ public class AssistantActionServiceTests
         Assert.Equal(["prepared", "failed"], await h.OutcomesAsync(h.Asha));
     }
 
+    [Fact]
+    public async Task AnUnexpectedErrorWhileRunningTheActionLeavesItFailedAndNotConfirmed()
+    {
+        await using var h = new AssistantActionHarness();
+        var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
+        // Make the database itself fail while the mail is being written: not an application rule, a real fault.
+        await h.Db.Database.ExecuteSqlRawAsync("DROP TABLE MailRecipients");
+
+        var result = await h.Actions.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
+
+        Assert.Equal(AssistantActionStatus.Failed, result!.Status);
+        Assert.Contains("I could not do that", result.Message);
+        Assert.Contains("Nothing was sent", result.Message);
+        Assert.DoesNotContain("MailRecipients", result.Message);
+        Assert.DoesNotContain("SQLite", result.Message);
+        Assert.Equal(AssistantActionStatus.Failed, (await h.Db.AssistantPendingActions.AsNoTracking().SingleAsync()).Status);
+        Assert.Equal(["prepared", "failed"], await h.OutcomesAsync(h.Asha));
+    }
+
     // ------------------------------------------------------------------ profile and role
 
     [Fact]

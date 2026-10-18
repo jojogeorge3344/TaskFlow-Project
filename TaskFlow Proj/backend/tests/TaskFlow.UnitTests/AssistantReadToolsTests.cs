@@ -137,6 +137,44 @@ public class AssistantReadToolsTests : IAsyncLifetime
         Assert.Null(outcome.PendingActionId);
     }
 
+    [Fact]
+    public async Task OpenTasksAreNotPushedOutByManyCompletedOnes()
+    {
+        // 550 completed tasks with early deadlines used to fill the five pages that were read, hiding the open task.
+        var completed = Enumerable.Range(0, 550).Select(i => new TaskFlow.Domain.Entities.Task
+        {
+            TaskCode = $"DONE-{i:D4}", Title = $"Completed {i}", AssignedToUserId = _h.Asha.Id, CreatedByUserId = _h.Ravi.Id,
+            Priority = TaskPriority.Low, StartDate = DateTime.UtcNow.AddDays(-400), Deadline = DateTime.UtcNow.AddDays(-300 + i % 100),
+            EstimatedHours = 1, Status = TaskStatus.Completed, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        });
+        _h.Tracking.Db.Tasks.AddRange(completed);
+        await _h.Tracking.Db.SaveChangesAsync();
+        Add(_h.Asha, "The one open task", 30);
+
+        var upcoming = Parse(await RunAsync(new GetMyTasksTool(_reader), _h.Asha));
+        var ranked = await RunAsync(new PrioritiseTasksTool(_reader), _h.Asha);
+
+        Assert.Equal(["The one open task"], Codes(upcoming));
+        Assert.Equal(["The one open task"], ranked.RankedTasks!.Select(task => task.Title));
+    }
+
+    [Fact]
+    public async Task MoreThanOnePageOfOpenTasksIsStillComplete()
+    {
+        var open = Enumerable.Range(0, 230).Select(i => new TaskFlow.Domain.Entities.Task
+        {
+            TaskCode = $"OPEN-{i:D4}", Title = $"Open {i}", AssignedToUserId = _h.Asha.Id, CreatedByUserId = _h.Ravi.Id,
+            Priority = TaskPriority.Medium, StartDate = DateTime.UtcNow.AddDays(-1), Deadline = DateTime.UtcNow.AddDays(1 + i),
+            EstimatedHours = 1, Status = TaskStatus.InProgress, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        });
+        _h.Tracking.Db.Tasks.AddRange(open);
+        await _h.Tracking.Db.SaveChangesAsync();
+
+        using var result = Parse(await RunAsync(new GetMyTasksTool(_reader), _h.Asha, """{"filter":"all_open","limit":20}"""));
+
+        Assert.Equal(230, result.RootElement.GetProperty("totalMatching").GetInt32());
+    }
+
     // ------------------------------------------------------------------ prioritise_tasks
 
     [Fact]

@@ -65,8 +65,10 @@ public class AssistantService : IAssistantService
         var messages = await _dbContext.AssistantMessages
             .AsNoTracking()
             .Where(message => message.ConversationId == conversation.Id)
-            .OrderBy(message => message.Id)
+            .OrderByDescending(message => message.Id)
+            .Take(AssistantRules.ConversationMessages)
             .ToListAsync(cancellationToken);
+        messages.Reverse();
 
         return new AssistantConversationDto(conversation.Id, await ToDtosAsync(caller.UserId, messages, cancellationToken));
     }

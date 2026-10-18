@@ -329,6 +329,28 @@ public class AssistantServiceTests
     }
 
     [Fact]
+    public async Task TheConversationEndpointReturnsOnlyTheLatestMessagesInOrder()
+    {
+        await using var h = await AssistantServiceHarness.CreateAsync();
+        var clock = new FixedTimeProvider(DateTime.UtcNow);
+        h.RateLimiter = new TaskFlow.Infrastructure.Assistant.AssistantRateLimiter(clock);
+        for (var i = 1; i <= 60; i++)
+        {
+            await h.SendAsync(h.Asha, $"question {i}");
+            clock.Set(clock.GetUtcNow().UtcDateTime.AddSeconds(10));
+        }
+
+        var conversation = await h.Service.GetConversationAsync(AssistantServiceHarness.Caller(h.Asha));
+
+        Assert.Equal(AssistantRules.ConversationMessages, conversation.Messages.Count);
+        Assert.Equal("OK", conversation.Messages.Last().Content);
+        Assert.Equal("question 60", conversation.Messages[^2].Content);
+        Assert.Equal("question 11", conversation.Messages.First().Content);
+        Assert.Equal(conversation.Messages.Select(m => m.Id).Order(), conversation.Messages.Select(m => m.Id));
+        Assert.Equal(120, await h.Tracking.Db.AssistantMessages.CountAsync());
+    }
+
+    [Fact]
     public async Task TheSystemPromptNamesTheUserTheirRoleAndTodayAndTheDataRule()
     {
         await using var h = await AssistantServiceHarness.CreateAsync();

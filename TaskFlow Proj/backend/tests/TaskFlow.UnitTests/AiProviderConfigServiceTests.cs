@@ -185,6 +185,38 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
         Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.OpenAI), Update(AiProviderKind.OpenAI)])).IsValid);
     }
 
+    [Theory]
+    [InlineData("http://169.254.169.254/latest/meta-data")]
+    [InlineData("http://169.254.10.20:11434")]
+    [InlineData("http://[fe80::1]:11434")]
+    [InlineData("http://[::ffff:169.254.169.254]/")]
+    [InlineData("http://0.0.0.0:11434")]
+    [InlineData("http://metadata.google.internal/computeMetadata/v1")]
+    [InlineData("http://METADATA/")]
+    public void ValidatorRefusesMetadataAndLinkLocalAddressesForOllama(string address)
+    {
+        var validator = new UpdateAiProvidersRequestValidator();
+
+        var result = validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Ollama, baseUrl: address)]));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.ErrorMessage.Contains("metadata"));
+    }
+
+    [Theory]
+    [InlineData("http://localhost:11434")]
+    [InlineData("http://127.0.0.1:11434")]
+    [InlineData("http://192.168.1.20:11434")]
+    [InlineData("http://10.0.0.5:11434")]
+    [InlineData("http://[::1]:11434")]
+    [InlineData("https://ollama.internal.example")]
+    public void ValidatorStillAllowsLocalAndPrivateAddressesForOllama(string address)
+    {
+        var validator = new UpdateAiProvidersRequestValidator();
+
+        Assert.True(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Ollama, baseUrl: address)])).IsValid);
+    }
+
     [Fact]
     public void ValidatorAcceptsAGoodRequest()
     {

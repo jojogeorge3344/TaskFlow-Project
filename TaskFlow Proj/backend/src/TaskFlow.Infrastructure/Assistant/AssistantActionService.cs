@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Users;
@@ -50,6 +51,7 @@ public class AssistantActionService : IAssistantActionService
     private readonly IValidator<SendMailRequest> _sendMailValidator;
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<AssistantActionService>? _logger;
 
     public AssistantActionService(
         AppDbContext dbContext,
@@ -59,8 +61,10 @@ public class AssistantActionService : IAssistantActionService
         IAssistantAuditLog audit,
         IValidator<SendMailRequest> sendMailValidator,
         IValidator<UpdateOwnProfileRequest> profileValidator,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ILogger<AssistantActionService>? logger = null)
     {
+        _logger = logger;
         _dbContext = dbContext;
         _mail = mail;
         _users = users;
@@ -293,12 +297,21 @@ public class AssistantActionService : IAssistantActionService
             message = await ExecuteAsync(caller, action, cancellationToken);
             await _audit.RecordAsync(caller.UserId, action.Kind, "confirmed", cancellationToken);
         }
-        catch (Exception exception) when (exception is MailValidationException or InvalidOperationException or ValidationException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            // The action was claimed before it ran, so any failure, expected or not, must leave it Failed and not
+            // Confirmed. Application rule failures say why; anything else is logged and reported in general terms.
+            var expected = exception is MailValidationException or InvalidOperationException or ValidationException;
+            if (!expected)
+            {
+                _logger?.LogError(exception, "TFA action {ActionKind} failed unexpectedly", action.Kind);
+            }
+
             status = AssistantActionStatus.Failed;
-            await MarkAsync(action.Id, AssistantActionStatus.Failed, now, cancellationToken);
-            await _audit.RecordAsync(caller.UserId, action.Kind, "failed", cancellationToken);
-            message = $"I could not do that: {exception.Message.TrimEnd('.')}. Nothing was {(action.Kind == AssistantActionKind.SendMail ? "sent" : "changed")}.";
+            await MarkAsync(action.Id, AssistantActionStatus.Failed, now, CancellationToken.None);
+            await _audit.RecordAsync(caller.UserId, action.Kind, "failed", CancellationToken.None);
+            var reason = expected ? exception.Message.TrimEnd('.') : "something went wrong on the server";
+            message = $"I could not do that: {reason}. Nothing was {(action.Kind == AssistantActionKind.SendMail ? "sent" : "changed")}.";
         }
 
         return new AssistantActionResultDto(

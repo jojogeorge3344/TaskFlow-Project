@@ -17,6 +17,9 @@ import {
 export const TFA_PROVIDER_KEY = 'tfa.provider';
 export const TFA_CLOUD_ACK_KEY = 'tfa.cloudAck';
 
+/** How long the list of available providers is trusted before opening the panel asks the server again. */
+export const PROVIDER_REFRESH_MS = 60_000;
+
 /** A provider problem together with the text that was being sent, so it can be retried. */
 export interface FailedSend {
   failure: AssistantFailure;
@@ -65,14 +68,19 @@ export class AssistantService {
   });
 
   private localId = 0;
+  private providersLoadedAt = 0;
+
+  /** The signed-in user's id. The auth service replaces the user object on every token refresh and profile save, so
+   * the panel follows the id: a computed on a number only changes when the person really changes. */
+  private readonly userId = computed(() => this.auth.currentUser()?.id ?? null);
 
   constructor() {
     // Whoever signs in gets their own conversation, and nothing of the previous user is left behind.
     effect(() => {
-      const user = this.auth.currentUser();
+      const userId = this.userId();
       untracked(() => {
         this.resetState();
-        if (user) {
+        if (userId !== null) {
           this.loadProviders();
           this.loadConversation();
         }
@@ -82,6 +90,9 @@ export class AssistantService {
 
   open(): void {
     this.panelOpen.set(true);
+    if (this.userId() !== null && Date.now() - this.providersLoadedAt > PROVIDER_REFRESH_MS) {
+      this.loadProviders();
+    }
   }
 
   close(): void {
@@ -104,6 +115,7 @@ export class AssistantService {
       next: (options) => {
         this.providers.set(options);
         this.providersLoaded.set(true);
+        this.providersLoadedAt = Date.now();
       },
       error: () => {
         this.providers.set([]);
@@ -256,6 +268,8 @@ export class AssistantService {
       error: (err: unknown) => {
         this.sending.set(false);
         this.addProblem(apiErrorMessage(err, 'TFA could not answer. Please try again.'));
+        // An administrator may have changed the providers since the list was loaded.
+        this.loadProviders();
       }
     });
   }
@@ -301,6 +315,7 @@ export class AssistantService {
     this.clearConversation();
     this.providers.set([]);
     this.providersLoaded.set(false);
+    this.providersLoadedAt = 0;
     this.conversationLoaded.set(false);
     this.sending.set(false);
     this.panelOpen.set(false);

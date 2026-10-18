@@ -85,6 +85,22 @@ describe('AssistantService', () => {
     expect(service.selected()?.kind).toBe('Ollama');
   });
 
+  it('keeps the open panel and the conversation when the same user object is replaced, as a token refresh does', () => {
+    signIn(1);
+    flushStartup([ollama], [message(1, 'User', 'question'), message(2, 'Assistant', 'answer')]);
+    service.open();
+
+    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    TestBed.flushEffects();
+    user.set({ id: 1, fullName: 'Asha Nair', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    TestBed.flushEffects();
+
+    expect(service.panelOpen()).toBeTrue();
+    expect(service.messages().map((m) => m.content)).toEqual(['question', 'answer']);
+    expect(service.providers().length).toBe(1);
+    // afterEach verifies that no providers or conversation request was made again.
+  });
+
   it('clears everything of the previous user when someone else signs in or the user signs out', () => {
     signIn(1);
     flushStartup([ollama], [message(1, 'User', 'private question')]);
@@ -144,6 +160,57 @@ describe('AssistantService', () => {
     flushStartup([ollama]);
 
     expect(service.selected()?.kind).toBe('Ollama');
+  });
+
+  describe('keeping the provider list fresh', () => {
+    beforeEach(() => jasmine.clock().install());
+    afterEach(() => jasmine.clock().uninstall());
+
+    it('does not ask again when the panel is opened soon after loading, but does after a minute', () => {
+      jasmine.clock().mockDate(new Date('2026-10-19T09:00:00Z'));
+      signIn();
+      flushStartup([ollama, gemini]);
+
+      service.open();
+      service.close();
+      http.expectNone('/api/v1/assistant/providers');
+
+      jasmine.clock().mockDate(new Date('2026-10-19T09:01:01Z'));
+      service.open();
+      http.expectOne('/api/v1/assistant/providers').flush([ollama]);
+
+      expect(service.providers().map((p) => p.kind)).toEqual(['Ollama']);
+    });
+
+    it('drops a provider an administrator has since disabled from the selector', () => {
+      jasmine.clock().mockDate(new Date('2026-10-19T09:00:00Z'));
+      signIn();
+      flushStartup([ollama, gemini]);
+      service.selectProvider('Gemini');
+      expect(service.selected()?.kind).toBe('Gemini');
+
+      jasmine.clock().mockDate(new Date('2026-10-19T09:05:00Z'));
+      service.open();
+      http.expectOne('/api/v1/assistant/providers').flush([ollama]);
+
+      expect(service.selected()?.kind).toBe('Ollama');
+    });
+
+    it('reloads the list after a send is refused, for example because the provider is no longer configured', () => {
+      signIn();
+      flushStartup();
+      service.selectProvider('Gemini');
+      service.acknowledgeCloud();
+
+      service.send('hello');
+      http
+        .expectOne('/api/v1/assistant/conversation/messages')
+        .flush({ detail: 'Google Gemini is not configured. Choose another model, or ask an administrator to set it up.' }, { status: 400, statusText: 'Bad Request' });
+      http.expectOne('/api/v1/assistant/providers').flush([ollama]);
+
+      expect(service.selected()?.kind).toBe('Ollama');
+      expect(service.messages().at(-1)?.content).toContain('not configured');
+    });
   });
 
   it('reports no providers as not available', () => {
@@ -248,6 +315,8 @@ describe('AssistantService', () => {
     http
       .expectOne('/api/v1/assistant/conversation/messages')
       .flush({ detail: 'You are sending messages too quickly.' }, { status: 429, statusText: 'Too Many Requests' });
+    // A refused send also refreshes the provider list, in case it changed since it was loaded.
+    http.expectOne('/api/v1/assistant/providers').flush([ollama, gemini]);
 
     expect(service.sending()).toBeFalse();
     const last = service.messages().at(-1)!;

@@ -93,6 +93,38 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task OnWindowsTheKeyRingIsProtectedWithDpapiAndTheKeyStillRoundTrips()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var client = _factory.CreateClient();
+        var admin = await LoginAsync(client, "ai-cfg-admin-dpapi", Role.Administrator);
+
+        var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
+        {
+            providers = new object[] { new { kind = "OpenAI", isEnabled = true, modelName = "gpt-4o-mini", apiKey = "sk-proj-DPAPITESTKEY-5555" } }
+        }));
+        var config = await JsonOf(await SendAsync(client, HttpMethod.Get, $"{Base}/config", admin));
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.True(config.EnumerateArray().Single(p => p.GetProperty("kind").GetString() == "OpenAI").GetProperty("isConfigured").GetBoolean());
+        var keyFiles = Directory.GetFiles(_factory.KeyRingPath, "key-*.xml");
+        Assert.NotEmpty(keyFiles);
+        foreach (var file in keyFiles)
+        {
+            var xml = await File.ReadAllTextAsync(file);
+            Assert.Contains("encryptedKey", xml);
+            Assert.DoesNotContain("masterKey", xml);
+        }
+    }
+
+    private static async Task<JsonElement> JsonOf(HttpResponseMessage response) =>
+        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+
+    [Fact]
     public async Task InvalidInput_Returns400()
     {
         var client = _factory.CreateClient();

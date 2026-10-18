@@ -66,9 +66,14 @@ builder.Services.Configure<TaskFlow.Infrastructure.Mail.MailOptions>(
 
 builder.Services.Configure<TaskFlow.Infrastructure.Assistant.AiProviderOptions>(
     builder.Configuration.GetSection(TaskFlow.Infrastructure.Assistant.AiProviderOptions.SectionName));
-builder.Services
+var dataProtection = builder.Services
     .AddDataProtection()
     .SetApplicationName("TaskFlow");
+if (OperatingSystem.IsWindows())
+{
+    // The key ring then only decrypts for the Windows account that runs the API, so a copied folder is not enough.
+    dataProtection.ProtectKeysWithDpapi();
+}
 // The key ring folder is read from the bound options when Data Protection is first used (not while this file runs), so
 // configuration added later, such as by the integration tests, decides where the keys go.
 builder.Services
