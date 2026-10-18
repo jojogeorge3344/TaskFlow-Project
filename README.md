@@ -90,6 +90,11 @@ account that runs the API: a copied folder is not enough, and a restore on anoth
 keys again. On other systems protect the folder on the file system. Keep it out of any backup that also holds the database.
 If it is lost, the stored keys can no longer be read and must be entered again. Never commit it.
 
+**Existing installs:** DPAPI only protects keys created after it was turned on, so a key ring made earlier keeps one
+plain (unprotected) key. At startup on Windows the API logs a warning when it finds one. To protect it, stop the API,
+delete the `database/dp-keys` folder, start the API, and enter the AI provider API keys again in
+**Settings → Application Settings → AI assistant (TFA)**. Do this after the first time you run a build with DPAPI.
+
 The Ollama server address cannot be a link-local or cloud metadata address (for example `169.254.169.254`).
 
 ### Voice

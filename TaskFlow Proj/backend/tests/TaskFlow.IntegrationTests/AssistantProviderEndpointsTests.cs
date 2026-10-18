@@ -92,14 +92,9 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.DoesNotContain(_factory.Logs.Lines, line => line.Contains("INTEGRATIONSECRET"));
     }
 
-    [Fact]
+    [WindowsOnlyFact]
     public async Task OnWindowsTheKeyRingIsProtectedWithDpapiAndTheKeyStillRoundTrips()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "ai-cfg-admin-dpapi", Role.Administrator);
 

@@ -308,7 +308,16 @@ public class AssistantActionService : IAssistantActionService
 
             status = AssistantActionStatus.Failed;
             await MarkAsync(action.Id, AssistantActionStatus.Failed, now, CancellationToken.None);
-            await _audit.RecordAsync(caller.UserId, action.Kind, "failed", CancellationToken.None);
+            try
+            {
+                await _audit.RecordAsync(caller.UserId, action.Kind, "failed", CancellationToken.None);
+            }
+            catch (Exception auditException) when (auditException is not OperationCanceledException)
+            {
+                // The action is already marked Failed. A failing audit store must not hide the result from the user.
+                _logger?.LogError(auditException, "TFA action {ActionKind} failed and its audit entry could not be written", action.Kind);
+            }
+
             var reason = expected ? exception.Message.TrimEnd('.') : "something went wrong on the server";
             message = $"I could not do that: {reason}. Nothing was {(action.Kind == AssistantActionKind.SendMail ? "sent" : "changed")}.";
         }

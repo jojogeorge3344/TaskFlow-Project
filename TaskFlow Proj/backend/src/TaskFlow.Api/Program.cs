@@ -179,6 +179,21 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (OperatingSystem.IsWindows())
+{
+    var keyRingFolder = TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(
+        app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.KeyRingPath);
+    var unprotectedKeys = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.CountUnprotectedKeys(keyRingFolder);
+    if (unprotectedKeys > 0)
+    {
+        app.Logger.LogWarning(
+            "The AI key ring in {KeyRingFolder} has {Count} key(s) stored unprotected, from before DPAPI protection was turned on. "
+            + "To protect it: stop the API, delete that folder, start the API and enter the AI provider API keys again.",
+            keyRingFolder,
+            unprotectedKeys);
+    }
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();

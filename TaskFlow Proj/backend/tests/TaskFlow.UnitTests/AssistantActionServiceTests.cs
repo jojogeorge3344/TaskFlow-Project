@@ -265,17 +265,19 @@ public class AssistantActionServiceTests
         Assert.Equal(["prepared", "failed"], await h.OutcomesAsync(h.Asha));
     }
 
-    private sealed class FailingConfirmedAudit : IAssistantAuditLog
+    private sealed class FailingAudit : IAssistantAuditLog
     {
         private readonly IAssistantAuditLog _inner;
+        private readonly string _failingOutcome;
 
-        public FailingConfirmedAudit(IAssistantAuditLog inner)
+        public FailingAudit(IAssistantAuditLog inner, string failingOutcome)
         {
             _inner = inner;
+            _failingOutcome = failingOutcome;
         }
 
         public Task RecordAsync(int userId, AssistantActionKind kind, string outcome, CancellationToken cancellationToken = default) =>
-            outcome == "confirmed" ? throw new InvalidOperationException("audit store unavailable") : _inner.RecordAsync(userId, kind, outcome, cancellationToken);
+            outcome == _failingOutcome ? throw new InvalidOperationException("audit store unavailable") : _inner.RecordAsync(userId, kind, outcome, cancellationToken);
     }
 
     [Fact]
@@ -284,7 +286,7 @@ public class AssistantActionServiceTests
         await using var h = new AssistantActionHarness();
         var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
-            h.Db, h.Mail, h.Users, h.Authorizer, new FailingConfirmedAudit(h.Audit),
+            h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
             new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Application.Users.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
@@ -295,6 +297,28 @@ public class AssistantActionServiceTests
         Assert.DoesNotContain("Nothing was sent", result.Message);
         Assert.Equal(1, await h.Db.MailMessages.CountAsync());
         Assert.Equal(AssistantActionStatus.Confirmed, (await h.Db.AssistantPendingActions.AsNoTracking().SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task AFailedAuditWriteWhileReportingAFailureStillTellsTheUserWhatHappened()
+    {
+        await using var h = new AssistantActionHarness();
+        var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
+        var ravi = await h.Db.Users.SingleAsync(user => user.Id == h.Ravi.Id);
+        ravi.IsActive = false;
+        await h.Db.SaveChangesAsync();
+        var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
+            h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "failed"),
+            new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
+            new TaskFlow.Application.Users.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
+
+        var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
+
+        Assert.Equal(AssistantActionStatus.Failed, result!.Status);
+        Assert.Contains("I could not do that", result.Message);
+        Assert.Contains("Nothing was sent", result.Message);
+        Assert.Equal(0, await h.Db.MailMessages.CountAsync());
+        Assert.Equal(AssistantActionStatus.Failed, (await h.Db.AssistantPendingActions.AsNoTracking().SingleAsync()).Status);
     }
 
     [Fact]
