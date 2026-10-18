@@ -55,12 +55,15 @@ public class SettingsInitializer
         var timezone = string.IsNullOrWhiteSpace(_options.Timezone) ? SettingKeys.FallbackTimezone : _options.Timezone;
 
         yield return (SettingKeys.ApplicationTimezone, timezone, SettingKeys.ApplicationCategory);
+        yield return (SettingKeys.ApplicationName, SettingKeys.DefaultApplicationName, SettingKeys.ApplicationCategory);
+        yield return (SettingKeys.ApplicationDefaultPriority, SettingKeys.DefaultDefaultPriority, SettingKeys.ApplicationCategory);
         yield return (SettingKeys.ReminderEnabled, Format(SettingKeys.DefaultReminderEnabled), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDeadlineDayEnabled, Format(SettingKeys.DefaultDeadlineDayEnabled), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDefaultFirstDays, Format(SettingKeys.DefaultFirstDays), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDefaultSecondDays, Format(SettingKeys.DefaultSecondDays), SettingKeys.ReminderCategory);
         yield return (SettingKeys.ReminderDefaultOverdueFrequency, SettingKeys.DefaultOverdueFrequency, SettingKeys.ReminderCategory);
         yield return (SettingKeys.NotificationMailEnabled, Format(SettingKeys.DefaultMailEnabled), SettingKeys.NotificationCategory);
+        yield return (SettingKeys.NotificationInAppEnabled, Format(SettingKeys.DefaultInAppEnabled), SettingKeys.NotificationCategory);
     }
 
     internal static string Format(bool value) => value ? "true" : "false";

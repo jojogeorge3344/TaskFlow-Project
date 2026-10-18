@@ -66,6 +66,12 @@ internal sealed class SettingsTestDatabase : IAsyncDisposable
             timeProvider ?? TimeProvider.System,
             Options.Create(new ApplicationOptions { Timezone = configuredTimezone }));
 
+    public ApplicationSettingsService ApplicationSettings(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
+        new(
+            Db,
+            timeProvider ?? TimeProvider.System,
+            Options.Create(new ApplicationOptions { Timezone = configuredTimezone }));
+
     public async ValueTask DisposeAsync()
     {
         await Db.DisposeAsync();

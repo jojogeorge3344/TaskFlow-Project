@@ -72,6 +72,8 @@ describe('app routes', () => {
       'mail',
       'notifications',
       'settings/reminders',
+      'settings/application',
+      'profile',
       'board',
       'tasks',
       'tasks/new',

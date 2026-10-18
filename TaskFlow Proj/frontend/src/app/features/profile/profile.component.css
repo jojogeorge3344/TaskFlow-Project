@@ -1,0 +1,61 @@
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--tf-space-4);
+  align-items: start;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  padding: var(--tf-space-5);
+}
+
+.profile-form h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.profile-form__skeleton {
+  display: block;
+  height: 2.5rem;
+}
+
+.profile-readonly {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--tf-space-3);
+  margin: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  background: var(--tf-surface-alt);
+  border-radius: var(--tf-radius, 0.5rem);
+}
+
+.profile-readonly div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.profile-readonly dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--tf-muted);
+}
+
+.profile-readonly dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.profile-form__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-space-1);
+  margin-right: auto;
+  color: var(--tf-success);
+  font-size: 0.875rem;
+  font-weight: 600;
+}

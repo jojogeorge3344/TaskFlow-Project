@@ -4,6 +4,7 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validatio
 import { Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
 import { CreateTaskRequest, ReminderFrequency, TASK_PRIORITIES, TaskPriority, User } from '../../core/models';
+import { ApplicationSettingsService } from '../../core/services/application-settings.service';
 import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -54,6 +55,7 @@ export class TaskCreateComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
   private readonly reminderSettings = inject(ReminderSettingsService);
+  private readonly applicationSettings = inject(ApplicationSettingsService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -112,6 +114,7 @@ export class TaskCreateComponent implements OnInit {
     this.form.patchValue({ startDate: toLocalInput(start), deadline: toLocalInput(deadline) });
 
     this.loadReminderDefaults();
+    this.loadDefaultPriority();
 
     this.userService.getAll({ isActive: true }).subscribe({
       next: (users) => {
@@ -146,6 +149,19 @@ export class TaskCreateComponent implements OnInit {
         this.reminderDefaultsLoaded.set(true);
       },
       error: () => this.reminderDefaultsUnavailable.set(true)
+    });
+  }
+
+  /** Pre-selects the configured default priority (Screen 20) while the field is still untouched. */
+  private loadDefaultPriority(): void {
+    this.applicationSettings.get().subscribe({
+      next: (settings) => {
+        const priority = this.form.controls.priority;
+        if (priority.pristine) {
+          priority.setValue(settings.defaultPriority);
+        }
+      },
+      error: () => undefined
     });
   }
 

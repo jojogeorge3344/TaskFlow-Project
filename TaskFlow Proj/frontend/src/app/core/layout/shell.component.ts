@@ -5,6 +5,7 @@ import { EMPTY, catchError, exhaustMap, filter, fromEvent, interval, merge } fro
 import { AuthService } from '../auth/auth.service';
 import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
+import { ApplicationSettingsService } from '../services/application-settings.service';
 import { ToastHostComponent } from '../../shared/ui/toast-host.component';
 import { initials } from '../../shared/ui/initials';
 import { IconComponent } from './icon.component';
@@ -26,11 +27,16 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly notificationService = inject(NotificationService);
   private readonly mailService = inject(MailService);
+  private readonly applicationSettings = inject(ApplicationSettingsService);
   private readonly toggleButton = viewChild.required<ElementRef<HTMLButtonElement>>('toggleButton');
 
   readonly layout = inject(LayoutService);
   readonly user = this.authService.currentUser;
   readonly userInitials = computed(() => initials(this.user()?.fullName));
+
+  /** The configured application name (Screen 20), kept by the settings service so a save
+   * refreshes the brand immediately; falls back to "TaskFlow" if the load fails. */
+  readonly appName = this.applicationSettings.appName;
 
   /** Unread count the header bell shows as a dot (design D6/D7). */
   readonly unreadCount = this.notificationService.unreadCount;
@@ -67,6 +73,10 @@ export class ShellComponent {
     // Show the badge as soon as the shell mounts, then keep it fresh.
     this.notificationService.refreshUnreadCount();
     this.mailService.refreshUnreadCount();
+
+    // Load the brand name into the settings service's cached signal; on failure it stays
+    // "TaskFlow", so a slow or broken settings endpoint never blocks the shell.
+    this.applicationSettings.get().subscribe({ error: () => undefined });
 
     this.router.events
       .pipe(

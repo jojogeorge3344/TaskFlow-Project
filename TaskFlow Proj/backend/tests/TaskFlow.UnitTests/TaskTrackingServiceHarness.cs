@@ -116,6 +116,27 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         Db.SaveChanges();
     }
 
+    public void SetSetting(string key, string value)
+    {
+        var existing = Db.ApplicationSettings.SingleOrDefault(setting => setting.Key == key);
+        if (existing is null)
+        {
+            Db.ApplicationSettings.Add(new ApplicationSetting
+            {
+                Key = key,
+                Value = value,
+                Category = "Test",
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Value = value;
+        }
+
+        Db.SaveChanges();
+    }
+
     public async ValueTask DisposeAsync()
     {
         await Db.DisposeAsync();

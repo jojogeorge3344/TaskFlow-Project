@@ -19,10 +19,41 @@ public class SettingsInitializerTests
         await Initializer(database).InitializeAsync();
 
         var keys = await database.Db.ApplicationSettings.Select(setting => setting.Key).ToListAsync();
-        Assert.Equal(7, keys.Count);
+        Assert.Equal(10, keys.Count);
         Assert.Equal(keys.Count, keys.Distinct().Count());
         Assert.Contains(SettingKeys.ReminderEnabled, keys);
         Assert.Contains(SettingKeys.NotificationMailEnabled, keys);
+        Assert.Contains(SettingKeys.ApplicationName, keys);
+        Assert.Contains(SettingKeys.ApplicationDefaultPriority, keys);
+        Assert.Contains(SettingKeys.NotificationInAppEnabled, keys);
+    }
+
+    [Fact]
+    public async Task New_application_keys_are_seeded_with_defaults()
+    {
+        await using var database = SettingsTestDatabase.Create();
+
+        await Initializer(database).InitializeAsync();
+
+        var name = await database.Db.ApplicationSettings.AsNoTracking().SingleAsync(setting => setting.Key == SettingKeys.ApplicationName);
+        var priority = await database.Db.ApplicationSettings.AsNoTracking().SingleAsync(setting => setting.Key == SettingKeys.ApplicationDefaultPriority);
+        var inApp = await database.Db.ApplicationSettings.AsNoTracking().SingleAsync(setting => setting.Key == SettingKeys.NotificationInAppEnabled);
+        Assert.Equal("TaskFlow", name.Value);
+        Assert.Equal("Medium", priority.Value);
+        Assert.Equal("true", inApp.Value);
+    }
+
+    [Fact]
+    public async Task Saved_application_name_is_not_overwritten()
+    {
+        await using var database = SettingsTestDatabase.Create();
+        await Initializer(database).InitializeAsync();
+        database.SetValue(SettingKeys.ApplicationName, "Acme Tasks");
+
+        await Initializer(database).InitializeAsync();
+
+        var name = await database.Db.ApplicationSettings.AsNoTracking().SingleAsync(setting => setting.Key == SettingKeys.ApplicationName);
+        Assert.Equal("Acme Tasks", name.Value);
     }
 
     [Fact]
@@ -59,6 +90,6 @@ public class SettingsInitializerTests
 
         var enabled = await database.Db.ApplicationSettings.AsNoTracking().SingleAsync(setting => setting.Key == SettingKeys.ReminderEnabled);
         Assert.Equal("false", enabled.Value);
-        Assert.Equal(7, await database.Db.ApplicationSettings.CountAsync());
+        Assert.Equal(10, await database.Db.ApplicationSettings.CountAsync());
     }
 }

@@ -40,3 +40,15 @@ export interface UpdateUserRequest {
 export interface UserStatusRequest {
   isActive: boolean;
 }
+
+/** A self-service profile save (Screen 19). Only full name and email are changeable. */
+export interface UpdateOwnProfile {
+  fullName: string;
+  email: string;
+}
+
+/** A self-service password change (Screen 19). Requires the current password. */
+export interface ChangePassword {
+  currentPassword: string;
+  newPassword: string;
+}

@@ -74,6 +74,11 @@ export class AuthService {
     this.currentUserSignal.set(null);
   }
 
+  /** Re-syncs the cached user after a self-service profile edit, so the shell shows the new name. */
+  applyProfile(user: AuthUser): void {
+    this.currentUserSignal.set(user);
+  }
+
   private applySession(response: AuthResponse): void {
     this.tokenStore.set(response.accessToken);
     this.currentUserSignal.set(response.user);
