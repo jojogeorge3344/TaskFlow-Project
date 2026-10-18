@@ -295,7 +295,6 @@ public class AssistantActionService : IAssistantActionService
         try
         {
             message = await ExecuteAsync(caller, action, cancellationToken);
-            await _audit.RecordAsync(caller.UserId, action.Kind, "confirmed", cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -314,11 +313,31 @@ public class AssistantActionService : IAssistantActionService
             message = $"I could not do that: {reason}. Nothing was {(action.Kind == AssistantActionKind.SendMail ? "sent" : "changed")}.";
         }
 
-        return new AssistantActionResultDto(
-            action.Id,
-            status,
-            message,
-            await StoreReplyAsync(caller.UserId, action, message, AssistantMessageKind.Text, cancellationToken));
+        // The action has finished. Recording it and storing the reply must never turn a success into a reported failure:
+        // a mail that went out would then be called "not sent" and the user might send it again.
+        if (status == AssistantActionStatus.Confirmed)
+        {
+            try
+            {
+                await _audit.RecordAsync(caller.UserId, action.Kind, "confirmed", CancellationToken.None);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger?.LogError(exception, "TFA action {ActionKind} was done but its audit entry could not be written", action.Kind);
+            }
+        }
+
+        AssistantMessageDto? reply = null;
+        try
+        {
+            reply = await StoreReplyAsync(caller.UserId, action, message, AssistantMessageKind.Text, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger?.LogError(exception, "TFA action {ActionKind} finished but its result message could not be stored", action.Kind);
+        }
+
+        return new AssistantActionResultDto(action.Id, status, message, reply);
     }
 
     private async Task<string> ExecuteAsync(AssistantCaller caller, AssistantPendingAction action, CancellationToken cancellationToken)

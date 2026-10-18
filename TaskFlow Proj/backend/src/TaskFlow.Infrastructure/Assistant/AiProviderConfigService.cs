@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
@@ -11,9 +12,15 @@ public class AiProviderConfigService : IAiProviderConfigService
     private readonly AppDbContext _dbContext;
     private readonly IAiKeyProtector _keyProtector;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger<AiProviderConfigService>? _logger;
 
-    public AiProviderConfigService(AppDbContext dbContext, IAiKeyProtector keyProtector, TimeProvider timeProvider)
+    public AiProviderConfigService(
+        AppDbContext dbContext,
+        IAiKeyProtector keyProtector,
+        TimeProvider timeProvider,
+        ILogger<AiProviderConfigService>? logger = null)
     {
+        _logger = logger;
         _dbContext = dbContext;
         _keyProtector = keyProtector;
         _timeProvider = timeProvider;
@@ -93,6 +100,11 @@ public class AiProviderConfigService : IAiProviderConfigService
         var row = await _dbContext.AiProviderConfigs.AsNoTracking().FirstOrDefaultAsync(config => config.Kind == kind, cancellationToken);
         if (row is null || !IsConfigured(row))
         {
+            if (row is { IsEnabled: true } && !string.IsNullOrEmpty(row.EncryptedApiKey) && _keyProtector.Unprotect(row.EncryptedApiKey) is null)
+            {
+                _logger?.LogWarning("The saved API key for {Provider} cannot be decrypted (key ring lost or changed); it must be entered again", kind);
+            }
+
             return null;
         }
 
@@ -113,7 +125,10 @@ public class AiProviderConfigService : IAiProviderConfigService
             baseUrl,
             !string.IsNullOrEmpty(row?.EncryptedApiKey),
             row?.KeyLast4,
-            row is not null && IsConfigured(row));
+            row is not null && IsConfigured(row),
+            // A key that is stored but cannot be decrypted (for example the key ring was lost or restored under another
+            // account) has to be entered again; the administrator is told so.
+            string.IsNullOrEmpty(row?.EncryptedApiKey) || _keyProtector.Unprotect(row.EncryptedApiKey) is not null);
     }
 
     /// <summary>Enabled, has a model, and either is local with an address or has a key that can still be decrypted.</summary>

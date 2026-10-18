@@ -85,9 +85,14 @@ builder.Services
                 loggerFactory));
 builder.Services.AddSingleton<TaskFlow.Application.Assistant.IAiKeyProtector, TaskFlow.Infrastructure.Assistant.AiKeyProtector>();
 // The timeout is read from the bound options when a client is created. Provider clients never log request or response headers or bodies, so keys and prompts stay out of the logs.
-builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OllamaProvider>(ConfigureAiClient).RemoveAllLoggers();
-builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.GeminiProvider>(ConfigureAiClient).RemoveAllLoggers();
-builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OpenAiProvider>(ConfigureAiClient).RemoveAllLoggers();
+// Redirects are not followed: the address an administrator saved is the only one that is called, so a redirect cannot
+// lead the server on to another (for example a cloud metadata) address.
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OllamaProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.GeminiProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddHttpClient<TaskFlow.Infrastructure.Assistant.OpenAiProvider>(ConfigureAiClient)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
 builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.OllamaProvider>());
 builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.GeminiProvider>());
 builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<TaskFlow.Infrastructure.Assistant.OpenAiProvider>());

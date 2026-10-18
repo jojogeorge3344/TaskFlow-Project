@@ -13,15 +13,15 @@ function config(overrides: Partial<Record<'Ollama' | 'Gemini' | 'OpenAI', Partia
   return [
     {
       kind: 'Ollama', displayName: 'Ollama', locality: 'Local', requiresKey: false, isEnabled: true, modelName: 'llama3.1:8b',
-      baseUrl: 'http://localhost:11434', keySet: false, keyLast4: null, isConfigured: true, ...overrides.Ollama
+      baseUrl: 'http://localhost:11434', keySet: false, keyLast4: null, isConfigured: true, keyReadable: true, ...overrides.Ollama
     },
     {
       kind: 'Gemini', displayName: 'Google Gemini', locality: 'Cloud', requiresKey: true, isEnabled: true, modelName: 'gemini-2.0-flash',
-      baseUrl: null, keySet: true, keyLast4: '1234', isConfigured: true, ...overrides.Gemini
+      baseUrl: null, keySet: true, keyLast4: '1234', isConfigured: true, keyReadable: true, ...overrides.Gemini
     },
     {
       kind: 'OpenAI', displayName: 'OpenAI GPT', locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
-      baseUrl: null, keySet: false, keyLast4: null, isConfigured: false, ...overrides.OpenAI
+      baseUrl: null, keySet: false, keyLast4: null, isConfigured: false, keyReadable: true, ...overrides.OpenAI
     }
   ];
 }
@@ -104,6 +104,16 @@ describe('AiProviderSettingsComponent', () => {
     expect(card('Gemini').querySelector('[data-hint="key"]')!.textContent).toContain('ends …1234');
     expect(card('Gemini').querySelector('[data-hint="key"]')!.textContent).toContain('Leave the box empty to keep it');
     expect(el().innerHTML).not.toContain('sk-');
+  });
+
+  it('says so when a saved key can no longer be read, instead of saying a key is saved', async () => {
+    await create('Administrator', config({ Gemini: { keySet: true, keyLast4: '1234', keyReadable: false, isConfigured: false } }));
+
+    const hint = card('Gemini').querySelector('[data-hint="key"]')!.textContent!;
+    expect(hint).toContain('can no longer be read');
+    expect(hint).toContain('Enter it again');
+    expect(hint).not.toContain('Leave the box empty to keep it');
+    expect(card('Gemini').querySelector('[data-status="configured"]')!.textContent).toContain('Not configured');
   });
 
   it('keeps the stored key when the key box is left empty and only the model changes', async () => {

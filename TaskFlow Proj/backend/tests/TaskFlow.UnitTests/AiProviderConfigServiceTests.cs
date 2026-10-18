@@ -162,6 +162,47 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AKeyThatCannotBeReadIsReportedSoTheAdministratorKnowsToEnterItAgain()
+    {
+        await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
+        var withNewKeyRing = new AiProviderConfigService(_harness.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
+
+        var config = await withNewKeyRing.GetAdminConfigAsync();
+
+        var gemini = config.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        Assert.True(gemini.KeySet);
+        Assert.Equal("1234", gemini.KeyLast4);
+        Assert.False(gemini.KeyReadable);
+        Assert.False(gemini.IsConfigured);
+        Assert.True(config.Single(provider => provider.Kind == AiProviderKind.Ollama).KeyReadable);
+        Assert.True(config.Single(provider => provider.Kind == AiProviderKind.OpenAI).KeyReadable);
+    }
+
+    [Fact]
+    public async Task AReadableKeyIsReportedAsReadable()
+    {
+        var config = await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
+
+        Assert.True(config.Single(provider => provider.Kind == AiProviderKind.Gemini).KeyReadable);
+    }
+
+    [Fact]
+    public async Task UsingAnUnreadableKeyLogsAWarningWithoutAnyKeyMaterial()
+    {
+        await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
+        var logger = new CapturingLogger<AiProviderConfigService>();
+        var withNewKeyRing = new AiProviderConfigService(_harness.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System, logger);
+
+        var runtime = await withNewKeyRing.GetRuntimeAsync(AiProviderKind.Gemini);
+
+        Assert.Null(runtime);
+        var line = Assert.Single(logger.Messages);
+        Assert.Contains("Gemini", line);
+        Assert.Contains("cannot be decrypted", line);
+        Assert.DoesNotContain("ExampleKey", line);
+    }
+
+    [Fact]
     public void NoResponseTypeCanHoldTheFullKey()
     {
         var properties = typeof(AiProviderConfigDto).GetProperties().Select(property => property.Name);

@@ -17,7 +17,8 @@ public record AiProviderConfigDto(
     string? BaseUrl,
     bool KeySet,
     string? KeyLast4,
-    bool IsConfigured);
+    bool IsConfigured,
+    bool KeyReadable);
 
 /// <summary>One provider's changes. An empty <see cref="ApiKey"/> keeps the stored key; <see cref="ClearKey"/> removes it.</summary>
 public record UpdateAiProviderRequest(

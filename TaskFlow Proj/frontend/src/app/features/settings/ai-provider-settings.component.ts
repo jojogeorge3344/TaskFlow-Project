@@ -85,6 +85,9 @@ export class AiProviderSettingsComponent implements OnInit {
     if (!provider.keySet) {
       return 'No key saved yet.';
     }
+    if (!provider.keyReadable) {
+      return 'The saved key can no longer be read. Enter it again.';
+    }
     return provider.keyLast4 ? `A key is saved (ends …${provider.keyLast4}). Leave the box empty to keep it.` : 'A key is saved. Leave the box empty to keep it.';
   }
 

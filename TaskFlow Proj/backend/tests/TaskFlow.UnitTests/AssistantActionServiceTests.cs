@@ -265,6 +265,53 @@ public class AssistantActionServiceTests
         Assert.Equal(["prepared", "failed"], await h.OutcomesAsync(h.Asha));
     }
 
+    private sealed class FailingConfirmedAudit : IAssistantAuditLog
+    {
+        private readonly IAssistantAuditLog _inner;
+
+        public FailingConfirmedAudit(IAssistantAuditLog inner)
+        {
+            _inner = inner;
+        }
+
+        public Task RecordAsync(int userId, AssistantActionKind kind, string outcome, CancellationToken cancellationToken = default) =>
+            outcome == "confirmed" ? throw new InvalidOperationException("audit store unavailable") : _inner.RecordAsync(userId, kind, outcome, cancellationToken);
+    }
+
+    [Fact]
+    public async Task AFailedAuditWriteAfterASuccessfulSendDoesNotTurnItIntoAReportedFailure()
+    {
+        await using var h = new AssistantActionHarness();
+        var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
+        var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
+            h.Db, h.Mail, h.Users, h.Authorizer, new FailingConfirmedAudit(h.Audit),
+            new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
+            new TaskFlow.Application.Users.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
+
+        var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
+
+        Assert.Equal(AssistantActionStatus.Confirmed, result!.Status);
+        Assert.Contains("was sent to", result.Message);
+        Assert.DoesNotContain("Nothing was sent", result.Message);
+        Assert.Equal(1, await h.Db.MailMessages.CountAsync());
+        Assert.Equal(AssistantActionStatus.Confirmed, (await h.Db.AssistantPendingActions.AsNoTracking().SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task AFailureStoringTheResultMessageStillReportsTheActionAsDone()
+    {
+        await using var h = new AssistantActionHarness();
+        var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
+        await h.Db.Database.ExecuteSqlRawAsync("DROP TABLE AssistantMessages");
+
+        var result = await h.Actions.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
+
+        Assert.Equal(AssistantActionStatus.Confirmed, result!.Status);
+        Assert.Contains("was sent to", result.Message);
+        Assert.Null(result.Reply);
+        Assert.Equal(1, await h.Db.MailMessages.CountAsync());
+    }
+
     // ------------------------------------------------------------------ profile and role
 
     [Fact]

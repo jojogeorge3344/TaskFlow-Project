@@ -26,6 +26,8 @@ export interface AiProviderConfig {
   keySet: boolean;
   keyLast4: string | null;
   isConfigured: boolean;
+  /** False when a key is stored but can no longer be decrypted, so it has to be entered again. */
+  keyReadable: boolean;
 }
 
 /** One provider's changes. An empty `apiKey` keeps the stored key; `clearKey` removes it. */
