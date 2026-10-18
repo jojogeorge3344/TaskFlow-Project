@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -11,10 +12,88 @@ namespace TaskFlow.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
+    private readonly IValidator<ChangePasswordRequest> _passwordValidator;
 
-    public UsersController(IUserService userService)
+    public UsersController(
+        IUserService userService,
+        IValidator<UpdateOwnProfileRequest> profileValidator,
+        IValidator<ChangePasswordRequest> passwordValidator)
     {
         _userService = userService;
+        _profileValidator = profileValidator;
+        _passwordValidator = passwordValidator;
+    }
+
+    /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
+    /// so a user can never read or change somebody else's account here.</summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> GetOwn(CancellationToken cancellationToken)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _userService.GetOwnAsync(currentUserId, cancellationToken);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    /// <summary>Updates the caller's own full name and email. Role, department, username, employee
+    /// code and account status are not part of this contract and cannot change here.</summary>
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<ActionResult<UserDto>> UpdateOwn([FromBody] UpdateOwnProfileRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _profileValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var user = await _userService.UpdateOwnProfileAsync(currentUserId, request, cancellationToken);
+            return user is null ? NotFound() : Ok(user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>Changes the caller's own password after verifying the current one. Every session of
+    /// the user is ended, so the client must sign in again with the new password.</summary>
+    [HttpPost("me/password")]
+    [Authorize]
+    public async Task<ActionResult> ChangeOwnPassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var validation = await _passwordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
+
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
+            return user is null ? NotFound() : NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>Read-only user list. Managers need it to pick assignees and recipients when

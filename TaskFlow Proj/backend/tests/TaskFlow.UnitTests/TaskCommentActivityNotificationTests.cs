@@ -156,4 +156,39 @@ public class NotificationPublisherTests
         var notification = await harness.Db.Notifications.SingleAsync(candidate => candidate.TaskId == task.Id);
         Assert.Equal(NotificationType.TaskAssigned, notification.Type);
     }
+
+    [Fact]
+    public async Task PublishAsync_SkipsWhenInAppNotificationsAreDisabled()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var user = harness.AddUser("tkn3");
+        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationInAppEnabled, "false");
+
+        await harness.NotificationPublisher.PublishAsync(user.Id, taskId: null, NotificationType.System, "Muted", CancellationToken.None);
+
+        Assert.False(await harness.Db.Notifications.AnyAsync(candidate => candidate.UserId == user.Id));
+    }
+
+    [Fact]
+    public async Task PublishAsync_WritesWhenInAppNotificationsAreEnabled()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var user = harness.AddUser("tkn4");
+        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationInAppEnabled, "true");
+
+        await harness.NotificationPublisher.PublishAsync(user.Id, taskId: null, NotificationType.System, "Loud", CancellationToken.None);
+
+        Assert.True(await harness.Db.Notifications.AnyAsync(candidate => candidate.UserId == user.Id));
+    }
+
+    [Fact]
+    public async Task PublishAsync_DefaultsToEnabledWhenTheSettingRowIsMissing()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var user = harness.AddUser("tkn5");
+
+        await harness.NotificationPublisher.PublishAsync(user.Id, taskId: null, NotificationType.System, "Default", CancellationToken.None);
+
+        Assert.True(await harness.Db.Notifications.AnyAsync(candidate => candidate.UserId == user.Id));
+    }
 }

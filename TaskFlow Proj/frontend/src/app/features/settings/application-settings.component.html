@@ -1,0 +1,117 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Application settings</h1>
+      <p>Application-wide configuration: the brand name, timezone, default task priority and in-app notifications.</p>
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-card">
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ loadError() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card settings-form" aria-busy="true">
+      <span class="tf-skeleton settings-form__skeleton"></span>
+      <span class="tf-skeleton settings-form__skeleton"></span>
+      <span class="tf-skeleton settings-form__skeleton"></span>
+    </div>
+  } @else {
+    <form class="tf-card settings-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      @if (saveError()) {
+        <div class="tf-alert" role="alert">
+          <tf-icon name="alert" />
+          <span>{{ saveError() }}</span>
+        </div>
+      }
+
+      <fieldset class="settings-form__group">
+        <legend>General</legend>
+        <div class="tf-field">
+          <label for="app-name">Application name <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="app-name"
+            class="tf-input"
+            formControlName="name"
+            data-field="name"
+            [class.is-invalid]="!!fieldError('name')"
+            [attr.aria-invalid]="!!fieldError('name')"
+            [attr.aria-describedby]="fieldError('name') ? 'app-name-error' : null"
+          />
+          @if (fieldError('name'); as message) {
+            <span id="app-name-error" class="tf-field__error" data-error="name">{{ message }}</span>
+          }
+          <span class="tf-field__hint">Shown in the sidebar and header.</span>
+        </div>
+        <div class="tf-field">
+          <label for="app-timezone">Default timezone <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="app-timezone"
+            class="tf-input"
+            formControlName="timezone"
+            data-field="timezone"
+            [class.is-invalid]="!!fieldError('timezone')"
+            [attr.aria-invalid]="!!fieldError('timezone')"
+            [attr.aria-describedby]="fieldError('timezone') ? 'app-timezone-error' : null"
+          />
+          @if (fieldError('timezone'); as message) {
+            <span id="app-timezone-error" class="tf-field__error" data-error="timezone">{{ message }}</span>
+          }
+          <span class="tf-field__hint">Decides which calendar day a deadline belongs to. Applied immediately, no restart needed. Example: Asia/Kolkata or UTC.</span>
+        </div>
+        <div class="tf-field">
+          <label for="app-priority">Default task priority</label>
+          <select
+            id="app-priority"
+            class="tf-select"
+            formControlName="defaultPriority"
+            data-field="defaultPriority"
+            [class.is-invalid]="!!fieldError('defaultPriority')"
+            [attr.aria-invalid]="!!fieldError('defaultPriority')"
+          >
+            @for (priority of priorities; track priority) {
+              <option [ngValue]="priority">{{ priority }}</option>
+            }
+          </select>
+          <span class="tf-field__hint">Pre-selected on the Create Task form.</span>
+        </div>
+      </fieldset>
+
+      <fieldset class="settings-form__group">
+        <legend>Notifications</legend>
+        <label class="settings-toggle">
+          <input type="checkbox" formControlName="inAppNotificationsEnabled" data-field="inAppNotificationsEnabled" />
+          <span>
+            <strong>Enable in-app notifications</strong>
+            <span class="tf-field__hint">When off, no new bell notifications are created for any event. Existing notifications are kept.</span>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset class="settings-form__group">
+        <legend>Reminder defaults</legend>
+        <p class="tf-field__hint">
+          Reminder intervals and Mail delivery are maintained on the
+          <a routerLink="/settings/reminders">Reminder Settings</a> screen.
+        </p>
+      </fieldset>
+
+      <div class="tf-form-actions">
+        @if (savedAt()) {
+          <span class="settings-form__saved" role="status" data-status="saved">
+            <tf-icon name="check" />
+            Saved
+          </span>
+        }
+        <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save settings' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

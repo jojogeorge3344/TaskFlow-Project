@@ -56,6 +56,7 @@ builder.Services.Configure<TaskFlow.Infrastructure.Settings.ApplicationOptions>(
     builder.Configuration.GetSection(TaskFlow.Infrastructure.Settings.ApplicationOptions.SectionName));
 builder.Services.AddScoped<TaskFlow.Application.Settings.IAppClock, TaskFlow.Infrastructure.Settings.AppClock>();
 builder.Services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsService, TaskFlow.Infrastructure.Settings.ReminderSettingsService>();
+builder.Services.AddScoped<TaskFlow.Application.Settings.IApplicationSettingsService, TaskFlow.Infrastructure.Settings.ApplicationSettingsService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, TaskFlow.Infrastructure.Services.MailAttachmentService>();
 builder.Services.AddSingleton<TaskFlow.Application.Mail.IMailFileStore, TaskFlow.Infrastructure.Mail.LocalMailFileStore>();

@@ -1,0 +1,166 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>My profile</h1>
+      <p>View your account details, update your name and email, and change your password.</p>
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-card">
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ loadError() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card profile-form" aria-busy="true">
+      <span class="tf-skeleton profile-form__skeleton"></span>
+      <span class="tf-skeleton profile-form__skeleton"></span>
+      <span class="tf-skeleton profile-form__skeleton"></span>
+    </div>
+  } @else {
+    <div class="profile-grid">
+      <form class="tf-card profile-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+        <h2>Account details</h2>
+
+        @if (saveError()) {
+          <div class="tf-alert" role="alert">
+            <tf-icon name="alert" />
+            <span>{{ saveError() }}</span>
+          </div>
+        }
+
+        <dl class="profile-readonly">
+          @for (field of readonlyFields(); track field.label) {
+            <div>
+              <dt>{{ field.label }}</dt>
+              <dd [attr.data-field]="'readonly-' + field.label">{{ field.value }}</dd>
+            </div>
+          }
+        </dl>
+
+        <div class="tf-field">
+          <label for="profile-full-name">Full name <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="profile-full-name"
+            class="tf-input"
+            formControlName="fullName"
+            data-field="fullName"
+            [class.is-invalid]="!!fieldError('fullName')"
+            [attr.aria-invalid]="!!fieldError('fullName')"
+            [attr.aria-describedby]="fieldError('fullName') ? 'profile-full-name-error' : null"
+          />
+          @if (fieldError('fullName'); as message) {
+            <span id="profile-full-name-error" class="tf-field__error" data-error="fullName">{{ message }}</span>
+          }
+        </div>
+
+        <div class="tf-field">
+          <label for="profile-email">Email address <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="profile-email"
+            class="tf-input"
+            type="email"
+            formControlName="email"
+            data-field="email"
+            [class.is-invalid]="!!fieldError('email')"
+            [attr.aria-invalid]="!!fieldError('email')"
+            [attr.aria-describedby]="fieldError('email') ? 'profile-email-error' : null"
+          />
+          @if (fieldError('email'); as message) {
+            <span id="profile-email-error" class="tf-field__error" data-error="email">{{ message }}</span>
+          }
+        </div>
+
+        <p class="tf-field__hint">Your role, department, username and account status are managed by an Administrator.</p>
+
+        <div class="tf-form-actions">
+          @if (savedAt()) {
+            <span class="profile-form__saved" role="status" data-status="saved">
+              <tf-icon name="check" />
+              Saved
+            </span>
+          }
+          <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving()">
+            {{ saving() ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+
+      <form class="tf-card profile-form" [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+        <h2>Change password</h2>
+
+        @if (passwordError()) {
+          <div class="tf-alert" role="alert">
+            <tf-icon name="alert" />
+            <span>{{ passwordError() }}</span>
+          </div>
+        }
+
+        <div class="tf-field">
+          <label for="profile-current-password">Current password <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="profile-current-password"
+            class="tf-input"
+            type="password"
+            formControlName="currentPassword"
+            data-field="currentPassword"
+            autocomplete="current-password"
+            [class.is-invalid]="!!passwordFieldError('currentPassword')"
+            [attr.aria-invalid]="!!passwordFieldError('currentPassword')"
+            [attr.aria-describedby]="passwordFieldError('currentPassword') ? 'profile-current-password-error' : null"
+          />
+          @if (passwordFieldError('currentPassword'); as message) {
+            <span id="profile-current-password-error" class="tf-field__error" data-error="currentPassword">{{ message }}</span>
+          }
+        </div>
+
+        <div class="tf-field">
+          <label for="profile-new-password">New password <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="profile-new-password"
+            class="tf-input"
+            type="password"
+            formControlName="newPassword"
+            data-field="newPassword"
+            autocomplete="new-password"
+            [class.is-invalid]="!!passwordFieldError('newPassword')"
+            [attr.aria-invalid]="!!passwordFieldError('newPassword')"
+            [attr.aria-describedby]="passwordFieldError('newPassword') ? 'profile-new-password-error' : null"
+          />
+          @if (passwordFieldError('newPassword'); as message) {
+            <span id="profile-new-password-error" class="tf-field__error" data-error="newPassword">{{ message }}</span>
+          }
+          <span class="tf-field__hint">At least 6 characters. Changing your password signs you out of every session.</span>
+        </div>
+
+        <div class="tf-field">
+          <label for="profile-confirm-password">Confirm new password <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="profile-confirm-password"
+            class="tf-input"
+            type="password"
+            formControlName="confirmPassword"
+            data-field="confirmPassword"
+            autocomplete="new-password"
+            [class.is-invalid]="!!passwordFieldError('confirmPassword')"
+            [attr.aria-invalid]="!!passwordFieldError('confirmPassword')"
+            [attr.aria-describedby]="passwordFieldError('confirmPassword') ? 'profile-confirm-password-error' : null"
+          />
+          @if (passwordFieldError('confirmPassword'); as message) {
+            <span id="profile-confirm-password-error" class="tf-field__error" data-error="confirmPassword">{{ message }}</span>
+          }
+        </div>
+
+        <div class="tf-form-actions">
+          <button type="submit" class="tf-btn tf-btn--primary" data-action="change-password" [disabled]="changingPassword()">
+            {{ changingPassword() ? 'Changing…' : 'Change password' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</section>

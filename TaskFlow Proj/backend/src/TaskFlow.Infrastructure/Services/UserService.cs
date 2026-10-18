@@ -284,8 +284,72 @@ public class UserService : IUserService
             user.Department?.Name);
     }
 
-    private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
+    public async Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
+        if (user is null)
+        {
+            return null;
+        }
+
+        var email = request.Email!.Trim().ToLower();
+
+        var exists = await _dbContext.Users
+            .AnyAsync(u => u.Id != id && !u.IsDeleted && u.Email.ToLower() == email, cancellationToken);
+
+        if (exists)
+        {
+            throw new InvalidOperationException("Email already exists.");
+        }
+
+        user.FullName = request.FullName!.Trim();
+        user.Email = email;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // Role, department, username, employee code and status are deliberately untouched.
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new UserDto(
+            user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
+            user.Role, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
+            user.DepartmentId, user.Department?.Name);
+    }
+
+    public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        var verification = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword!);
+        if (verification != PasswordVerificationResult.Success)
+        {
+            throw new InvalidOperationException("Current password is incorrect.");
+        }
+
+        var now = DateTime.UtcNow;
+        user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword!);
+        user.UpdatedAt = now;
+
+        // The password change ends every session, including this one; the client signs in again.
+        await EndSessionsAsync(user, now, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new UserDto(
+            user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
+            user.Role, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
+            user.DepartmentId, user.Department?.Name);
+    }
+
+    private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
     /// <summary>
     /// Ends every existing session of the user: access tokens carrying the old stamp fail validation,
     /// and their refresh tokens are revoked so no new ones can be minted. Saved by the caller.

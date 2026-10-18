@@ -2,7 +2,7 @@
   <aside id="tf-sidebar" class="sidebar" aria-label="Primary navigation">
     <div class="brand">
       <span class="brand__logo" aria-hidden="true">TF</span>
-      <span class="brand__name">TaskFlow</span>
+      <span class="brand__name">{{ appName() }}</span>
     </div>
 
     <nav class="nav" aria-label="Primary">
@@ -36,13 +36,15 @@
     </nav>
 
     <div class="account">
-      <span class="account__avatar tf-avatar" aria-hidden="true">{{ userInitials() }}</span>
-      @if (user(); as currentUser) {
-        <div class="account__who">
-          <div class="account__name">{{ currentUser.fullName }}</div>
-          <div class="account__role">{{ currentUser.role }}</div>
-        </div>
-      }
+      <a class="account__link" routerLink="/profile" aria-label="My profile" title="My profile" data-action="profile">
+        <span class="account__avatar tf-avatar" aria-hidden="true">{{ userInitials() }}</span>
+        @if (user(); as currentUser) {
+          <div class="account__who">
+            <div class="account__name">{{ currentUser.fullName }}</div>
+            <div class="account__role">{{ currentUser.role }}</div>
+          </div>
+        }
+      </a>
       <button type="button" class="account__signout" aria-label="Sign out" title="Sign out" (click)="logout()">
         <tf-icon name="logout" />
       </button>
@@ -65,7 +67,7 @@
     >
       <tf-icon [name]="toggleIcon()" />
     </button>
-    <span class="header__brand">TaskFlow</span>
+    <span class="header__brand">{{ appName() }}</span>
     <span class="header__title">{{ pageTitle() }}</span>
     <span class="header__spacer"></span>
     <a

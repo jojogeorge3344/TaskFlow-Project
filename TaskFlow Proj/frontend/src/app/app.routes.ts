@@ -85,6 +85,18 @@ export const routes: Routes = [
           import('./features/settings/reminder-settings.component').then((m) => m.ReminderSettingsComponent)
       },
       {
+        path: 'settings/application',
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator'] },
+        loadComponent: () =>
+          import('./features/settings/application-settings.component').then((m) => m.ApplicationSettingsComponent)
+      },
+      {
+        // Every signed-in user maintains their own profile (Screen 19).
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent)
+      },
+      {
         path: 'board',
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },

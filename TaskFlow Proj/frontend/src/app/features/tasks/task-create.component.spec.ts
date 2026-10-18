@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ReminderSettings, TaskDetails, User } from '../../core/models';
+import { ApplicationSettingsService } from '../../core/services/application-settings.service';
 import { ReminderSettingsService } from '../../core/services/reminder-settings.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -46,6 +47,7 @@ describe('TaskCreateComponent', () => {
   let createSpy: jasmine.Spy;
   let getAllSpy: jasmine.Spy;
   let getSettingsSpy: jasmine.Spy;
+  let getAppSettingsSpy: jasmine.Spy;
   let toast: jasmine.SpyObj<ToastService>;
   let navigateSpy: jasmine.Spy;
 
@@ -57,6 +59,12 @@ describe('TaskCreateComponent', () => {
         { provide: TaskService, useValue: { create: createSpy } },
         { provide: UserService, useValue: { getAll: getAllSpy } },
         { provide: ReminderSettingsService, useValue: { get: getSettingsSpy } },
+        {
+          provide: ApplicationSettingsService,
+          useValue: {
+            get: getAppSettingsSpy
+          }
+        },
         { provide: ToastService, useValue: toast }
       ]
     });
@@ -95,6 +103,9 @@ describe('TaskCreateComponent', () => {
   beforeEach(() => {
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(users));
     getSettingsSpy = jasmine.createSpy('get').and.returnValue(of(settings({})));
+    getAppSettingsSpy = jasmine
+      .createSpy('get')
+      .and.returnValue(of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Medium', inAppNotificationsEnabled: true }));
     createSpy = jasmine.createSpy('create');
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
   });
@@ -126,6 +137,29 @@ describe('TaskCreateComponent', () => {
 
     const first = el(fixture).querySelector('#task-first-reminder') as HTMLSelectElement;
     expect(first.selectedOptions[0].textContent?.trim()).toBe('7 days before the deadline');
+  });
+
+  it('pre-selects the configured default priority while the field is untouched', () => {
+    getAppSettingsSpy.and.returnValue(of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Critical', inAppNotificationsEnabled: true }));
+    const fixture = create();
+
+    expect(fixture.componentInstance.form.controls.priority.value).toBe('Critical');
+  });
+
+  it('keeps a manually chosen priority over the configured default', () => {
+    getAppSettingsSpy.and.returnValue(of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Critical', inAppNotificationsEnabled: true }));
+    const fixture = create();
+
+    fillValid(fixture);
+    expect(fixture.componentInstance.form.controls.priority.value).toBe('High');
+  });
+
+  it('stays usable when the application settings cannot be loaded', () => {
+    getAppSettingsSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+    const fixture = create();
+
+    expect(fixture.componentInstance.form.controls.priority.value).toBe('Medium');
+    expect(el(fixture).querySelector('form')).toBeTruthy();
   });
 
   it('stays usable and says so when the reminder defaults cannot be loaded', () => {

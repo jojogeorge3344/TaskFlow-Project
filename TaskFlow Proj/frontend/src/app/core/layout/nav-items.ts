@@ -24,7 +24,9 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Employee Management', icon: 'users', route: '/employees' },
     { label: 'Department Management', icon: 'building', route: '/departments' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
+    { label: 'Application Settings', icon: 'settings', route: '/settings/application' },
+    { label: 'My Profile', icon: 'user', route: '/profile' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },
@@ -33,12 +35,14 @@ export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
     { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
     { label: 'Reports', icon: 'chart', route: '/reports' },
     { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }
+    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
+    { label: 'My Profile', icon: 'user', route: '/profile' }
   ],
   Employee: [
     { label: 'Dashboard', icon: 'home', route: '/me' },
     { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
     { label: 'My Tasks', icon: 'tasks', route: '/tasks' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' }
+    { label: 'Notifications', icon: 'bell', route: '/notifications' },
+    { label: 'My Profile', icon: 'user', route: '/profile' }
   ]
 };

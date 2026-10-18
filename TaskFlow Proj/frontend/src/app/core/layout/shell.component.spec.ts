@@ -6,6 +6,7 @@ import { AuthUser, UserRole } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
+import { ApplicationSettingsService } from '../services/application-settings.service';
 import { SIDEBAR_COLLAPSED_KEY, WIDE_VIEWPORT_QUERY } from './layout.service';
 import { SESSION_CHECK_INTERVAL_MS, ShellComponent } from './shell.component';
 
@@ -20,6 +21,7 @@ describe('ShellComponent', () => {
   const refreshUnreadCountSpy = jasmine.createSpy('refreshUnreadCount');
   const mailUnreadSignal = signal(0);
   const refreshMailCountSpy = jasmine.createSpy('refreshMailCount');
+  const getAppSettingsSpy = jasmine.createSpy('get');
 
   function asUser(role: UserRole): void {
     userSignal.set({
@@ -67,6 +69,10 @@ describe('ShellComponent', () => {
     refreshUnreadCountSpy.calls.reset();
     mailUnreadSignal.set(0);
     refreshMailCountSpy.calls.reset();
+    getAppSettingsSpy.calls.reset();
+    getAppSettingsSpy.and.returnValue(
+      of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Medium', inAppNotificationsEnabled: true })
+    );
 
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
@@ -88,6 +94,10 @@ describe('ShellComponent', () => {
         {
           provide: MailService,
           useValue: { unreadCount: mailUnreadSignal.asReadonly(), refreshUnreadCount: refreshMailCountSpy }
+        },
+        {
+          provide: ApplicationSettingsService,
+          useValue: { get: getAppSettingsSpy }
         }
       ]
     }).compileComponents();
@@ -114,7 +124,9 @@ describe('ShellComponent', () => {
       'Employee Management',
       'Department Management',
       'Notifications',
-      'Reminder Settings'
+      'Reminder Settings',
+      'Application Settings',
+      'My Profile'
     ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
@@ -132,7 +144,7 @@ describe('ShellComponent', () => {
       node.textContent?.trim()
     );
 
-    expect(links).toEqual(['Dashboard', 'Mail', 'My Tasks', 'Notifications']);
+    expect(links).toEqual(['Dashboard', 'Mail', 'My Tasks', 'Notifications', 'My Profile']);
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
     expect(el(fixture).textContent).not.toContain('Reminder Settings');
