@@ -127,6 +127,7 @@
             formControlName="newPassword"
             data-field="newPassword"
             autocomplete="new-password"
+            maxlength="128"
             [class.is-invalid]="!!passwordFieldError('newPassword')"
             [attr.aria-invalid]="!!passwordFieldError('newPassword')"
             [attr.aria-describedby]="passwordFieldError('newPassword') ? 'profile-new-password-error' : null"
@@ -134,7 +135,7 @@
           @if (passwordFieldError('newPassword'); as message) {
             <span id="profile-new-password-error" class="tf-field__error" data-error="newPassword">{{ message }}</span>
           }
-          <span class="tf-field__hint">At least 6 characters. Changing your password signs you out of every session.</span>
+          <span class="tf-field__hint">At least 6 and at most 128 characters. Changing your password signs you out of every session.</span>
         </div>
 
         <div class="tf-field">
@@ -146,6 +147,7 @@
             formControlName="confirmPassword"
             data-field="confirmPassword"
             autocomplete="new-password"
+            maxlength="128"
             [class.is-invalid]="!!passwordFieldError('confirmPassword')"
             [attr.aria-invalid]="!!passwordFieldError('confirmPassword')"
             [attr.aria-describedby]="passwordFieldError('confirmPassword') ? 'profile-confirm-password-error' : null"

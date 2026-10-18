@@ -12,6 +12,8 @@ import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
 
 const MIN_PASSWORD_LENGTH = 6;
+/** Mirrors the server rule: login rejects passwords longer than this, so the change form must too. */
+const MAX_PASSWORD_LENGTH = 128;
 
 /** Mirrors the server rule for matching password confirmation. */
 function passwordsMatch(group: AbstractControl): { mismatch: true } | null {
@@ -74,7 +76,7 @@ export class ProfileComponent implements OnInit {
       currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       newPassword: new FormControl('', {
         nonNullable: true,
-        validators: [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH)]
+        validators: [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH), Validators.maxLength(MAX_PASSWORD_LENGTH)]
       }),
       confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] })
     },
@@ -126,11 +128,18 @@ export class ProfileComponent implements OnInit {
 
   passwordFieldError(name: PasswordField): string | null {
     const control = this.passwordForm.controls[name];
+    const server = control.getError('server') as string | undefined;
+    if (server) {
+      return server;
+    }
     if (control.getError('required')) {
       return 'Required.';
     }
     if (name === 'newPassword' && control.getError('minlength')) {
       return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (name === 'newPassword' && control.getError('maxlength')) {
+      return `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`;
     }
     if (name === 'confirmPassword' && this.passwordForm.hasError('mismatch')) {
       return 'Passwords do not match.';

@@ -22,6 +22,7 @@ describe('ShellComponent', () => {
   const mailUnreadSignal = signal(0);
   const refreshMailCountSpy = jasmine.createSpy('refreshMailCount');
   const getAppSettingsSpy = jasmine.createSpy('get');
+  const appNameSignal = signal('TaskFlow');
 
   function asUser(role: UserRole): void {
     userSignal.set({
@@ -73,6 +74,7 @@ describe('ShellComponent', () => {
     getAppSettingsSpy.and.returnValue(
       of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Medium', inAppNotificationsEnabled: true })
     );
+    appNameSignal.set('TaskFlow');
 
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
@@ -97,7 +99,7 @@ describe('ShellComponent', () => {
         },
         {
           provide: ApplicationSettingsService,
-          useValue: { get: getAppSettingsSpy }
+          useValue: { get: getAppSettingsSpy, appName: appNameSignal.asReadonly() }
         }
       ]
     }).compileComponents();
@@ -258,6 +260,22 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.account__avatar')?.textContent?.trim()).toBe('TU');
     expect(el(fixture).querySelector('.account__name')?.textContent).toContain('Test User');
     expect(el(fixture).querySelector('.account__role')?.textContent).toContain('Manager');
+  });
+
+  it('shows the brand name from the settings service and refreshes it when the service updates', () => {
+    mockViewport(true);
+    asUser('Manager');
+    appNameSignal.set('Acme Tasks');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('.brand__name')?.textContent?.trim()).toBe('Acme Tasks');
+    expect(el(fixture).querySelector('.header__brand')?.textContent?.trim()).toBe('Acme Tasks');
+
+    appNameSignal.set('Renamed Corp');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('.brand__name')?.textContent?.trim()).toBe('Renamed Corp');
+    expect(el(fixture).querySelector('.header__brand')?.textContent?.trim()).toBe('Renamed Corp');
   });
 
   it('shows the notification bell linking to the center and hides the dot when there are none', () => {

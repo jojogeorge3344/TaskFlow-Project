@@ -66,4 +66,22 @@ public class ChangePasswordRequestValidatorTests
         _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", newPassword))
             .ShouldHaveValidationErrorFor(x => x.NewPassword);
     }
+
+    [Fact]
+    public void New_password_longer_than_login_accepts_is_invalid()
+    {
+        var tooLong = new string('x', ChangePasswordRequestValidator.MaxPasswordLength + 1);
+
+        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", tooLong))
+            .ShouldHaveValidationErrorFor(x => x.NewPassword);
+    }
+
+    [Fact]
+    public void New_password_at_the_maximum_length_passes()
+    {
+        var atLimit = new string('x', ChangePasswordRequestValidator.MaxPasswordLength);
+
+        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", atLimit))
+            .ShouldNotHaveAnyValidationErrors();
+    }
 }

@@ -125,6 +125,19 @@ describe('ApplicationSettingsComponent', () => {
     expect(el(fixture).querySelector('[data-status="saved"]')).toBeNull();
   });
 
+  it('offers timezone suggestions via a datalist without restricting custom ids', () => {
+    const fixture = create();
+
+    const timezone = input(fixture, 'timezone');
+    expect(timezone.getAttribute('list')).toBe('app-timezone-options');
+
+    const options = Array.from(el(fixture).querySelectorAll('#app-timezone-options option')).map((option) =>
+      option.getAttribute('value')
+    );
+    expect(options).toContain('Asia/Kolkata');
+    expect(options).toContain('UTC');
+  });
+
   it('links to Reminder Settings instead of duplicating interval editing', () => {
     const fixture = create();
 

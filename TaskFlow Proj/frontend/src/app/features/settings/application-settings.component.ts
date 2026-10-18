@@ -32,6 +32,19 @@ export class ApplicationSettingsComponent implements OnInit {
 
   readonly priorities: TaskPriority[] = TASK_PRIORITIES;
 
+  /** Common timezone ids offered via a datalist; any valid id remains typeable. */
+  readonly timezoneSuggestions = [
+    'UTC',
+    'Asia/Kolkata',
+    'Asia/Dubai',
+    'Europe/London',
+    'Europe/Berlin',
+    'America/New_York',
+    'America/Chicago',
+    'America/Los_Angeles',
+    'Australia/Sydney'
+  ];
+
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   readonly saving = signal(false);

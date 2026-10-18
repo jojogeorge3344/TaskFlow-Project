@@ -54,4 +54,29 @@ describe('ApplicationSettingsService', () => {
 
     expect(result?.name).toBe('Acme Tasks');
   });
+
+  it('defaults the cached brand name to TaskFlow', () => {
+    expect(service.appName()).toBe('TaskFlow');
+  });
+
+  it('updates the cached brand name when the settings are read', () => {
+    service.get().subscribe();
+    httpMock.expectOne('/api/v1/settings/application').flush({ ...stored, name: 'Acme Tasks' });
+
+    expect(service.appName()).toBe('Acme Tasks');
+  });
+
+  it('updates the cached brand name after a save, so the shell refreshes without a reload', () => {
+    service.save({ ...stored, name: 'Renamed Corp' }).subscribe();
+    httpMock.expectOne('/api/v1/settings/application').flush({ ...stored, name: 'Renamed Corp' });
+
+    expect(service.appName()).toBe('Renamed Corp');
+  });
+
+  it('falls back to TaskFlow when a loaded name is blank', () => {
+    service.get().subscribe();
+    httpMock.expectOne('/api/v1/settings/application').flush({ ...stored, name: '' });
+
+    expect(service.appName()).toBe('TaskFlow');
+  });
 });

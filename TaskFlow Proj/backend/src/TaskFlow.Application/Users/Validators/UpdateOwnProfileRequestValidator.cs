@@ -19,7 +19,9 @@ public class UpdateOwnProfileRequestValidator : AbstractValidator<UpdateOwnProfi
 
 public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRequest>
 {
+    // Mirrors LoginRequestValidator: a password outside this range can never sign in.
     public const int MinPasswordLength = 6;
+    public const int MaxPasswordLength = 128;
 
     public ChangePasswordRequestValidator()
     {
@@ -28,6 +30,7 @@ public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRe
 
         RuleFor(x => x.NewPassword)
             .NotEmpty()
-            .MinimumLength(MinPasswordLength);
+            .MinimumLength(MinPasswordLength)
+            .MaximumLength(MaxPasswordLength);
     }
 }

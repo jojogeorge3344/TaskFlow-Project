@@ -55,14 +55,20 @@
             class="tf-input"
             formControlName="timezone"
             data-field="timezone"
+            list="app-timezone-options"
             [class.is-invalid]="!!fieldError('timezone')"
             [attr.aria-invalid]="!!fieldError('timezone')"
             [attr.aria-describedby]="fieldError('timezone') ? 'app-timezone-error' : null"
           />
+          <datalist id="app-timezone-options">
+            @for (timezone of timezoneSuggestions; track timezone) {
+              <option [value]="timezone"></option>
+            }
+          </datalist>
           @if (fieldError('timezone'); as message) {
             <span id="app-timezone-error" class="tf-field__error" data-error="timezone">{{ message }}</span>
           }
-          <span class="tf-field__hint">Decides which calendar day a deadline belongs to. Applied immediately, no restart needed. Example: Asia/Kolkata or UTC.</span>
+          <span class="tf-field__hint">Decides which calendar day a deadline belongs to. Applied immediately, no restart needed. Start typing an id such as Asia/Kolkata or UTC, or pick one of the suggestions.</span>
         </div>
         <div class="tf-field">
           <label for="app-priority">Default task priority</label>

@@ -129,6 +129,19 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task Password_OverlongNewPassword_Returns400()
+    {
+        var client = _factory.CreateClient();
+        var token = await LoginAsync(client, "prof-long-pw", Role.Employee);
+        var tooLong = new string('x', 129);
+
+        var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
+            JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = tooLong }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Password_Change_Returns204_AndEndsSessions()
     {
         var client = _factory.CreateClient();

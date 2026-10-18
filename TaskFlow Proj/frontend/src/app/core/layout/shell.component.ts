@@ -34,8 +34,9 @@ export class ShellComponent {
   readonly user = this.authService.currentUser;
   readonly userInitials = computed(() => initials(this.user()?.fullName));
 
-  /** The configured application name (Screen 20); falls back to "TaskFlow" if the call fails. */
-  readonly appName = signal('TaskFlow');
+  /** The configured application name (Screen 20), kept by the settings service so a save
+   * refreshes the brand immediately; falls back to "TaskFlow" if the load fails. */
+  readonly appName = this.applicationSettings.appName;
 
   /** Unread count the header bell shows as a dot (design D6/D7). */
   readonly unreadCount = this.notificationService.unreadCount;
@@ -73,12 +74,9 @@ export class ShellComponent {
     this.notificationService.refreshUnreadCount();
     this.mailService.refreshUnreadCount();
 
-    // The brand falls back to "TaskFlow" when the settings call fails, so a slow or broken
-    // settings endpoint never blocks the shell.
-    this.applicationSettings.get().subscribe({
-      next: (settings) => this.appName.set(settings.name || 'TaskFlow'),
-      error: () => undefined
-    });
+    // Load the brand name into the settings service's cached signal; on failure it stays
+    // "TaskFlow", so a slow or broken settings endpoint never blocks the shell.
+    this.applicationSettings.get().subscribe({ error: () => undefined });
 
     this.router.events
       .pipe(
