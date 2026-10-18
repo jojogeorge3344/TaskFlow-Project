@@ -84,6 +84,18 @@ describe('ReportComponent', () => {
     expect(lastFilter(fixture)).toEqual({});
   });
 
+  it('offers In-QA in the status filter and applies it', () => {
+    const fixture = create();
+
+    const options = Array.from(el(fixture).querySelectorAll('#report-filter-status option')).map(
+      (option) => (option as HTMLOptionElement).value
+    );
+    expect(options).toContain('InQA');
+
+    fixture.componentInstance.setStatus('InQA');
+    expect(lastFilter(fixture)).toEqual({ status: 'InQA' });
+  });
+
   it('downloads the CSV for the current filter', () => {
     const createObjectUrl = spyOn(URL, 'createObjectURL').and.returnValue('blob:report');
     spyOn(URL, 'revokeObjectURL');

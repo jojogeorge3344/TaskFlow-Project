@@ -8,6 +8,8 @@ export interface NavItem {
   route?: string;
   /** Shows a live count next to the label: `mail` is the unread Inbox count. */
   badge?: 'mail';
+  /** Sub-module entries rendered beneath this item when present (a parent module). */
+  children?: NavItem[];
 }
 
 /**
@@ -17,32 +19,87 @@ export interface NavItem {
 export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
   Administrator: [
     { label: 'Dashboard', icon: 'home', route: '/admin' },
-    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-    { label: 'Task Management', icon: 'tasks', route: '/tasks' },
-    { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+    {
+      label: 'TaskFlow Monitoring',
+      icon: 'tasks',
+      children: [
+        { label: 'Task Management', icon: 'tasks', route: '/tasks' },
+        { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+        { label: 'Board', icon: 'kanban', route: '/board' }
+      ]
+    },
+    {
+      label: 'TaskFlow Management',
+      icon: 'tasks',
+      children: [
+        { label: 'Employee Management', icon: 'users', route: '/employees' },
+        { label: 'Department Management', icon: 'building', route: '/departments' }
+      ]
+    },
+    {
+      label: 'Communication Management',
+      icon: 'mail',
+      children: [
+        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
+        { label: 'Notifications', icon: 'bell', route: '/notifications' }
+      ]
+    },
     { label: 'Reports', icon: 'chart', route: '/reports' },
-    { label: 'Employee Management', icon: 'users', route: '/employees' },
-    { label: 'Department Management', icon: 'building', route: '/departments' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
-    { label: 'Application Settings', icon: 'settings', route: '/settings/application' },
+    {
+      label: 'Settings',
+      icon: 'settings',
+      children: [
+        { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
+        { label: 'Application Settings', icon: 'settings', route: '/settings/application' }
+      ]
+    },
     { label: 'My Profile', icon: 'user', route: '/profile' }
   ],
   Manager: [
     { label: 'Dashboard', icon: 'home', route: '/manager' },
-    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-    { label: 'Task Management', icon: 'tasks', route: '/tasks' },
-    { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+    {
+      label: 'TaskFlow Monitoring',
+      icon: 'tasks',
+      children: [
+        { label: 'Task Management', icon: 'tasks', route: '/tasks' },
+        { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+        { label: 'Board', icon: 'kanban', route: '/board' }
+      ]
+    },
+    {
+      label: 'Communication Management',
+      icon: 'mail',
+      children: [
+        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
+        { label: 'Notifications', icon: 'bell', route: '/notifications' }
+      ]
+    },
     { label: 'Reports', icon: 'chart', route: '/reports' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' },
-    { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
+    {
+      label: 'Settings',
+      icon: 'settings',
+      children: [{ label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }]
+    },
     { label: 'My Profile', icon: 'user', route: '/profile' }
   ],
   Employee: [
     { label: 'Dashboard', icon: 'home', route: '/me' },
-    { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-    { label: 'My Tasks', icon: 'tasks', route: '/tasks' },
-    { label: 'Notifications', icon: 'bell', route: '/notifications' },
+    {
+      label: 'Communication Management',
+      icon: 'mail',
+      children: [
+        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
+        { label: 'Notifications', icon: 'bell', route: '/notifications' }
+      ]
+    },
+    {
+      label: 'Task Management',
+      icon: 'tasks',
+      children: [
+        { label: 'My Tasks', icon: 'tasks', route: '/tasks' },
+        { label: 'Board', icon: 'kanban', route: '/board' }
+      ]
+    },
     { label: 'My Profile', icon: 'user', route: '/profile' }
   ]
 };

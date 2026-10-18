@@ -7,7 +7,44 @@
 
     <nav class="nav" aria-label="Primary">
       @for (item of navItems(); track item.label) {
-        @if (item.route) {
+        @if (item.children) {
+          <div class="nav__group">
+            <button
+              type="button"
+              class="nav__item nav__parent"
+              [attr.aria-expanded]="isGroupOpen(item)"
+              [attr.aria-controls]="groupDomId(item)"
+              (click)="toggleGroup(item.label)"
+            >
+              <tf-icon [name]="item.icon" />
+              <span class="nav__text">{{ item.label }}</span>
+              <tf-icon name="chevron" class="nav__chevron" />
+              <span class="nav__tip tf-tooltip">{{ item.label }}</span>
+            </button>
+            @if (isGroupOpen(item)) {
+              <div class="nav__children" [id]="groupDomId(item)">
+                @for (child of item.children; track child.label) {
+                  <a
+                    class="nav__item nav__item--child"
+                    [routerLink]="child.route"
+                    routerLinkActive="nav__item--active"
+                    ariaCurrentWhenActive="page"
+                    (click)="layout.closeMobile()"
+                  >
+                    <tf-icon [name]="child.icon" />
+                    <span class="nav__text">{{ child.label }}</span>
+                    @if (child.badge === 'mail' && mailUnreadCount() > 0) {
+                      <span class="nav__badge" data-badge="mail" [attr.aria-label]="mailUnreadCount() + ' unread mails'">
+                        {{ mailUnreadCount() > 99 ? '99+' : mailUnreadCount() }}
+                      </span>
+                    }
+                    <span class="nav__tip tf-tooltip">{{ child.label }}</span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        } @else if (item.route) {
           <a
             class="nav__item"
             [routerLink]="item.route"

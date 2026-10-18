@@ -51,11 +51,47 @@ export class ShellComponent {
 
   private readonly currentUrl = signal(this.router.url);
 
+  /** User state only: groups start collapsed and expand on navigation or click. */
+  private readonly groupState = signal<Record<string, boolean>>({});
+
   /** Label of the nav item matching the current route, shown in the header bar. */
   readonly pageTitle = computed(() => {
     const path = this.currentUrl().split(/[?#]/)[0];
-    return this.navItems().find((item) => item.route && path.startsWith(item.route))?.label ?? '';
+    for (const item of this.navItems()) {
+      if (item.route && path.startsWith(item.route)) {
+        return item.label;
+      }
+      const activeChild = item.children?.find((child) => child.route && path.startsWith(child.route));
+      if (activeChild) {
+        return activeChild.label;
+      }
+    }
+    return '';
   });
+
+  toggleGroup(label: string): void {
+    this.groupState.set({ ...this.groupState(), [label]: !(this.groupState()[label] ?? false) });
+  }
+
+  /** Parent modules start minimized; a parent collapses when clicked even on the active route. */
+  isGroupOpen(item: NavItem): boolean {
+    return this.groupState()[item.label] ?? false;
+  }
+
+  /** Navigating into a sub-module expands its parent once; later manual toggles win. */
+  private expandGroupContaining(path: string): void {
+    const active = this.navItems().find((item) =>
+      item.children?.some((child) => child.route && path.startsWith(child.route))
+    );
+    if (!active) {
+      return;
+    }
+    this.groupState.set({ ...this.groupState(), [active.label]: true });
+  }
+
+  groupDomId(item: NavItem): string {
+    return `nav-group-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  }
 
   readonly railCollapsed = computed(() => this.layout.isWide() && this.layout.collapsed());
   readonly drawerOpen = computed(() => !this.layout.isWide() && this.layout.mobileOpen());
@@ -78,6 +114,9 @@ export class ShellComponent {
     // "TaskFlow", so a slow or broken settings endpoint never blocks the shell.
     this.applicationSettings.get().subscribe({ error: () => undefined });
 
+    // Groups are minimized on login; only the parent of the landing route starts open.
+    this.expandGroupContaining(this.router.url.split(/[?#]/)[0]);
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -85,9 +124,10 @@ export class ShellComponent {
       )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
+        this.expandGroupContaining(event.urlAfterRedirects.split(/[?#]/)[0]);
         this.layout.closeMobile();
         this.notificationService.refreshUnreadCount();
-    this.mailService.refreshUnreadCount();
+        this.mailService.refreshUnreadCount();
       });
 
     // Re-check the session periodically and whenever the tab becomes visible, so a user whose

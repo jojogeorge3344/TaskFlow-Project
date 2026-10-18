@@ -99,6 +99,20 @@ describe('TaskDetailsComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Move to');
   });
 
+  it('offers In-QA from In Progress and allows send-back or completion from In-QA', () => {
+    create('Employee', { ...details, status: 'InProgress' });
+
+    expect(component.allowedNext('InProgress')).toContain('InQA');
+    expect(component.allowedNext('InQA')).toEqual(['InProgress', 'Blocked', 'Completed', 'Cancelled']);
+    expect(fixture.nativeElement.querySelector('[data-action="status-InQA"]')).not.toBeNull();
+  });
+
+  it('does not offer a direct jump from To Do to In-QA', () => {
+    create('Employee', { ...details, status: 'ToDo' });
+
+    expect(component.allowedNext('ToDo')).not.toContain('InQA');
+  });
+
   it('blocks edit submissions while the form is invalid', () => {
     create('Manager');
 

@@ -120,7 +120,9 @@ export class TaskDetailsComponent implements OnInit {
       case 'ToDo':
         return ['InProgress', 'Blocked', 'Cancelled'];
       case 'InProgress':
-        return ['Blocked', 'Completed', 'Cancelled'];
+        return ['InQA', 'Blocked', 'Completed', 'Cancelled'];
+      case 'InQA':
+        return ['InProgress', 'Blocked', 'Completed', 'Cancelled'];
       case 'Blocked':
         return ['InProgress', 'Cancelled'];
       default:

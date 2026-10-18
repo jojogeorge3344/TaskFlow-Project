@@ -26,6 +26,7 @@ export const PAGE_SIZE = 20;
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   ToDo: 'To Do',
   InProgress: 'In Progress',
+  InQA: 'In QA',
   Blocked: 'Blocked',
   Completed: 'Completed',
   Cancelled: 'Cancelled'

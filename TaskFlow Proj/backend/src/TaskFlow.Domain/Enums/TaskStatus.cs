@@ -6,5 +6,7 @@ public enum TaskStatus
     InProgress,
     Blocked,
     Completed,
-    Cancelled
+    Cancelled,
+    /// <summary>Appended last so existing stored integer values keep their meaning.</summary>
+    InQA
 }
