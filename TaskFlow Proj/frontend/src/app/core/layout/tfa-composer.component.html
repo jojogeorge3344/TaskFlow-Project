@@ -1,0 +1,50 @@
+@if (assistant.messages().length === 0) {
+  <div class="tfa-suggest" data-suggestions>
+    @for (text of suggestions; track text) {
+      <button type="button" class="tfa-chip" (click)="useSuggestion(text)">{{ text }}</button>
+    }
+  </div>
+}
+
+<footer class="tfa-composer">
+  @if (voice.listening()) {
+    <div class="tfa-listening" role="status" data-state="listening">
+      <span class="tfa-wave"><i></i><i></i><i></i><i></i><i></i></span>
+      {{ voice.capturing() ? 'Listening… say your question' : 'Listening for "Hey TFA"' }}
+    </div>
+  }
+  @if (voice.reason(); as reason) {
+    <p class="tfa-voice-reason" data-voice-reason>{{ reason }}</p>
+  }
+
+  <div class="tfa-input-row">
+    <textarea
+      #messageBox
+      rows="1"
+      class="tfa-textarea"
+      data-field="message"
+      placeholder="Ask TFA anything about TaskFlow…"
+      aria-label="Message TFA"
+      [value]="draft()"
+      (input)="onInput($event)"
+      (keydown)="onKey($event)"
+    ></textarea>
+    <button
+      type="button"
+      class="tfa-round tfa-round--mic"
+      [class.is-on]="voice.enabled()"
+      data-action="toggle-voice"
+      [disabled]="!voice.supported"
+      [attr.aria-pressed]="voice.enabled()"
+      [attr.aria-label]="voice.enabled() ? 'Turn voice off' : 'Turn voice on'"
+      [title]="voice.supported ? 'Voice (Chrome or Edge)' : 'Voice is not supported in this browser'"
+      (click)="voice.toggle()"
+    >
+      <tf-icon name="mic" />
+    </button>
+    <button type="button" class="tfa-round tfa-round--send" data-action="send" aria-label="Send" [disabled]="!canSend()" (click)="send()">
+      <tf-icon name="arrow" />
+    </button>
+  </div>
+  <div class="tfa-foot">TFA can make mistakes. Actions always need your confirmation.</div>
+</footer>

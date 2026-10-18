@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
@@ -19,9 +22,31 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
     public string AttachmentsPath { get; } =
         Path.Combine(Path.GetTempPath(), $"taskflow-mail-tests-{Guid.NewGuid():N}");
 
+    /// <summary>Data Protection key ring for this factory's AI provider keys, removed on dispose.</summary>
+    public string KeyRingPath { get; } =
+        Path.Combine(Path.GetTempPath(), $"taskflow-dp-tests-{Guid.NewGuid():N}");
+
+    /// <summary>The AI providers used by the tests, scripted so nothing reaches a real model.</summary>
+    public IReadOnlyDictionary<AiProviderKind, ScriptedChatProvider> Providers { get; } =
+        Enum.GetValues<AiProviderKind>().ToDictionary(kind => kind, kind => new ScriptedChatProvider(kind));
+
+    /// <summary>Everything the API logged, for asserting that secrets never reach the logs.</summary>
+    public CapturingLoggerProvider Logs { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+
+        builder.ConfigureLogging(logging => logging.AddProvider(Logs));
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<TaskFlow.Application.Assistant.IChatModelProvider>();
+            foreach (var provider in Providers.Values)
+            {
+                services.AddSingleton<TaskFlow.Application.Assistant.IChatModelProvider>(provider);
+            }
+        });
 
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
@@ -36,7 +61,8 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
-                ["Mail:AttachmentsPath"] = AttachmentsPath
+                ["Mail:AttachmentsPath"] = AttachmentsPath,
+                ["AiProviders:KeyRingPath"] = KeyRingPath
             });
         });
     }
@@ -86,6 +112,17 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
             try
             {
                 Directory.Delete(AttachmentsPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        if (disposing && Directory.Exists(KeyRingPath))
+        {
+            try
+            {
+                Directory.Delete(KeyRingPath, recursive: true);
             }
             catch (IOException)
             {

@@ -9,6 +9,7 @@ import { ApplicationSettingsService } from '../services/application-settings.ser
 import { ToastHostComponent } from '../../shared/ui/toast-host.component';
 import { initials } from '../../shared/ui/initials';
 import { IconComponent } from './icon.component';
+import { TfaPanelComponent } from './tfa-panel.component';
 import { LayoutService } from './layout.service';
 import { NavItem, ROLE_NAVIGATION } from './nav-items';
 
@@ -18,7 +19,7 @@ export const SESSION_CHECK_INTERVAL_MS = 60_000;
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, TfaPanelComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css'
 })

@@ -1,0 +1,65 @@
+<header class="tfa__head">
+  <div class="tfa__head-row">
+    <span class="tfa__avatar" aria-hidden="true"><tf-icon name="sparkles" /></span>
+    <div class="tfa__titles">
+      <strong>TFA</strong>
+      <span><i class="tfa__dot"></i>TaskFlow Assistant</span>
+    </div>
+    <button type="button" class="tfa__icon-btn" data-action="new-chat" aria-label="New chat" title="New chat" (click)="newChat()">
+      <tf-icon name="plus" />
+    </button>
+    <button type="button" class="tfa__icon-btn" data-action="close-tfa" aria-label="Close assistant" title="Close" (click)="assistant.close()">
+      <tf-icon name="x" />
+    </button>
+  </div>
+
+  @if (assistant.selected(); as selected) {
+    <div class="tfa__model-wrap">
+      <button
+        type="button"
+        class="tfa__model"
+        data-action="model-selector"
+        aria-haspopup="listbox"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <span class="tfa__mi" [attr.data-provider]="selected.kind">{{ providerInitial(selected.kind) }}</span>
+        <span class="tfa__mt">
+          <b data-model-name>{{ selected.displayName }}</b>
+          <small>{{ selected.modelName }}</small>
+        </span>
+        <span class="tfa__pill" [class.tfa__pill--local]="selected.locality === 'Local'" [class.tfa__pill--cloud]="selected.locality === 'Cloud'" data-locality>
+          {{ selected.locality }}
+        </span>
+        <tf-icon name="chevron" />
+      </button>
+
+      @if (menuOpen()) {
+        <div class="tfa__menu" role="listbox" aria-label="Choose AI model">
+          @for (option of assistant.providers(); track option.kind) {
+            <button
+              type="button"
+              class="tfa__opt"
+              role="option"
+              [attr.data-option]="option.kind"
+              [attr.aria-selected]="option.kind === selected.kind"
+              (click)="chooseProvider(option)"
+            >
+              <span class="tfa__mi" [attr.data-provider]="option.kind">{{ providerInitial(option.kind) }}</span>
+              <span class="tfa__mt">
+                <b>{{ option.displayName }}</b>
+                <small>{{ option.modelName }}</small>
+              </span>
+              <span class="tfa__pill" [class.tfa__pill--local]="option.locality === 'Local'" [class.tfa__pill--cloud]="option.locality === 'Cloud'">
+                {{ option.locality }}
+              </span>
+              @if (option.kind === selected.kind) {
+                <tf-icon name="check" />
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+</header>
