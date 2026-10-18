@@ -183,14 +183,23 @@ if (OperatingSystem.IsWindows())
 {
     var keyRingFolder = TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(
         app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.KeyRingPath);
-    var unprotectedKeys = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.CountUnprotectedKeys(keyRingFolder);
-    if (unprotectedKeys > 0)
+    var keyRingCheck = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.Check(keyRingFolder);
+    if (keyRingCheck.UnprotectedKeys > 0)
     {
         app.Logger.LogWarning(
             "The AI key ring in {KeyRingFolder} has {Count} key(s) stored unprotected, from before DPAPI protection was turned on. "
             + "To protect it: stop the API, delete that folder, start the API and enter the AI provider API keys again.",
             keyRingFolder,
-            unprotectedKeys);
+            keyRingCheck.UnprotectedKeys);
+    }
+
+    if (keyRingCheck.CouldNotCheckReason is { } reason)
+    {
+        app.Logger.LogInformation(
+            "The AI key ring in {KeyRingFolder} could not be fully checked for unprotected keys: {Reason}. "
+            + "If it was created before DPAPI protection was turned on, it may still hold an unprotected key.",
+            keyRingFolder,
+            reason);
     }
 }
 

@@ -69,6 +69,7 @@ public class KeyRingStartupWarningTests : IClassFixture<TaskFlowApiFactory>, IDi
         using var factory = StartWith(logs);
 
         Assert.DoesNotContain(logs.Lines, line => line.Contains("stored unprotected"));
+        Assert.DoesNotContain(logs.Lines, line => line.Contains("could not be fully checked"));
     }
 
     [WindowsOnlyFact]
@@ -100,6 +101,10 @@ public class KeyRingStartupWarningTests : IClassFixture<TaskFlowApiFactory>, IDi
             using var factory = StartWith(logs);
 
             Assert.DoesNotContain(logs.Lines, line => line.Contains("stored unprotected"));
+            var note = Assert.Single(logs.Lines, line => line.Contains("could not be fully checked"));
+            Assert.Contains(_folder, note);
+            Assert.Contains("1 key file(s) could not be read", note);
+            Assert.DoesNotContain("SECRETMATERIAL", string.Join("\n", logs.Lines));
         }
         finally
         {

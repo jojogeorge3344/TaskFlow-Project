@@ -120,4 +120,76 @@ public class KeyRingProtectionCheckTests : IDisposable
             folder.SetAccessControl(security);
         }
     }
+
+    [Fact]
+    public void ACompleteCheckHasNoReasonForDoubt()
+    {
+        WriteKey("key-a.xml", Unprotected);
+        WriteKey("key-b.xml", Protected);
+
+        var result = KeyRingProtectionCheck.Check(_folder);
+
+        Assert.Equal(1, result.UnprotectedKeys);
+        Assert.Equal(0, result.SkippedFiles);
+        Assert.False(result.FolderUnreadable);
+        Assert.Null(result.CouldNotCheckReason);
+    }
+
+    [Fact]
+    public void AFolderThatDoesNotExistYetIsNotAProblem()
+    {
+        var result = KeyRingProtectionCheck.Check(Path.Combine(_folder, "later"));
+
+        Assert.Null(result.CouldNotCheckReason);
+        Assert.Equal(0, result.UnprotectedKeys);
+    }
+
+    [WindowsOnlyFact]
+    public void AnUnreadableKeyFileIsCountedAndExplained()
+    {
+        WriteKey("key-a.xml", Unprotected);
+        WriteKey("key-locked.xml", Unprotected);
+        var locked = new FileInfo(Path.Combine(_folder, "key-locked.xml"));
+        var deny = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ReadData, AccessControlType.Deny);
+        var security = locked.GetAccessControl();
+        security.AddAccessRule(deny);
+        locked.SetAccessControl(security);
+        try
+        {
+            var result = KeyRingProtectionCheck.Check(_folder);
+
+            Assert.Equal(1, result.UnprotectedKeys);
+            Assert.Equal(1, result.SkippedFiles);
+            Assert.False(result.FolderUnreadable);
+            Assert.Equal("1 key file(s) could not be read", result.CouldNotCheckReason);
+        }
+        finally
+        {
+            security.RemoveAccessRule(deny);
+            locked.SetAccessControl(security);
+        }
+    }
+
+    [WindowsOnlyFact]
+    public void AFolderThatCannotBeListedIsExplained()
+    {
+        WriteKey("key-a.xml", Unprotected);
+        var folder = new DirectoryInfo(_folder);
+        var deny = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ListDirectory, AccessControlType.Deny);
+        var security = folder.GetAccessControl();
+        security.AddAccessRule(deny);
+        folder.SetAccessControl(security);
+        try
+        {
+            var result = KeyRingProtectionCheck.Check(_folder);
+
+            Assert.True(result.FolderUnreadable);
+            Assert.Equal("the folder could not be listed", result.CouldNotCheckReason);
+        }
+        finally
+        {
+            security.RemoveAccessRule(deny);
+            folder.SetAccessControl(security);
+        }
+    }
 }
