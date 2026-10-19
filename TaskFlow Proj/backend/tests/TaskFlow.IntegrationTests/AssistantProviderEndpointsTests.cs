@@ -30,10 +30,12 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var get = await SendAsync(client, HttpMethod.Get, $"{Base}/config", token);
         var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", token, JsonContent.Create(new { providers = Array.Empty<object>() }));
         var test = await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/test", token);
+        var remove = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=phi3", token);
 
         Assert.Equal(HttpStatusCode.Forbidden, get.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, test.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, remove.StatusCode);
     }
 
     [Fact]
@@ -164,6 +166,41 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.False(notConfigured.GetProperty("ok").GetBoolean());
         Assert.Contains("not configured", notConfigured.GetProperty("message").GetString());
         gemini.Reset();
+    }
+
+    [Fact]
+    public async Task Administrator_RemovesAModelTheyAdded_ButNotABuiltInOrTheSavedOne()
+    {
+        var client = _factory.CreateClient();
+        var admin = await LoginAsync(client, "ai-cfg-admin-remove", SystemRoles.Administrator);
+
+        // Save "typo-model" as the Ollama model, then move Ollama to another model so "typo-model" is only in the list.
+        await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
+        {
+            providers = new object[] { new { kind = "Ollama", isEnabled = true, modelName = "typo-model", baseUrl = "http://localhost:11434" } }
+        }));
+
+        var inUse = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin);
+        Assert.Equal(HttpStatusCode.BadRequest, inUse.StatusCode);
+
+        await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
+        {
+            providers = new object[] { new { kind = "Ollama", isEnabled = true, modelName = "llama3.2:3b", baseUrl = "http://localhost:11434" } }
+        }));
+
+        var builtIn = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=llama3.1:8b", admin);
+        Assert.Equal(HttpStatusCode.BadRequest, builtIn.StatusCode);
+
+        var removed = await ReadAsync(await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin));
+        var ollama = removed.EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Ollama");
+        Assert.DoesNotContain("typo-model", ollama.GetProperty("models").EnumerateArray().Select(model => model.GetString()));
+        Assert.DoesNotContain("typo-model", ollama.GetProperty("customModels").EnumerateArray().Select(model => model.GetString()));
+
+        var gone = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin);
+        Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
+
+        var missingName = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models", admin);
+        Assert.Equal(HttpStatusCode.BadRequest, missingName.StatusCode);
     }
 
     private static async Task<JsonElement> ReadAsync(HttpResponseMessage response)

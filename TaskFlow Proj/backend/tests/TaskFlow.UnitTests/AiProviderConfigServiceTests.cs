@@ -84,6 +84,68 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ACustomModelIsListedAsRemovableAndCanBeRemovedOnceNoServerUsesIt()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+        await Save(Update(AiProviderKind.Ollama, model: "typo-model"));
+
+        var config = await Service().GetAdminConfigAsync();
+        Assert.Equal(["typo-model"], config.Single(provider => provider.Kind == AiProviderKind.Ollama).CustomModels);
+        Assert.All(config.Where(provider => provider.Kind != AiProviderKind.Ollama), provider => Assert.Empty(provider.CustomModels));
+
+        // It is the saved model, so it stays until another one is saved.
+        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model"));
+        await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"));
+
+        var after = await Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model");
+
+        var ollama = after.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        Assert.DoesNotContain("typo-model", ollama.Models);
+        Assert.Empty(ollama.CustomModels);
+        Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "typo-model"));
+    }
+
+    [Fact]
+    public async Task ABuiltInModelCannotBeRemovedAndAnUnknownOneIsNotFound()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "llama3.1:8b"));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "never-added"));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "llama3.1:8b"));
+    }
+
+    [Fact]
+    public async Task TwoAdministratorsAddingTheSameNewModelAtOnceDoNotFailTheSecondSave()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        // Just before our save reaches the database, another administrator's save adds the same model.
+        var raced = false;
+        _harness.Db.SavingChanges += (_, _) =>
+        {
+            if (raced)
+            {
+                return;
+            }
+
+            raced = true;
+            var options = new DbContextOptionsBuilder<TaskFlow.Infrastructure.Persistence.AppDbContext>()
+                .UseSqlite(_harness.Db.Database.GetDbConnection())
+                .Options;
+            using var other = new TaskFlow.Infrastructure.Persistence.AppDbContext(options);
+            other.AiModels.Add(new TaskFlow.Domain.Entities.AiModel { Kind = AiProviderKind.Ollama, Name = "phi3:mini", IsBuiltIn = false });
+            other.SaveChanges();
+        };
+
+        var config = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini"));
+
+        Assert.True(raced);
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.Equal("phi3:mini", config.Single(provider => provider.Kind == AiProviderKind.Ollama).ModelName);
+    }
+
+    [Fact]
     public async Task AModelTypedInSettingsIsAddedToTheListForEveryone()
     {
         await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();

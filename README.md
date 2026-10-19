@@ -117,6 +117,8 @@ Open **Settings → TFA Settings** (Administrator only).
 
 - The **Model** dropdown lists the models kept in the database, grouped by server (Ollama, Google Gemini, OpenAI GPT).
   Choose **Add new model…** to type one that is not in the list: it is saved to the database and offered from then on.
+  A model you added can be taken out again with **Remove this model from the list** (not the built-in ones, and not the
+  one saved for its server).
 - The **Server** dropdown lists where each model runs: your Ollama address, or Google's or OpenAI's server. The two
   dropdowns are linked: choosing a model selects its server, and choosing a server shows that server's model.
 - **The model and server you choose and save is the only one TFA offers.** The screen says "TFA uses …" for what is

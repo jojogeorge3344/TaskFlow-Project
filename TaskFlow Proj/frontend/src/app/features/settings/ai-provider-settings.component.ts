@@ -66,6 +66,7 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
   readonly providers = signal<AiProviderConfig[]>([]);
   readonly dirty = signal(false);
   readonly addModelValue = ADD_MODEL;
+  readonly removing = signal(false);
 
   /** The server TFA uses now, as saved. */
   readonly activeKind = signal<AiProviderKind | null>(null);
@@ -195,6 +196,35 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
   /** True while "Add new model…" is chosen, so the box for the new name is shown. */
   isAddingModel(kind: AiProviderKind): boolean {
     return this.form(kind).controls.modelName.value === ADD_MODEL;
+  }
+
+  /** True when the model picked for this server was added by an administrator and is not the one saved for it, so it can
+   * be taken out of the list. Built-in models and the saved one stay. */
+  canRemoveModel(provider: AiProviderConfig): boolean {
+    const name = this.form(provider.kind).controls.modelName.value;
+    return name !== ADD_MODEL && (provider.customModels ?? []).includes(name) && name !== provider.modelName;
+  }
+
+  /** Removes the picked model from the list. This reloads the screen from the server, so other unsaved edits are dropped. */
+  removeModel(provider: AiProviderConfig): void {
+    if (!this.canRemoveModel(provider) || this.removing()) {
+      return;
+    }
+
+    const name = this.form(provider.kind).controls.modelName.value;
+    this.saveError.set(null);
+    this.removing.set(true);
+    this.admin.removeModel(provider.kind, name).subscribe({
+      next: (config) => {
+        this.removing.set(false);
+        this.apply(config);
+        this.toast.success(`Removed ${name} from the list`);
+      },
+      error: (err: unknown) => {
+        this.removing.set(false);
+        this.saveError.set(apiErrorMessage(err, 'Could not remove the model.'));
+      }
+    });
   }
 
   isClearing(kind: AiProviderKind): boolean {

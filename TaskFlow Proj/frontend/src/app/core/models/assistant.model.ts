@@ -30,6 +30,8 @@ export interface AiProviderConfig {
   keyReadable: boolean;
   /** The models to choose from, kept in the database. The chosen model is always in the list. */
   models: string[];
+  /** The models an administrator added, which can be removed (built-in ones cannot). */
+  customModels: string[];
 }
 
 /** One provider's changes. An empty `apiKey` keeps the stored key; `clearKey` removes it. */

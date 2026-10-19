@@ -108,19 +108,21 @@ public class AiProviderConfigService : IAiProviderConfigService
             row.UpdatedAt = now;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await SaveKeepingAnyDuplicateModelAsync(cancellationToken);
         var models = await LoadModelsAsync(cancellationToken);
         return AiProviderCatalog.All.Select(kind => ToDto(kind, rows.FirstOrDefault(row => row.Kind == kind), models)).ToList();
     }
 
     /// <summary>The models offered for each provider: the built-in ones first, then those administrators added.</summary>
-    private async Task<ILookup<AiProviderKind, string>> LoadModelsAsync(CancellationToken cancellationToken)
+    private async Task<ModelLists> LoadModelsAsync(CancellationToken cancellationToken)
     {
         var models = await _dbContext.AiModels.AsNoTracking()
             .OrderByDescending(model => model.IsBuiltIn)
             .ThenBy(model => model.Id)
             .ToListAsync(cancellationToken);
-        return models.ToLookup(model => model.Kind, model => model.Name);
+        return new ModelLists(
+            models.ToLookup(model => model.Kind, model => model.Name),
+            models.Where(model => !model.IsBuiltIn).ToLookup(model => model.Kind, model => model.Name));
     }
 
     /// <summary>A model name typed in Settings that is not in the list yet is added to it, so it is offered from then on.</summary>
@@ -137,6 +139,62 @@ public class AiProviderConfigService : IAiProviderConfigService
         {
             _dbContext.AiModels.Add(new AiModel { Kind = kind, Name = name, IsBuiltIn = false });
         }
+    }
+
+    /// <summary>Every model of each provider, and the part of it that an administrator added (and so can remove).</summary>
+    private sealed record ModelLists(ILookup<AiProviderKind, string> All, ILookup<AiProviderKind, string> Custom);
+
+    /// <summary>Saves. If another administrator added the same new model at the same moment, the unique index rejects our
+    /// copy: drop it, keep theirs, and save the rest instead of failing the whole request.</summary>
+    private async System.Threading.Tasks.Task SaveKeepingAnyDuplicateModelAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            var dropped = false;
+            foreach (var entry in _dbContext.ChangeTracker.Entries<AiModel>().Where(entry => entry.State == EntityState.Added).ToList())
+            {
+                var model = entry.Entity;
+                if (await _dbContext.AiModels.AsNoTracking().AnyAsync(stored => stored.Kind == model.Kind && stored.Name == model.Name, cancellationToken))
+                {
+                    entry.State = EntityState.Detached;
+                    dropped = true;
+                }
+            }
+
+            if (!dropped)
+            {
+                throw;
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyList<AiProviderConfigDto>> RemoveModelAsync(
+        AiProviderKind kind,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        var model = await _dbContext.AiModels.FirstOrDefaultAsync(stored => stored.Kind == kind && stored.Name == name, cancellationToken)
+            ?? throw new KeyNotFoundException("That model is not in the list.");
+
+        if (model.IsBuiltIn)
+        {
+            throw new ArgumentException("A built-in model cannot be removed.", nameof(name));
+        }
+
+        if (await _dbContext.AiProviderConfigs.AnyAsync(config => config.Kind == kind && config.ModelName == name, cancellationToken))
+        {
+            throw new ArgumentException("That model is the one saved for its server. Choose another model and save before removing it.", nameof(name));
+        }
+
+        _dbContext.AiModels.Remove(model);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return await GetAdminConfigAsync(cancellationToken);
     }
 
     public async Task<AiProviderRuntime?> GetRuntimeAsync(AiProviderKind kind, CancellationToken cancellationToken = default)
@@ -156,9 +214,9 @@ public class AiProviderConfigService : IAiProviderConfigService
         return new AiProviderRuntime(kind, row.ModelName, row.BaseUrl, apiKey);
     }
 
-    private AiProviderConfigDto ToDto(AiProviderKind kind, AiProviderConfig? row, ILookup<AiProviderKind, string> models)
+    private AiProviderConfigDto ToDto(AiProviderKind kind, AiProviderConfig? row, ModelLists models)
     {
-        var offered = models[kind].ToList();
+        var offered = models.All[kind].ToList();
         var chosen = string.IsNullOrWhiteSpace(row?.ModelName) ? AiProviderCatalog.DefaultModel(kind) : row!.ModelName;
         if (!offered.Contains(chosen))
         {
@@ -180,7 +238,8 @@ public class AiProviderConfigService : IAiProviderConfigService
             // A key that is stored but cannot be decrypted (for example the key ring was lost or restored under another
             // account) has to be entered again; the administrator is told so.
             string.IsNullOrEmpty(row?.EncryptedApiKey) || _keyProtector.Unprotect(row.EncryptedApiKey) is not null,
-            offered);
+            offered,
+            models.Custom[kind].ToList());
     }
 
     /// <summary>Enabled, has a model, and either is local with an address or has a key that can still be decrypted.</summary>

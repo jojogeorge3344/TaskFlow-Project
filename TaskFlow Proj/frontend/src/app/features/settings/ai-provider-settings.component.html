@@ -58,6 +58,14 @@
       <span class="tf-field__hint ai-settings__linked">Choosing a model selects its server, and choosing a server selects its model.</span>
 
       @if (selected(); as chosen) {
+        @if (canRemoveModel(chosen)) {
+          <div class="tf-field ai-settings__picker">
+            <button type="button" class="tf-btn tf-btn--ghost" data-action="remove-model" [disabled]="removing()" (click)="removeModel(chosen)">
+              Remove this model from the list
+            </button>
+            <span class="tf-field__hint">You added it, and it is not the one saved for {{ chosen.displayName }}. Removing reloads the screen, so save any other change first.</span>
+          </div>
+        }
         @if (isAddingModel(chosen.kind)) {
           <div class="tf-field ai-settings__picker" [formGroup]="form(chosen.kind)">
             <label for="ai-new-model">New model name</label>

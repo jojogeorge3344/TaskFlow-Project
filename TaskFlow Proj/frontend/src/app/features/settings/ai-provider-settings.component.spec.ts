@@ -15,17 +15,17 @@ function config(overrides: Partial<Record<'Ollama' | 'Gemini' | 'OpenAI', Partia
     {
       kind: 'Ollama', displayName: 'Ollama', locality: 'Local', requiresKey: false, isEnabled: true, modelName: 'llama3.1:8b',
       baseUrl: 'http://localhost:11434', keySet: false, keyLast4: null, isConfigured: true, keyReadable: true,
-      models: ['llama3.2:3b', 'llama3.1:8b'], ...overrides.Ollama
+      models: ['llama3.2:3b', 'llama3.1:8b'], customModels: [], ...overrides.Ollama
     },
     {
       kind: 'Gemini', displayName: 'Google Gemini', locality: 'Cloud', requiresKey: true, isEnabled: true, modelName: 'gemini-2.0-flash',
       baseUrl: null, keySet: true, keyLast4: '1234', isConfigured: true, keyReadable: true,
-      models: ['gemini-2.0-flash', 'gemini-2.5-flash'], ...overrides.Gemini
+      models: ['gemini-2.0-flash', 'gemini-2.5-flash'], customModels: [], ...overrides.Gemini
     },
     {
       kind: 'OpenAI', displayName: 'OpenAI GPT', locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
       baseUrl: null, keySet: false, keyLast4: null, isConfigured: false, keyReadable: true,
-      models: ['gpt-4o-mini', 'gpt-4o'], ...overrides.OpenAI
+      models: ['gpt-4o-mini', 'gpt-4o'], customModels: [], ...overrides.OpenAI
     }
   ];
 }
@@ -581,5 +581,62 @@ describe('AiProviderSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(card('Ollama')).not.toBeNull();
+  });
+
+  describe('removing an added model', () => {
+    const withTypo = () => config({ Ollama: { models: ['llama3.2:3b', 'llama3.1:8b', 'typo-model'], customModels: ['typo-model'] } });
+
+    function removeButton(): HTMLButtonElement | null {
+      return el().querySelector('[data-action="remove-model"]');
+    }
+
+    it('offers removal only for a model the administrator added and that is not the saved one', async () => {
+      await create('Administrator', withTypo());
+
+      expect(removeButton()).toBeNull();
+
+      pickModel('Ollama', 'llama3.1:8b');
+      expect(removeButton()).toBeNull();
+
+      pickModel('Ollama', 'typo-model');
+      expect(removeButton()).not.toBeNull();
+
+      pickModel('Ollama', '__add__');
+      expect(removeButton()).toBeNull();
+    });
+
+    it('does not offer removal for the saved model even when it was added by the administrator', async () => {
+      await create('Administrator', config({ Ollama: { modelName: 'typo-model', models: ['llama3.2:3b', 'typo-model'], customModels: ['typo-model'] } }));
+
+      expect(removeButton()).toBeNull();
+    });
+
+    it('removes it on the server and shows the list without it', async () => {
+      await create('Administrator', withTypo());
+      pickModel('Ollama', 'typo-model');
+
+      removeButton()!.click();
+      fixture.detectChanges();
+
+      const request = http.expectOne((r) => r.method === 'DELETE' && r.url === '/api/v1/assistant/providers/Ollama/models');
+      expect(request.request.params.get('name')).toBe('typo-model');
+      request.flush(config());
+      fixture.detectChanges();
+
+      expect(modelsOf('Ollama')).toEqual(['llama3.2:3b', 'llama3.1:8b', 'Add new model…']);
+      expect(removeButton()).toBeNull();
+    });
+
+    it('shows the server\'s reason when the removal is refused', async () => {
+      await create('Administrator', withTypo());
+      pickModel('Ollama', 'typo-model');
+
+      removeButton()!.click();
+      http.expectOne((r) => r.method === 'DELETE').flush({ errors: { name: ['That model is the one saved for its server.'] } }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+
+      expect(el().textContent).toContain('That model is the one saved for its server.');
+      expect(modelsOf('Ollama')).toContain('typo-model');
+    });
   });
 });
