@@ -83,6 +83,9 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
   if (has(Permissions.SettingsApplication)) {
     settings.push({ label: 'Application Settings', icon: 'settings', route: '/settings/application' });
   }
+  if (has(Permissions.SettingsAi)) {
+    settings.push({ label: 'TFA Settings', icon: 'sparkles', route: '/settings/tfa' });
+  }
   if (has(Permissions.RolesManage)) {
     settings.push({ label: 'Role Configuration', icon: 'shield', route: '/settings/permissions' });
   }

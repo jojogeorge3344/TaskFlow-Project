@@ -39,6 +39,40 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EveryProviderListsTheModelsToChooseFromAndAlwaysIncludesTheChosenOne()
+    {
+        var seeder = new AiProviderSeeder(_harness.Db, TimeProvider.System);
+        await seeder.SeedAsync();
+
+        var config = await Service().GetAdminConfigAsync();
+
+        foreach (var provider in config)
+        {
+            Assert.Equal(AiProviderCatalog.BuiltInModels(provider.Kind), provider.Models);
+            Assert.Contains(provider.ModelName, provider.Models);
+        }
+    }
+
+    [Fact]
+    public async Task AModelTypedInSettingsIsAddedToTheListForEveryone()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        var config = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini", baseUrl: "http://localhost:11434"));
+
+        var ollama = config.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        Assert.Equal("phi3:mini", ollama.ModelName);
+        Assert.Equal(AiProviderCatalog.BuiltInModels(AiProviderKind.Ollama).Append("phi3:mini"), ollama.Models);
+        var stored = await _harness.Db.AiModels.SingleAsync(model => model.Name == "phi3:mini");
+        Assert.False(stored.IsBuiltIn);
+
+        // Saving it again does not add it twice, and the other providers are unaffected.
+        var again = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini", baseUrl: "http://localhost:11434"));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.DoesNotContain("phi3:mini", again.Single(provider => provider.Kind == AiProviderKind.Gemini).Models);
+    }
+
+    [Fact]
     public async Task CloudProviderEnabledWithoutAKeyIsNotConfigured()
     {
         var config = await Save(Update(AiProviderKind.Gemini));

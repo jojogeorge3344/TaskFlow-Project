@@ -38,7 +38,8 @@ public class AiProviderConfigService : IAiProviderConfigService
     public async Task<IReadOnlyList<AiProviderConfigDto>> GetAdminConfigAsync(CancellationToken cancellationToken = default)
     {
         var rows = await _dbContext.AiProviderConfigs.AsNoTracking().ToListAsync(cancellationToken);
-        return AiProviderCatalog.All.Select(kind => ToDto(kind, rows.FirstOrDefault(row => row.Kind == kind))).ToList();
+        var models = await LoadModelsAsync(cancellationToken);
+        return AiProviderCatalog.All.Select(kind => ToDto(kind, rows.FirstOrDefault(row => row.Kind == kind), models)).ToList();
     }
 
     public async Task<IReadOnlyList<AiProviderConfigDto>> SaveAsync(
@@ -66,6 +67,7 @@ public class AiProviderConfigService : IAiProviderConfigService
 
             row.IsEnabled = enabled;
             row.ModelName = update.ModelName.Trim();
+            await RememberModelAsync(kind, row.ModelName, cancellationToken);
             row.BaseUrl = kind == AiProviderKind.Ollama
                 ? NormalizeBaseUrl(update.BaseUrl) ?? AiProviderCatalog.DefaultOllamaBaseUrl
                 : null;
@@ -92,7 +94,34 @@ public class AiProviderConfigService : IAiProviderConfigService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return AiProviderCatalog.All.Select(kind => ToDto(kind, rows.FirstOrDefault(row => row.Kind == kind))).ToList();
+        var models = await LoadModelsAsync(cancellationToken);
+        return AiProviderCatalog.All.Select(kind => ToDto(kind, rows.FirstOrDefault(row => row.Kind == kind), models)).ToList();
+    }
+
+    /// <summary>The models offered for each provider: the built-in ones first, then those administrators added.</summary>
+    private async Task<ILookup<AiProviderKind, string>> LoadModelsAsync(CancellationToken cancellationToken)
+    {
+        var models = await _dbContext.AiModels.AsNoTracking()
+            .OrderByDescending(model => model.IsBuiltIn)
+            .ThenBy(model => model.Id)
+            .ToListAsync(cancellationToken);
+        return models.ToLookup(model => model.Kind, model => model.Name);
+    }
+
+    /// <summary>A model name typed in Settings that is not in the list yet is added to it, so it is offered from then on.</summary>
+    private async System.Threading.Tasks.Task RememberModelAsync(AiProviderKind kind, string name, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        var known = _dbContext.AiModels.Local.Any(model => model.Kind == kind && model.Name == name)
+            || await _dbContext.AiModels.AnyAsync(model => model.Kind == kind && model.Name == name, cancellationToken);
+        if (!known)
+        {
+            _dbContext.AiModels.Add(new AiModel { Kind = kind, Name = name, IsBuiltIn = false });
+        }
     }
 
     public async Task<AiProviderRuntime?> GetRuntimeAsync(AiProviderKind kind, CancellationToken cancellationToken = default)
@@ -112,8 +141,15 @@ public class AiProviderConfigService : IAiProviderConfigService
         return new AiProviderRuntime(kind, row.ModelName, row.BaseUrl, apiKey);
     }
 
-    private AiProviderConfigDto ToDto(AiProviderKind kind, AiProviderConfig? row)
+    private AiProviderConfigDto ToDto(AiProviderKind kind, AiProviderConfig? row, ILookup<AiProviderKind, string> models)
     {
+        var offered = models[kind].ToList();
+        var chosen = string.IsNullOrWhiteSpace(row?.ModelName) ? AiProviderCatalog.DefaultModel(kind) : row!.ModelName;
+        if (!offered.Contains(chosen))
+        {
+            offered.Add(chosen);
+        }
+
         var baseUrl = kind == AiProviderKind.Ollama ? row?.BaseUrl ?? AiProviderCatalog.DefaultOllamaBaseUrl : null;
         return new AiProviderConfigDto(
             kind,
@@ -128,7 +164,8 @@ public class AiProviderConfigService : IAiProviderConfigService
             row is not null && IsConfigured(row),
             // A key that is stored but cannot be decrypted (for example the key ring was lost or restored under another
             // account) has to be entered again; the administrator is told so.
-            string.IsNullOrEmpty(row?.EncryptedApiKey) || _keyProtector.Unprotect(row.EncryptedApiKey) is not null);
+            string.IsNullOrEmpty(row?.EncryptedApiKey) || _keyProtector.Unprotect(row.EncryptedApiKey) is not null,
+            offered);
     }
 
     /// <summary>Enabled, has a model, and either is local with an address or has a key that can still be decrypted.</summary>

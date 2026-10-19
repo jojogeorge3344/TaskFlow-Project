@@ -7,11 +7,28 @@
 }
 
 <footer class="tfa-composer">
-  @if (voice.listening()) {
-    <div class="tfa-listening" role="status" data-state="listening">
-      <span class="tfa-wave"><i></i><i></i><i></i><i></i><i></i></span>
-      {{ voice.capturing() ? 'Listening… say your question' : 'Listening for "Hey TFA"' }}
-    </div>
+  @if (voice.supported) {
+    @if (voice.listening()) {
+      <div class="tfa-listening" [class.tfa-listening--standby]="!voice.capturing() && !voice.dictating()" role="status" data-state="listening">
+        @if (voice.capturing() || voice.dictating()) {
+          <span class="tfa-wave" data-active><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="tfa-listening__text">Listening… say your command</span>
+        } @else {
+          <span class="tfa-dot" aria-hidden="true"></span>
+          <span class="tfa-listening__text">Waiting for "Hey TF assistant"</span>
+        }
+        <button type="button" class="tfa-listening__toggle" data-action="toggle-handsfree" (click)="voice.toggle()">
+          {{ voice.enabled() ? 'Turn off' : 'Turn on hands-free' }}
+        </button>
+      </div>
+    } @else {
+      <div class="tfa-listening tfa-listening--idle" role="status" data-state="voice-off">
+        <span class="tfa-listening__text">{{ voice.enabled() ? 'Voice is paused' : 'Hands-free is off' }}</span>
+        <button type="button" class="tfa-listening__toggle" data-action="toggle-handsfree" (click)="voice.toggle()">
+          {{ voice.enabled() ? 'Turn off' : 'Turn on "Hey TF assistant"' }}
+        </button>
+      </div>
+    }
   }
   @if (voice.reason(); as reason) {
     <p class="tfa-voice-reason" data-voice-reason>{{ reason }}</p>
@@ -32,13 +49,13 @@
     <button
       type="button"
       class="tfa-round tfa-round--mic"
-      [class.is-on]="voice.enabled()"
+      [class.is-on]="voice.dictating()"
       data-action="toggle-voice"
       [disabled]="!voice.supported"
-      [attr.aria-pressed]="voice.enabled()"
-      [attr.aria-label]="voice.enabled() ? 'Turn voice off' : 'Turn voice on'"
-      [title]="voice.supported ? 'Voice (Chrome or Edge)' : 'Voice is not supported in this browser'"
-      (click)="voice.toggle()"
+      [attr.aria-pressed]="voice.dictating()"
+      aria-label="Speak a command"
+      [title]="voice.supported ? 'Speak a command (Chrome or Edge)' : 'Voice is not supported in this browser'"
+      (click)="voice.dictate()"
     >
       <tf-icon name="mic" />
     </button>

@@ -24,7 +24,7 @@ public static class ProviderFailureMessages
             ProviderFailureKind.RateLimited =>
                 $"{name}'s free limit or rate limit has been reached. {RetryText(retryAfter)} or choose another model.",
             ProviderFailureKind.InvalidKey =>
-                $"{name} did not accept the API key. Ask an administrator to check the key in Application Settings, or choose another model.",
+                $"{name} did not accept the API key. Ask an administrator to check the key in TFA Settings, or choose another model.",
             ProviderFailureKind.Timeout =>
                 $"{name} took too long to answer. You can retry, or choose another model.",
             ProviderFailureKind.Unreachable when local =>

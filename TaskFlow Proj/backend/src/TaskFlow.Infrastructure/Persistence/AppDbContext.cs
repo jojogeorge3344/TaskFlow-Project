@@ -32,6 +32,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<MailboxItem> MailboxItems => Set<MailboxItem>();
     public DbSet<MailAttachment> MailAttachments => Set<MailAttachment>();
     public DbSet<AiProviderConfig> AiProviderConfigs => Set<AiProviderConfig>();
+    public DbSet<AiModel> AiModels => Set<AiModel>();
     public DbSet<AssistantConversation> AssistantConversations => Set<AssistantConversation>();
     public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
     public DbSet<AssistantPendingAction> AssistantPendingActions => Set<AssistantPendingAction>();
@@ -388,6 +389,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(config => config.BaseUrl).HasMaxLength(300);
             entity.Property(config => config.KeyLast4).HasMaxLength(4);
             entity.HasIndex(config => config.Kind).IsUnique();
+        });
+
+        modelBuilder.Entity<AiModel>(entity =>
+        {
+            entity.HasKey(model => model.Id);
+            entity.Property(model => model.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(model => model.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(model => new { model.Kind, model.Name }).IsUnique();
         });
 
         modelBuilder.Entity<AssistantConversation>(entity =>

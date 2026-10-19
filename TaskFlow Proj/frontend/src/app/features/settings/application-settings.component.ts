@@ -8,7 +8,6 @@ import { ApplicationSettings, TASK_PRIORITIES, TaskPriority } from '../../core/m
 import { ApplicationSettingsService } from '../../core/services/application-settings.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
-import { AiProviderSettingsComponent } from './ai-provider-settings.component';
 
 type SettingsField = 'name' | 'timezone' | 'defaultPriority';
 
@@ -23,7 +22,7 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
 @Component({
   selector: 'app-application-settings',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, IconComponent, AiProviderSettingsComponent],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent],
   templateUrl: './application-settings.component.html',
   styleUrl: './application-settings.component.css'
 })

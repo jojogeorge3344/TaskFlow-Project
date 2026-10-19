@@ -12,8 +12,10 @@ import {
   SPEECH_RECOGNITION_FACTORY,
   SpeechRecognitionEventLike,
   SpeechRecognitionLike,
-  TFA_VOICE_KEY
+  TFA_VOICE_KEY,
+  COMMAND_SILENCE_MS
 } from '../speech/wake-phrase.service';
+import { SPEECH_SYNTHESIS_FACTORY, SpeechSynthesisLike, UTTERANCE_FACTORY } from '../speech/speak.service';
 import { TfaPanelComponent } from './tfa-panel.component';
 
 class FakeRecognition implements SpeechRecognitionLike {
@@ -39,6 +41,25 @@ class FakeRecognition implements SpeechRecognitionLike {
 
   say(transcript: string, isFinal = true): void {
     this.onresult?.({ resultIndex: 0, results: { length: 1, 0: { isFinal, length: 1, 0: { transcript } } } });
+  }
+}
+
+/** A speech engine that records what it was asked to say; `finish` ends the current utterance like the browser does. */
+class FakeSynthesis implements SpeechSynthesisLike {
+  spoken: string[] = [];
+  private current: { onend: (() => void) | null } | null = null;
+
+  speak(utterance: SpeechSynthesisUtterance): void {
+    this.spoken.push(utterance.text);
+    this.current = utterance as unknown as { onend: (() => void) | null };
+  }
+
+  cancel(): void {
+    // Nothing is being said between tests.
+  }
+
+  finish(): void {
+    this.current?.onend?.();
   }
 }
 
@@ -80,6 +101,7 @@ describe('TfaPanelComponent', () => {
   let fixture: ComponentFixture<TfaPanelComponent>;
   let http: HttpTestingController;
   let recognition: FakeRecognition;
+  let synthesis: FakeSynthesis;
   const user = signal<AuthUser | null>(null);
 
   function el(): HTMLElement {
@@ -95,6 +117,12 @@ describe('TfaPanelComponent', () => {
     fixture.detectChanges();
   }
 
+  /** The user stops talking: a spoken command is sent after a short pause, so the test lets that pause pass. */
+  function afterPause(): void {
+    jasmine.clock().tick(COMMAND_SILENCE_MS);
+    fixture.detectChanges();
+  }
+
   function type(text: string): void {
     const box = q<HTMLTextAreaElement>('[data-field="message"]')!;
     box.value = text;
@@ -107,6 +135,7 @@ describe('TfaPanelComponent', () => {
   ): Promise<void> {
     const { providers = [ollama, gemini], messages = [], speech = true } = options;
     recognition = new FakeRecognition();
+    synthesis = new FakeSynthesis();
     await TestBed.configureTestingModule({
       imports: [TfaPanelComponent],
       providers: [
@@ -114,7 +143,9 @@ describe('TfaPanelComponent', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: { currentUser: user.asReadonly() } },
-        { provide: SPEECH_RECOGNITION_FACTORY, useValue: () => (speech ? recognition : null) }
+        { provide: SPEECH_RECOGNITION_FACTORY, useValue: () => (speech ? recognition : null) },
+        { provide: SPEECH_SYNTHESIS_FACTORY, useValue: () => synthesis },
+        { provide: UTTERANCE_FACTORY, useValue: (text: string) => ({ text, lang: '', onend: null, onerror: null }) }
       ]
     }).compileComponents();
 
@@ -135,6 +166,7 @@ describe('TfaPanelComponent', () => {
   });
 
   afterEach(() => {
+    jasmine.clock().uninstall();
     http.verify();
     [TFA_PROVIDER_KEY, TFA_CLOUD_ACK_KEY, TFA_VOICE_KEY].forEach((key) => localStorage.removeItem(key));
   });
@@ -218,6 +250,30 @@ describe('TfaPanelComponent', () => {
   // ------------------------------------------------------------------ the model selector
 
   describe('model selector', () => {
+    it('shows only the model the administrator chose, with nothing to switch to, when there is just one', async () => {
+      await setup({ providers: [ollama] });
+      click('[data-action="open-tfa"]');
+
+      const button = q<HTMLButtonElement>('[data-action="model-selector"]')!;
+      expect(button.textContent).toContain('Ollama');
+      expect(button.textContent).toContain('llama3.1:8b');
+      expect(button.disabled).toBeTrue();
+
+      button.click();
+      fixture.detectChanges();
+      expect(q('[role="listbox"]')).toBeNull();
+    });
+
+    it('lets the user switch when the administrator has made more than one model available', async () => {
+      await setup({ providers: [ollama, gemini] });
+      click('[data-action="open-tfa"]');
+
+      const button = q<HTMLButtonElement>('[data-action="model-selector"]')!;
+      expect(button.disabled).toBeFalse();
+      click('[data-action="model-selector"]');
+      expect(q('[role="listbox"]')).not.toBeNull();
+    });
+
     it('lists the configured providers with Local and Cloud labels and switches without closing the chat', async () => {
       localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify(['Gemini']));
       await setup({ messages: [message(1, 'User', 'first'), message(2, 'Assistant', 'answer')] });
@@ -519,7 +575,64 @@ describe('TfaPanelComponent', () => {
   // ------------------------------------------------------------------ voice
 
   describe('voice', () => {
-    it('does not use the microphone until the user turns voice on', async () => {
+    it('listens for "Hey TF assistant" from the start, without the user turning voice on', async () => {
+      await setup();
+      click('[data-action="open-tfa"]');
+
+      expect(recognition.starts).toBe(1);
+      expect(q('[data-state="listening"]')!.textContent).toContain('Hey TF assistant');
+      expect(q('[data-action="toggle-handsfree"]')!.textContent).toContain('Turn off');
+    });
+
+    it('shows no listening animation while it only waits for "Hey TF assistant"', async () => {
+      await setup();
+      click('[data-action="open-tfa"]');
+
+      expect(q('[data-state="listening"]')).not.toBeNull();
+      expect(q('[data-active]')).toBeNull();
+      expect(q('.tfa-wave')).toBeNull();
+    });
+
+    it('shows the animation only while a command is being taken, and removes it once the command is sent', async () => {
+      await setup();
+      jasmine.clock().install();
+
+      recognition.say('Hey TF assistant what is due', false);
+      fixture.detectChanges();
+      expect(q('[data-active]')).not.toBeNull();
+      expect(q('[data-state="listening"]')!.textContent).toContain('say your command');
+
+      recognition.say('Hey TF assistant what is due', true);
+      afterPause();
+      http.expectOne('/api/v1/assistant/conversation/messages');
+
+      expect(q('[data-active]')).toBeNull();
+      expect(q('[data-state="listening"]')!.textContent).toContain('Hey TF assistant');
+    });
+
+    it('answers a second "Hey TF assistant" after the first answer has been read', async () => {
+      await setup();
+      jasmine.clock().install();
+
+      recognition.say('Hey TF assistant what is due', true);
+      afterPause();
+      http.expectOne('/api/v1/assistant/conversation/messages').flush({
+        messages: [message(1, 'User', 'what is due'), message(2, 'Assistant', 'Two tasks.')],
+        failure: null
+      });
+      fixture.detectChanges();
+      synthesis.finish();
+      fixture.detectChanges();
+      expect(q('[data-active]')).toBeNull();
+
+      recognition.say('Hey TF assistant what is overdue', true);
+      afterPause();
+
+      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.text).toBe('what is overdue');
+    });
+
+    it('does not use the microphone once the user has turned voice off', async () => {
+      localStorage.setItem(TFA_VOICE_KEY, 'off');
       await setup();
       click('[data-action="open-tfa"]');
 
@@ -528,35 +641,127 @@ describe('TfaPanelComponent', () => {
       expect(q('[data-action="toggle-voice"]')!.getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('shows that it is listening once voice is on, and stops when it is turned off', async () => {
+    it('stops listening when voice is turned off, and listens again when it is turned back on', async () => {
       await setup();
       click('[data-action="open-tfa"]');
 
-      click('[data-action="toggle-voice"]');
-
-      expect(recognition.starts).toBe(1);
-      expect(q('[data-state="listening"]')!.textContent).toContain('Hey TFA');
-      expect(q('[data-action="toggle-voice"]')!.getAttribute('aria-pressed')).toBe('true');
-
-      click('[data-action="toggle-voice"]');
+      click('[data-action="toggle-handsfree"]');
       expect(q('[data-state="listening"]')).toBeNull();
+      expect(q('[data-state="voice-off"]')!.textContent).toContain('Hands-free is off');
+
+      click('[data-action="toggle-handsfree"]');
+      expect(q('[data-state="listening"]')!.textContent).toContain('Hey TF assistant');
     });
 
-    it('opens the panel on "Hey TFA" and puts the spoken question in the box without sending it', async () => {
+    it('opens the panel on speech, sends the spoken question and goes back to standby', async () => {
       await setup();
-      click('[data-action="toggle-voice"]');
       expect(q('[data-panel="tfa"]')!.classList).not.toContain('tfa--open');
 
-      recognition.say('Hey TFA');
+      recognition.say('Hey TF assistant');
       fixture.detectChanges();
       expect(q('[data-panel="tfa"]')!.classList).toContain('tfa--open');
-      expect(q('[data-state="listening"]')!.textContent).toContain('say your question');
+      // TFA greets the signed-in user by name, then listens for the command.
+      expect(synthesis.spoken).toEqual(['Hi Asha, how can I help you?']);
+      synthesis.finish();
+      fixture.detectChanges();
+      expect(q('[data-state="listening"]')!.textContent).toContain('say your command');
 
+      jasmine.clock().install();
       recognition.say('what should I prioritise today');
       fixture.detectChanges();
+      afterPause();
 
-      expect(q<HTMLTextAreaElement>('[data-field="message"]')!.value).toBe('what should I prioritise today');
-      http.expectNone('/api/v1/assistant/conversation/messages');
+      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.text).toBe('what should I prioritise today');
+      expect(q('[data-state="listening"]')!.textContent).toContain('Waiting for "Hey TF assistant"');
+    });
+
+    it('the mic button listens once, prints what is said, sends it and closes by itself when hands-free is off', async () => {
+      localStorage.setItem(TFA_VOICE_KEY, 'off');
+      await setup();
+      click('[data-action="open-tfa"]');
+      expect(recognition.starts).toBe(0);
+
+      click('[data-action="toggle-voice"]');
+      expect(recognition.starts).toBe(1);
+      expect(q('[data-action="toggle-voice"]')!.getAttribute('aria-pressed')).toBe('true');
+
+      recognition.say('what is due', false);
+      fixture.detectChanges();
+      expect(q<HTMLTextAreaElement>('[data-field="message"]')!.value).toBe('what is due');
+
+      jasmine.clock().install();
+      recognition.say('what is due today', true);
+      fixture.detectChanges();
+      afterPause();
+
+      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.text).toBe('what is due today');
+      expect(q('[data-state="listening"]')).toBeNull();
+      expect(q('[data-action="toggle-voice"]')!.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('shows on the TFA button whether voice is listening, and what it heard', async () => {
+      await setup();
+
+      expect(q('[data-voice-hint]')!.textContent).toContain('Hey TF assistant');
+
+      recognition.say('hello there', false);
+      fixture.detectChanges();
+      expect(q('[data-voice-heard]')!.textContent).toContain('hello there');
+    });
+
+    it('answers a spoken question in text and aloud, and rests the microphone while it talks', async () => {
+      await setup();
+
+      jasmine.clock().install();
+      recognition.say('Hey TF assistant what is due today');
+      fixture.detectChanges();
+      afterPause();
+      http.expectOne('/api/v1/assistant/conversation/messages').flush({
+        messages: [message(1, 'User', 'what is due today'), message(2, 'Assistant', 'You have **two** tasks due. See [Task List](/tasks).')],
+        failure: null
+      });
+      fixture.detectChanges();
+
+      expect(el().textContent).toContain('two');
+      expect(synthesis.spoken).toEqual(['You have two tasks due. See Task List.']);
+      expect(q('[data-state="listening"]')).toBeNull();
+
+      synthesis.finish();
+      fixture.detectChanges();
+
+      expect(recognition.starts).toBe(2);
+      expect(q('[data-state="listening"]')).not.toBeNull();
+    });
+
+    it('does not read a reply aloud when the question was typed', async () => {
+      await setup();
+      click('[data-action="open-tfa"]');
+      type('what is due today');
+      click('[data-action="send"]');
+      http.expectOne('/api/v1/assistant/conversation/messages').flush({
+        messages: [message(1, 'User', 'what is due today'), message(2, 'Assistant', 'Two tasks.')],
+        failure: null
+      });
+      fixture.detectChanges();
+
+      expect(synthesis.spoken).toEqual([]);
+      expect(recognition.starts).toBe(1);
+    });
+
+    it('says the problem aloud when a spoken question could not be answered', async () => {
+      await setup();
+
+      jasmine.clock().install();
+      recognition.say('Hey TF assistant what is due today');
+      fixture.detectChanges();
+      afterPause();
+      http.expectOne('/api/v1/assistant/conversation/messages').flush({
+        messages: [],
+        failure: { kind: 'Timeout', provider: 'Ollama', message: 'Ollama took too long.', retryAfterSeconds: null, alternatives: [] }
+      });
+      fixture.detectChanges();
+
+      expect(synthesis.spoken).toEqual(['Ollama took too long.']);
     });
 
     it('explains an unsupported browser and typing still works', async () => {
@@ -574,6 +779,8 @@ describe('TfaPanelComponent', () => {
     it('explains a denied microphone and typing still works', async () => {
       await setup();
       click('[data-action="open-tfa"]');
+      // Off and on again, so the microphone is started by the user's click.
+      click('[data-action="toggle-voice"]');
       click('[data-action="toggle-voice"]');
 
       recognition.onerror?.({ error: 'not-allowed' });
@@ -586,11 +793,14 @@ describe('TfaPanelComponent', () => {
       expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.text).toBe('still typing');
     });
 
-    it('starts listening again on a later visit only when voice had been turned on', async () => {
-      localStorage.setItem(TFA_VOICE_KEY, 'on');
+    it('asks for a click, instead of turning voice off, when the browser blocks the microphone after a reload', async () => {
       await setup();
 
-      expect(recognition.starts).toBe(1);
+      recognition.onerror?.({ error: 'not-allowed' });
+      fixture.detectChanges();
+
+      expect(q('[data-voice-reason]')!.textContent).toContain('Click anywhere');
+      expect(q('[data-action="toggle-handsfree"]')!.textContent).toContain('Turn off');
     });
   });
 

@@ -17,6 +17,33 @@ namespace TaskFlow.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AiModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsBuiltIn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "Name")
+                        .IsUnique();
+
+                    b.ToTable("AiModels");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.AiProviderConfig", b =>
                 {
                     b.Property<int>("Id")

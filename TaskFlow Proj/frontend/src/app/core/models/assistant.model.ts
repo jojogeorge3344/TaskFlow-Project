@@ -28,6 +28,8 @@ export interface AiProviderConfig {
   isConfigured: boolean;
   /** False when a key is stored but can no longer be decrypted, so it has to be entered again. */
   keyReadable: boolean;
+  /** The models to choose from, kept in the database. The chosen model is always in the list. */
+  models: string[];
 }
 
 /** One provider's changes. An empty `apiKey` keeps the stored key; `clearKey` removes it. */
