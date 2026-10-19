@@ -31,7 +31,13 @@ public static class SessionValidation
         var user = await db.Users
             .AsNoTracking()
             .Where(candidate => candidate.Id == userId)
-            .Select(candidate => new { candidate.SecurityStamp, candidate.IsActive, candidate.RoleId, RoleName = candidate.Role.Name })
+            .Select(candidate => new
+            {
+                candidate.SecurityStamp,
+                candidate.IsActive,
+                RoleName = candidate.Role.Name,
+                PermissionKeys = candidate.Role.Permissions.Select(grant => grant.Permission.Key).ToList()
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user is null || !user.IsActive || user.SecurityStamp != tokenStamp)
@@ -39,12 +45,6 @@ public static class SessionValidation
             context.Fail("The session is no longer valid. Sign in again.");
             return;
         }
-
-        var permissionKeys = await db.RolePermissions
-            .AsNoTracking()
-            .Where(grant => grant.RoleId == user.RoleId)
-            .Select(grant => grant.Permission.Key)
-            .ToListAsync(cancellationToken);
 
         if (principal.Identity is ClaimsIdentity identity)
         {
@@ -54,7 +54,7 @@ public static class SessionValidation
             }
 
             identity.AddClaim(new Claim(identity.RoleClaimType, user.RoleName));
-            identity.AddClaims(permissionKeys.Select(key => new Claim(AuthClaims.Permission, key)));
+            identity.AddClaims(user.PermissionKeys.Select(key => new Claim(AuthClaims.Permission, key)));
         }
     }
 }

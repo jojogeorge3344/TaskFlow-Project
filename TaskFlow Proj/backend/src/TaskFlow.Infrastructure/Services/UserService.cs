@@ -222,14 +222,10 @@ public class UserService : IUserService
         var usernameChanged = !string.Equals(user.Username, username, StringComparison.Ordinal);
         var roleChanged = user.RoleId != request.RoleId;
 
-        if (roleChanged && user.RoleId == SystemRoles.AdministratorId && user.IsActive)
+        if (roleChanged)
         {
-            var otherActiveAdministrators = await _dbContext.Users
-                .CountAsync(u => u.Id != id && !u.IsDeleted && u.IsActive && u.RoleId == SystemRoles.AdministratorId, cancellationToken);
-            if (otherActiveAdministrators == 0)
-            {
-                throw new InvalidOperationException("The only active Administrator cannot be moved to another role.");
-            }
+            await EnsureAnotherActiveAdministratorAsync(
+                user, "The only active Administrator cannot be moved to another role.", cancellationToken);
         }
 
         var now = DateTime.UtcNow;
@@ -287,6 +283,9 @@ public class UserService : IUserService
         var now = DateTime.UtcNow;
         if (user.IsActive && !request.IsActive)
         {
+            await EnsureAnotherActiveAdministratorAsync(
+                user, "The only active Administrator cannot be deactivated.", cancellationToken);
+
             // Deactivation ends sessions for good, so reactivating later cannot revive an old refresh cookie.
             await EndSessionsAsync(user, now, cancellationToken);
         }
@@ -376,6 +375,22 @@ public class UserService : IUserService
             user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
             user.RoleId, user.Role.Name, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
             user.DepartmentId, user.Department?.Name);
+    }
+
+    /// <summary>Keeps at least one active Administrator, the only role that can manage roles.</summary>
+    private async System.Threading.Tasks.Task EnsureAnotherActiveAdministratorAsync(User user, string message, CancellationToken cancellationToken)
+    {
+        if (user.RoleId != SystemRoles.AdministratorId || !user.IsActive)
+        {
+            return;
+        }
+
+        var others = await _dbContext.Users
+            .CountAsync(u => u.Id != user.Id && !u.IsDeleted && u.IsActive && u.RoleId == SystemRoles.AdministratorId, cancellationToken);
+        if (others == 0)
+        {
+            throw new InvalidOperationException(message);
+        }
     }
 
     private async Task<Role> RequireRoleAsync(int roleId, CancellationToken cancellationToken) =>

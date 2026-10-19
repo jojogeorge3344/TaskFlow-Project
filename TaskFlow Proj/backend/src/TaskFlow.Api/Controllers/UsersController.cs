@@ -192,12 +192,19 @@ public class UsersController : ControllerBase
     [RequirePermission(PermissionKeys.EmployeesManage)]
     public async Task<ActionResult<UserDto>> UpdateStatus(int id, [FromBody] UserStatusRequest request, CancellationToken cancellationToken)
     {
-        var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
-        if (user is null)
+        try
         {
-            return NotFound();
+            var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
+            if (user is null)
+            {
+                return NotFound();
+            }
+            return Ok(user);
         }
-        return Ok(user);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesManage);

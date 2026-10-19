@@ -11,12 +11,15 @@ is missing and stops with a clear message if it cannot create or write to it. In
 | `dp-keys\` | The encryption key ring for AI provider API keys |
 | `mail-attachments\` | Files attached to internal mail |
 
-Set `Storage:Root` in `appsettings.json` (or the `Storage__Root` environment variable) to use another folder. The old
+On Windows the default is `C:\TaskFlow`; on Linux and macOS it is a `TaskFlow` folder under the shared application data
+folder (for example `/usr/share/TaskFlow`). Set `Storage:Root` in `appsettings.json` (or the `Storage__Root` environment
+variable) to use another folder. The old
 `database/` folder inside the solution is no longer used and is not migrated; delete it when you no longer need it.
 Back up the whole `C:\TaskFlow` folder, but keep `dp-keys` out of any backup that also holds the database.
 
-On the first run the API creates the database, applies the schema and adds three accounts (`Seed:Enabled`, on by
-default). An account that already exists is never changed.
+On the first run the API creates the database, applies the schema and adds three accounts when `Seed:Enabled` is on. It is on in
+Development (`appsettings.Development.json`) and **off by default everywhere else**, so a deployment never ships with
+these well-known passwords; set `Seed:Enabled` to `true` yourself, together with the three passwords below, to create them. An account that already exists is never changed.
 
 | Role | Email | Password | Lands on |
 |---|---|---|---|
@@ -70,7 +73,7 @@ available to every role.
 | Blocked types | `.exe .dll .bat .cmd .com .msi .ps1 .sh .js .vbs .scr` |
 
 Files are stored under generated names in the folder set by `Mail:AttachmentsPath` in `appsettings.json`. The
-default is `mail-attachments`, resolved under the data folder (`C:TaskFlow`), so it sits next to `taskflow.db`. Only the uploader and people who have the mail in their mailbox can download a file.
+default is `mail-attachments`, resolved under the data folder (`C:\TaskFlow`), so it sits next to `taskflow.db`. Only the uploader and people who have the mail in their mailbox can download a file.
 **Back up this folder together with the database.**
 
 ### Deadline reminders in Mail
@@ -135,7 +138,7 @@ If it is lost, the stored keys can no longer be read and must be entered again. 
 
 **Existing installs:** DPAPI only protects keys created after it was turned on, so a key ring made earlier keeps one
 plain (unprotected) key. At startup on Windows the API logs a warning when it finds one. To protect it, stop the API,
-delete the `C:TaskFlowdp-keys` folder, start the API, and enter the AI provider API keys again in
+delete the `C:\TaskFlow\dp-keys` folder, start the API, and enter the AI provider API keys again in
 **Settings → Application Settings → AI assistant (TFA)**. Do this after the first time you run a build with DPAPI.
 
 The Ollama server address cannot be a link-local or cloud metadata address (for example `169.254.169.254`).

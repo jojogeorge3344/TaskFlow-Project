@@ -15,11 +15,17 @@ public class StorageRootTests : IDisposable
     }
 
     [Fact]
-    public void Default_root_is_c_taskflow()
+    public void Default_root_is_c_taskflow_on_windows_and_the_shared_app_data_folder_elsewhere()
     {
-        Assert.Equal(@"C:\TaskFlow", new StorageOptions().Root);
-        Assert.Equal(Path.GetFullPath(@"C:\TaskFlow"), StorageRoot.Resolve(null));
-        Assert.Equal(Path.GetFullPath(@"C:\TaskFlow"), StorageRoot.Resolve("  "));
+        var expected = OperatingSystem.IsWindows()
+            ? @"C:\TaskFlow"
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TaskFlow");
+
+        Assert.Equal(expected, StorageOptions.DefaultRoot);
+        Assert.Equal(expected, new StorageOptions().Root);
+        Assert.Equal(Path.GetFullPath(expected), StorageRoot.Resolve(null));
+        Assert.Equal(Path.GetFullPath(expected), StorageRoot.Resolve("  "));
+        Assert.Equal(Path.GetFullPath(expected), StorageRoot.Resolve(string.Empty));
     }
 
     [Fact]

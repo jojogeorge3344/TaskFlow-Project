@@ -6,7 +6,10 @@ public class StorageOptions
 {
     public const string SectionName = "Storage";
 
-    public const string DefaultRoot = @"C:\TaskFlow";
+    /// <summary>C:\TaskFlow on Windows; a TaskFlow folder under the shared application data folder elsewhere.</summary>
+    public static readonly string DefaultRoot = OperatingSystem.IsWindows()
+        ? @"C:\TaskFlow"
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "TaskFlow");
 
     public string Root { get; set; } = DefaultRoot;
 }
