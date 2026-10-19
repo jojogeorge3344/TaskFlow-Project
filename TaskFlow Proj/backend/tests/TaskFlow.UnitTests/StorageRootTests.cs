@@ -42,6 +42,24 @@ public class StorageRootTests : IDisposable
     }
 
     [Fact]
+    public void A_legacy_database_is_reported_only_while_the_new_root_has_none()
+    {
+        var solution = Path.Combine(_temp, "solution");
+        var root = Path.Combine(_temp, "root");
+        Directory.CreateDirectory(Path.Combine(solution, "database"));
+        Directory.CreateDirectory(root);
+
+        Assert.Null(StorageRoot.FindLegacyDatabase(root, solution));
+
+        var legacy = Path.Combine(solution, "database", "taskflow.db");
+        File.WriteAllText(legacy, string.Empty);
+        Assert.Equal(legacy, StorageRoot.FindLegacyDatabase(root, solution));
+
+        File.WriteAllText(Path.Combine(root, "taskflow.db"), string.Empty);
+        Assert.Null(StorageRoot.FindLegacyDatabase(root, solution));
+    }
+
+    [Fact]
     public void Absolute_paths_are_kept()
     {
         var absolute = Path.Combine(_temp, "elsewhere");

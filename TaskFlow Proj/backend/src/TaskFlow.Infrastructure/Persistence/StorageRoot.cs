@@ -49,6 +49,16 @@ public static class StorageRoot
         }
     }
 
+    /// <summary>The database an earlier version kept in the solution's <c>database</c> folder, when it still exists and the
+    /// data folder has no database of its own yet. That is an upgraded install that would otherwise start empty. Call it
+    /// before the migration creates the new database.</summary>
+    public static string? FindLegacyDatabase(string root, string solutionDirectory)
+    {
+        var legacy = Path.Combine(solutionDirectory, "database", "taskflow.db");
+
+        return File.Exists(legacy) && !File.Exists(Path.Combine(root, "taskflow.db")) ? legacy : null;
+    }
+
     /// <summary>Resolves a configured path: absolute paths are kept, relative ones sit under <paramref name="root"/>.</summary>
     public static string ResolveUnder(string root, string configured) =>
         Path.IsPathRooted(configured) ? configured : Path.GetFullPath(Path.Combine(root, configured));

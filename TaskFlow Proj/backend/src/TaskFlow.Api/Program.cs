@@ -193,6 +193,17 @@ var app = builder.Build();
 var storageRoot = StorageRoot.Resolve(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Root);
 StorageRoot.EnsureAvailable(storageRoot);
 
+// Checked before the migration below creates the new database, so an upgraded install is told why it starts empty.
+if (StorageRoot.FindLegacyDatabase(storageRoot, DatabasePathResolver.FindSolutionDirectory()) is { } legacyDatabase)
+{
+    app.Logger.LogWarning(
+        "Found an earlier database at {LegacyDatabase}, but TaskFlow now keeps its data in {StorageRoot} and has no database there yet, "
+        + "so it will start empty. The old data is not migrated: stop the API and copy taskflow.db (and the dp-keys and "
+        + "mail-attachments folders next to it) into {StorageRoot}, or set Storage:Root to the old folder.",
+        legacyDatabase,
+        storageRoot);
+}
+
 if (OperatingSystem.IsWindows())
 {
     var keyRingFolder = StorageRoot.ResolveUnder(
