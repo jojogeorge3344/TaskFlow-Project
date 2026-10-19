@@ -11,14 +11,14 @@ public class UpdateOwnProfileRequestValidatorTests
     [Fact]
     public void Valid_request_passes()
     {
-        _validator.TestValidate(new UpdateOwnProfileRequest("Jo Jo", "jo@taskflow.local"))
+        _validator.TestValidate(new UpdateOwnProfileRequest("Jo Jo", "jo@taskflow.com"))
             .ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
     public void Blank_name_is_invalid()
     {
-        _validator.TestValidate(new UpdateOwnProfileRequest("   ", "jo@taskflow.local"))
+        _validator.TestValidate(new UpdateOwnProfileRequest("   ", "jo@taskflow.com"))
             .ShouldHaveValidationErrorFor(x => x.FullName);
     }
 

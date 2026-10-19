@@ -255,7 +255,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AnAdministratorCanMoveAUserToACustomRoleAndTheyUseItsPermissions()
     {
         var (client, token) = await SignInAsync("roles-assign-admin", SystemRoles.Administrator);
-        await _factory.SeedUserAsync("roles-assign-target", "roles-assign-target@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync("roles-assign-target", "roles-assign-target@taskflow.com", Password, SystemRoles.Employee);
         var targetId = await DbAsync(db => db.Users.Where(user => user.Username == "roles-assign-target").Select(user => user.Id).SingleAsync());
         var roleId = await AddRoleAsync("Assignable Role", PermissionKeys.WorkloadView);
 
@@ -275,7 +275,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AnUnknownRoleIdIsRejectedWhenAssigningARole()
     {
         var (client, token) = await SignInAsync("roles-assign-bad", SystemRoles.Administrator);
-        await _factory.SeedUserAsync("roles-assign-bad-t", "roles-assign-bad-t@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync("roles-assign-bad-t", "roles-assign-bad-t@taskflow.com", Password, SystemRoles.Employee);
         var targetId = await DbAsync(db => db.Users.Where(user => user.Username == "roles-assign-bad-t").Select(user => user.Id).SingleAsync());
 
         var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{targetId}", token, UserBody("roles-assign-bad-t", 99999));
@@ -288,7 +288,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         var peopleRoleId = await AddRoleAsync("People Managers", PermissionKeys.EmployeesManage, PermissionKeys.EmployeesView);
         var (client, token) = await SignInInRoleAsync("roles-people-mgr", peopleRoleId);
-        await _factory.SeedUserAsync("roles-people-target", "roles-people-target@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync("roles-people-target", "roles-people-target@taskflow.com", Password, SystemRoles.Employee);
         var targetId = await DbAsync(db => db.Users.Where(user => user.Username == "roles-people-target").Select(user => user.Id).SingleAsync());
 
         var promote = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{targetId}", token, UserBody("roles-people-target", SystemRoles.ManagerId));
@@ -324,7 +324,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         employeeCode = (string?)null,
         fullName,
         username,
-        email = $"{username}@taskflow.local",
+        email = $"{username}@taskflow.com",
         roleId,
         departmentId = (int?)null,
         password = (string?)null
@@ -335,7 +335,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         employeeCode = (string?)null,
         fullName = "New Person",
         username,
-        email = $"{username}@taskflow.local",
+        email = $"{username}@taskflow.com",
         password = Password,
         roleId,
         isActive = true,
@@ -367,14 +367,14 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<(HttpClient Client, string Token)> SignInAsync(string username, string role)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, role);
         var client = _factory.CreateClient();
         return (client, await LoginAsync(client, username));
     }
 
     private async Task<(HttpClient Client, string Token)> SignInInRoleAsync(string username, int roleId)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
         await DbAsync(async db =>
         {
             var user = await db.Users.SingleAsync(candidate => candidate.Username == username);

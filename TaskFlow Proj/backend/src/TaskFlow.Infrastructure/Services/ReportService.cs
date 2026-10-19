@@ -76,7 +76,8 @@ public class ReportService : IReportService
 
     private IQueryable<TaskEntity> Scope(ReportFilter filter)
     {
-        var tasks = _dbContext.Tasks.Where(task => !task.IsDeleted);
+        // Users are soft-deleted behind a query filter; reports must keep a deleted person's finished work and name.
+        var tasks = _dbContext.Tasks.IgnoreQueryFilters().Where(task => !task.IsDeleted);
 
         var deadlineFrom = AsUtc(filter.DeadlineFrom);
         if (deadlineFrom is not null)

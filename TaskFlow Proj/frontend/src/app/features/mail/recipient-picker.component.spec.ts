@@ -6,7 +6,7 @@ import { RecipientPickerComponent } from './recipient-picker.component';
 
 describe('RecipientPickerComponent', () => {
   let mail: MailServiceStub;
-  const priya = { id: 3, fullName: 'Priya', email: 'priya@taskflow.local' };
+  const priya = { id: 3, fullName: 'Priya', email: 'priya@taskflow.com' };
 
   beforeEach(() => {
     mail = mailServiceStub();
@@ -44,22 +44,22 @@ describe('RecipientPickerComponent', () => {
     fixture.detectChanges();
 
     expect(mail.contacts).toHaveBeenCalledWith('pri');
-    const option = el(fixture).querySelector('[data-contact="priya@taskflow.local"]') as HTMLElement;
+    const option = el(fixture).querySelector('[data-contact="priya@taskflow.com"]') as HTMLElement;
     option.dispatchEvent(new MouseEvent('mousedown'));
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.local', name: 'Priya', valid: true }]);
-    expect(el(fixture).querySelector('[data-chip="priya@taskflow.local"]')?.textContent).toContain('Priya');
+    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.com', name: 'Priya', valid: true }]);
+    expect(el(fixture).querySelector('[data-chip="priya@taskflow.com"]')?.textContent).toContain('Priya');
   }));
 
   it('accepts a typed address that is a TaskFlow user', () => {
     mail.contacts.and.returnValue(of([priya]));
     const fixture = create();
 
-    type(fixture, 'Priya@TaskFlow.local');
+    type(fixture, 'Priya@taskflow.com');
     enter(fixture);
 
-    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.local', name: 'Priya', valid: true }]);
+    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.com', name: 'Priya', valid: true }]);
     expect(el(fixture).querySelector('[data-error="to"]')).toBeNull();
   });
 
@@ -79,7 +79,7 @@ describe('RecipientPickerComponent', () => {
     mail.contacts.and.returnValue(of([priya]));
     const fixture = create();
 
-    fixture.componentInstance.chips.set([{ email: 'priya@taskflow.local', name: null, valid: null }]);
+    fixture.componentInstance.chips.set([{ email: 'priya@taskflow.com', name: null, valid: null }]);
     fixture.detectChanges();
 
     expect(mail.contacts).toHaveBeenCalledTimes(1);
@@ -89,12 +89,12 @@ describe('RecipientPickerComponent', () => {
   it('removes chips with the button or backspace', () => {
     const fixture = create();
     fixture.componentInstance.chips.set([
-      { email: 'a@taskflow.local', name: 'A', valid: true },
-      { email: 'b@taskflow.local', name: 'B', valid: true }
+      { email: 'a@taskflow.com', name: 'A', valid: true },
+      { email: 'b@taskflow.com', name: 'B', valid: true }
     ]);
     fixture.detectChanges();
 
-    (el(fixture).querySelector('[data-chip="a@taskflow.local"] button') as HTMLButtonElement).click();
+    (el(fixture).querySelector('[data-chip="a@taskflow.com"] button') as HTMLButtonElement).click();
     input(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }));
     fixture.detectChanges();
 
@@ -104,13 +104,13 @@ describe('RecipientPickerComponent', () => {
   it('commits typed text as a chip on demand', () => {
     mail.contacts.and.returnValue(of([priya]));
     const fixture = create();
-    input(fixture).value = 'priya@taskflow.local';
+    input(fixture).value = 'priya@taskflow.com';
     input(fixture).dispatchEvent(new Event('input'));
 
     fixture.componentInstance.commitPending();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.local', name: 'Priya', valid: true }]);
+    expect(fixture.componentInstance.chips()).toEqual([{ email: 'priya@taskflow.com', name: 'Priya', valid: true }]);
     expect(fixture.componentInstance.text()).toBe('');
   });
 });

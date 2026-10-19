@@ -69,7 +69,7 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         {
             FullName = $"{username} full name",
             Username = username,
-            Email = $"{username}@taskflow.local",
+            Email = $"{username}@taskflow.com",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,

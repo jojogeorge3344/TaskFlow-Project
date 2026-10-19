@@ -32,7 +32,7 @@ public class MailSendTests
 
     [Theory]
     [InlineData("someone@gmail.com")]
-    [InlineData("nobody@taskflow.local")]
+    [InlineData("nobody@taskflow.com")]
     public async Task Address_that_is_not_a_taskflow_user_rejects_the_whole_send(string outsider)
     {
         await using var mail = MailTestHarness.Create();
@@ -105,7 +105,7 @@ public class MailSendTests
     public void Validator_enforces_lengths_recipient_count_and_address_shape()
     {
         var validator = new SendMailRequestValidator();
-        var valid = new SendMailRequest(["a@taskflow.local"], null, "Hi", "Body", null);
+        var valid = new SendMailRequest(["a@taskflow.com"], null, "Hi", "Body", null);
 
         validator.TestValidate(valid).ShouldNotHaveAnyValidationErrors();
         validator.TestValidate(valid with { Body = new string('x', MailRules.MaxBodyLength + 1) })
@@ -114,7 +114,7 @@ public class MailSendTests
             .ShouldHaveValidationErrorFor(request => request.Subject);
         validator.TestValidate(valid with { Subject = "", Body = " " }).IsValid.ShouldBeFalse();
         validator.TestValidate(valid with { To = [] }).IsValid.ShouldBeFalse();
-        validator.TestValidate(valid with { To = Enumerable.Range(0, 51).Select(i => $"u{i}@taskflow.local").ToList() })
+        validator.TestValidate(valid with { To = Enumerable.Range(0, 51).Select(i => $"u{i}@taskflow.com").ToList() })
             .IsValid.ShouldBeFalse();
         validator.TestValidate(valid with { To = ["not an address"] }).IsValid.ShouldBeFalse();
         validator.TestValidate(valid with { AttachmentIds = [1, 2, 3, 4, 5, 6] })

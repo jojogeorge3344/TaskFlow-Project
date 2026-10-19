@@ -29,8 +29,16 @@ import { initials } from '../../shared/ui/initials';
         <dd>{{ employee().email }}</dd>
         <dt>Role</dt>
         <dd><span [class]="roleBadgeClass(employee().role)">{{ employee().role }}</span></dd>
-        <dt>Department</dt>
+        <dt>Project</dt>
         <dd>{{ employee().departmentName || 'Unassigned' }}</dd>
+        <dt>Manager</dt>
+        <dd data-field="manager">{{ employee().managerName || 'None' }}</dd>
+        @if (employee().role === 'Manager') {
+          <dt>Manages projects</dt>
+          <dd data-field="managed-departments">{{ managedDepartments() }}</dd>
+          <dt>Team</dt>
+          <dd data-field="team">{{ team() }}</dd>
+        }
         <dt>Status</dt>
         <dd>
           <span class="tf-badge" [class.tf-badge--active]="employee().isActive" [class.tf-badge--inactive]="!employee().isActive">
@@ -96,4 +104,12 @@ export class EmployeeDetailsPanelComponent {
   readonly closed = output<void>();
 
   readonly avatar = computed(() => initials(this.employee().fullName));
+
+  readonly managedDepartments = computed(
+    () => (this.employee().managerDepartments ?? []).map((department) => department.name).join(', ') || 'None'
+  );
+
+  readonly team = computed(
+    () => (this.employee().reports ?? []).map((report) => report.fullName).join(', ') || 'No one yet'
+  );
 }

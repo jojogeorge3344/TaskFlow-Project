@@ -46,7 +46,7 @@ describe('AiProviderSettingsComponent', () => {
   const user = signal<AuthUser | null>(null);
 
   function asRole(role: AuthUser['role']): void {
-    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role, employeeCode: null, permissions: systemPermissions(role) });
+    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.com', role, employeeCode: null, permissions: systemPermissions(role) });
   }
 
   function el(): HTMLElement {

@@ -51,7 +51,7 @@ public class RolesMigrationTests : IDisposable
                     "INSERT INTO \"Users\" (\"FullName\", \"Username\", \"Email\", \"PasswordHash\", \"SecurityStamp\", \"Role\", \"IsActive\", \"CreatedAt\", \"UpdatedAt\", \"IsDeleted\") "
                     + "VALUES ({0}, {0}, {1}, 'hash', 'stamp-before', {2}, 1, '2026-10-01', '2026-10-01', 0)",
                     name,
-                    $"{name}@taskflow.local",
+                    $"{name}@taskflow.com",
                     role);
             }
         }

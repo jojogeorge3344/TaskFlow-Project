@@ -9,7 +9,7 @@ import { MailServiceStub, detail, mailServiceStub } from './mail-test-data';
 describe('ComposeDialogComponent', () => {
   let mail: MailServiceStub;
   let toast: jasmine.SpyObj<ToastService>;
-  const priya = { email: 'priya@taskflow.local', name: 'Priya', valid: true };
+  const priya = { email: 'priya@taskflow.com', name: 'Priya', valid: true };
 
   beforeEach(() => {
     mail = mailServiceStub();
@@ -49,7 +49,7 @@ describe('ComposeDialogComponent', () => {
     click(fixture, 'send');
 
     expect(mail.send).toHaveBeenCalledWith({
-      to: ['priya@taskflow.local'],
+      to: ['priya@taskflow.com'],
       cc: [],
       subject: 'Hello',
       body: 'Body text',
@@ -89,8 +89,8 @@ describe('ComposeDialogComponent', () => {
     mail.compose.and.returnValue(of({
       mode: 'ReplyAll',
       parentItemId: 8,
-      to: ['ravi@taskflow.local', 'asha@taskflow.local'],
-      cc: ['kiran@taskflow.local'],
+      to: ['ravi@taskflow.com', 'asha@taskflow.com'],
+      cc: ['kiran@taskflow.com'],
       subject: 'Re: Kickoff',
       body: '\n\nOn 17 Oct 2026, Ravi wrote:\n> Agenda',
       forwardedAttachments: []
@@ -98,14 +98,14 @@ describe('ComposeDialogComponent', () => {
     const fixture = create({ kind: 'reply', itemId: 8, mode: 'ReplyAll' });
 
     expect(mail.compose).toHaveBeenCalledWith(8, 'ReplyAll');
-    expect(fixture.componentInstance.to().map((chip) => chip.email)).toEqual(['ravi@taskflow.local', 'asha@taskflow.local']);
+    expect(fixture.componentInstance.to().map((chip) => chip.email)).toEqual(['ravi@taskflow.com', 'asha@taskflow.com']);
     expect(fixture.componentInstance.showCc()).toBeTrue();
     expect(fixture.componentInstance.subject.value).toBe('Re: Kickoff');
     expect(el(fixture).querySelector('#tf-drawer-title')?.textContent).toContain('Reply all');
 
     click(fixture, 'send');
 
-    expect(mail.send).toHaveBeenCalledWith(jasmine.objectContaining({ parentItemId: 8, mode: 'ReplyAll', cc: ['kiran@taskflow.local'] }));
+    expect(mail.send).toHaveBeenCalledWith(jasmine.objectContaining({ parentItemId: 8, mode: 'ReplyAll', cc: ['kiran@taskflow.com'] }));
   });
 
   it('shows the files a forward carries along', () => {
@@ -126,22 +126,22 @@ describe('ComposeDialogComponent', () => {
 
   it('continues a draft and saves it again', () => {
     mail.open.and.returnValue(of(detail(
-      { folder: 'Drafts', draftTo: 'priya@taskflow.local, oops', draftCc: null },
+      { folder: 'Drafts', draftTo: 'priya@taskflow.com, oops', draftCc: null },
       { messageId: 40, subject: 'Plan', body: 'v1', attachments: [{ id: 2, fileName: 'a.txt', contentType: 'text/plain', sizeBytes: 3 }] }
     )));
-    mail.contacts.and.callFake((email: string) => of(email === 'priya@taskflow.local' ? [{ id: 3, fullName: 'Priya', email }] : []));
+    mail.contacts.and.callFake((email: string) => of(email === 'priya@taskflow.com' ? [{ id: 3, fullName: 'Priya', email }] : []));
     const fixture = create({ kind: 'draft', itemId: 11 });
 
     expect(fixture.componentInstance.subject.value).toBe('Plan');
     expect(fixture.componentInstance.attachments().map((file) => file.id)).toEqual([2]);
     expect(fixture.componentInstance.to().map((chip) => [chip.email, chip.valid])).toEqual([
-      ['priya@taskflow.local', true],
+      ['priya@taskflow.com', true],
       ['oops', false]
     ]);
 
     click(fixture, 'save-draft');
 
-    expect(mail.updateDraft).toHaveBeenCalledWith(40, jasmine.objectContaining({ to: ['priya@taskflow.local', 'oops'], attachmentIds: [2] }));
+    expect(mail.updateDraft).toHaveBeenCalledWith(40, jasmine.objectContaining({ to: ['priya@taskflow.com', 'oops'], attachmentIds: [2] }));
     expect(toast.success).toHaveBeenCalledWith('Draft saved');
   });
 
@@ -150,7 +150,7 @@ describe('ComposeDialogComponent', () => {
     fixture.componentInstance.to.set([priya]);
     write(fixture, 'Later', '');
     click(fixture, 'save-draft');
-    expect(mail.createDraft).toHaveBeenCalledWith(jasmine.objectContaining({ subject: 'Later', to: ['priya@taskflow.local'] }));
+    expect(mail.createDraft).toHaveBeenCalledWith(jasmine.objectContaining({ subject: 'Later', to: ['priya@taskflow.com'] }));
 
     TestBed.resetTestingModule();
     mail.open.and.returnValue(of(detail({ folder: 'Drafts' }, { messageId: 40 })));
@@ -192,7 +192,7 @@ describe('ComposeDialogComponent', () => {
   it('shows server field errors next to their fields', () => {
     mail.send.and.returnValue(throwError(() => new HttpErrorResponse({
       status: 400,
-      error: { errors: { To: ['Not an active TaskFlow user: gone@taskflow.local.'] } }
+      error: { errors: { To: ['Not an active TaskFlow user: gone@taskflow.com.'] } }
     })));
     const fixture = create();
     fixture.componentInstance.to.set([priya]);
@@ -200,7 +200,7 @@ describe('ComposeDialogComponent', () => {
 
     click(fixture, 'send');
 
-    expect(el(fixture).querySelector('[data-error="To"]')?.textContent).toContain('gone@taskflow.local');
+    expect(el(fixture).querySelector('[data-error="To"]')?.textContent).toContain('gone@taskflow.com');
   });
 
   function typeInTo(fixture: ComponentFixture<ComposeDialogComponent>, text: string): void {
@@ -211,18 +211,18 @@ describe('ComposeDialogComponent', () => {
   }
 
   it('includes an address still being typed when Send is clicked', () => {
-    mail.contacts.and.callFake((email: string) => of(email === 'kiran@taskflow.local' ? [{ id: 4, fullName: 'Kiran', email }] : []));
+    mail.contacts.and.callFake((email: string) => of(email === 'kiran@taskflow.com' ? [{ id: 4, fullName: 'Kiran', email }] : []));
     const fixture = create();
     fixture.componentInstance.to.set([priya]);
     write(fixture, 'Hello', 'Body');
-    typeInTo(fixture, 'kiran@taskflow.local');
+    typeInTo(fixture, 'kiran@taskflow.com');
 
     click(fixture, 'send');
     fixture.detectChanges();
     fixture.detectChanges();
 
     expect(mail.send).toHaveBeenCalledTimes(1);
-    expect(mail.send.calls.mostRecent().args[0].to).toEqual(['priya@taskflow.local', 'kiran@taskflow.local']);
+    expect(mail.send.calls.mostRecent().args[0].to).toEqual(['priya@taskflow.com', 'kiran@taskflow.com']);
     expect(fixture.componentInstance.sendWhenChecked()).toBeFalse();
   });
 
@@ -244,10 +244,10 @@ describe('ComposeDialogComponent', () => {
 
   it('keeps a typed address when saving a draft', () => {
     const fixture = create();
-    typeInTo(fixture, 'half-typed@taskflow.local');
+    typeInTo(fixture, 'half-typed@taskflow.com');
 
     click(fixture, 'save-draft');
 
-    expect(mail.createDraft).toHaveBeenCalledWith(jasmine.objectContaining({ to: ['half-typed@taskflow.local'] }));
+    expect(mail.createDraft).toHaveBeenCalledWith(jasmine.objectContaining({ to: ['half-typed@taskflow.com'] }));
   });
 });

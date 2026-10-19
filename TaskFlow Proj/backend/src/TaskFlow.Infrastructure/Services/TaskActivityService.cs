@@ -77,6 +77,7 @@ public class TaskActivityService : ITaskActivityService
         }
 
         var entries = await query
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(log => log.Actor)
             .OrderBy(log => log.CreatedAt)
             .ToListAsync(cancellationToken);

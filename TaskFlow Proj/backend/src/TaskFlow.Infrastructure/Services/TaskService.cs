@@ -77,6 +77,7 @@ public class TaskService : ITaskService
     {
         var now = Now;
         var tasks = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .OrderBy(task => task.Deadline)
             .ToListAsync(cancellationToken);
@@ -136,6 +137,7 @@ public class TaskService : ITaskService
 
         var now = Now;
         var tasks = await query
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
             .OrderBy(task => task.Deadline)
@@ -155,6 +157,7 @@ public class TaskService : ITaskService
         CancellationToken cancellationToken)
     {
         var assignees = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Select(task => new { task.AssignedToUserId, task.AssignedTo!.FullName })
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -591,11 +594,40 @@ public class TaskService : ITaskService
         return true;
     }
 
+    public async Task<bool> DeleteAsync(int taskId, int currentUserId, CancellationToken cancellationToken)
+    {
+        var task = await _dbContext.Tasks
+            .FirstOrDefaultAsync(candidate => candidate.Id == taskId && !candidate.IsDeleted, cancellationToken);
+        if (task is null)
+        {
+            return false;
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        task.IsDeleted = true;
+        task.UpdatedAt = Now;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Comments and earlier history stay; this entry says who removed the task and when.
+        await _activityService.AppendAsync(
+            task.Id,
+            TaskActivityEventType.Deleted,
+            currentUserId,
+            "Task deleted",
+            oldValue: task.Title,
+            cancellationToken: cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     private static IReadOnlyCollection<int> recipientIds(IReadOnlyCollection<TaskRecipientDto> recipients) =>
         recipients.Select(recipient => recipient.UserId).ToList();
 
     private async Task<TaskEntity?> LoadTaskAsync(int taskId, CancellationToken cancellationToken) =>
         await _dbContext.Tasks
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
             .FirstOrDefaultAsync(task => task.Id == taskId && !task.IsDeleted, cancellationToken);

@@ -60,22 +60,29 @@
 
         <div class="tf-field">
           <label for="profile-email">Email address <span class="tf-field__required" aria-hidden="true">*</span></label>
-          <input
-            id="profile-email"
-            class="tf-input"
-            type="email"
-            formControlName="email"
-            data-field="email"
-            [class.is-invalid]="!!fieldError('email')"
-            [attr.aria-invalid]="!!fieldError('email')"
-            [attr.aria-describedby]="fieldError('email') ? 'profile-email-error' : null"
-          />
+          <div class="tf-input-group">
+            <input
+              id="profile-email"
+              class="tf-input"
+              type="text"
+              appEmailLocalPart
+              formControlName="email"
+              data-field="email"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              [class.is-invalid]="!!fieldError('email')"
+              [attr.aria-invalid]="!!fieldError('email')"
+              [attr.aria-describedby]="fieldError('email') ? 'profile-email-suffix profile-email-error' : 'profile-email-suffix'"
+            />
+            <span id="profile-email-suffix" class="tf-input-group__suffix" data-email-suffix>{{ emailSuffix }}</span>
+          </div>
           @if (fieldError('email'); as message) {
             <span id="profile-email-error" class="tf-field__error" data-error="email">{{ message }}</span>
           }
         </div>
 
-        <p class="tf-field__hint">Your role, department, username and account status are managed by an Administrator.</p>
+        <p class="tf-field__hint">Your role, project, username and account status are managed by an Administrator.</p>
 
         <div class="tf-form-actions">
           @if (savedAt()) {

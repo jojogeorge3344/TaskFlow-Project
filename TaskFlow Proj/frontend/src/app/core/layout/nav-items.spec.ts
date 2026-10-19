@@ -55,12 +55,12 @@ describe('buildNavigation', () => {
       expect(child(communication.children!, 'Mail').badge).toBe('mail');
     });
 
-    it('groups Employee Management and Department Management under TaskFlow Management', () => {
+    it('groups Employee Management and Project Management under TaskFlow Management', () => {
       const taskflow = child(admin, 'TaskFlow Management');
       expect(taskflow.route).toBeUndefined();
       expect(taskflow.children!.map((item) => item.label)).toEqual([
         'Employee Management',
-        'Department Management'
+        'Project Management'
       ]);
       expect(taskflow.children!.map((item) => item.route)).toEqual(['/employees', '/departments']);
     });
@@ -190,7 +190,7 @@ describe('buildNavigation', () => {
         'My Profile'
       ]);
       expect(child(nav, 'TaskFlow Monitoring').children!.map((item) => item.label)).toEqual(['Task Management', 'Employee Workload', 'Board']);
-      expect(child(nav, 'TaskFlow Management').children!.map((item) => item.label)).toEqual(['Department Management']);
+      expect(child(nav, 'TaskFlow Management').children!.map((item) => item.label)).toEqual(['Project Management']);
       expect(child(nav, 'Settings').children!.map((item) => item.label)).toEqual(['Reminder Settings']);
     });
 

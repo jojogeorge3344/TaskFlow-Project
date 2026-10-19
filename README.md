@@ -23,12 +23,23 @@ these well-known passwords; set `Seed:Enabled` to `true` yourself, together with
 
 | Role | Email | Password | Lands on |
 |---|---|---|---|
-| Administrator | `admin@taskflow.local` | `123456` | `/admin` |
-| Manager | `manager@taskflow.local` | `123456` | `/manager` |
-| Employee | `employee@taskflow.local` | `123456` | `/me` |
+| Administrator | `admin@taskflow.com` | `123456` | `/admin` |
+| Manager | `manager@taskflow.com` | `123456` | `/manager` |
+| Employee | `employee@taskflow.com` | `123456` | `/me` |
 
 These are development defaults. Change the passwords after signing in, or set `Seed:AdministratorPassword`,
 `Seed:ManagerPassword` and `Seed:EmployeePassword` before the first run, for anything beyond local use.
+
+### Email addresses are on one fixed domain
+
+Every employee email ends in `@taskflow.com`. The screens show that suffix as fixed text and you type only the part before it; the
+API rejects any other domain, and two people cannot share the same part before the `@`, even if one of them is deleted.
+
+**Upgrading an existing database is a breaking change for sign-in.** The first start after the upgrade rewrites every existing email
+to `<name>@taskflow.com`, keeping the part before the `@` (so `ravi@gmail.com` becomes `ravi@taskflow.com`). If two users would end
+up with the same name, the one created later gets a number (`jo@gmail.com` and `jo@yahoo.com` become `jo@taskflow.com` and
+`jo2@taskflow.com`). Passwords and usernames are unchanged, so users can also sign in with their username. The original domains are
+not stored and cannot be restored, so **back up the database file before upgrading**.
 
 ## Roles and permissions
 

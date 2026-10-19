@@ -24,13 +24,13 @@ public class LastAdministratorTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task TheOnlyActiveAdministratorCannotBeMovedToAnotherRoleButCanOnceAnotherExists()
     {
-        await _factory.SeedUserAsync("last-admin", "last-admin@taskflow.local", Password, SystemRoles.Administrator);
+        await _factory.SeedUserAsync("last-admin", "last-admin@taskflow.com", Password, SystemRoles.Administrator);
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "last-admin");
         var adminId = await UserIdAsync("last-admin");
 
         var blocked = await PutUserAsync(client, token, adminId, "last-admin", SystemRoles.EmployeeId);
-        await _factory.SeedUserAsync("second-admin", "second-admin@taskflow.local", Password, SystemRoles.Administrator);
+        await _factory.SeedUserAsync("second-admin", "second-admin@taskflow.com", Password, SystemRoles.Administrator);
         var allowed = await PutUserAsync(client, token, await UserIdAsync("second-admin"), "second-admin", SystemRoles.EmployeeId);
 
         Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
@@ -48,7 +48,7 @@ public class LastAdministratorTests : IClassFixture<TaskFlowApiFactory>
             employeeCode = (string?)null,
             fullName = "Updated Name",
             username,
-            email = $"{username}@taskflow.local",
+            email = $"{username}@taskflow.com",
             roleId,
             departmentId = (int?)null,
             password = (string?)null

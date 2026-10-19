@@ -15,7 +15,7 @@ describe('ProfileComponent', () => {
     employeeCode: 'EMP-3',
     fullName: 'Jo Jo',
     username: 'jojo',
-    email: 'jojo@taskflow.local',
+    email: 'jojo@taskflow.com',
     role: 'Employee',
     roleId: 3,
     isActive: true,
@@ -73,22 +73,48 @@ describe('ProfileComponent', () => {
 
     expect(getSpy).toHaveBeenCalled();
     expect(input(fixture, 'fullName').value).toBe('Jo Jo');
-    expect(input(fixture, 'email').value).toBe('jojo@taskflow.local');
+    expect(input(fixture, 'email').value).toBe('jojo');
+    expect(el(fixture).querySelector('[data-email-suffix]')?.textContent?.trim()).toBe('@taskflow.com');
     expect(el(fixture).querySelector('[data-field="readonly-Username"]')?.textContent?.trim()).toBe('jojo');
     expect(el(fixture).querySelector('[data-field="readonly-Role"]')?.textContent?.trim()).toBe('Employee');
-    expect(el(fixture).querySelector('[data-field="readonly-Department"]')?.textContent?.trim()).toBe('Engineering');
+    expect(el(fixture).querySelector('[data-field="readonly-Project"]')?.textContent?.trim()).toBe('Engineering');
     expect(el(fixture).querySelector('[data-field="readonly-Account status"]')?.textContent?.trim()).toBe('Active');
   });
 
+  it('shows the employee their own manager', () => {
+    getSpy.and.returnValue(of({ ...me, managerId: 20, managerName: 'Anupama Nair' }));
+    const fixture = create();
+
+    expect(el(fixture).querySelector('[data-field="readonly-Manager"]')?.textContent?.trim()).toBe('Anupama Nair');
+    expect(el(fixture).querySelector('[data-field="readonly-Team"]')).toBeNull();
+  });
+
+  it('shows a manager their departments and team', () => {
+    getSpy.and.returnValue(
+      of({
+        ...me,
+        role: 'Manager',
+        roleId: 2,
+        managerDepartments: [{ id: 1, name: 'Engineering' }],
+        reports: [{ id: 9, fullName: 'Sara' }]
+      })
+    );
+    const fixture = create();
+
+    expect(el(fixture).querySelector('[data-field="readonly-Manager"]')?.textContent?.trim()).toBe('—');
+    expect(el(fixture).querySelector('[data-field="readonly-Managed projects"]')?.textContent?.trim()).toBe('Engineering');
+    expect(el(fixture).querySelector('[data-field="readonly-Team"]')?.textContent?.trim()).toBe('Sara');
+  });
+
   it('saves the self-edit and refreshes the cached session user', () => {
-    const updated: User = { ...me, fullName: 'Joanna Jo', email: 'joanna@taskflow.local' };
+    const updated: User = { ...me, fullName: 'Joanna Jo', email: 'joanna@taskflow.com' };
     updateSpy.and.returnValue(of(updated));
     const fixture = create();
 
-    fixture.componentInstance.form.patchValue({ fullName: 'Joanna Jo', email: 'joanna@taskflow.local' });
+    fixture.componentInstance.form.patchValue({ fullName: 'Joanna Jo', email: 'joanna' });
     submit(fixture, 'save');
 
-    expect(updateSpy).toHaveBeenCalledOnceWith({ fullName: 'Joanna Jo', email: 'joanna@taskflow.local' });
+    expect(updateSpy).toHaveBeenCalledOnceWith({ fullName: 'Joanna Jo', email: 'joanna@taskflow.com' });
     expect(authService.applyProfile).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith('Profile updated');
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
@@ -111,12 +137,29 @@ describe('ProfileComponent', () => {
   it('blocks a malformed email client-side', () => {
     const fixture = create();
 
-    fixture.componentInstance.form.controls.email.setValue('not-an-email');
+    fixture.componentInstance.form.controls.email.setValue('bad name!');
     fixture.detectChanges();
     submit(fixture, 'save');
 
     expect(updateSpy).not.toHaveBeenCalled();
-    expect(el(fixture).querySelector('[data-error="email"]')?.textContent).toContain('valid email');
+    expect(el(fixture).querySelector('[data-error="email"]')?.textContent).toContain('before @taskflow.com');
+  });
+
+  it('keeps only the part before the @ when a full address is typed or pasted', () => {
+    const updated: User = { ...me, email: 'joanna@taskflow.com' };
+    updateSpy.and.returnValue(of(updated));
+    const fixture = create();
+    const field = input(fixture, 'email');
+
+    field.value = 'Joanna@other.com';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(field.value).toBe('joanna');
+    expect(el(fixture).querySelector('[data-email-suffix]')?.textContent?.trim()).toBe('@taskflow.com');
+
+    submit(fixture, 'save');
+    expect(updateSpy).toHaveBeenCalledOnceWith(jasmine.objectContaining({ email: 'joanna@taskflow.com' }));
   });
 
   it('requires matching password confirmation', () => {

@@ -7,8 +7,8 @@ export function listItem(overrides: Partial<MailListItem> = {}): MailListItem {
     itemId: 1,
     messageId: 10,
     folder: 'Inbox',
-    from: { userId: 2, name: 'Ravi Manager', email: 'ravi@taskflow.local' },
-    to: [{ userId: 3, name: 'Priya', email: 'priya@taskflow.local' }],
+    from: { userId: 2, name: 'Ravi Manager', email: 'ravi@taskflow.com' },
+    to: [{ userId: 3, name: 'Priya', email: 'priya@taskflow.com' }],
     draftTo: null,
     subject: 'Weekly report',
     preview: 'Please review',
@@ -26,8 +26,8 @@ export function listItem(overrides: Partial<MailListItem> = {}): MailListItem {
 export function message(overrides: Partial<MailMessage> = {}): MailMessage {
   return {
     messageId: 10,
-    from: { userId: 2, name: 'Ravi Manager', email: 'ravi@taskflow.local' },
-    to: [{ userId: 3, name: 'Priya', email: 'priya@taskflow.local' }],
+    from: { userId: 2, name: 'Ravi Manager', email: 'ravi@taskflow.com' },
+    to: [{ userId: 3, name: 'Priya', email: 'priya@taskflow.com' }],
     cc: [],
     subject: 'Weekly report',
     body: 'Please review',

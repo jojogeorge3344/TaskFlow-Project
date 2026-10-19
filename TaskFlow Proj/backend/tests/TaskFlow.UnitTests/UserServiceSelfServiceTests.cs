@@ -50,31 +50,31 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     [Fact]
     public async Task UpdateOwnProfile_ChangesNameAndEmail()
     {
-        var user = AddUser("self1", "self1@taskflow.local");
+        var user = AddUser("self1", "self1@taskflow.com");
 
-        var dto = await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("New Name", "new@taskflow.local"));
+        var dto = await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("New Name", "new@taskflow.com"));
 
         Assert.NotNull(dto);
         Assert.Equal("New Name", dto!.FullName);
-        Assert.Equal("new@taskflow.local", dto.Email);
+        Assert.Equal("new@taskflow.com", dto.Email);
     }
 
     [Fact]
     public async Task UpdateOwnProfile_RejectsDuplicateEmail()
     {
-        var user = AddUser("self2", "self2@taskflow.local");
-        AddUser("other", "other@taskflow.local");
+        var user = AddUser("self2", "self2@taskflow.com");
+        AddUser("other", "other@taskflow.com");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Self 2", "other@taskflow.local")));
+            _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Self 2", "other@taskflow.com")));
     }
 
     [Fact]
     public async Task UpdateOwnProfile_LeavesRestrictedFieldsUntouched()
     {
-        var user = AddUser("self3", "self3@taskflow.local", SystemRoles.Employee);
+        var user = AddUser("self3", "self3@taskflow.com", SystemRoles.Employee);
 
-        await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Renamed", "self3b@taskflow.local"));
+        await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Renamed", "self3b@taskflow.com"));
 
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.Equal("self3", reloaded.Username);
@@ -86,7 +86,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     [Fact]
     public async Task ChangeOwnPassword_WrongCurrentPassword_IsRejected()
     {
-        var user = AddUser("self4", "self4@taskflow.local");
+        var user = AddUser("self4", "self4@taskflow.com");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _service.ChangeOwnPasswordAsync(user.Id, new ChangePasswordRequest("wrong", "N3wP@ss!")));
@@ -99,7 +99,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     [Fact]
     public async Task ChangeOwnPassword_CorrectCurrentPassword_UpdatesAndEndsSessions()
     {
-        var user = AddUser("self5", "self5@taskflow.local");
+        var user = AddUser("self5", "self5@taskflow.com");
         var originalStamp = user.SecurityStamp;
         _db.RefreshTokens.Add(new RefreshToken
         {
@@ -125,7 +125,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     [Fact]
     public async Task SelfService_OnUnknownUser_ReturnsNull()
     {
-        Assert.Null(await _service.UpdateOwnProfileAsync(9999, new UpdateOwnProfileRequest("X", "x@taskflow.local"), CancellationToken.None));
+        Assert.Null(await _service.UpdateOwnProfileAsync(9999, new UpdateOwnProfileRequest("X", "x@taskflow.com"), CancellationToken.None));
         Assert.Null(await _service.ChangeOwnPasswordAsync(9999, new ChangePasswordRequest("a", "bbbbbb"), CancellationToken.None));
     }
 

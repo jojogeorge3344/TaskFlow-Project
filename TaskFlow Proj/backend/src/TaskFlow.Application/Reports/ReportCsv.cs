@@ -15,7 +15,7 @@ public static class ReportCsv
         "TaskCode",
         "Title",
         "Assignee",
-        "Department",
+        "Project",
         "Priority",
         "Status",
         "StartDate",

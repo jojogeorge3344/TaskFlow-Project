@@ -42,7 +42,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<(HttpClient Client, string Token, int Id, string Email)> SignInAsync(string prefix, string role, int? departmentId = null)
     {
         var username = Name(prefix);
-        var email = $"{username}@taskflow.local";
+        var email = $"{username}@taskflow.com";
         await _factory.SeedUserAsync(username, email, "P@ssw0rd!", role);
 
         using var scope = _factory.Services.CreateScope();

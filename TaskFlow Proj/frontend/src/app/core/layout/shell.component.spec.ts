@@ -32,7 +32,7 @@ describe('ShellComponent', () => {
       id: 1,
       fullName: 'Test User',
       username: 'test',
-      email: 'test@taskflow.local',
+      email: 'test@taskflow.com',
       role,
       employeeCode: null,
       permissions: systemPermissions(role)
@@ -146,7 +146,7 @@ describe('ShellComponent', () => {
       'Employee Workload',
       'Board',
       'Employee Management',
-      'Department Management',
+      'Project Management',
       'Mail',
       'Notifications',
       'Reports',
@@ -187,7 +187,7 @@ describe('ShellComponent', () => {
       );
     };
     expect(childrenOf(0)).toEqual(['Task Management', 'Employee Workload', 'Board']);
-    expect(childrenOf(1)).toEqual(['Employee Management', 'Department Management']);
+    expect(childrenOf(1)).toEqual(['Employee Management', 'Project Management']);
     expect(childrenOf(2)).toEqual(['Mail', 'Notifications']);
     expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'TFA Settings', 'Role Configuration']);
   });

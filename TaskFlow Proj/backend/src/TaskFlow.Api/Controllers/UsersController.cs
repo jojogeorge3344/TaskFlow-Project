@@ -207,5 +207,43 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>Choosing departments for a manager and a manager for an employee is Administrator-only.</summary>
+    [HttpPut("{id}/assignments")]
+    [RequirePermission(PermissionKeys.RolesManage)]
+    public async Task<ActionResult<UserDto>> UpdateAssignments(int id, [FromBody] ManagerAssignmentRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var user = await _userService.UpdateManagerAssignmentsAsync(id, request, cancellationToken);
+            return user is null ? NotFound() : Ok(user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>Deleting an employee is Administrator-only. roles.manage is the permission only Administrators can hold,
+    /// so it gates this without a new grantable permission; employees.manage alone is not enough.</summary>
+    [HttpDelete("{id}")]
+    [RequirePermission(PermissionKeys.RolesManage)]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var deleted = await _userService.DeleteAsync(id, currentUserId, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesManage);
 }

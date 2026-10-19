@@ -59,9 +59,9 @@
       </select>
     </div>
     <div class="tf-field">
-      <label for="report-filter-department">Department</label>
+      <label for="report-filter-department">Project</label>
       <select id="report-filter-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
-        <option value="" [selected]="departmentId() === null">All departments</option>
+        <option value="" [selected]="departmentId() === null">All projects</option>
         @for (department of departments(); track department.id) {
           <option [value]="department.id" [selected]="department.id === departmentId()">
             {{ department.name }}

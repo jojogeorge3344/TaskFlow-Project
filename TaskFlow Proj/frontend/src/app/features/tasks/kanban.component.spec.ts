@@ -71,7 +71,7 @@ describe('KanbanComponent', () => {
       id: 1,
       fullName: 'Test User',
       username: 'test',
-      email: 'test@taskflow.local',
+      email: 'test@taskflow.com',
       role,
       employeeCode: null,
       permissions: systemPermissions(role)

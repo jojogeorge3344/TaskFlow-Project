@@ -24,13 +24,13 @@ public class LastAdministratorStatusTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task TheOnlyActiveAdministratorCannotBeDeactivatedButCanOnceAnotherExists()
     {
-        await _factory.SeedUserAsync("status-admin", "status-admin@taskflow.local", Password, SystemRoles.Administrator);
+        await _factory.SeedUserAsync("status-admin", "status-admin@taskflow.com", Password, SystemRoles.Administrator);
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "status-admin");
         var adminId = await UserIdAsync("status-admin");
 
         var blocked = await PatchStatusAsync(client, token, adminId, isActive: false);
-        await _factory.SeedUserAsync("status-admin-2", "status-admin-2@taskflow.local", Password, SystemRoles.Administrator);
+        await _factory.SeedUserAsync("status-admin-2", "status-admin-2@taskflow.com", Password, SystemRoles.Administrator);
         var allowed = await PatchStatusAsync(client, token, await UserIdAsync("status-admin-2"), isActive: false);
 
         Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);

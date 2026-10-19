@@ -43,8 +43,8 @@ public static class PermissionCatalog
         new(PermissionKeys.DashboardAdmin, "Administrator dashboard", "Open the organization-wide administrator dashboard.", "Dashboards", false, false),
         new(PermissionKeys.DashboardManager, "Manager dashboard", "Open the manager dashboard for the team.", "Dashboards", true, false),
 
-        new(PermissionKeys.DepartmentsView, "View departments", "See departments and the employees in them.", "Departments", true, false),
-        new(PermissionKeys.DepartmentsManage, "Manage departments", "Create, rename and delete departments.", "Departments", false, false),
+        new(PermissionKeys.DepartmentsView, "View projects", "See projects and the employees in them.", "Projects", true, false),
+        new(PermissionKeys.DepartmentsManage, "Manage projects", "Create, rename and delete projects.", "Projects", false, false),
 
         new(PermissionKeys.EmployeesView, "View employees", "See the employee list and employee details.", "Employees", true, false),
         new(PermissionKeys.EmployeesManage, "Manage employees", "Create and edit employees, activate or deactivate them and change their role.", "Employees", false, false),

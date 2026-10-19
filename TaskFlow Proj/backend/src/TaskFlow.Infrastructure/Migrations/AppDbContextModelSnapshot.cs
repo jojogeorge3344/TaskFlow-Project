@@ -460,6 +460,21 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("MailboxItems");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ManagerDepartment", b =>
+                {
+                    b.Property<int>("ManagerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ManagerUserId", "DepartmentId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("ManagerDepartments");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -854,6 +869,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ManagerId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -880,6 +898,8 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("ManagerId");
 
                     b.HasIndex("RoleId");
 
@@ -1007,6 +1027,25 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Message");
 
                     b.Navigation("OwnerUser");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ManagerDepartment", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Manager")
+                        .WithMany("ManagerDepartments")
+                        .HasForeignKey("ManagerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Manager");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
@@ -1166,6 +1205,11 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Manager")
+                        .WithMany("Reports")
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
@@ -1173,6 +1217,8 @@ namespace TaskFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Department");
+
+                    b.Navigation("Manager");
 
                     b.Navigation("Role");
                 });
@@ -1208,7 +1254,11 @@ namespace TaskFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
+                    b.Navigation("ManagerDepartments");
+
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("Reports");
                 });
 #pragma warning restore 612, 618
         }

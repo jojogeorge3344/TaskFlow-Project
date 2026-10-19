@@ -44,19 +44,29 @@
 
     <div class="tf-field">
       <label for="emp-email">Email <span class="tf-field__required" aria-hidden="true">*</span></label>
-      <input
-        id="emp-email"
-        class="tf-input"
-        type="email"
-        formControlName="email"
-        autocomplete="off"
-        [class.is-invalid]="showError('email')"
-        [attr.aria-invalid]="showError('email')"
-        aria-describedby="emp-email-error"
-      />
+      <div class="tf-input-group">
+        <input
+          id="emp-email"
+          class="tf-input"
+          type="text"
+          appEmailLocalPart
+          formControlName="email"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          [class.is-invalid]="showError('email')"
+          [attr.aria-invalid]="showError('email')"
+          aria-describedby="emp-email-suffix emp-email-error"
+        />
+        <span id="emp-email-suffix" class="tf-input-group__suffix" data-email-suffix>{{ emailSuffix }}</span>
+      </div>
       @if (showError('email')) {
         <span id="emp-email-error" class="tf-field__error">
-          {{ form.controls.email.hasError('required') ? 'Email is required.' : 'Enter a valid email address.' }}
+          {{
+            form.controls.email.hasError('required')
+              ? 'Email is required.'
+              : 'Use letters, digits, dot, underscore or hyphen before ' + emailSuffix + '.'
+          }}
         </span>
       }
     </div>
@@ -79,7 +89,7 @@
         }
       </div>
       <div class="tf-field">
-        <label for="emp-department">Department</label>
+        <label for="emp-department">Project</label>
         <select id="emp-department" class="tf-select" formControlName="departmentId">
           <option [ngValue]="null">Unassigned</option>
           @for (department of departments(); track department.id) {
@@ -88,6 +98,39 @@
         </select>
       </div>
     </div>
+
+    @if (canAssign()) {
+      <div class="tf-form-grid">
+        <div class="tf-field">
+          <label for="emp-manager">Manager</label>
+          <select id="emp-manager" class="tf-select" formControlName="managerId">
+            <option [ngValue]="null">No manager</option>
+            @for (manager of managerOptions(); track manager.id) {
+              <option [ngValue]="manager.id">{{ manager.fullName }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (isManagerRole()) {
+        <fieldset class="tf-field" data-field="manager-departments">
+          <legend>Projects this manager oversees</legend>
+          @for (department of departments(); track department.id) {
+            <label class="tf-check">
+              <input
+                type="checkbox"
+                [attr.data-department]="department.id"
+                [checked]="isDepartmentChosen(department.id)"
+                (change)="toggleDepartment(department.id, $any($event.target).checked)"
+              />
+              {{ department.name }}
+            </label>
+          } @empty {
+            <span class="tf-field__hint">There are no projects yet.</span>
+          }
+        </fieldset>
+      }
+    }
 
     <div class="tf-form-grid">
       <div class="tf-field">

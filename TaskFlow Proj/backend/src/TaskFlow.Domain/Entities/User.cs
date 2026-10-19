@@ -35,5 +35,15 @@ public class User
 
     public Department? Department { get; set; }
 
+    /// <summary>The manager this user reports to, if any. Recorded data only.</summary>
+    public int? ManagerId { get; set; }
+
+    public User? Manager { get; set; }
+
+    public ICollection<User> Reports { get; set; } = new List<User>();
+
+    /// <summary>For a manager: the departments they are assigned to.</summary>
+    public ICollection<ManagerDepartment> ManagerDepartments { get; set; } = new List<ManagerDepartment>();
+
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

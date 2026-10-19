@@ -33,9 +33,9 @@
       </div>
     </div>
     <div class="tf-field">
-      <label for="emp-filter-department">Department</label>
+      <label for="emp-filter-department">Project</label>
       <select id="emp-filter-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
-        <option value="" [selected]="departmentId() === null">All departments</option>
+        <option value="" [selected]="departmentId() === null">All projects</option>
         @for (department of departments(); track department.id) {
           <option [value]="department.id" [selected]="department.id === departmentId()">{{ department.name }}</option>
         }
@@ -92,7 +92,7 @@
             <tr>
               <th scope="col">Employee</th>
               <th scope="col">Email</th>
-              <th scope="col">Department</th>
+              <th scope="col">Project</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
               <th scope="col"><span class="tf-sr-only">Actions</span></th>
@@ -125,7 +125,7 @@
                     </div>
                   </td>
                   <td data-label="Email" class="cell-email">{{ employee.email }}</td>
-                  <td data-label="Department">
+                  <td data-label="Project">
                     @if (employee.departmentName) {
                       {{ employee.departmentName }}
                     } @else {
@@ -164,6 +164,19 @@
                       >
                         <tf-icon name="power" />
                       </button>
+                      @if (canDeleteEmployee(employee)) {
+                        <button
+                          type="button"
+                          class="tf-btn tf-btn--icon tf-btn--danger"
+                          data-action="delete"
+                          [attr.aria-label]="'Delete ' + employee.fullName"
+                          title="Delete"
+                          [disabled]="busyId() === employee.id"
+                          (click)="deleteEmployee(employee)"
+                        >
+                          <tf-icon name="trash" />
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>

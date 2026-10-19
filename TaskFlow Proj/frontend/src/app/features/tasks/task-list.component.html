@@ -135,6 +135,9 @@
               <th scope="col">Deadline</th>
               <th scope="col">Est. hours</th>
               <th scope="col">Status</th>
+              @if (canDelete()) {
+                <th scope="col"><span class="tf-sr-only">Actions</span></th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -143,6 +146,9 @@
                 <tr class="skeleton-row" aria-hidden="true">
                   @for (cell of [5, 12, 8, 8, 4, 5, 5, 3, 5]; track $index) {
                     <td><span class="tf-skeleton" [style.width.rem]="cell"></span></td>
+                  }
+                  @if (canDelete()) {
+                    <td></td>
                   }
                 </tr>
               }
@@ -165,6 +171,21 @@
                   </td>
                   <td data-label="Est. hours">{{ task.estimatedHours }}</td>
                   <td data-label="Status">{{ statusLabels[task.status] }}</td>
+                  @if (canDelete()) {
+                    <td class="cell-actions">
+                      <button
+                        type="button"
+                        class="tf-btn tf-btn--icon tf-btn--danger"
+                        data-action="delete"
+                        [attr.aria-label]="'Delete ' + task.taskCode"
+                        title="Delete"
+                        [disabled]="deletingId() === task.id"
+                        (click)="deleteTask(task)"
+                      >
+                        <tf-icon name="trash" />
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             }
@@ -192,3 +213,5 @@
     }
   </div>
 </section>
+
+<tf-confirm-dialog />

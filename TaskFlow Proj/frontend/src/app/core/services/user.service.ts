@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateUserRequest, UpdateUserRequest, User, UserStatusRequest } from '../models';
+import { CreateUserRequest, ManagerAssignmentRequest, UpdateUserRequest, User, UserStatusRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -39,5 +39,15 @@ export class UserService {
 
   updateStatus(id: number, request: UserStatusRequest): Observable<User> {
     return this.http.patch<User>(`${this.baseUrl}/${id}/status`, request);
+  }
+
+  /** Administrator only. Replaces the user's manager and, for a manager, their departments. */
+  updateAssignments(id: number, request: ManagerAssignmentRequest): Observable<User> {
+    return this.http.put<User>(`${this.baseUrl}/${id}/assignments`, request);
+  }
+
+  /** Administrator only. The employee is soft-deleted; their history stays. */
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 }

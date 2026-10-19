@@ -9,7 +9,7 @@ public class AuthServiceRefreshAndLogoutTests
     public async Task RefreshAsync_RotatesToken_AndRejectsTheOldOne()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("employee", "employee@taskflow.local", "P@ssw0rd!");
+        harness.AddUser("employee", "employee@taskflow.com", "P@ssw0rd!");
 
         var login = await harness.Service.LoginAsync(new LoginRequest("employee", "P@ssw0rd!"));
         var originalRefreshToken = login.Tokens!.RefreshToken;
@@ -30,7 +30,7 @@ public class AuthServiceRefreshAndLogoutTests
     public async Task RefreshAsync_AfterLogout_Fails()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("employee", "employee@taskflow.local", "P@ssw0rd!");
+        harness.AddUser("employee", "employee@taskflow.com", "P@ssw0rd!");
 
         var login = await harness.Service.LoginAsync(new LoginRequest("employee", "P@ssw0rd!"));
         var refreshToken = login.Tokens!.RefreshToken;
@@ -45,7 +45,7 @@ public class AuthServiceRefreshAndLogoutTests
     public async Task RefreshAsync_WithExpiredToken_Fails()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("employee", "employee@taskflow.local", "P@ssw0rd!");
+        harness.AddUser("employee", "employee@taskflow.com", "P@ssw0rd!");
 
         var login = await harness.Service.LoginAsync(new LoginRequest("employee", "P@ssw0rd!"));
 

@@ -194,15 +194,15 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Contacts_are_available_to_employees_and_list_only_active_users()
     {
         var employee = await LoginAsync("mail-contacts-emp", SystemRoles.Employee);
-        await _factory.SeedUserAsync("mail-contacts-gone", "mail-contacts-gone@taskflow.local", "P@ssw0rd!", SystemRoles.Employee, isActive: false);
+        await _factory.SeedUserAsync("mail-contacts-gone", "mail-contacts-gone@taskflow.com", "P@ssw0rd!", SystemRoles.Employee, isActive: false);
         await LoginAsync("mail-contacts-here", SystemRoles.Manager);
 
         var response = await SendAsync(employee, HttpMethod.Get, $"{Url}/contacts?search=mail-contacts");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var emails = document.RootElement.EnumerateArray().Select(contact => contact.GetProperty("email").GetString()).ToList();
-        Assert.Contains("mail-contacts-here@taskflow.local", emails);
-        Assert.DoesNotContain("mail-contacts-gone@taskflow.local", emails);
+        Assert.Contains("mail-contacts-here@taskflow.com", emails);
+        Assert.DoesNotContain("mail-contacts-gone@taskflow.com", emails);
     }
 
     private static JsonContent Json(object value) => JsonContent.Create(value);
@@ -234,7 +234,7 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<Session> LoginAsync(string username, string role)
     {
         const string password = "P@ssw0rd!";
-        var email = $"{username}@taskflow.local";
+        var email = $"{username}@taskflow.com";
         await _factory.SeedUserAsync(username, email, password, role);
 
         var client = _factory.CreateClient();

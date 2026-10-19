@@ -42,7 +42,7 @@ describe('LoginComponent', () => {
   });
 
   it('logs in and navigates to the dashboard for the returned role', () => {
-    component.form.setValue({ emailOrUsername: 'admin@taskflow.local', password: 'secret' });
+    component.form.setValue({ emailOrUsername: 'admin@taskflow.com', password: 'secret' });
     component.submit();
 
     const request = httpMock.expectOne('/api/v1/auth/login');
@@ -53,7 +53,7 @@ describe('LoginComponent', () => {
         id: 1,
         fullName: 'System Administrator',
         username: 'admin',
-        email: 'admin@taskflow.local',
+        email: 'admin@taskflow.com',
         role: 'Administrator',
         employeeCode: 'ADM-001',
         permissions: systemPermissions('Administrator')

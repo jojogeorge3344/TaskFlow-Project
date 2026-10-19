@@ -69,6 +69,11 @@ export class TaskService {
     return this.http.patch<TaskCard>(`${this.baseUrl}/${id}/status`, request);
   }
 
+  /** Administrator only. The task is soft-deleted; its comments and history are kept. */
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
   reassign(id: number, request: ReassignTaskRequest): Observable<TaskDetails> {
     return this.http.post<TaskDetails>(`${this.baseUrl}/${id}/reassign`, request);
   }

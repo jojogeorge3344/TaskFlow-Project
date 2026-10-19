@@ -12,7 +12,7 @@ describe('ProfileService', () => {
     id: 3,
     fullName: 'Jo Jo',
     username: 'jojo',
-    email: 'jojo@taskflow.local',
+    email: 'jojo@taskflow.com',
     role: 'Employee',
     roleId: 3,
     isActive: true,
@@ -42,7 +42,7 @@ describe('ProfileService', () => {
   });
 
   it('updates name and email with PUT /users/me', () => {
-    const update: UpdateOwnProfile = { fullName: 'Joanna Jo', email: 'joanna@taskflow.local' };
+    const update: UpdateOwnProfile = { fullName: 'Joanna Jo', email: 'joanna@taskflow.com' };
     let result: User | undefined;
     service.update(update).subscribe((user) => (result = user));
 

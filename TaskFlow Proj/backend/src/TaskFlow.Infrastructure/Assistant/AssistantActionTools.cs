@@ -137,7 +137,7 @@ public class AssistantManagerResolver
             .FirstOrDefaultAsync(cancellationToken);
         if (departmentId is null)
         {
-            return new Result(null, [], "You are not in a department, so I cannot tell who your manager is.");
+            return new Result(null, [], "You are not in a project, so I cannot tell who your manager is.");
         }
 
         var managers = await _dbContext.Users
@@ -151,7 +151,7 @@ public class AssistantManagerResolver
         {
             1 => new Result(managers[0], managers, null),
             0 => new Result(null, [], "I could not find a manager for you."),
-            _ => new Result(null, managers, "There is more than one manager in your department.")
+            _ => new Result(null, managers, "There is more than one manager in your project.")
         };
     }
 }

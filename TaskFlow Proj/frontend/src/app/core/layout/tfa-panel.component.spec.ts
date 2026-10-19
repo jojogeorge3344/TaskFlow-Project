@@ -89,7 +89,7 @@ function mailCard(status: AssistantPendingAction['status'] = 'Pending'): Assista
     expiresAt: '2026-10-19T09:10:00Z',
     title: 'Mail draft',
     fields: [
-      { label: 'To', value: 'Ravi Menon <ravi@taskflow.local>' },
+      { label: 'To', value: 'Ravi Menon <ravi@taskflow.com>' },
       { label: 'Subject', value: 'Update on TF-102' }
     ],
     body: 'It is in review.',
@@ -153,7 +153,7 @@ describe('TfaPanelComponent', () => {
     fixture = TestBed.createComponent(TfaPanelComponent);
     fixture.detectChanges();
 
-    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
+    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.com', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
     http.expectOne('/api/v1/assistant/providers').flush(providers);
     http.expectOne('/api/v1/assistant/conversation').flush({ conversationId: messages.length ? 1 : null, messages });
@@ -432,7 +432,7 @@ describe('TfaPanelComponent', () => {
       await withCard();
 
       const card = q('[data-action-card="a-1"]')!;
-      expect(card.textContent).toContain('Ravi Menon <ravi@taskflow.local>');
+      expect(card.textContent).toContain('Ravi Menon <ravi@taskflow.com>');
       expect(card.textContent).toContain('Update on TF-102');
       expect(card.textContent).toContain('It is in review.');
       expect(card.textContent).toContain('Nothing happens until you confirm');
@@ -465,7 +465,7 @@ describe('TfaPanelComponent', () => {
       await withCard();
       click('[data-action="edit-action"]');
       const to = q<HTMLInputElement>('[data-editor] [data-field="to"]')!;
-      expect(to.value).toBe('ravi@taskflow.local');
+      expect(to.value).toBe('ravi@taskflow.com');
       const subject = q<HTMLInputElement>('[data-editor] [data-field="subject"]')!;
       subject.value = 'Changed subject';
       subject.dispatchEvent(new Event('input'));
@@ -480,7 +480,7 @@ describe('TfaPanelComponent', () => {
       fixture.detectChanges();
       expect(q('[data-error="edit"]')!.textContent).toContain('nobody@elsewhere.example');
 
-      to.value = 'ravi@taskflow.local';
+      to.value = 'ravi@taskflow.com';
       to.dispatchEvent(new Event('input'));
       click('[data-action="save-edit"]');
       http.expectOne('/api/v1/assistant/actions/a-1').flush({ ...mailCard(), fields: [mailCard().fields[0], { label: 'Subject', value: 'Changed subject' }] });

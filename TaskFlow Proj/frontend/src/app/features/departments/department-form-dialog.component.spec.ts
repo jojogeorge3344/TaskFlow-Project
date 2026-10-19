@@ -55,7 +55,7 @@ describe('DepartmentFormDialogComponent', () => {
     fixture.detectChanges();
 
     expect(dialog().open).toBeTrue();
-    expect(el().querySelector('h2')?.textContent).toContain('Add department');
+    expect(el().querySelector('h2')?.textContent).toContain('Add project');
     expect(document.activeElement?.id).toBe('dept-name');
   });
 
@@ -94,7 +94,7 @@ describe('DepartmentFormDialogComponent', () => {
     fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0 });
     fixture.detectChanges();
 
-    expect(el().querySelector('h2')?.textContent).toContain('Edit department');
+    expect(el().querySelector('h2')?.textContent).toContain('Edit project');
     expect((el().querySelector('#dept-name') as HTMLInputElement).value).toBe('Finance');
 
     setName('Finance & Accounts');

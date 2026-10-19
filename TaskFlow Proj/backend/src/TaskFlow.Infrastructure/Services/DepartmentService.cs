@@ -58,7 +58,7 @@ public class DepartmentService : IDepartmentService
 
         if (exists)
         {
-            throw new InvalidOperationException("Department name already exists.");
+            throw new InvalidOperationException("Project name already exists.");
         }
 
         var department = new Department
@@ -90,7 +90,7 @@ public class DepartmentService : IDepartmentService
 
         if (exists)
         {
-            throw new InvalidOperationException("Department name already exists.");
+            throw new InvalidOperationException("Project name already exists.");
         }
 
         department.Name = name;
@@ -115,8 +115,12 @@ public class DepartmentService : IDepartmentService
 
         if (hasEmployees)
         {
-            throw new InvalidOperationException("Department cannot be deleted because it has associated employees.");
+            throw new InvalidOperationException("Project cannot be deleted because it has associated employees.");
         }
+
+        // The department is only flagged, so the manager links to it would not cascade away on their own.
+        _dbContext.ManagerDepartments.RemoveRange(
+            await _dbContext.ManagerDepartments.Where(link => link.DepartmentId == id).ToListAsync(cancellationToken));
 
         department.IsDeleted = true;
         await _dbContext.SaveChangesAsync(cancellationToken);

@@ -1008,3 +1008,50 @@ textarea {
   color: var(--tf-muted);
   font-size: 0.8125rem;
 }
+
+/* An input followed by fixed text, such as the email domain. */
+.tf-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.tf-input-group .tf-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.tf-input-group__suffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--tf-space-3);
+  border: 1px solid var(--tf-border-strong);
+  border-left: 0;
+  border-radius: 0 var(--tf-radius-md) var(--tf-radius-md) 0;
+  background: var(--tf-surface-muted, var(--tf-surface));
+  color: var(--tf-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* A group of checkboxes inside a form field, such as the departments a manager oversees. */
+fieldset.tf-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.tf-field > legend {
+  margin-bottom: var(--tf-space-1);
+  padding: 0;
+  font-weight: 600;
+}
+
+.tf-check {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-1) 0;
+}

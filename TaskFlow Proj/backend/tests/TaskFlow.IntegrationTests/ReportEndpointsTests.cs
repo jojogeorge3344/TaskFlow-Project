@@ -122,7 +122,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var body = await response.Content.ReadAsStringAsync();
         var header = body.Split("\r\n")[0];
         Assert.Equal(
-            "TaskCode,Title,Assignee,Department,Priority,Status,StartDate,Deadline,EstimatedHours,CompletedAt",
+            "TaskCode,Title,Assignee,Project,Priority,Status,StartDate,Deadline,EstimatedHours,CompletedAt",
             header);
         Assert.Contains("Exportable task", body);
     }
@@ -180,7 +180,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {
@@ -196,7 +196,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<User> SeedEmployeeAsync(string username)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

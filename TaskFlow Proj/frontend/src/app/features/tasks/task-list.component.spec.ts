@@ -1,6 +1,8 @@
 import { signal } from '@angular/core';
 import { fakeAuthService, systemPermissions } from '../../testing/permissions';
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ToastService } from '../../shared/ui/toast.service';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
@@ -35,6 +37,7 @@ describe('TaskListComponent', () => {
 
   let listSpy: jasmine.Spy;
   let assigneesSpy: jasmine.Spy;
+  let deleteSpy: jasmine.Spy;
 
   function create(role: UserRole, queryParams: Record<string, string> = {}): ComponentFixture<TaskListComponent> {
     const user: AuthUser = { id: 1, fullName: 'Test', username: 'test', email: 't@x', role, employeeCode: null, permissions: systemPermissions(role) };
@@ -43,7 +46,7 @@ describe('TaskListComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
-        { provide: TaskService, useValue: { list: listSpy, getAssignees: assigneesSpy } },
+        { provide: TaskService, useValue: { list: listSpy, getAssignees: assigneesSpy, delete: deleteSpy } },
         { provide: AuthService, useValue: fakeAuthService(signal(user).asReadonly()) }
       ]
     });
@@ -70,6 +73,72 @@ describe('TaskListComponent', () => {
       )
     );
     assigneesSpy = jasmine.createSpy('getAssignees').and.returnValue(of([{ userId: 3, fullName: 'Joe Thomas' }]));
+    deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
+  });
+
+  describe('delete', () => {
+    afterEach(() => document.querySelectorAll('dialog[open]').forEach((dialog) => (dialog as HTMLDialogElement).close()));
+
+    it('is not offered to a Manager', () => {
+      const fixture = create('Manager');
+
+      expect(el(fixture).querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('is not offered to an Employee', () => {
+      const fixture = create('Employee');
+
+      expect(el(fixture).querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('is offered to an Administrator on every row', () => {
+      const fixture = create('Administrator');
+
+      expect(el(fixture).querySelectorAll('tr.task-row [data-action="delete"]').length).toBe(2);
+    });
+
+    it('does nothing when the confirmation is cancelled', fakeAsync(() => {
+      const fixture = create('Administrator');
+
+      (el(fixture).querySelector('tr.task-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const dialog = el(fixture).querySelector('dialog') as HTMLDialogElement;
+      expect(dialog.open).toBeTrue();
+      expect(dialog.textContent).toContain('TSK-000001');
+      (dialog.querySelector('[data-action="cancel"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    }));
+
+    it('deletes after confirmation, shows a toast and reloads the list', fakeAsync(() => {
+      const fixture = create('Administrator');
+      const toastSpy = spyOn(TestBed.inject(ToastService), 'success');
+      listSpy.calls.reset();
+
+      (el(fixture).querySelector('tr.task-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+      tick(SEARCH_DEBOUNCE_MS);
+
+      expect(deleteSpy).toHaveBeenCalledWith(1);
+      expect(toastSpy).toHaveBeenCalledWith('TSK-000001 deleted');
+      expect(listSpy).toHaveBeenCalled();
+    }));
+
+    it('shows the server message when the delete is rejected', fakeAsync(() => {
+      deleteSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404, error: { error: 'Task not found.' } })));
+      const fixture = create('Administrator');
+      const errorSpy = spyOn(TestBed.inject(ToastService), 'error');
+
+      (el(fixture).querySelector('tr.task-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(errorSpy).toHaveBeenCalledWith('Task not found.');
+    }));
   });
 
   it('renders every list column with derived deadline badges', () => {

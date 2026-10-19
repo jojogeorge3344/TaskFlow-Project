@@ -21,9 +21,9 @@ public class DatabaseSeederTests
         var users = await harness.Db.Users.OrderBy(user => user.Id).ToListAsync();
 
         Assert.Equal(
-            [("admin", "admin@taskflow.local", SystemRoles.AdministratorId),
-             ("manager", "manager@taskflow.local", SystemRoles.ManagerId),
-             ("employee", "employee@taskflow.local", SystemRoles.EmployeeId)],
+            [("admin", "admin@taskflow.com", SystemRoles.AdministratorId),
+             ("manager", "manager@taskflow.com", SystemRoles.ManagerId),
+             ("employee", "employee@taskflow.com", SystemRoles.EmployeeId)],
             users.Select(user => (user.Username, user.Email, user.RoleId)));
         Assert.All(users, user => Assert.True(user.IsActive));
         Assert.All(users, user => Assert.False(string.IsNullOrWhiteSpace(user.PasswordHash)));

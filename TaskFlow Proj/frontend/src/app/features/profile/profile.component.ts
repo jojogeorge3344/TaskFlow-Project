@@ -5,10 +5,12 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validator
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
+import { EMAIL_SUFFIX, localPartOf, localPartValidator, toEmail } from '../../core/email-domain';
 import { IconComponent } from '../../core/layout/icon.component';
 import { User } from '../../core/models';
 import { ProfileService } from '../../core/services/profile.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.directive';
 import { ToastService } from '../../shared/ui/toast.service';
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -29,7 +31,7 @@ type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, IconComponent],
+  imports: [ReactiveFormsModule, IconComponent, EmailLocalPartDirective],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css'
 })
@@ -38,6 +40,8 @@ export class ProfileComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+
+  readonly emailSuffix = EMAIL_SUFFIX;
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -57,7 +61,14 @@ export class ProfileComponent implements OnInit {
           { label: 'Username', value: user.username },
           { label: 'Employee code', value: user.employeeCode || '—' },
           { label: 'Role', value: user.role },
-          { label: 'Department', value: user.departmentName || '—' },
+          { label: 'Project', value: user.departmentName || '—' },
+          { label: 'Manager', value: user.managerName || '—' },
+          ...(user.role === 'Manager'
+            ? [
+                { label: 'Managed projects', value: (user.managerDepartments ?? []).map((d) => d.name).join(', ') || '—' },
+                { label: 'Team', value: (user.reports ?? []).map((r) => r.fullName).join(', ') || '—' }
+              ]
+            : []),
           { label: 'Account status', value: user.isActive ? 'Active' : 'Inactive' }
         ]
       : [];
@@ -67,7 +78,8 @@ export class ProfileComponent implements OnInit {
     fullName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
     email: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email, Validators.maxLength(256)]
+      // Only the part before the fixed domain; the suffix is shown beside the input and added on save.
+      validators: [Validators.required, localPartValidator]
     })
   });
 
@@ -98,7 +110,7 @@ export class ProfileComponent implements OnInit {
     this.profileService.get().subscribe({
       next: (user) => {
         this.profile.set(user);
-        this.form.reset({ fullName: user.fullName, email: user.email });
+        this.form.reset({ fullName: user.fullName, email: localPartOf(user.email) });
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -117,8 +129,8 @@ export class ProfileComponent implements OnInit {
     if (control.getError('required')) {
       return `${name === 'fullName' ? 'Full name' : 'Email'} is required.`;
     }
-    if (control.getError('email')) {
-      return 'Enter a valid email address.';
+    if (control.getError('localPart')) {
+      return `Use letters, digits, dot, underscore or hyphen before ${EMAIL_SUFFIX}.`;
     }
     if (control.getError('maxlength')) {
       return 'This field is too long.';
@@ -157,12 +169,12 @@ export class ProfileComponent implements OnInit {
     const value = this.form.getRawValue();
     this.saving.set(true);
     this.profileService
-      .update({ fullName: value.fullName.trim(), email: value.email.trim() })
+      .update({ fullName: value.fullName.trim(), email: toEmail(value.email) })
       .subscribe({
         next: (user) => {
           this.saving.set(false);
           this.profile.set(user);
-          this.form.reset({ fullName: user.fullName, email: user.email });
+          this.form.reset({ fullName: user.fullName, email: localPartOf(user.email) });
           this.savedAt.set(new Date());
           this.authService.applyProfile({
             id: user.id,

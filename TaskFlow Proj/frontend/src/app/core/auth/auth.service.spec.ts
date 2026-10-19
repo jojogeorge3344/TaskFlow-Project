@@ -16,7 +16,7 @@ describe('AuthService', () => {
       id: 1,
       fullName: 'System Administrator',
       username: 'admin',
-      email: 'admin@taskflow.local',
+      email: 'admin@taskflow.com',
       role: 'Administrator',
       employeeCode: 'ADM-001',
       permissions: systemPermissions('Administrator')
