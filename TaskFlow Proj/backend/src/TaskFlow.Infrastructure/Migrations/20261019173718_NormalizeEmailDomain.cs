@@ -40,7 +40,7 @@ locals AS (
            CASE WHEN ""Tidy"" = '' THEN 'user' || ""Id"" ELSE ""Tidy"" END AS ""Local""
     FROM (
         SELECT ""Id"",
-               substr(trim(replace(replace(replace(replace(replace(replace(""Clean"", '..', '.'), '..', '.'), '..', '.'), '..', '.'), '..', '.'), '..', '.'), '.'), 1, 64) AS ""Tidy""
+               trim(substr(trim(replace(replace(replace(replace(replace(replace(""Clean"", '..', '.'), '..', '.'), '..', '.'), '..', '.'), '..', '.'), '..', '.'), '.'), 1, 64), '.') AS ""Tidy""
         FROM cleaned
     )
 ),

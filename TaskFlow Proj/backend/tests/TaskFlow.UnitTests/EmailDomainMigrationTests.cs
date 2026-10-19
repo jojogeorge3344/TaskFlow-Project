@@ -88,7 +88,9 @@ public class EmailDomainMigrationTests : IDisposable
             ("edges", ".lead.@gmail.com", false),
             ("spaced", "first last@gmail.com", false),
             ("symbols", "!!!@gmail.com", false),
-            ("long", new string('x', 80) + "@gmail.com", false));
+            ("long", new string('x', 80) + "@gmail.com", false),
+            // The 64-character cut lands right after the dot, which must not be left dangling.
+            ("cut", new string('x', 63) + ".yy@gmail.com", false));
 
         Assert.Equal("obrien@taskflow.com", emails["obrien"]);
         Assert.Equal("jotag@taskflow.com", emails["tagged"]);
@@ -96,6 +98,7 @@ public class EmailDomainMigrationTests : IDisposable
         Assert.Equal("lead@taskflow.com", emails["edges"]);
         Assert.Equal("firstlast@taskflow.com", emails["spaced"]);
         Assert.StartsWith("user", emails["symbols"]);
+        Assert.Equal(new string('x', 63) + "@taskflow.com", emails["cut"]);
         Assert.Equal(new string('x', 64) + "@taskflow.com", emails["long"]);
         Assert.All(emails.Values, email => Assert.True(TaskFlow.Application.Users.EmailPolicy.IsValid(email), email));
     }
