@@ -9,6 +9,9 @@ namespace TaskFlow.Infrastructure.Assistant;
 
 public class AiProviderConfigService : IAiProviderConfigService
 {
+    /// <summary>The longest model name that is stored (the length of the AiModels.Name column).</summary>
+    private const int MaxModelNameLength = 100;
+
     private readonly AppDbContext _dbContext;
     private readonly IAiKeyProtector _keyProtector;
     private readonly TimeProvider _timeProvider;
@@ -57,6 +60,13 @@ public class AiProviderConfigService : IAiProviderConfigService
                 throw new ArgumentException("Every provider setting must be provided.", nameof(request));
             }
 
+            var modelName = update.ModelName.Trim();
+            if (modelName.Length == 0 || modelName.Length > MaxModelNameLength)
+            {
+                throw new ArgumentException(
+                    $"The {AiProviderCatalog.DisplayName(kind)} model name must be 1 to {MaxModelNameLength} characters.", nameof(request));
+            }
+
             var row = rows.FirstOrDefault(existing => existing.Kind == kind);
             if (row is null)
             {
@@ -66,8 +76,13 @@ public class AiProviderConfigService : IAiProviderConfigService
             }
 
             row.IsEnabled = enabled;
-            row.ModelName = update.ModelName.Trim();
-            await RememberModelAsync(kind, row.ModelName, cancellationToken);
+            row.ModelName = modelName;
+            if (enabled)
+            {
+                // Only the model in use is added to the list, so a disabled server's leftover text never is.
+                await RememberModelAsync(kind, modelName, cancellationToken);
+            }
+
             row.BaseUrl = kind == AiProviderKind.Ollama
                 ? NormalizeBaseUrl(update.BaseUrl) ?? AiProviderCatalog.DefaultOllamaBaseUrl
                 : null;

@@ -60,6 +60,19 @@ public class AiProviderSeederTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AnUpgradedInstallationGetsEveryProviderOffSoTfaStaysOffUntilAnAdministratorTurnsItOn()
+    {
+        _harness.AddUser("existing-admin");
+
+        await Seeder().SeedAsync();
+
+        var rows = await _harness.Db.AiProviderConfigs.ToListAsync();
+        Assert.Equal(3, rows.Count);
+        Assert.All(rows, row => Assert.False(row.IsEnabled));
+        Assert.Empty(await Service().GetAvailableAsync());
+    }
+
+    [Fact]
     public async Task TfaIsAvailableOnTheFirstRunBecauseOllamaIsSeededOn()
     {
         await Seeder().SeedAsync();

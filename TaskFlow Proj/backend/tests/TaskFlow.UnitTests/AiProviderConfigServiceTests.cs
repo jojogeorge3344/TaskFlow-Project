@@ -53,6 +53,36 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
         }
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AnEmptyModelNameIsRejected(string name)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: name)));
+        Assert.Empty(await _harness.Db.AiModels.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AModelNameLongerThanTheStoredLengthIsRejected()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: new string('m', 101))));
+        Assert.Empty(await _harness.Db.AiModels.ToListAsync());
+
+        await Save(Update(AiProviderKind.Ollama, model: new string('m', 100)));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync());
+    }
+
+    [Fact]
+    public async Task OnlyTheModelOfTheEnabledServerIsAddedToTheList()
+    {
+        await Save(
+            Update(AiProviderKind.Ollama, enabled: true, model: "phi3:mini"),
+            Update(AiProviderKind.Gemini, enabled: false, model: "leftover-typo"));
+
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "leftover-typo"));
+    }
+
     [Fact]
     public async Task AModelTypedInSettingsIsAddedToTheListForEveryone()
     {

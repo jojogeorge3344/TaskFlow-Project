@@ -57,5 +57,5 @@ ok "The model answered."
 
 echo
 echo "Done. Last step, in TaskFlow as an Administrator:"
-echo "  Settings > Application Settings > AI assistant (TFA) > Ollama"
+echo "  Settings > TFA Settings > Ollama"
 echo "  turn it on, set the model to '$MODEL', keep the address $BASE_URL, then click Test connection."

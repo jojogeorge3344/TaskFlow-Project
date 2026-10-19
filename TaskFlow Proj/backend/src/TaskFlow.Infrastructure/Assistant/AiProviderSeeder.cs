@@ -61,6 +61,10 @@ public class AiProviderSeeder
         var present = await _db.AiProviderConfigs.AsNoTracking().Select(config => config.Kind).ToListAsync(cancellationToken);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
+        // Ollama is switched on only for a brand-new installation: no user exists yet, because this runs before the users
+        // are seeded. An installation that is being upgraded keeps TFA off until an administrator turns it on.
+        var freshInstall = !await _db.Users.AnyAsync(cancellationToken);
+
         foreach (var kind in AiProviderCatalog.All.Where(kind => !present.Contains(kind)))
         {
             var local = !AiProviderCatalog.RequiresKey(kind);
@@ -68,7 +72,7 @@ public class AiProviderSeeder
             {
                 Kind = kind,
                 // Ollama needs no key and runs on this machine, so TFA can work as soon as it is installed.
-                IsEnabled = local,
+                IsEnabled = local && freshInstall,
                 ModelName = AiProviderCatalog.DefaultModel(kind),
                 BaseUrl = local ? AiProviderCatalog.DefaultOllamaBaseUrl : null,
                 UpdatedAt = now

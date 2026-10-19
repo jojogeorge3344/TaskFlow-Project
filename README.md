@@ -130,6 +130,8 @@ Open **Settings → TFA Settings** (Administrator only).
 manual step. For TFA that means the list of models (Ollama, Gemini and OpenAI models) and one row per provider:
 **Ollama is switched on** with `llama3.2:3b` at `http://localhost:11434`, and Gemini and OpenAI are off with no key. So
 TFA works as soon as Ollama and the model are installed (see the setup script below), and nothing has to be configured.
+This applies to a brand-new installation only. An installation that already has users keeps all three providers off
+until an administrator turns one on in TFA Settings.
 Starting again never overwrites what an administrator saved. The built-in model names are in `AiProviderCatalog.cs`
 (`BuiltInModels`): add a name there to have it offered on every new installation. A model added in Settings is kept
 in that installation's database only.

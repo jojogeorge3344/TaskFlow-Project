@@ -96,5 +96,5 @@ try {
 
 Write-Host ''
 Write-Host 'Done. Last step, in TaskFlow as an Administrator:' -ForegroundColor Green
-Write-Host '  Settings > Application Settings > AI assistant (TFA) > Ollama'
+Write-Host '  Settings > TFA Settings > Ollama'
 Write-Host "  turn it on, set the model to '$Model', keep the address $BaseUrl, then click Test connection."
