@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Security;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Settings;
@@ -31,7 +32,7 @@ public class ReminderServiceTests
         string prefix,
         TaskStatus status = TaskStatus.InProgress)
     {
-        var creator = harness.AddUser($"{prefix}-creator", Role.Manager);
+        var creator = harness.AddUser($"{prefix}-creator", SystemRoles.Manager);
         var assignee = harness.AddUser($"{prefix}-assignee");
         var task = harness.AddTask(assignee.Id, creator.Id, title: "Prepare Monthly Report", status: status, deadline: Deadline);
         harness.AddRecipient(task.Id, assignee.Id);
@@ -192,7 +193,7 @@ public class ReminderServiceTests
     public async Task Long_overdue_tasks_keep_receiving_overdue_reminders()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var creator = harness.AddUser("rs-old-creator", Role.Manager);
+        var creator = harness.AddUser("rs-old-creator", SystemRoles.Manager);
         var assignee = harness.AddUser("rs-old-assignee");
         var task = harness.AddTask(assignee.Id, creator.Id, deadline: Deadline.AddDays(-500));
         harness.AddRecipient(task.Id, assignee.Id);

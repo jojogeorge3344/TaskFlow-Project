@@ -1,4 +1,5 @@
-export type Role = 'Administrator' | 'Manager' | 'Employee';
+/** A role name: Administrator, Manager, Employee, or a custom role an administrator created. */
+export type Role = string;
 
 export interface User {
   id: number;
@@ -6,7 +7,9 @@ export interface User {
   fullName: string;
   username: string;
   email: string;
+  /** The role's name, for display. */
   role: Role;
+  roleId: number;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string | null;
@@ -21,7 +24,7 @@ export interface CreateUserRequest {
   username: string;
   email: string;
   password: string;
-  role: Role;
+  roleId: number;
   isActive: boolean;
   departmentId?: number | null;
 }
@@ -31,7 +34,7 @@ export interface UpdateUserRequest {
   fullName: string;
   username: string;
   email: string;
-  role: Role;
+  roleId: number;
   departmentId?: number | null;
   /** New password; omit or leave empty to keep the current one. Changing it (or the username) ends the user's sessions. */
   password?: string | null;

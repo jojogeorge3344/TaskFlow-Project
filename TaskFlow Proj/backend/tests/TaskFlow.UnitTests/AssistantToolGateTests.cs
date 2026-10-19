@@ -6,14 +6,16 @@ using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 
-/// <summary>Mirrors the API's policies (AdminOnly, ManagerOrAdmin) by role, so the gate can be tested without the web
+/// <summary>Mirrors two of the API's permission policies (roles.manage, tasks.create) by role, so the gate can be tested without the web
 /// host. The integration tests check the real policies against the real authorizer.</summary>
 internal sealed class RolePolicyAuthorizer : IAssistantAuthorizer
 {
+    public const string ManagerPolicy = "perm:tasks.create";
+
     public Dictionary<string, string[]> Policies { get; } = new()
     {
-        [AssistantPolicies.AdminOnly] = ["Administrator"],
-        [AssistantPolicies.ManagerOrAdmin] = ["Administrator", "Manager"]
+        [AssistantPolicies.RolesManage] = ["Administrator"],
+        [ManagerPolicy] = ["Administrator", "Manager"]
     };
 
     public Task<bool> IsAllowedAsync(ClaimsPrincipal user, string? policyName, CancellationToken cancellationToken = default)
@@ -69,8 +71,8 @@ public class AssistantToolGateTests
     {
         var authorizer = new RolePolicyAuthorizer();
         var open = new StubTool("open_tool", null);
-        var managers = new StubTool("manager_tool", AssistantPolicies.ManagerOrAdmin);
-        var admins = new StubTool("admin_tool", AssistantPolicies.AdminOnly, "Changing a user's role", actionKind: AssistantActionKind.ChangeUserRole);
+        var managers = new StubTool("manager_tool", RolePolicyAuthorizer.ManagerPolicy);
+        var admins = new StubTool("admin_tool", AssistantPolicies.RolesManage, "Changing a user's role", actionKind: AssistantActionKind.ChangeUserRole);
         return (new AssistantToolbox([open, managers, admins], new AssistantToolGate(authorizer), Audit), open, managers, admins, authorizer);
     }
 
@@ -149,7 +151,7 @@ public class AssistantToolGateTests
         var (toolbox, _, _, admins, authorizer) = Create();
         Assert.NotNull((await toolbox.ExecuteAsync(Caller("Manager"), 1, Call("admin_tool"))).FixedReply);
 
-        authorizer.Policies[AssistantPolicies.AdminOnly] = ["Administrator", "Manager"];
+        authorizer.Policies[AssistantPolicies.RolesManage] = ["Administrator", "Manager"];
         var outcome = await toolbox.ExecuteAsync(Caller("Manager"), 1, Call("admin_tool"));
 
         Assert.Null(outcome.FixedReply);
@@ -212,7 +214,6 @@ public class AssistantToolGateTests
     [Fact]
     public void ThePolicyNamesMatchTheApisPolicyNames()
     {
-        Assert.Equal("AdminOnly", AssistantPolicies.AdminOnly);
-        Assert.Equal("ManagerOrAdmin", AssistantPolicies.ManagerOrAdmin);
+        Assert.Equal("perm:roles.manage", AssistantPolicies.RolesManage);
     }
 }

@@ -24,8 +24,8 @@ public sealed class AssistantCaller
 /// change affects the REST API and TFA together.</summary>
 public static class AssistantPolicies
 {
-    public const string AdminOnly = "AdminOnly";
-    public const string ManagerOrAdmin = "ManagerOrAdmin";
+    /// <summary>The policy that requires the <c>roles.manage</c> permission.</summary>
+    public const string RolesManage = TaskFlow.Domain.Security.PermissionPolicy.Prefix + TaskFlow.Domain.Security.PermissionKeys.RolesManage;
 }
 
 /// <summary>Asks the application's authorization system whether the user may do something. TFA must go through this

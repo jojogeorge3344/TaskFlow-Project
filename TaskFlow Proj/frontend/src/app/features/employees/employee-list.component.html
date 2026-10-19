@@ -45,7 +45,7 @@
       <label for="emp-filter-role">Role</label>
       <select id="emp-filter-role" class="tf-select" (change)="setRole($any($event.target).value)">
         <option value="" [selected]="role() === ''">All roles</option>
-        @for (option of roles; track option) {
+        @for (option of roles(); track option) {
           <option [value]="option" [selected]="option === role()">{{ option }}</option>
         }
       </select>
@@ -133,7 +133,7 @@
                     }
                   </td>
                   <td data-label="Role">
-                    <span [class]="'tf-badge tf-badge--' + employee.role.toLowerCase()">{{ employee.role }}</span>
+                    <span [class]="roleBadgeClass(employee.role)">{{ employee.role }}</span>
                   </td>
                   <td data-label="Status">
                     <span class="tf-badge" [class.tf-badge--active]="employee.isActive" [class.tf-badge--inactive]="!employee.isActive">

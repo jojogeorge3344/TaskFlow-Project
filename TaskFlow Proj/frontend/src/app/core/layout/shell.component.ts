@@ -11,7 +11,7 @@ import { initials } from '../../shared/ui/initials';
 import { IconComponent } from './icon.component';
 import { TfaPanelComponent } from './tfa-panel.component';
 import { LayoutService } from './layout.service';
-import { NavItem, ROLE_NAVIGATION } from './nav-items';
+import { NavItem, buildNavigation } from './nav-items';
 
 export const SESSION_CHECK_INTERVAL_MS = 60_000;
 
@@ -45,10 +45,7 @@ export class ShellComponent {
   /** Unread Inbox mails, shown on the Mail menu entry. */
   readonly mailUnreadCount = this.mailService.unreadCount;
 
-  readonly navItems = computed<NavItem[]>(() => {
-    const role = this.user()?.role;
-    return role ? ROLE_NAVIGATION[role] : [];
-  });
+  readonly navItems = computed<NavItem[]>(() => buildNavigation(this.user()));
 
   private readonly currentUrl = signal(this.router.url);
 

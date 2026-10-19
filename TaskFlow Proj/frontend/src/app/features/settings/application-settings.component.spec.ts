@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -36,7 +37,7 @@ describe('ApplicationSettingsComponent', () => {
         { provide: ToastService, useValue: toast },
         // The AI assistant section is covered by its own spec; here it only has to render.
         { provide: AiProviderAdminService, useValue: { getConfig: () => of([]) } },
-        { provide: AuthService, useValue: { currentUser: signal({ id: 1, role: 'Administrator' }).asReadonly() } },
+        { provide: AuthService, useValue: fakeAuthService(signal({ id: 1, role: 'Administrator', permissions: systemPermissions('Administrator') }).asReadonly()) },
         provideRouter([])
       ]
     });

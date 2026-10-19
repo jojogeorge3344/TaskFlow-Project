@@ -102,7 +102,8 @@ public class AuthController : ControllerBase
             user.Username,
             user.Email,
             user.Role,
-            user.EmployeeCode));
+            user.EmployeeCode,
+            user.Permissions));
     }
 
     private void SetRefreshCookie(AuthTokens tokens)
@@ -133,5 +134,6 @@ public class AuthController : ControllerBase
             result.User.Username,
             result.User.Email,
             result.User.Role,
-            result.User.EmployeeCode));
+            result.User.EmployeeCode,
+            result.User.Permissions));
 }

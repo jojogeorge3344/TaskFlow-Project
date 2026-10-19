@@ -8,7 +8,9 @@ namespace TaskFlow.Api.Authentication;
 
 /// <summary>
 /// Rejects an otherwise valid access token when its user is gone, inactive, or has changed
-/// their username/password since the token was issued (security stamp mismatch).
+/// their username/password since the token was issued (security stamp mismatch). For a valid session it then
+/// replaces the token's role claim and adds one permission claim per permission the user's role holds right now,
+/// so a role or permission change applies to the next request without signing in again.
 /// </summary>
 public static class SessionValidation
 {
@@ -25,15 +27,34 @@ public static class SessionValidation
         var tokenStamp = principal!.FindFirstValue(AuthClaims.SecurityStamp) ?? string.Empty;
 
         var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var cancellationToken = context.HttpContext.RequestAborted;
         var user = await db.Users
             .AsNoTracking()
             .Where(candidate => candidate.Id == userId)
-            .Select(candidate => new { candidate.SecurityStamp, candidate.IsActive })
-            .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+            .Select(candidate => new { candidate.SecurityStamp, candidate.IsActive, candidate.RoleId, RoleName = candidate.Role.Name })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (user is null || !user.IsActive || user.SecurityStamp != tokenStamp)
         {
             context.Fail("The session is no longer valid. Sign in again.");
+            return;
+        }
+
+        var permissionKeys = await db.RolePermissions
+            .AsNoTracking()
+            .Where(grant => grant.RoleId == user.RoleId)
+            .Select(grant => grant.Permission.Key)
+            .ToListAsync(cancellationToken);
+
+        if (principal.Identity is ClaimsIdentity identity)
+        {
+            foreach (var stale in identity.FindAll(identity.RoleClaimType).Concat(identity.FindAll(AuthClaims.Permission)).ToList())
+            {
+                identity.RemoveClaim(stale);
+            }
+
+            identity.AddClaim(new Claim(identity.RoleClaimType, user.RoleName));
+            identity.AddClaims(permissionKeys.Select(key => new Claim(AuthClaims.Permission, key)));
         }
     }
 }

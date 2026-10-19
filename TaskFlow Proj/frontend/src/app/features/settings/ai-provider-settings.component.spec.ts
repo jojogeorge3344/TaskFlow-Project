@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -32,7 +33,7 @@ describe('AiProviderSettingsComponent', () => {
   const user = signal<AuthUser | null>(null);
 
   function asRole(role: AuthUser['role']): void {
-    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role, employeeCode: null });
+    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role, employeeCode: null, permissions: systemPermissions(role) });
   }
 
   function el(): HTMLElement {
@@ -62,7 +63,7 @@ describe('AiProviderSettingsComponent', () => {
     asRole(role);
     await TestBed.configureTestingModule({
       imports: [AiProviderSettingsComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: { currentUser: user.asReadonly() } }]
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: fakeAuthService(user.asReadonly()) }]
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AiProviderSettingsComponent);

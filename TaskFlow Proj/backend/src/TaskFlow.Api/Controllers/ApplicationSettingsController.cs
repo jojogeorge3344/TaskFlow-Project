@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Settings;
 
 namespace TaskFlow.Api.Controllers;
@@ -35,7 +36,7 @@ public class ApplicationSettingsController : ControllerBase
 
     /// <summary>Saves the application configuration. Administrator only.</summary>
     [HttpPut]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.SettingsApplication)]
     public async Task<ActionResult<ApplicationSettingsDto>> Update(
         [FromBody] UpdateApplicationSettingsRequest request,
         CancellationToken cancellationToken)

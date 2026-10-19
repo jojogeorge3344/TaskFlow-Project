@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -50,6 +51,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         var clock = new FakeTimeProvider(now ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
         var appClock = new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
@@ -79,7 +81,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
     public User AddUser(
         string username,
         bool isActive = true,
-        Role role = Role.Employee,
+        string role = SystemRoles.Employee,
         int? departmentId = null,
         string? fullName = null)
     {
@@ -89,7 +91,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             Username = username,
             Email = $"{username}@taskflow.local",
             PasswordHash = "hash",
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             DepartmentId = departmentId,
             CreatedAt = Clock.UtcNow.UtcDateTime,

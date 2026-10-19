@@ -28,7 +28,7 @@ public class AuthService : IAuthService
     {
         var identifier = request.EmailOrUsername.Trim();
 
-        var user = await _db.Users.FirstOrDefaultAsync(
+        var user = await _db.Users.Include(candidate => candidate.Role).FirstOrDefaultAsync(
             candidate => candidate.Username == identifier || candidate.Email == identifier,
             cancellationToken);
 
@@ -57,7 +57,7 @@ public class AuthService : IAuthService
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return AuthResult.Success(tokens, ToDto(user));
+        return AuthResult.Success(tokens, await ToDtoAsync(user, cancellationToken));
     }
 
     public async Task<AuthResult> RefreshAsync(string? refreshToken, CancellationToken cancellationToken = default)
@@ -70,7 +70,7 @@ public class AuthService : IAuthService
         var hash = _tokenService.HashRefreshToken(refreshToken);
 
         var stored = await _db.RefreshTokens
-            .Include(token => token.User)
+            .Include(token => token.User).ThenInclude(user => user!.Role)
             .FirstOrDefaultAsync(token => token.TokenHash == hash, cancellationToken);
 
         var now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -90,7 +90,7 @@ public class AuthService : IAuthService
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return AuthResult.Success(tokens, ToDto(stored.User));
+        return AuthResult.Success(tokens, await ToDtoAsync(stored.User, cancellationToken));
     }
 
     public async System.Threading.Tasks.Task LogoutAsync(string? refreshToken, CancellationToken cancellationToken = default)
@@ -117,9 +117,9 @@ public class AuthService : IAuthService
 
     public async Task<UserDto?> GetCurrentAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
+        var user = await _db.Users.Include(candidate => candidate.Role).FirstOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken);
 
-        return user is null ? null : ToDto(user);
+        return user is null ? null : await ToDtoAsync(user, cancellationToken);
     }
 
     private AuthTokens IssueTokens(User user, DateTime now)
@@ -142,11 +142,22 @@ public class AuthService : IAuthService
             refreshToken.ExpiresAt);
     }
 
-    private static UserDto ToDto(User user) => new(
-        user.Id,
-        user.FullName,
-        user.Username,
-        user.Email,
-        user.Role.ToString(),
-        user.EmployeeCode);
+    private async Task<UserDto> ToDtoAsync(User user, CancellationToken cancellationToken)
+    {
+        var permissions = await _db.RolePermissions
+            .AsNoTracking()
+            .Where(grant => grant.RoleId == user.RoleId)
+            .Select(grant => grant.Permission.Key)
+            .OrderBy(key => key)
+            .ToListAsync(cancellationToken);
+
+        return new UserDto(
+            user.Id,
+            user.FullName,
+            user.Username,
+            user.Email,
+            user.Role.Name,
+            user.EmployeeCode,
+            permissions);
+    }
 }

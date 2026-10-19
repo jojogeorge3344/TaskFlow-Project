@@ -1,4 +1,7 @@
-export type UserRole = 'Administrator' | 'Manager' | 'Employee';
+/** A role name. Administrator, Manager and Employee are the system roles; an administrator can add more. */
+export type UserRole = string;
+
+export type SystemRoleName = 'Administrator' | 'Manager' | 'Employee';
 
 export interface AuthUser {
   id: number;
@@ -7,6 +10,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   employeeCode: string | null;
+  /** Keys of the permissions the user's role holds, as of sign-in or the last refresh. The API decides every request. */
+  permissions: string[];
 }
 
 export interface LoginRequest {

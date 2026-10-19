@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using TaskFlow.Domain.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -38,6 +39,7 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         var passwordHasher = new PasswordHasher<User>();
         var tokenService = new JwtTokenService(
@@ -54,14 +56,14 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
         string email,
         string password,
         bool isActive = true,
-        Role role = Role.Employee)
+        string role = SystemRoles.Employee)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
             Email = email,
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

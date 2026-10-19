@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { signal } from '@angular/core';
@@ -72,7 +73,8 @@ describe('KanbanComponent', () => {
       username: 'test',
       email: 'test@taskflow.local',
       role,
-      employeeCode: null
+      employeeCode: null,
+      permissions: systemPermissions(role)
     });
   }
 
@@ -100,7 +102,7 @@ describe('KanbanComponent', () => {
         },
         { provide: ToastService, useValue: toast },
         { provide: Router, useValue: { navigate: navigateSpy } },
-        { provide: AuthService, useValue: { currentUser: userSignal.asReadonly() } }
+        { provide: AuthService, useValue: fakeAuthService(userSignal.asReadonly()) }
       ]
     });
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using TaskFlow.Domain.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -59,9 +60,10 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
         await using (var setup = NewContext())
         {
             await setup.Database.EnsureCreatedAsync();
+            await TestAccessControl.SeedAsync(setup);
             setup.Users.AddRange(
-                new User { FullName = "Asha", Username = "asha", Email = "asha@taskflow.local", Role = Role.Employee, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new User { FullName = "Ravi", Username = "ravi", Email = "ravi@taskflow.local", Role = Role.Manager, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+                new User { FullName = "Asha", Username = "asha", Email = "asha@taskflow.local", RoleId = SystemRoles.EmployeeId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new User { FullName = "Ravi", Username = "ravi", Email = "ravi@taskflow.local", RoleId = SystemRoles.ManagerId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
             await setup.SaveChangesAsync();
         }
 
@@ -76,14 +78,14 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
             prepare.AssistantConversations.Add(conversation);
             await prepare.SaveChangesAsync();
             var card = await NewService(prepare).CreateAsync(
-                AssistantServiceHarness.Caller(new User { Id = ashaId, Role = Role.Employee }),
+                AssistantServiceHarness.Caller(new User { Id = ashaId, RoleId = SystemRoles.EmployeeId }),
                 conversation.Id,
                 AssistantActionKind.SendMail,
                 new SendMailPayload([new MailRecipientRef(raviId, "Ravi", "ravi@taskflow.local")], "Hello", "Body", null));
             actionId = card.Id;
         }
 
-        var caller = AssistantServiceHarness.Caller(new User { Id = ashaId, Role = Role.Employee });
+        var caller = AssistantServiceHarness.Caller(new User { Id = ashaId, RoleId = SystemRoles.EmployeeId });
         await using var first = NewContext();
         await using var second = NewContext();
 

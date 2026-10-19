@@ -3,12 +3,13 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validatio
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
-import { CreateUserRequest, DepartmentWithCount, Role, UpdateUserRequest, User } from '../../core/models';
+import { Permissions } from '../../core/auth/permissions';
+import { AccessRole, CreateUserRequest, DepartmentWithCount, SYSTEM_ROLE_IDS, UpdateUserRequest, User } from '../../core/models';
+import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
 
-export const ROLES: Role[] = ['Employee', 'Manager', 'Administrator'];
 export const MIN_PASSWORD_LENGTH = 6;
 
 /** Required, ignoring surrounding whitespace. */
@@ -34,6 +35,7 @@ export class EmployeeFormPanelComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly roleService = inject(RoleService);
 
   /** The employee to edit, or null to add a new one. */
   readonly employee = input<User | null>(null);
@@ -41,7 +43,13 @@ export class EmployeeFormPanelComponent implements OnInit {
   readonly saved = output<User>();
   readonly cancelled = output<void>();
 
-  readonly roles = ROLES;
+  /** Choosing a role is role management, which only roles holding roles.manage may do. Others keep the current role. */
+  readonly canChangeRole = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.RolesManage);
+  });
+  readonly roles = signal<AccessRole[]>([]);
+  readonly roleLoadFailed = signal(false);
   readonly minPasswordLength = MIN_PASSWORD_LENGTH;
   readonly isCreate = computed(() => this.employee() === null);
   readonly saving = signal(false);
@@ -53,13 +61,14 @@ export class EmployeeFormPanelComponent implements OnInit {
     fullName: new FormControl('', { nonNullable: true, validators: [requiredText] }),
     username: new FormControl('', { nonNullable: true, validators: [requiredText] }),
     email: new FormControl('', { nonNullable: true, validators: [requiredText, Validators.email] }),
-    role: new FormControl<Role>('Employee', { nonNullable: true }),
+    roleId: new FormControl<number>(SYSTEM_ROLE_IDS.Employee, { nonNullable: true }),
     departmentId: new FormControl<number | null>(null),
     password: new FormControl('', { nonNullable: true }),
     isActive: new FormControl(true, { nonNullable: true })
   });
 
   ngOnInit(): void {
+    this.loadRoles();
     const employee = this.employee();
     if (employee) {
       this.form.patchValue({
@@ -67,7 +76,7 @@ export class EmployeeFormPanelComponent implements OnInit {
         fullName: employee.fullName,
         username: employee.username,
         email: employee.email,
-        role: employee.role,
+        roleId: employee.roleId,
         departmentId: employee.departmentId ?? null
       });
       // Initial status only exists when adding; a new password is optional when editing.
@@ -77,6 +86,30 @@ export class EmployeeFormPanelComponent implements OnInit {
       // Mirrors the API's CreateUserRequestValidator (required, at least 6 characters).
       this.form.controls.password.addValidators([requiredText, Validators.minLength(MIN_PASSWORD_LENGTH)]);
     }
+  }
+
+  /** The name shown when the role cannot be changed here. */
+  currentRoleName(): string {
+    return this.employee()?.role ?? 'Employee';
+  }
+
+  private loadRoles(): void {
+    if (!this.canChangeRole()) {
+      return;
+    }
+
+    this.roleService.list().subscribe({
+      next: (roles) => this.roles.set(roles),
+      error: () => {
+        // Fall back to the system roles so the form stays usable.
+        this.roleLoadFailed.set(true);
+        this.roles.set([
+          { id: SYSTEM_ROLE_IDS.Employee, name: 'Employee', isSystem: true, userCount: 0, permissionKeys: [] },
+          { id: SYSTEM_ROLE_IDS.Manager, name: 'Manager', isSystem: true, userCount: 0, permissionKeys: [] },
+          { id: SYSTEM_ROLE_IDS.Administrator, name: 'Administrator', isSystem: true, userCount: 0, permissionKeys: [] }
+        ]);
+      }
+    });
   }
 
   showError(name: 'fullName' | 'username' | 'email' | 'password'): boolean {
@@ -98,7 +131,7 @@ export class EmployeeFormPanelComponent implements OnInit {
       fullName: value.fullName.trim(),
       username: value.username.trim(),
       email: value.email.trim(),
-      role: value.role,
+      roleId: value.roleId,
       departmentId: value.departmentId
     };
 
@@ -114,7 +147,7 @@ export class EmployeeFormPanelComponent implements OnInit {
         // The API ends every session of a user whose username, password or role changed.
         const credentialsChanged =
           employee !== null &&
-          (user.username !== employee.username || newPassword !== null || user.role !== employee.role);
+          (user.username !== employee.username || newPassword !== null || user.roleId !== employee.roleId);
 
         if (credentialsChanged && this.authService.currentUser()?.id === user.id) {
           // The signed-in admin changed their own credentials: sign out now and ask for the new ones.

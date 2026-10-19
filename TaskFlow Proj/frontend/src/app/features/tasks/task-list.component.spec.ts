@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -36,14 +37,14 @@ describe('TaskListComponent', () => {
   let assigneesSpy: jasmine.Spy;
 
   function create(role: UserRole, queryParams: Record<string, string> = {}): ComponentFixture<TaskListComponent> {
-    const user: AuthUser = { id: 1, fullName: 'Test', username: 'test', email: 't@x', role, employeeCode: null };
+    const user: AuthUser = { id: 1, fullName: 'Test', username: 'test', email: 't@x', role, employeeCode: null, permissions: systemPermissions(role) };
     TestBed.configureTestingModule({
       imports: [TaskListComponent],
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
         { provide: TaskService, useValue: { list: listSpy, getAssignees: assigneesSpy } },
-        { provide: AuthService, useValue: { currentUser: signal(user).asReadonly() } }
+        { provide: AuthService, useValue: fakeAuthService(signal(user).asReadonly()) }
       ]
     });
     const fixture = TestBed.createComponent(TaskListComponent);

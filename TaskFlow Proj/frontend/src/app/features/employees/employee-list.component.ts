@@ -3,7 +3,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { IconComponent } from '../../core/layout/icon.component';
-import { DepartmentWithCount, Role, User } from '../../core/models';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
+import { DepartmentWithCount, User } from '../../core/models';
+import { RoleService } from '../../core/services/role.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -12,7 +15,8 @@ import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeDetailsPanelComponent } from './employee-details-panel.component';
-import { EmployeeFormPanelComponent, ROLES } from './employee-form-panel.component';
+import { EmployeeFormPanelComponent } from './employee-form-panel.component';
+import { roleBadgeClass } from './role-badge';
 
 export const SEARCH_DEBOUNCE_MS = 300;
 
@@ -29,6 +33,8 @@ type Panel = { mode: 'create' } | { mode: 'edit'; employee: User } | { mode: 'de
 })
 export class EmployeeListComponent implements OnInit {
   private readonly userService = inject(UserService);
+  private readonly authService = inject(AuthService);
+  private readonly roleService = inject(RoleService);
   private readonly departmentService = inject(DepartmentService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -38,7 +44,9 @@ export class EmployeeListComponent implements OnInit {
   private readonly searchInput$ = new Subject<string>();
   private readonly reload$ = new Subject<void>();
 
-  readonly roles = ROLES;
+  /** Filter choices: the system roles, plus custom roles for those allowed to list roles. */
+  readonly roles = signal<string[]>(['Employee', 'Manager', 'Administrator']);
+  readonly roleBadgeClass = roleBadgeClass;
   readonly initials = initials;
 
   readonly employees = signal<User[]>([]);
@@ -51,7 +59,7 @@ export class EmployeeListComponent implements OnInit {
   readonly searchText = signal('');
   readonly search = signal('');
   readonly departmentId = signal<number | null>(null);
-  readonly role = signal<Role | ''>('');
+  readonly role = signal<string>('');
   readonly status = signal<StatusFilter>('');
 
   readonly hasFilters = computed(
@@ -116,6 +124,12 @@ export class EmployeeListComponent implements OnInit {
     this.departmentService.getAll().subscribe({
       next: (departments) => this.departments.set(departments)
     });
+    if (this.authService.hasPermission(Permissions.RolesManage)) {
+      // Custom roles join the filter; the standard three stay if the list cannot be loaded.
+      this.roleService.list().subscribe({
+        next: (roles) => this.roles.set(roles.map((role) => role.name))
+      });
+    }
     this.load();
   }
 
@@ -135,7 +149,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   setRole(value: string): void {
-    this.role.set(value as Role | '');
+    this.role.set(value);
     this.load();
   }
 
@@ -207,10 +221,10 @@ export class EmployeeListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    const params: { search?: string; departmentId?: number; role?: Role; isActive?: boolean } = {};
+    const params: { search?: string; departmentId?: number; role?: string; isActive?: boolean } = {};
     if (this.search()) params.search = this.search();
     if (this.departmentId() !== null) params.departmentId = this.departmentId()!;
-    if (this.role()) params.role = this.role() as Role;
+    if (this.role()) params.role = this.role();
     if (this.status()) params.isActive = this.status() === 'active';
 
     return this.userService.getAll(params).pipe(catchError(() => of(null)));

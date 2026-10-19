@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
 using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.Infrastructure.Services;
@@ -25,6 +25,7 @@ public class UserService : IUserService
         var query = _dbContext.Users
             .AsNoTracking()
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .Where(u => !u.IsDeleted)
             .AsQueryable();
 
@@ -44,9 +45,10 @@ public class UserService : IUserService
                 query = query.Where(u => u.DepartmentId == filter.DepartmentId.Value);
             }
 
-            if (filter.Role.HasValue)
+            if (!string.IsNullOrWhiteSpace(filter.Role))
             {
-                query = query.Where(u => u.Role == filter.Role.Value);
+                var roleName = filter.Role.Trim();
+                query = query.Where(u => u.Role.Name == roleName);
             }
 
             if (filter.IsActive.HasValue)
@@ -63,7 +65,8 @@ public class UserService : IUserService
                 u.FullName,
                 u.Username,
                 u.Email,
-                u.Role,
+                u.RoleId,
+                u.Role.Name,
                 u.IsActive,
                 u.CreatedAt,
                 u.UpdatedAt,
@@ -80,6 +83,7 @@ public class UserService : IUserService
         var user = await _dbContext.Users
             .AsNoTracking()
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .Where(u => u.Id == id && !u.IsDeleted)
             .Select(u => new UserDto(
                 u.Id,
@@ -87,7 +91,8 @@ public class UserService : IUserService
                 u.FullName,
                 u.Username,
                 u.Email,
-                u.Role,
+                u.RoleId,
+                u.Role.Name,
                 u.IsActive,
                 u.CreatedAt,
                 u.UpdatedAt,
@@ -127,13 +132,16 @@ public class UserService : IUserService
             }
         }
 
+        var role = await RequireRoleAsync(request.RoleId, cancellationToken);
+
         var user = new User
         {
             EmployeeCode = request.EmployeeCode?.Trim(),
             FullName = request.FullName.Trim(),
             Username = username,
             Email = email,
-            Role = request.Role,
+            RoleId = role.Id,
+            Role = role,
             IsActive = request.IsActive,
             DepartmentId = request.DepartmentId,
             SecurityStamp = NewSecurityStamp(),
@@ -155,7 +163,8 @@ public class UserService : IUserService
             user.FullName,
             user.Username,
             user.Email,
-            user.Role,
+            user.RoleId,
+            user.Role.Name,
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
@@ -168,6 +177,7 @@ public class UserService : IUserService
     {
         var user = await _dbContext.Users
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
         if (user is null)
@@ -207,15 +217,29 @@ public class UserService : IUserService
             throw new InvalidOperationException($"Password must be at least {MinPasswordLength} characters.");
         }
 
+        var role = await RequireRoleAsync(request.RoleId, cancellationToken);
+
         var usernameChanged = !string.Equals(user.Username, username, StringComparison.Ordinal);
-        var roleChanged = user.Role != request.Role;
+        var roleChanged = user.RoleId != request.RoleId;
+
+        if (roleChanged && user.RoleId == SystemRoles.AdministratorId && user.IsActive)
+        {
+            var otherActiveAdministrators = await _dbContext.Users
+                .CountAsync(u => u.Id != id && !u.IsDeleted && u.IsActive && u.RoleId == SystemRoles.AdministratorId, cancellationToken);
+            if (otherActiveAdministrators == 0)
+            {
+                throw new InvalidOperationException("The only active Administrator cannot be moved to another role.");
+            }
+        }
+
         var now = DateTime.UtcNow;
 
         user.EmployeeCode = request.EmployeeCode?.Trim();
         user.FullName = request.FullName.Trim();
         user.Username = username;
         user.Email = email;
-        user.Role = request.Role;
+        user.RoleId = role.Id;
+        user.Role = role;
         user.DepartmentId = request.DepartmentId;
         user.UpdatedAt = now;
 
@@ -238,7 +262,8 @@ public class UserService : IUserService
             user.FullName,
             user.Username,
             user.Email,
-            user.Role,
+            user.RoleId,
+            user.Role.Name,
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
@@ -251,6 +276,7 @@ public class UserService : IUserService
     {
         var user = await _dbContext.Users
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
         if (user is null)
@@ -275,7 +301,8 @@ public class UserService : IUserService
             user.FullName,
             user.Username,
             user.Email,
-            user.Role,
+            user.RoleId,
+            user.Role.Name,
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
@@ -288,6 +315,7 @@ public class UserService : IUserService
     {
         var user = await _dbContext.Users
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
         if (user is null)
@@ -314,7 +342,7 @@ public class UserService : IUserService
 
         return new UserDto(
             user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
-            user.Role, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
+            user.RoleId, user.Role.Name, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
             user.DepartmentId, user.Department?.Name);
     }
 
@@ -322,6 +350,7 @@ public class UserService : IUserService
     {
         var user = await _dbContext.Users
             .Include(u => u.Department)
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
         if (user is null)
@@ -345,9 +374,13 @@ public class UserService : IUserService
 
         return new UserDto(
             user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
-            user.Role, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
+            user.RoleId, user.Role.Name, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
             user.DepartmentId, user.Department?.Name);
     }
+
+    private async Task<Role> RequireRoleAsync(int roleId, CancellationToken cancellationToken) =>
+        await _dbContext.Roles.FirstOrDefaultAsync(role => role.Id == roleId, cancellationToken)
+        ?? throw new InvalidOperationException("Role does not exist.");
 
     private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
     /// <summary>

@@ -1,5 +1,49 @@
 # TaskFlow
 
+## Data folder and first sign-in
+
+TaskFlow keeps everything it stores on this machine in one folder, **`C:\TaskFlow`**. The API creates it on startup if it
+is missing and stops with a clear message if it cannot create or write to it. Inside:
+
+| Item | What it is |
+|---|---|
+| `taskflow.db` | The SQLite database |
+| `dp-keys\` | The encryption key ring for AI provider API keys |
+| `mail-attachments\` | Files attached to internal mail |
+
+Set `Storage:Root` in `appsettings.json` (or the `Storage__Root` environment variable) to use another folder. The old
+`database/` folder inside the solution is no longer used and is not migrated; delete it when you no longer need it.
+Back up the whole `C:\TaskFlow` folder, but keep `dp-keys` out of any backup that also holds the database.
+
+On the first run the API creates the database, applies the schema and adds three accounts (`Seed:Enabled`, on by
+default). An account that already exists is never changed.
+
+| Role | Email | Password | Lands on |
+|---|---|---|---|
+| Administrator | `admin@taskflow.local` | `123456` | `/admin` |
+| Manager | `manager@taskflow.local` | `123456` | `/manager` |
+| Employee | `employee@taskflow.local` | `123456` | `/me` |
+
+These are development defaults. Change the passwords after signing in, or set `Seed:AdministratorPassword`,
+`Seed:ManagerPassword` and `Seed:EmployeePassword` before the first run, for anything beyond local use.
+
+## Roles and permissions
+
+Every user holds exactly one role, and a role is a set of permissions chosen from a **fixed catalog** (tasks, reports,
+workload, departments, employees, settings and so on). The API checks the permission on every request, so a change to a
+role applies to its users on their very next action, without signing in again.
+
+- **System roles** — Administrator, Manager and Employee are created by the application. Their permissions are
+  **read-only**: nobody, including an Administrator, can change, rename or delete them, in the UI, the API or the database.
+- **Custom roles** — an Administrator can create, edit and delete roles under **Settings → Role Configuration**
+  (Administrator only), ticking the permissions each one gets, then give a role to a user from **Employee Management**.
+  A role that users still hold cannot be deleted; move those users to another role first.
+- **The permission list is fixed.** Administrators choose from it but cannot add or remove permissions, so every
+  checkbox is something the application actually enforces. Managing roles is Administrator-only and is never offered
+  for a custom role.
+- The last active Administrator cannot be moved to another role.
+- A custom role lands on the personal dashboard (`/me`) and sees only the menu entries its permissions open.
+
 ## Mail
 
 TaskFlow has its own internal mail, like Gmail but only between TaskFlow users. Open **Mail** in the side menu,
@@ -26,8 +70,7 @@ available to every role.
 | Blocked types | `.exe .dll .bat .cmd .com .msi .ps1 .sh .js .vbs .scr` |
 
 Files are stored under generated names in the folder set by `Mail:AttachmentsPath` in `appsettings.json`. The
-default is `../database/mail-attachments`, resolved from the backend folder like the database, so it sits next to
-`database/taskflow.db`. Only the uploader and people who have the mail in their mailbox can download a file.
+default is `mail-attachments`, resolved under the data folder (`C:TaskFlow`), so it sits next to `taskflow.db`. Only the uploader and people who have the mail in their mailbox can download a file.
 **Back up this folder together with the database.**
 
 ### Deadline reminders in Mail
@@ -85,14 +128,14 @@ explains what happened and the user chooses another one.
 "key set, ends …1234", and it is never written to the logs. Leave the key box empty to keep the stored key.
 
 The encryption key ring is stored in the folder set by `AiProviders:KeyRingPath` in `appsettings.json` (default
-`../database/dp-keys`). On Windows the key ring is protected with DPAPI, so it only decrypts for the Windows
+`dp-keys`, under the data folder). On Windows the key ring is protected with DPAPI, so it only decrypts for the Windows
 account that runs the API: a copied folder is not enough, and a restore on another machine or account means entering the
 keys again. On other systems protect the folder on the file system. Keep it out of any backup that also holds the database.
 If it is lost, the stored keys can no longer be read and must be entered again. Never commit it.
 
 **Existing installs:** DPAPI only protects keys created after it was turned on, so a key ring made earlier keeps one
 plain (unprotected) key. At startup on Windows the API logs a warning when it finds one. To protect it, stop the API,
-delete the `database/dp-keys` folder, start the API, and enter the AI provider API keys again in
+delete the `C:TaskFlowdp-keys` folder, start the API, and enter the AI provider API keys again in
 **Settings → Application Settings → AI assistant (TFA)**. Do this after the first time you run a build with DPAPI.
 
 The Ollama server address cannot be a link-local or cloud metadata address (for example `169.254.169.254`).

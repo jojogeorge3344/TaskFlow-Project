@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -21,8 +22,8 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetMe_ReturnsOwnProfileOnly()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-reader", Role.Employee);
-        await _factory.SeedUserAsync("prof-victim", "prof-victim@taskflow.local", "P@ssw0rd!", Role.Manager);
+        var token = await LoginAsync(client, "prof-reader", SystemRoles.Employee);
+        await _factory.SeedUserAsync("prof-victim", "prof-victim@taskflow.local", "P@ssw0rd!", SystemRoles.Manager);
 
         var response = await SendAsync(client, HttpMethod.Get, MeUrl, token);
 
@@ -36,7 +37,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task PutMe_UpdatesNameAndEmail()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-edit", Role.Employee);
+        var token = await LoginAsync(client, "prof-edit", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
             JsonContent.Create(new { fullName = "Prof Edited", email = "prof-edited@taskflow.local" }));
@@ -55,8 +56,8 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task PutMe_DuplicateEmail_Returns400()
     {
         var client = _factory.CreateClient();
-        await _factory.SeedUserAsync("prof-taken-owner", "taken@taskflow.local", "P@ssw0rd!", Role.Employee);
-        var token = await LoginAsync(client, "prof-taken", Role.Employee);
+        await _factory.SeedUserAsync("prof-taken-owner", "taken@taskflow.local", "P@ssw0rd!", SystemRoles.Employee);
+        var token = await LoginAsync(client, "prof-taken", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
             JsonContent.Create(new { fullName = "Prof Taken", email = "taken@taskflow.local" }));
@@ -68,7 +69,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task PutMe_MalformedEmail_Returns400WithFieldError()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-bad-email", Role.Employee);
+        var token = await LoginAsync(client, "prof-bad-email", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
             JsonContent.Create(new { fullName = "Bad Email", email = "not-an-email" }));
@@ -82,7 +83,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task PutMe_CannotEscalateRole()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-escalate", Role.Employee);
+        var token = await LoginAsync(client, "prof-escalate", SystemRoles.Employee);
 
         // The contract does not even carry role/username, but prove a smuggled payload changes nothing.
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
@@ -108,7 +109,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Password_WrongCurrent_Returns400()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-wrong-pw", Role.Employee);
+        var token = await LoginAsync(client, "prof-wrong-pw", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
             JsonContent.Create(new { currentPassword = "not-the-password", newPassword = "N3wP@ss!" }));
@@ -120,7 +121,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Password_ShortNewPassword_Returns400()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-short-pw", Role.Employee);
+        var token = await LoginAsync(client, "prof-short-pw", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
             JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = "abc" }));
@@ -132,7 +133,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Password_OverlongNewPassword_Returns400()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-long-pw", Role.Employee);
+        var token = await LoginAsync(client, "prof-long-pw", SystemRoles.Employee);
         var tooLong = new string('x', 129);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
@@ -145,7 +146,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Password_Change_Returns204_AndEndsSessions()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-pw-change", Role.Employee);
+        var token = await LoginAsync(client, "prof-pw-change", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
             JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = "N3wP@ss!" }));
@@ -171,7 +172,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync($"{MeUrl}/password", new { })).StatusCode);
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);

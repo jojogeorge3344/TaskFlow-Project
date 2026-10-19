@@ -6,7 +6,9 @@ public static class DatabasePathResolver
 {
     private const string SolutionFileName = "TaskFlow.sln";
 
-    public static string Resolve(string? connectionString)
+    /// <summary>Resolves a relative data source against <paramref name="storageRoot"/>, or against the solution folder
+    /// when no root is given (design-time tooling).</summary>
+    public static string Resolve(string? connectionString, string? storageRoot = null)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -20,7 +22,7 @@ public static class DatabasePathResolver
             return connectionString;
         }
 
-        builder.DataSource = Path.GetFullPath(Path.Combine(FindSolutionDirectory(), builder.DataSource));
+        builder.DataSource = Path.GetFullPath(Path.Combine(storageRoot ?? FindSolutionDirectory(), builder.DataSource));
 
         return builder.ToString();
     }

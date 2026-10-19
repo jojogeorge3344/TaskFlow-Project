@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
@@ -13,7 +14,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_Manager_CreatesTaskWithCodeRecipientsActivityAndNotification()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr", Role.Manager);
+        var manager = harness.AddUser("tm-mgr", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee");
         var extra = harness.AddUser("tm-extra");
 
@@ -30,7 +31,7 @@ public class TaskManagementServiceTests
             1,
             ReminderFrequency.Weekly);
 
-        var details = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var details = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         Assert.NotEqual(0, details.Id);
         Assert.StartsWith("TSK-", details.TaskCode);
@@ -64,7 +65,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_DefaultReminders_AreApplied()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr2", Role.Manager);
+        var manager = harness.AddUser("tm-mgr2", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee2");
 
         var request = new CreateTaskRequest(
@@ -76,7 +77,7 @@ public class TaskManagementServiceTests
             DateTime.UtcNow.AddDays(2),
             4m);
 
-        var details = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var details = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         var stored = await harness.Db.Tasks.SingleAsync(task => task.Id == details.Id);
         Assert.Equal(2, stored.FirstReminderDays);
@@ -88,7 +89,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_OmittedReminders_UseConfiguredDefaults_AndExistingTasksKeepTheirs()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr-defaults", Role.Manager);
+        var manager = harness.AddUser("tm-mgr-defaults", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee-defaults");
         var request = new CreateTaskRequest(
             "Configured defaults",
@@ -99,11 +100,11 @@ public class TaskManagementServiceTests
             DateTime.UtcNow.AddDays(5),
             4m);
 
-        var before = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var before = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
         await harness.ReminderSettings.UpdateAsync(
             manager.Id,
             new UpdateReminderSettingsRequest(true, true, 3, 1, ReminderFrequency.Weekly, false));
-        var after = await harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var after = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         var created = await harness.Db.Tasks.AsNoTracking().SingleAsync(task => task.Id == after.Id);
         Assert.Equal(3, created.FirstReminderDays);
@@ -119,7 +120,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_PartialReminders_MixedWithDefaults_MustStayOrdered()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr-mixed", Role.Manager);
+        var manager = harness.AddUser("tm-mgr-mixed", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee-mixed");
         await harness.ReminderSettings.UpdateAsync(
             manager.Id,
@@ -136,7 +137,7 @@ public class TaskManagementServiceTests
             SecondReminderDays: 5);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+            harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
 
         Assert.Equal("The second reminder cannot come before the first reminder.", error.Message);
         Assert.False(await harness.Db.Tasks.AnyAsync(task => task.Title == "Mixed reminders"));
@@ -146,7 +147,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_ExplicitReminders_OverrideConfiguredDefaults()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr-explicit", Role.Manager);
+        var manager = harness.AddUser("tm-mgr-explicit", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee-explicit");
         await harness.ReminderSettings.UpdateAsync(
             manager.Id,
@@ -165,7 +166,7 @@ public class TaskManagementServiceTests
                 SecondReminderDays: 0,
                 OverdueReminderFrequency: ReminderFrequency.Daily),
             manager.Id,
-            nameof(Role.Manager),
+            SystemRoles.Manager,
             CancellationToken.None);
 
         var stored = await harness.Db.Tasks.AsNoTracking().SingleAsync(task => task.Id == details.Id);
@@ -191,14 +192,14 @@ public class TaskManagementServiceTests
             1m);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            harness.TaskService.CreateAsync(request, employee.Id, nameof(Role.Employee), CancellationToken.None));
+            harness.TaskService.CreateAsync(request, employee.Id, SystemRoles.Employee, CancellationToken.None));
     }
 
     [Fact]
     public async Task CreateAsync_InactiveAssignee_ThrowsInvalidOperation()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr3", Role.Manager);
+        var manager = harness.AddUser("tm-mgr3", SystemRoles.Manager);
         var inactive = harness.AddUser("tm-inactive", isActive: false);
 
         var request = new CreateTaskRequest(
@@ -211,21 +212,21 @@ public class TaskManagementServiceTests
             1m);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            harness.TaskService.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+            harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
     }
 
     [Fact]
     public async Task ListAsync_Employee_ReturnsOnlyScopedTasks()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tl-mgr", Role.Manager);
+        var manager = harness.AddUser("tl-mgr", SystemRoles.Manager);
         var employee = harness.AddUser("tl-emp");
         var other = harness.AddUser("tl-other");
         harness.AddTask(employee.Id, manager.Id, title: "Mine");
         harness.AddTask(other.Id, manager.Id, title: "Not mine");
 
         var result = await harness.TaskService.ListAsync(
-            new TaskListFilter(), employee.Id, nameof(Role.Employee), CancellationToken.None);
+            new TaskListFilter(), employee.Id, SystemRoles.Employee, CancellationToken.None);
 
         var item = Assert.Single(result.Items);
         Assert.Equal("Mine", item.Title);
@@ -236,25 +237,25 @@ public class TaskManagementServiceTests
     public async Task ListAsync_AppliesFiltersSearchAndPaging()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tl-mgr2", Role.Manager);
+        var manager = harness.AddUser("tl-mgr2", SystemRoles.Manager);
         var employee = harness.AddUser("tl-emp2");
         harness.AddTask(employee.Id, manager.Id, title: "Alpha report", status: TaskStatus.InProgress, priority: TaskPriority.High);
         harness.AddTask(employee.Id, manager.Id, title: "Beta task", status: TaskStatus.ToDo);
 
         var byStatus = await harness.TaskService.ListAsync(
-            new TaskListFilter(Status: TaskStatus.InProgress), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Status: TaskStatus.InProgress), manager.Id, SystemRoles.Manager, CancellationToken.None);
         Assert.All(byStatus.Items, item => Assert.Equal(TaskStatus.InProgress, item.Status));
 
         var bySearch = await harness.TaskService.ListAsync(
-            new TaskListFilter(Search: "Alpha"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Search: "Alpha"), manager.Id, SystemRoles.Manager, CancellationToken.None);
         Assert.Contains(bySearch.Items, item => item.Title == "Alpha report");
 
         var byPriority = await harness.TaskService.ListAsync(
-            new TaskListFilter(Priority: TaskPriority.High), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Priority: TaskPriority.High), manager.Id, SystemRoles.Manager, CancellationToken.None);
         Assert.Contains(byPriority.Items, item => item.Title == "Alpha report");
 
         var paged = await harness.TaskService.ListAsync(
-            new TaskListFilter(Page: 1, PageSize: 1), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Page: 1, PageSize: 1), manager.Id, SystemRoles.Manager, CancellationToken.None);
         Assert.Single(paged.Items);
         Assert.Equal(2, paged.Total);
         Assert.Equal(1, paged.PageSize);
@@ -264,13 +265,13 @@ public class TaskManagementServiceTests
     public async Task ListAsync_MarksOverdueTasks()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tl-mgr3", Role.Manager);
+        var manager = harness.AddUser("tl-mgr3", SystemRoles.Manager);
         var employee = harness.AddUser("tl-emp3");
         harness.AddTask(employee.Id, manager.Id, title: "Late task", deadline: DateTime.UtcNow.AddDays(-2));
         harness.AddTask(employee.Id, manager.Id, title: "Future task", deadline: DateTime.UtcNow.AddDays(2));
 
         var result = await harness.TaskService.ListAsync(
-            new TaskListFilter(Search: "task"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Search: "task"), manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         var late = Assert.Single(result.Items, item => item.Title == "Late task");
         Assert.True(late.IsOverdue);
@@ -285,15 +286,15 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_TwoTasks_GetDistinctCodes()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr4", Role.Manager);
+        var manager = harness.AddUser("tm-mgr4", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee4");
 
         CreateTaskRequest Request(string title) => new(
             title, null, assignee.Id, TaskPriority.Low,
             DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m);
 
-        var first = await harness.TaskService.CreateAsync(Request("First"), manager.Id, nameof(Role.Manager), CancellationToken.None);
-        var second = await harness.TaskService.CreateAsync(Request("Second"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var first = await harness.TaskService.CreateAsync(Request("First"), manager.Id, SystemRoles.Manager, CancellationToken.None);
+        var second = await harness.TaskService.CreateAsync(Request("Second"), manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         Assert.Equal($"TSK-{first.Id:D6}", first.TaskCode);
         Assert.Equal($"TSK-{second.Id:D6}", second.TaskCode);
@@ -304,7 +305,7 @@ public class TaskManagementServiceTests
     public async Task CreateAsync_NotificationFails_RollsBackTheTask()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tm-mgr5", Role.Manager);
+        var manager = harness.AddUser("tm-mgr5", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee5");
         var service = new TaskFlow.Infrastructure.Services.TaskService(
             harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System, harness.ReminderSettings, harness.Clock);
@@ -314,7 +315,7 @@ public class TaskManagementServiceTests
             DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.CreateAsync(request, manager.Id, nameof(Role.Manager), CancellationToken.None));
+            service.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
 
         Assert.Equal(0, await harness.Db.Tasks.AsNoTracking().CountAsync());
         Assert.Equal(0, await harness.Db.TaskRecipients.AsNoTracking().CountAsync());
@@ -324,15 +325,15 @@ public class TaskManagementServiceTests
     public async Task ListAsync_SearchTreatsLikeWildcardsLiterally()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tl-mgr5", Role.Manager);
+        var manager = harness.AddUser("tl-mgr5", SystemRoles.Manager);
         var employee = harness.AddUser("tl-emp5");
         harness.AddTask(employee.Id, manager.Id, title: "Raise to 100% coverage");
         harness.AddTask(employee.Id, manager.Id, title: "Plain task");
 
         var percent = await harness.TaskService.ListAsync(
-            new TaskListFilter(Search: "%"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Search: "%"), manager.Id, SystemRoles.Manager, CancellationToken.None);
         var underscore = await harness.TaskService.ListAsync(
-            new TaskListFilter(Search: "_"), manager.Id, nameof(Role.Manager), CancellationToken.None);
+            new TaskListFilter(Search: "_"), manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         Assert.Equal("Raise to 100% coverage", Assert.Single(percent.Items).Title);
         Assert.Empty(underscore.Items);
@@ -348,14 +349,14 @@ public class TaskManagementServiceTests
     public async Task ListAsync_DeadlineRange_ReturnsOnlyTasksInRange()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("tl-mgr4", Role.Manager);
+        var manager = harness.AddUser("tl-mgr4", SystemRoles.Manager);
         var employee = harness.AddUser("tl-emp4");
         harness.AddTask(employee.Id, manager.Id, title: "Soon", deadline: DateTime.UtcNow.AddDays(2));
         harness.AddTask(employee.Id, manager.Id, title: "Later", deadline: DateTime.UtcNow.AddDays(20));
 
         var result = await harness.TaskService.ListAsync(
             new TaskListFilter(DeadlineFrom: DateTime.UtcNow, DeadlineTo: DateTime.UtcNow.AddDays(7)),
-            manager.Id, nameof(Role.Manager), CancellationToken.None);
+            manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         var item = Assert.Single(result.Items);
         Assert.Equal("Soon", item.Title);
@@ -365,14 +366,14 @@ public class TaskManagementServiceTests
     public async Task GetAssigneesAsync_Employee_ReturnsOnlyAssigneesInScope()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
-        var manager = harness.AddUser("ta-mgr", Role.Manager);
+        var manager = harness.AddUser("ta-mgr", SystemRoles.Manager);
         var employee = harness.AddUser("ta-emp");
         var other = harness.AddUser("ta-other");
         harness.AddTask(employee.Id, manager.Id);
         harness.AddTask(other.Id, manager.Id);
 
-        var forEmployee = await harness.TaskService.GetAssigneesAsync(employee.Id, nameof(Role.Employee), CancellationToken.None);
-        var forManager = await harness.TaskService.GetAssigneesAsync(manager.Id, nameof(Role.Manager), CancellationToken.None);
+        var forEmployee = await harness.TaskService.GetAssigneesAsync(employee.Id, SystemRoles.Employee, CancellationToken.None);
+        var forManager = await harness.TaskService.GetAssigneesAsync(manager.Id, SystemRoles.Manager, CancellationToken.None);
 
         Assert.Equal(employee.Id, Assert.Single(forEmployee).UserId);
         Assert.Equal(2, forManager.Count);

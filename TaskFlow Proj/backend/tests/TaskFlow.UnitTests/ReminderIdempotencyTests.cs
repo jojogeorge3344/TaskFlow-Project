@@ -1,4 +1,5 @@
 using System.Data.Common;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,10 +30,11 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
     {
         await using var db = NewContext();
         await db.Database.EnsureCreatedAsync();
+        await TestAccessControl.SeedAsync(db);
 
-        var creator = AddUser(db, "idem-creator", Role.Manager);
-        var assignee = AddUser(db, "idem-assignee", Role.Employee);
-        var extra = AddUser(db, "idem-extra", Role.Employee);
+        var creator = AddUser(db, "idem-creator", SystemRoles.Manager);
+        var assignee = AddUser(db, "idem-assignee", SystemRoles.Employee);
+        var extra = AddUser(db, "idem-extra", SystemRoles.Employee);
         await db.SaveChangesAsync();
 
         var task = new TaskEntity
@@ -276,7 +278,7 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
         }
     }
 
-    private static User AddUser(AppDbContext db, string username, Role role)
+    private static User AddUser(AppDbContext db, string username, string role)
     {
         var user = new User
         {
@@ -284,7 +286,7 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
             Username = username,
             Email = $"{username}@taskflow.local",
             PasswordHash = "hash",
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

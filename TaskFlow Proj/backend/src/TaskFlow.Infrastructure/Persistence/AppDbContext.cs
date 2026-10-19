@@ -15,6 +15,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
@@ -46,7 +50,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(user => user.Email).IsRequired().HasMaxLength(256);
             entity.Property(user => user.PasswordHash).IsRequired();
             entity.Property(user => user.SecurityStamp).IsRequired().HasMaxLength(64);
-            entity.Property(user => user.Role).HasConversion<string>().HasMaxLength(32);
+
+            entity
+                .HasOne(user => user.Role)
+                .WithMany(role => role.Users)
+                .HasForeignKey(user => user.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(user => user.Username).IsUnique();
             entity.HasIndex(user => user.Email).IsUnique();
@@ -57,6 +66,41 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .HasOne(user => user.Department)
                 .WithMany(department => department.Users)
                 .HasForeignKey(user => user.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(role => role.Id);
+            // NOCASE makes the unique index reject "team lead" when "Team Lead" exists.
+            entity.Property(role => role.Name).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+            entity.HasIndex(role => role.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(permission => permission.Id);
+            entity.Property(permission => permission.Key).IsRequired().HasMaxLength(100);
+            entity.Property(permission => permission.Name).IsRequired().HasMaxLength(200);
+            entity.Property(permission => permission.Description).IsRequired().HasMaxLength(500);
+            entity.Property(permission => permission.Group).IsRequired().HasMaxLength(100);
+            entity.HasIndex(permission => permission.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(grant => new { grant.RoleId, grant.PermissionId });
+
+            entity
+                .HasOne(grant => grant.Role)
+                .WithMany(role => role.Permissions)
+                .HasForeignKey(grant => grant.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(grant => grant.Permission)
+                .WithMany(permission => permission.Roles)
+                .HasForeignKey(grant => grant.PermissionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

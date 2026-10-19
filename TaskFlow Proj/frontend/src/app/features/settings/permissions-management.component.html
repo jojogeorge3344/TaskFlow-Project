@@ -1,0 +1,163 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Role Configuration</h1>
+      <p>Choose what each role can do. Administrator, Manager and Employee are fixed; create your own roles for anyone else.</p>
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-card">
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ loadError() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card perm-loading" aria-busy="true">
+      <span class="tf-skeleton perm-loading__row"></span>
+      <span class="tf-skeleton perm-loading__row"></span>
+      <span class="tf-skeleton perm-loading__row"></span>
+    </div>
+  } @else {
+    <div class="perm-layout">
+      <aside class="tf-card perm-roles" aria-label="Roles">
+        <div class="perm-roles__head">
+          <h2>Roles</h2>
+          <button type="button" class="tf-btn tf-btn--primary" data-action="new-role" (click)="startNew()">
+            <tf-icon name="plus" />
+            New role
+          </button>
+        </div>
+
+        <ul class="perm-roles__list">
+          @for (role of roles(); track role.id) {
+            <li>
+              <button
+                type="button"
+                class="perm-role"
+                [class.perm-role--active]="selection() === role.id"
+                [attr.data-role]="role.id"
+                [attr.aria-current]="selection() === role.id ? 'true' : null"
+                (click)="select(role.id)"
+              >
+                <span class="perm-role__name">{{ role.name }}</span>
+                <span class="perm-role__meta">
+                  <span class="tf-badge" [class.tf-badge--administrator]="role.isSystem" [class.tf-badge--custom]="!role.isSystem">
+                    {{ role.isSystem ? 'System' : 'Custom' }}
+                  </span>
+                  <span class="perm-role__users">{{ role.userCount }} {{ role.userCount === 1 ? 'user' : 'users' }}</span>
+                </span>
+              </button>
+            </li>
+          }
+          @if (isNew()) {
+            <li>
+              <span class="perm-role perm-role--active perm-role--draft" aria-current="true" data-role="new">
+                <span class="perm-role__name">{{ draftName().trim() || 'New role' }}</span>
+                <span class="perm-role__meta"><span class="tf-badge tf-badge--custom">Unsaved</span></span>
+              </span>
+            </li>
+          }
+        </ul>
+      </aside>
+
+      <div class="tf-card perm-detail">
+        @if (selection() === null) {
+          <div class="tf-empty">
+            <strong>No role selected</strong>
+            <p>Pick a role on the left, or create a new one.</p>
+          </div>
+        } @else {
+          <form (submit)="$event.preventDefault(); save()" novalidate>
+            @if (editable()) {
+              <div class="tf-field perm-name">
+                <label for="role-name">Role name <span class="tf-field__required" aria-hidden="true">*</span></label>
+                <input
+                  id="role-name"
+                  class="tf-input"
+                  data-field="name"
+                  maxlength="100"
+                  [value]="draftName()"
+                  [class.is-invalid]="!!nameError()"
+                  [attr.aria-invalid]="!!nameError()"
+                  [attr.aria-describedby]="nameError() ? 'role-name-error' : null"
+                  (input)="setName($any($event.target).value)"
+                  (blur)="nameTouched.set(true)"
+                />
+                @if (nameError(); as message) {
+                  <span id="role-name-error" class="tf-field__error" data-error="name">{{ message }}</span>
+                }
+              </div>
+            } @else {
+              <div class="perm-title">
+                <h2>{{ selectedRole()?.name }}</h2>
+                <span class="tf-badge tf-badge--administrator">System role</span>
+              </div>
+              <p class="perm-note" data-note="read-only">
+                <tf-icon name="alert" />
+                {{ selectedRole()?.name }} is a system role. Its permissions are read-only and cannot be changed or deleted.
+              </p>
+            }
+
+            <p class="perm-count" aria-live="polite">{{ heldCount() }} of {{ totalCount() }} permissions</p>
+
+            @for (group of groups(); track group.name) {
+              <fieldset class="perm-group">
+                <legend>{{ group.name }}</legend>
+                @for (permission of group.permissions; track permission.key) {
+                  <div class="perm-check">
+                    <input
+                      type="checkbox"
+                      [id]="'perm-' + permission.key"
+                      [attr.data-permission]="permission.key"
+                      [checked]="isChecked(permission.key)"
+                      [disabled]="!editable()"
+                      (change)="toggle(permission.key, $any($event.target).checked)"
+                    />
+                    <label [for]="'perm-' + permission.key">
+                      <span class="perm-check__name">{{ permission.name }}</span>
+                      <span class="perm-check__desc">{{ permission.description }}</span>
+                    </label>
+                  </div>
+                }
+              </fieldset>
+            }
+
+            @if (editable()) {
+              <!-- Next to the buttons, so a refused save or delete is seen where the Administrator just clicked. -->
+              @if (formError()) {
+                <div class="tf-alert" role="alert" data-error="form">
+                  <tf-icon name="alert" />
+                  <span>{{ formError() }}</span>
+                </div>
+              }
+              <div class="perm-actions">
+                @if (!isNew()) {
+                  <button
+                    type="button"
+                    class="tf-btn tf-btn--danger"
+                    data-action="delete"
+                    [disabled]="deleting() || saving()"
+                    (click)="remove()"
+                  >
+                    <tf-icon name="trash" />
+                    {{ deleting() ? 'Deleting…' : 'Delete role' }}
+                  </button>
+                }
+                <span class="perm-actions__spacer"></span>
+                <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving() || deleting() || !dirty()">
+                  {{ saving() ? 'Saving…' : isNew() ? 'Create role' : 'Save changes' }}
+                </button>
+              </div>
+            }
+          </form>
+        }
+      </div>
+    </div>
+  }
+</section>
+
+<tf-confirm-dialog />

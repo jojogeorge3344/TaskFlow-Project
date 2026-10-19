@@ -30,8 +30,14 @@ builder.Services.AddProblemDetails();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(DatabasePathResolver.Resolve(builder.Configuration.GetConnectionString("Default"))));
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+
+// Resolved when the context is first built (not while this file runs) so configuration added later, such as by the
+// integration tests, decides where the database goes.
+builder.Services.AddDbContext<AppDbContext>((provider, options) =>
+    options.UseSqlite(DatabasePathResolver.Resolve(
+        provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"),
+        StorageRoot.Resolve(provider.GetRequiredService<IOptions<StorageOptions>>().Value.Root))));
 
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 builder.Services.AddSingleton(TimeProvider.System);
@@ -39,6 +45,7 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<TaskFlow.Application.Departments.IDepartmentService, TaskFlow.Infrastructure.Services.DepartmentService>();
 builder.Services.AddScoped<TaskFlow.Application.Users.IUserService, TaskFlow.Infrastructure.Services.UserService>();
+builder.Services.AddScoped<TaskFlow.Application.Roles.IRoleService, TaskFlow.Infrastructure.Services.RoleService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.IDashboardService, TaskFlow.Infrastructure.Services.DashboardService>();
 builder.Services.AddScoped<TaskFlow.Application.Workload.IWorkloadService, TaskFlow.Infrastructure.Services.WorkloadService>();
 builder.Services.AddScoped<TaskFlow.Application.Reports.IReportService, TaskFlow.Infrastructure.Services.ReportService>();
@@ -78,10 +85,10 @@ if (OperatingSystem.IsWindows())
 // configuration added later, such as by the integration tests, decides where the keys go.
 builder.Services
     .AddOptions<Microsoft.AspNetCore.DataProtection.KeyManagement.KeyManagementOptions>()
-    .Configure<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>, ILoggerFactory>(
-        (options, aiOptions, loggerFactory) =>
+    .Configure<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>, Microsoft.Extensions.Options.IOptions<StorageOptions>, ILoggerFactory>(
+        (options, aiOptions, storage, loggerFactory) =>
             options.XmlRepository = new Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository(
-                new DirectoryInfo(TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(aiOptions.Value.KeyRingPath)),
+                new DirectoryInfo(StorageRoot.ResolveUnder(StorageRoot.Resolve(storage.Value.Root), aiOptions.Value.KeyRingPath)),
                 loggerFactory));
 builder.Services.AddSingleton<TaskFlow.Application.Assistant.IAiKeyProtector, TaskFlow.Infrastructure.Assistant.AiKeyProtector>();
 // The timeout is read from the bound options when a client is created. Provider clients never log request or response headers or bodies, so keys and prompts stay out of the logs.
@@ -122,6 +129,7 @@ builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionCards>
     provider => provider.GetRequiredService<TaskFlow.Application.Assistant.IAssistantActionService>());
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantService, TaskFlow.Infrastructure.Assistant.AssistantService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.AddScoped<AccessControlSeeder>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -156,11 +164,13 @@ builder.Services
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthPolicies.AdminOnly, policy =>
-        policy.RequireRole(nameof(Role.Administrator)));
-
-    options.AddPolicy(AuthPolicies.ManagerOrAdmin, policy =>
-        policy.RequireRole(nameof(Role.Administrator), nameof(Role.Manager)));
+    // One policy per catalog permission; the permission claims are refreshed from the database on every request.
+    foreach (var permission in TaskFlow.Domain.Security.PermissionCatalog.All)
+    {
+        options.AddPolicy(
+            TaskFlow.Domain.Security.PermissionPolicy.NameFor(permission.Key),
+            policy => policy.RequireClaim(AuthClaims.Permission, permission.Key));
+    }
 
     options.AddPolicy(AuthPolicies.TaskAccess, policy =>
         policy.Requirements.Add(new TaskAccessRequirement()));
@@ -179,9 +189,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// The data folder must exist and be writable before the database, key ring or attachments are touched.
+var storageRoot = StorageRoot.Resolve(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Root);
+StorageRoot.EnsureAvailable(storageRoot);
+
 if (OperatingSystem.IsWindows())
 {
-    var keyRingFolder = TaskFlow.Infrastructure.Mail.LocalMailFileStore.ResolveRoot(
+    var keyRingFolder = StorageRoot.ResolveUnder(
+        storageRoot,
         app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.KeyRingPath);
     var keyRingCheck = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.Check(keyRingFolder);
     if (keyRingCheck.UnprotectedKeys > 0)
@@ -209,6 +224,7 @@ using (var scope = app.Services.CreateScope())
     await dbContext.Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Settings.SettingsInitializer>().InitializeAsync();
 
+    await scope.ServiceProvider.GetRequiredService<AccessControlSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
 }
 

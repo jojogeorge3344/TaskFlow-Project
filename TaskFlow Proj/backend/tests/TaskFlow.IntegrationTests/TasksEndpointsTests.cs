@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -25,7 +26,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetBoard_AsManager_ReturnsAllTasks()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-board-emp");
 
         await CreateTaskAsync("Board task one", employee.Id, manager.Id);
@@ -45,14 +46,14 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetBoard_AsEmployee_ReturnsOnlyScopedTasks()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr2", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr2", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-board-emp2");
         var other = await SeedUserAsync("tek-board-other");
 
         await CreateTaskAsync("Mine", employee.Id, manager.Id);
         await CreateTaskAsync("Not mine", other.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-board-emp2", Role.Employee);
+        var token = await LoginAsync(client, "tek-board-emp2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Get, "/api/v1/tasks/board", token);
 
@@ -81,11 +82,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetDetails_AsAssignee_Returns200()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr3", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr3", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-detail-emp");
         var task = await CreateTaskAsync("Detail task", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-detail-emp", Role.Employee);
+        var token = await LoginAsync(client, "tek-detail-emp", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Get, $"/api/v1/tasks/{task.Id}", token);
 
@@ -100,12 +101,12 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetDetails_AsUnrelatedEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr4", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr4", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-detail-emp2");
         var unrelated = await SeedUserAsync("tek-unrelated");
         var task = await CreateTaskAsync("Private task", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-unrelated", Role.Employee);
+        var token = await LoginAsync(client, "tek-unrelated", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Get, $"/api/v1/tasks/{task.Id}", token);
 
@@ -116,7 +117,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetDetails_MissingOrDeletedTask_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr5", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr5", SystemRoles.Manager);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Get, "/api/v1/tasks/999999", manager.Token);
 
@@ -127,7 +128,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_AsManager_ReturnsUpdatedAndWritesActivity()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr6", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr6", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-upd-emp");
         var task = await CreateTaskAsync("Before update", employee.Id, manager.Id);
 
@@ -159,11 +160,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr7", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr7", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-upd-emp2");
         var task = await CreateTaskAsync("Locked task", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-upd-emp2", Role.Employee);
+        var token = await LoginAsync(client, "tek-upd-emp2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Put, $"/api/v1/tasks/{task.Id}", token,
             JsonContent.Create(new
@@ -182,7 +183,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_InvalidBody_Returns400()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr8", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr8", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-upd-emp3");
         var task = await CreateTaskAsync("Strict task", employee.Id, manager.Id);
 
@@ -203,11 +204,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ChangeStatus_AllowedTransition_Returns200()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr9", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr9", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-status-emp");
         var task = await CreateTaskAsync("Move me", employee.Id, manager.Id, status: TaskStatus.ToDo);
 
-        var token = await LoginAsync(client, "tek-status-emp", Role.Employee);
+        var token = await LoginAsync(client, "tek-status-emp", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Patch, $"/api/v1/tasks/{task.Id}/status", token,
             JsonContent.Create(new { status = "InProgress" }));
@@ -229,11 +230,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ChangeStatus_DisallowedTransition_Returns400()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr10", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr10", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-status-emp2");
         var task = await CreateTaskAsync("Stuck in ToDo", employee.Id, manager.Id, status: TaskStatus.ToDo);
 
-        var token = await LoginAsync(client, "tek-status-emp2", Role.Employee);
+        var token = await LoginAsync(client, "tek-status-emp2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Patch, $"/api/v1/tasks/{task.Id}/status", token,
             JsonContent.Create(new { status = "Completed" }));
@@ -245,7 +246,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Reassign_AsManager_PublishesNotificationForNewAssignee()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr11", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr11", SystemRoles.Manager);
         var oldAssignee = await SeedUserAsync("tek-reassign-old");
         var newAssignee = await SeedUserAsync("tek-reassign-new");
         var task = await CreateTaskAsync("Handover task", oldAssignee.Id, manager.Id);
@@ -269,12 +270,12 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Reassign_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr12", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr12", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-reassign-old2");
         var other = await SeedUserAsync("tek-reassign-target");
         var task = await CreateTaskAsync("Locked handover", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-reassign-old2", Role.Employee);
+        var token = await LoginAsync(client, "tek-reassign-old2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Post, $"/api/v1/tasks/{task.Id}/reassign", token,
             JsonContent.Create(new { newAssigneeUserId = other.Id, reason = "Nope" }));
@@ -286,11 +287,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Comments_AddAndList_Return200()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr13", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr13", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-comment-emp");
         var task = await CreateTaskAsync("Commented task", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-comment-emp", Role.Employee);
+        var token = await LoginAsync(client, "tek-comment-emp", SystemRoles.Employee);
 
         var add = await SendWithTokenAsync(client, HttpMethod.Post, $"/api/v1/tasks/{task.Id}/comments", token,
             JsonContent.Create(new { body = "First handoff note" }));
@@ -314,11 +315,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Comments_EmptyBody_Returns400()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr14", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr14", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-comment-emp2");
         var task = await CreateTaskAsync("Strict comments", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-comment-emp2", Role.Employee);
+        var token = await LoginAsync(client, "tek-comment-emp2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Post, $"/api/v1/tasks/{task.Id}/comments", token,
             JsonContent.Create(new { body = "  " }));
@@ -330,11 +331,11 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Activity_WithFilters_ReturnsFilteredEntries()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr15", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr15", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-activity-emp");
         var task = await CreateTaskAsync("Filtered activity", employee.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-activity-emp", Role.Employee);
+        var token = await LoginAsync(client, "tek-activity-emp", SystemRoles.Employee);
 
         await SendWithTokenAsync(client, HttpMethod.Patch, $"/api/v1/tasks/{task.Id}/status", token,
             JsonContent.Create(new { status = "InProgress" }));
@@ -356,7 +357,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Recipients_GetAndUpdate_WorkForManager()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-mgr16", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-mgr16", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-recip-emp");
         var extra = await SeedUserAsync("tek-recip-extra");
         var task = await CreateTaskAsync("Recipient task", employee.Id, manager.Id);
@@ -380,7 +381,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Create_AsManager_Returns201AndPersistsTask()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-create-mgr", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-create-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-create-emp");
         var extra = await SeedUserAsync("tek-create-extra");
 
@@ -424,7 +425,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Create_WithoutReminderFields_StoresConfiguredDefaults()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-defaults-mgr", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-defaults-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-defaults-emp");
 
         var configure = await SendWithTokenAsync(client, HttpMethod.Put, "/api/v1/settings/reminders", manager.Token,
@@ -484,7 +485,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         await SeedUserAsync("tek-create-mgr2");
         var assignee = await SeedUserAsync("tek-create-assignee2");
-        var token = await LoginAsync(client, "tek-create-mgr2", Role.Employee);
+        var token = await LoginAsync(client, "tek-create-mgr2", SystemRoles.Employee);
 
         var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", token,
             JsonContent.Create(new
@@ -504,7 +505,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Create_InvalidBody_Returns400()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-create-mgr3", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-create-mgr3", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-create-emp3");
 
         var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", manager.Token,
@@ -525,13 +526,13 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_AsEmployee_ReturnsOnlyAccessibleTasks()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-list-mgr", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-list-emp");
         var other = await SeedUserAsync("tek-list-other");
         await CreateTaskAsync("Mine to see", employee.Id, manager.Id);
         await CreateTaskAsync("Hidden from me", other.Id, manager.Id);
 
-        var token = await LoginAsync(client, "tek-list-emp", Role.Employee);
+        var token = await LoginAsync(client, "tek-list-emp", SystemRoles.Employee);
         var response = await SendWithTokenAsync(client, HttpMethod.Get, "/api/v1/tasks", token);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -547,7 +548,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_SearchAndFilters_ReturnMatches()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-list-mgr2", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr2", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-list-emp2");
         await CreateTaskAsync("Zeta milestone zz9", employee.Id, manager.Id, TaskStatus.InProgress);
         await CreateTaskAsync("Unrelated chore", employee.Id, manager.Id, TaskStatus.ToDo);
@@ -573,7 +574,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_DeadlineRange_ReturnsOnlyTasksInRange()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-list-mgr4", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr4", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-list-emp4");
         await CreateTaskAsync("Range inside", employee.Id, manager.Id, deadline: new DateTime(2031, 3, 10, 0, 0, 0, DateTimeKind.Utc));
         await CreateTaskAsync("Range outside", employee.Id, manager.Id, deadline: new DateTime(2031, 6, 10, 0, 0, 0, DateTimeKind.Utc));
@@ -592,7 +593,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_ReturnsPagingMetadata()
     {
         var client = _factory.CreateClient();
-        var manager = await SeedAndLoginAsync(client, "tek-list-mgr3", Role.Manager);
+        var manager = await SeedAndLoginAsync(client, "tek-list-mgr3", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-list-emp3");
         await CreateTaskAsync("Page one", employee.Id, manager.Id);
         await CreateTaskAsync("Page two", employee.Id, manager.Id);
@@ -608,7 +609,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(1, document.RootElement.GetProperty("items").GetArrayLength());
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
@@ -625,7 +626,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("accessToken").GetString()!;
     }
 
-    private async Task<(string Token, int Id)> SeedAndLoginAsync(HttpClient client, string username, Role role)
+    private async Task<(string Token, int Id)> SeedAndLoginAsync(HttpClient client, string username, string role)
     {
         var token = await LoginAsync(client, username, role);
         var id = await GetUserIdAsync(username);
@@ -635,7 +636,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<Domain.Entities.User> SeedUserAsync(string username)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, Role.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -30,7 +31,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetWorkload_AsManager_ReturnsPerEmployeeCounts()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "wl-mgr-1", Role.Manager);
+        var token = await LoginAsync(client, "wl-mgr-1", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("wl-emp-1");
 
         await SeedTaskAsync(employee.Id, TaskStatus.ToDo, TaskPriority.High, DateTime.UtcNow.AddDays(5));
@@ -55,7 +56,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetWorkload_AsAdmin_IsAllowed()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "wl-admin-1", Role.Administrator);
+        var token = await LoginAsync(client, "wl-admin-1", SystemRoles.Administrator);
 
         var response = await GetWithTokenAsync(client, "/api/v1/workload", token);
 
@@ -66,7 +67,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetWorkload_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "wl-emp-2", Role.Employee);
+        var token = await LoginAsync(client, "wl-emp-2", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/workload", token);
 
@@ -87,7 +88,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetWorkload_DepartmentFilter_NarrowsTheResult()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "wl-mgr-2", Role.Manager);
+        var token = await LoginAsync(client, "wl-mgr-2", SystemRoles.Manager);
 
         var engineering = await SeedDepartmentAsync("WL Engineering");
         var operations = await SeedDepartmentAsync("WL Operations");
@@ -108,7 +109,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.DoesNotContain(operatorUser.Id, userIds);
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
 
@@ -126,7 +127,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<User> SeedEmployeeAsync(string username, int? departmentId = null)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, Role.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

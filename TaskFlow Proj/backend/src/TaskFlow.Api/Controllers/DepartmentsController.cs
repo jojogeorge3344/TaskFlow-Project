@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Departments;
 
 namespace TaskFlow.Api.Controllers;
@@ -17,7 +18,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.DepartmentsView)]
     public async Task<ActionResult<IReadOnlyCollection<DepartmentWithCountDto>>> GetAll(CancellationToken cancellationToken)
     {
         var departments = await _departmentService.GetAllAsync(cancellationToken);
@@ -25,7 +26,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.DepartmentsView)]
     public async Task<ActionResult<DepartmentDto>> GetById(int id, CancellationToken cancellationToken)
     {
         var department = await _departmentService.GetByIdAsync(id, cancellationToken);
@@ -37,7 +38,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpGet("{id}/employees")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.DepartmentsView)]
     public async Task<ActionResult<IReadOnlyCollection<Domain.Entities.User>>> GetEmployees(int id, CancellationToken cancellationToken)
     {
         var employees = await _departmentService.GetEmployeesAsync(id, cancellationToken);
@@ -45,7 +46,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.DepartmentsManage)]
     public async Task<ActionResult<DepartmentDto>> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
     {
         try
@@ -60,7 +61,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.DepartmentsManage)]
     public async Task<ActionResult<DepartmentDto>> Update(int id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
     {
         try
@@ -79,7 +80,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.DepartmentsManage)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         try

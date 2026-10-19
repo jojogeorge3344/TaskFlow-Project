@@ -19,6 +19,7 @@ describe('TaskCreateComponent', () => {
       username: 'joe',
       email: 'joe@taskflow.local',
       role: 'Employee',
+      roleId: 3,
       isActive: true,
       createdAt: '2026-09-01T00:00:00Z',
       ...overrides

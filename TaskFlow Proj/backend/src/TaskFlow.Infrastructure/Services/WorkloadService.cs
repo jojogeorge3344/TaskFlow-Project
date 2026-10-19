@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Workload;
 using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
@@ -9,7 +10,7 @@ using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 namespace TaskFlow.Infrastructure.Services;
 
 /// <summary>Per-employee workload aggregation (Screen 16). Covers every active employee
-/// (<see cref="Role.Employee"/>), organization-wide for a Manager/Administrator, matching the
+/// (every user whose role does not hold <c>tasks.view.all</c>, which is the Employee role by default), organization-wide for a Manager/Administrator, matching the
 /// dashboards' scoping (see the change design, D3).</summary>
 public class WorkloadService : IWorkloadService
 {
@@ -28,7 +29,9 @@ public class WorkloadService : IWorkloadService
     {
         var now = _clock.UtcNow;
 
-        var usersQuery = _dbContext.Users.Where(user => user.IsActive && user.Role == Role.Employee);
+        var usersQuery = _dbContext.Users.Where(user =>
+            user.IsActive
+            && !user.Role.Permissions.Any(grant => grant.Permission.Key == PermissionKeys.TasksViewAll));
         if (departmentId is not null)
         {
             usersQuery = usersQuery.Where(user => user.DepartmentId == departmentId);

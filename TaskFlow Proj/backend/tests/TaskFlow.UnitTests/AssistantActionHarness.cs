@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using TaskFlow.Domain.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,10 +32,10 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
         Db.Departments.Add(Engineering);
         Db.SaveChanges();
 
-        Admin = AddUser("admin", Role.Administrator);
-        Ravi = AddUser("ravi", Role.Manager, Engineering.Id);
-        Asha = AddUser("asha", Role.Employee, Engineering.Id);
-        Priya = AddUser("priya", Role.Employee, Engineering.Id);
+        Admin = AddUser("admin", SystemRoles.Administrator);
+        Ravi = AddUser("ravi", SystemRoles.Manager, Engineering.Id);
+        Asha = AddUser("asha", SystemRoles.Employee, Engineering.Id);
+        Priya = AddUser("priya", SystemRoles.Employee, Engineering.Id);
     }
 
     public TaskTrackingServiceHarness Tracking { get; }
@@ -47,7 +48,7 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
     public User Asha { get; }
     public User Priya { get; }
 
-    public User AddUser(string username, Role role, int? departmentId = null, bool isActive = true)
+    public User AddUser(string username, string role, int? departmentId = null, bool isActive = true)
     {
         var user = Tracking.AddUser(username, role, isActive);
         user.DepartmentId = departmentId;
@@ -80,7 +81,7 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
         new(new ClaimsPrincipal(new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, roleOverride ?? user.Role.ToString())
+                new Claim(ClaimTypes.Role, roleOverride ?? TestAccessControl.NameFor(user.RoleId))
             ],
             "test")));
 

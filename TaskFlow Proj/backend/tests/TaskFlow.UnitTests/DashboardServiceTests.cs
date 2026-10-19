@@ -1,4 +1,5 @@
 using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
@@ -15,7 +16,7 @@ public class DashboardServiceTests
         harness.AddDepartment("Engineering");
         harness.AddDepartment("Operations");
 
-        var admin = harness.AddUser("admin", role: Role.Administrator);
+        var admin = harness.AddUser("admin", role: SystemRoles.Administrator);
         harness.AddUser("active-employee");
         harness.AddUser("inactive-employee", isActive: false);
 
@@ -41,7 +42,7 @@ public class DashboardServiceTests
     public async Task GetManagerStatsAsync_ReturnsTaskProgressCounts()
     {
         await using var harness = DashboardServiceHarness.Create(Now);
-        var manager = harness.AddUser("manager", role: Role.Manager);
+        var manager = harness.AddUser("manager", role: SystemRoles.Manager);
 
         harness.AddTask(manager.Id, Today.AddHours(18), TaskStatus.ToDo);          // due today, pending
         harness.AddTask(manager.Id, new DateTime(2026, 6, 3), TaskStatus.ToDo);   // upcoming, pending
@@ -63,7 +64,7 @@ public class DashboardServiceTests
     public async Task GetManagerStatsAsync_ExcludesDeletedTasks()
     {
         await using var harness = DashboardServiceHarness.Create(Now);
-        var manager = harness.AddUser("manager", role: Role.Manager);
+        var manager = harness.AddUser("manager", role: SystemRoles.Manager);
 
         harness.AddTask(manager.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
         harness.AddTask(manager.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo, isDeleted: true);

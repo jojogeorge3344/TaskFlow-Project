@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Settings;
 
 namespace TaskFlow.Api.Controllers;
@@ -10,7 +11,7 @@ namespace TaskFlow.Api.Controllers;
 /// <summary>Global reminder settings (Screen 13). Administrator and Manager only.</summary>
 [ApiController]
 [Route("api/v1/settings")]
-[Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+[RequirePermission(PermissionKeys.SettingsReminders)]
 public class SettingsController : ControllerBase
 {
     private readonly IReminderSettingsService _reminderSettingsService;

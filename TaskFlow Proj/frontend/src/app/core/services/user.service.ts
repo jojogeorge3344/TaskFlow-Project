@@ -1,14 +1,14 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateUserRequest, Role, UpdateUserRequest, User, UserStatusRequest } from '../models';
+import { CreateUserRequest, UpdateUserRequest, User, UserStatusRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/v1/users';
 
-  getAll(params?: { search?: string; departmentId?: number; role?: Role; isActive?: boolean }): Observable<User[]> {
+  getAll(params?: { search?: string; departmentId?: number; role?: string; isActive?: boolean }): Observable<User[]> {
     let httpParams = new HttpParams();
     if (params?.search) {
       httpParams = httpParams.set('search', params.search);

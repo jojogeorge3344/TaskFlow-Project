@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { systemPermissions } from '../../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
@@ -54,7 +55,8 @@ describe('LoginComponent', () => {
         username: 'admin',
         email: 'admin@taskflow.local',
         role: 'Administrator',
-        employeeCode: 'ADM-001'
+        employeeCode: 'ADM-001',
+        permissions: systemPermissions('Administrator')
       }
     });
 

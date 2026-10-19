@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -6,6 +7,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { AuthUser } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { User } from '../../core/models';
+import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeDetailsPanelComponent } from './employee-details-panel.component';
@@ -18,6 +20,7 @@ const existing: User = {
   username: 'rahul.m',
   email: 'rahul.menon@taskflow.local',
   role: 'Employee',
+  roleId: 3,
   isActive: true,
   createdAt: '2026-09-05T00:00:00Z',
   lastLoginAt: null,
@@ -62,7 +65,7 @@ describe('EmployeeFormPanelComponent', () => {
     createSpy = jasmine.createSpy('create');
     updateSpy = jasmine.createSpy('update');
 
-    currentUser.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role: 'Administrator', employeeCode: null });
+    currentUser.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role: 'Administrator', employeeCode: null, permissions: systemPermissions('Administrator') });
     clearSessionSpy = jasmine.createSpy('clearSession');
 
     await TestBed.configureTestingModule({
@@ -70,7 +73,19 @@ describe('EmployeeFormPanelComponent', () => {
       providers: [
         provideRouter([]),
         { provide: UserService, useValue: { create: createSpy, update: updateSpy } },
-        { provide: AuthService, useValue: { currentUser: currentUser.asReadonly(), clearSession: clearSessionSpy } }
+        { provide: AuthService, useValue: fakeAuthService(currentUser.asReadonly(), { clearSession: clearSessionSpy }) },
+        {
+          provide: RoleService,
+          useValue: {
+            list: () =>
+              of([
+                { id: 3, name: 'Employee', isSystem: true, userCount: 1, permissionKeys: [] },
+                { id: 2, name: 'Manager', isSystem: true, userCount: 1, permissionKeys: [] },
+                { id: 1, name: 'Administrator', isSystem: true, userCount: 1, permissionKeys: [] },
+                { id: 9, name: 'Team Lead', isSystem: false, userCount: 0, permissionKeys: [] }
+              ])
+          }
+        }
       ]
     }).compileComponents();
 
@@ -124,10 +139,10 @@ describe('EmployeeFormPanelComponent', () => {
   it('signs the admin out at once when they change their own role', () => {
     const self: User = { ...existing, id: 1, username: 'admin', fullName: 'Admin', role: 'Administrator' };
     const fixture = create(self);
-    updateSpy.and.returnValue(of({ ...self, role: 'Manager' }));
+    updateSpy.and.returnValue(of({ ...self, role: 'Manager', roleId: 2 }));
 
     const role = el(fixture).querySelector('#emp-role') as HTMLSelectElement;
-    role.value = 'Manager';
+    role.value = Array.from(role.options).find((option) => option.text.trim() === 'Manager')!.value;
     role.dispatchEvent(new Event('change'));
     submit(fixture);
 
@@ -193,6 +208,55 @@ describe('EmployeeFormPanelComponent', () => {
     expect(createSpy).not.toHaveBeenCalled();
   });
 
+  it('lists the system roles and the custom roles for an administrator', () => {
+    const fixture = create(null);
+
+    const select = el(fixture).querySelector('#emp-role') as HTMLSelectElement;
+    const names = Array.from(select.options).map((option) => option.text.trim());
+
+    expect(select.tagName).toBe('SELECT');
+    expect(names).toEqual(['Employee', 'Manager', 'Administrator', 'Team Lead']);
+  });
+
+  it('saves the id of the chosen custom role', () => {
+    const fixture = create(null);
+    createSpy.and.returnValue(of({ ...existing, id: 10, role: 'Team Lead', roleId: 9 }));
+
+    type(fixture, 'emp-name', 'Lena Lead');
+    type(fixture, 'emp-username', 'lena.l');
+    type(fixture, 'emp-email', 'lena@taskflow.local');
+    type(fixture, 'emp-password', 'Temp#1234');
+    const select = el(fixture).querySelector('#emp-role') as HTMLSelectElement;
+    select.value = Array.from(select.options).find((option) => option.text.trim() === 'Team Lead')!.value;
+    select.dispatchEvent(new Event('change'));
+    submit(fixture);
+
+    expect(createSpy).toHaveBeenCalledWith(jasmine.objectContaining({ roleId: 9 }));
+  });
+
+  it('shows the role read-only and keeps it when the user cannot manage roles', () => {
+    currentUser.set({
+      id: 2,
+      fullName: 'People Manager',
+      username: 'people',
+      email: 'people@taskflow.local',
+      role: 'People Managers',
+      employeeCode: null,
+      permissions: ['employees.manage']
+    });
+    const fixture = create(existing);
+    updateSpy.and.returnValue(of({ ...existing, fullName: 'Rahul M' }));
+
+    const field = el(fixture).querySelector('#emp-role') as HTMLInputElement;
+    type(fixture, 'emp-name', 'Rahul M');
+    submit(fixture);
+
+    expect(field.tagName).toBe('INPUT');
+    expect(field.readOnly).toBeTrue();
+    expect(field.value).toBe('Employee');
+    expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ roleId: 3 }));
+  });
+
   it('creates the employee, shows a success toast and emits saved', () => {
     const fixture = create(null);
     const savedSpy = jasmine.createSpy('saved');
@@ -212,7 +276,7 @@ describe('EmployeeFormPanelComponent', () => {
         employeeCode: 'EMP-047',
         password: 'Temp#1234',
         isActive: true,
-        role: 'Employee'
+        roleId: 3
       })
     );
     expect(toastSpy).toHaveBeenCalledWith('Divya Krishnan added');

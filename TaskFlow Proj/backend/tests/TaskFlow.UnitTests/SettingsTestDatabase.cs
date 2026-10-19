@@ -28,6 +28,7 @@ internal sealed class SettingsTestDatabase : IAsyncDisposable
 
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         return new SettingsTestDatabase(connection, db);
     }

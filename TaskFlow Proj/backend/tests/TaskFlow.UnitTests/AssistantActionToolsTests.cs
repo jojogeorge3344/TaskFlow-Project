@@ -1,4 +1,5 @@
 using System.Text.Json;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail.Validators;
@@ -82,7 +83,7 @@ public class AssistantActionToolsTests
     public async Task SeveralManagersInTheDepartmentMeansTheUserIsAsked()
     {
         await using var h = new AssistantActionHarness();
-        var kiran = h.AddUser("kiran", Role.Manager, h.Engineering.Id);
+        var kiran = h.AddUser("kiran", SystemRoles.Manager, h.Engineering.Id);
 
         var outcome = await Run(DraftTool(h), h, h.Asha, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
 
@@ -98,8 +99,8 @@ public class AssistantActionToolsTests
     public async Task NoManagerFoundMeansTheUserIsAsked()
     {
         await using var h = new AssistantActionHarness();
-        var loner = h.AddUser("loner", Role.Employee);
-        var noManagers = h.AddUser("othersdept", Role.Employee, (await AddDepartmentAsync(h, "Support")).Id);
+        var loner = h.AddUser("loner", SystemRoles.Employee);
+        var noManagers = h.AddUser("othersdept", SystemRoles.Employee, (await AddDepartmentAsync(h, "Support")).Id);
 
         var noDepartment = await Run(DraftTool(h), h, loner, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
         var emptyDepartment = await Run(DraftTool(h), h, noManagers, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
@@ -148,7 +149,7 @@ public class AssistantActionToolsTests
     public async Task AnUnknownInactiveOrAmbiguousRecipientIsNotMailed()
     {
         await using var h = new AssistantActionHarness();
-        h.AddUser("dormant", Role.Employee, h.Engineering.Id, isActive: false);
+        h.AddUser("dormant", SystemRoles.Employee, h.Engineering.Id, isActive: false);
 
         var unknown = await Run(DraftTool(h), h, h.Asha, """{"to":["Zed Zebra"],"subject":"Hi","body":"Hello."}""");
         var inactive = await Run(DraftTool(h), h, h.Asha, """{"to":["dormant"],"subject":"Hi","body":"Hello."}""");
@@ -224,7 +225,7 @@ public class AssistantActionToolsTests
 
         var user = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Asha.Id);
         Assert.Equal("Asha Nair", user.FullName);
-        Assert.Equal(Role.Employee, user.Role);
+        Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
         Assert.Equal(h.Engineering.Id, user.DepartmentId);
         Assert.True(user.IsActive);
         Assert.Equal(h.Asha.Email, user.Email);
@@ -284,7 +285,7 @@ public class AssistantActionToolsTests
         Assert.Equal(
             "You do not have the required permission to perform this action. Changing a user's role can only be performed by an authorized administrator. Please contact your system administrator for assistance.",
             outcome.FixedReply);
-        Assert.Equal(user.Role, (await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Role);
+        Assert.Equal(user.RoleId, (await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).RoleId);
         Assert.Equal(0, await h.Db.AssistantPendingActions.CountAsync());
         Assert.Equal([(user.Id, AssistantActionKind.ChangeUserRole, "refused")], audit.Entries);
     }
@@ -313,7 +314,7 @@ public class AssistantActionToolsTests
         var card = (await h.Actions.GetCardsAsync(h.Admin.Id, [outcome.PendingActionId!.Value])).Values.Single();
         Assert.Equal("Change role", card.Title);
         Assert.Equal("Employee → Manager", card.Fields.Single(f => f.Label == "Role").Value);
-        Assert.Equal(Role.Employee, (await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Priya.Id)).Role);
+        Assert.Equal(SystemRoles.EmployeeId, (await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Priya.Id)).RoleId);
     }
 
     [Fact]
@@ -331,7 +332,7 @@ public class AssistantActionToolsTests
         Assert.Contains("already a Employee", same.ResultForModel);
         Assert.Contains("could not find", unknown.ResultForModel);
         Assert.Contains("More than one person", ambiguous.ResultForModel);
-        Assert.Contains("must be Administrator, Manager or Employee", badRole.ResultForModel);
+        Assert.Contains("That role does not exist", badRole.ResultForModel);
         Assert.Equal(0, await h.Db.AssistantPendingActions.CountAsync());
     }
 }

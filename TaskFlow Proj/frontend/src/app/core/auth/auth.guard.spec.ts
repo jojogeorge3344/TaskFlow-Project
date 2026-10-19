@@ -1,9 +1,11 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
-import { AuthUser, UserRole } from './auth.models';
+import { systemPermissions } from '../../testing/permissions';
+import { AuthUser } from './auth.models';
 import { AuthService } from './auth.service';
-import { authGuard, roleGuard } from './auth.guard';
+import { authGuard, permissionGuard } from './auth.guard';
+import { Permissions } from './permissions';
 
 describe('auth guards', () => {
   const userSignal = signal<AuthUser | null>(null);
@@ -16,19 +18,24 @@ describe('auth guards', () => {
     });
   });
 
-  function routeWithRoles(roles: UserRole[]) {
-    return { data: { roles } } as unknown as Parameters<typeof roleGuard>[0];
+  function routeNeeding(...permissions: string[]) {
+    return { data: { permissions } } as unknown as Parameters<typeof permissionGuard>[0];
   }
 
-  function asUser(role: UserRole): void {
+  function asUser(role: string, permissions: string[] = systemPermissions(role)): void {
     userSignal.set({
       id: 1,
       fullName: 'Test User',
       username: 'test',
       email: 'test@taskflow.local',
       role,
-      employeeCode: null
+      employeeCode: null,
+      permissions
     });
+  }
+
+  function guard(...permissions: string[]) {
+    return TestBed.runInInjectionContext(() => permissionGuard(routeNeeding(...permissions), {} as never));
   }
 
   it('authGuard allows an authenticated user', () => {
@@ -45,26 +52,45 @@ describe('auth guards', () => {
     expect((result as UrlTree).toString()).toBe('/login');
   });
 
-  it('roleGuard allows a user whose role is permitted', () => {
+  it('permissionGuard allows a user whose role holds the permission', () => {
     asUser('Administrator');
 
-    const result = TestBed.runInInjectionContext(() => roleGuard(routeWithRoles(['Administrator']), {} as never));
-
-    expect(result).toBeTrue();
+    expect(guard(Permissions.RolesManage)).toBeTrue();
   });
 
-  it('roleGuard redirects a mismatched role to its own dashboard', () => {
+  it('permissionGuard allows a user holding any one of several permissions', () => {
     asUser('Manager');
 
-    const result = TestBed.runInInjectionContext(() => roleGuard(routeWithRoles(['Administrator']), {} as never));
-
-    expect((result as UrlTree).toString()).toBe('/manager');
+    expect(guard(Permissions.RolesManage, Permissions.ReportsView)).toBeTrue();
   });
 
-  it('roleGuard redirects unauthenticated users to /login', () => {
-    const result = TestBed.runInInjectionContext(() => roleGuard(routeWithRoles(['Administrator']), {} as never));
+  it('permissionGuard sends a system role without the permission to its own dashboard', () => {
+    asUser('Manager');
 
-    expect((result as UrlTree).toString()).toBe('/login');
+    expect((guard(Permissions.RolesManage) as UrlTree).toString()).toBe('/manager');
+  });
+
+  it('permissionGuard sends an Employee to /me', () => {
+    asUser('Employee');
+
+    expect((guard(Permissions.ReportsView) as UrlTree).toString()).toBe('/me');
+  });
+
+  it('permissionGuard sends a custom role without the permission to /me', () => {
+    asUser('Team Lead', [Permissions.TasksCreate]);
+
+    expect(guard(Permissions.TasksCreate)).toBeTrue();
+    expect((guard(Permissions.ReportsView) as UrlTree).toString()).toBe('/me');
+  });
+
+  it('permissionGuard refuses a route that names no permission', () => {
+    asUser('Administrator');
+
+    expect((guard() as UrlTree).toString()).toBe('/admin');
+  });
+
+  it('permissionGuard redirects unauthenticated users to /login', () => {
+    expect((guard(Permissions.ReportsView) as UrlTree).toString()).toBe('/login');
   });
 
   it('router can be injected alongside the guards', () => {

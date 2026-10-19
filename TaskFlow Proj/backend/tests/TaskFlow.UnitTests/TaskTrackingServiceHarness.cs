@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
@@ -57,18 +58,19 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         return new TaskTrackingServiceHarness(connection, db);
     }
 
-    public User AddUser(string username, Role role = Role.Employee, bool isActive = true)
+    public User AddUser(string username, string role = SystemRoles.Employee, bool isActive = true)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
             Email = $"{username}@taskflow.local",
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

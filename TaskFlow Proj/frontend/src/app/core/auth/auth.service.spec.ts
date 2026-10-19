@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthResponse } from './auth.models';
@@ -17,7 +18,8 @@ describe('AuthService', () => {
       username: 'admin',
       email: 'admin@taskflow.local',
       role: 'Administrator',
-      employeeCode: 'ADM-001'
+      employeeCode: 'ADM-001',
+      permissions: systemPermissions('Administrator')
     }
   };
 

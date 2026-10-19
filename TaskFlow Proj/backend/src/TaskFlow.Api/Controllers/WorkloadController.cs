@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Workload;
 
 namespace TaskFlow.Api.Controllers;
@@ -8,7 +9,7 @@ namespace TaskFlow.Api.Controllers;
 /// <summary>Employee workload (Screen 16). Administrator and Manager only.</summary>
 [ApiController]
 [Route("api/v1/workload")]
-[Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+[RequirePermission(PermissionKeys.WorkloadView)]
 public class WorkloadController : ControllerBase
 {
     private readonly IWorkloadService _workloadService;

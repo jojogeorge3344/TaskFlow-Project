@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using TaskFlow.Domain.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
@@ -23,17 +24,18 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         _connection.Open();
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
+        TestAccessControl.Seed(_db);
         _service = new UserService(_db, _hasher);
     }
 
-    private User AddUser(string username, string email, Role role = Role.Employee)
+    private User AddUser(string username, string email, string role = SystemRoles.Employee)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
             Email = email,
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
@@ -70,13 +72,13 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     [Fact]
     public async Task UpdateOwnProfile_LeavesRestrictedFieldsUntouched()
     {
-        var user = AddUser("self3", "self3@taskflow.local", Role.Employee);
+        var user = AddUser("self3", "self3@taskflow.local", SystemRoles.Employee);
 
         await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Renamed", "self3b@taskflow.local"));
 
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.Equal("self3", reloaded.Username);
-        Assert.Equal(Role.Employee, reloaded.Role);
+        Assert.Equal(SystemRoles.EmployeeId, reloaded.RoleId);
         Assert.Equal(user.DepartmentId, reloaded.DepartmentId);
         Assert.True(reloaded.IsActive);
     }

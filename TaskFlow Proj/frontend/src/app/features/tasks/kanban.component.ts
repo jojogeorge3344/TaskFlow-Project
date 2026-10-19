@@ -7,6 +7,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { BOARD_STATUSES, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -64,10 +65,10 @@ export class KanbanComponent implements OnInit {
   readonly deadlineFrom = signal('');
   readonly deadlineTo = signal('');
 
-  /** Only Manager/Administrator need the assignee filter; an Employee sees only their own tasks. */
+  /** Only roles that see every task need the assignee filter; others see only their own tasks. */
   readonly canManage = computed(() => {
-    const role = this.auth.currentUser()?.role;
-    return role === 'Manager' || role === 'Administrator';
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksViewAll);
   });
 
   readonly hasFilters = computed(

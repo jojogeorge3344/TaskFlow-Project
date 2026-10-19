@@ -1,4 +1,5 @@
 using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
@@ -106,8 +107,8 @@ public class WorkloadServiceTests
     {
         await using var harness = WorkloadReportHarness.Create(Now);
         var employee = harness.AddUser("emp", fullName: "Emma Employee");
-        harness.AddUser("boss", role: Role.Manager, fullName: "Boss Manager");
-        harness.AddUser("admin", role: Role.Administrator, fullName: "Admin User");
+        harness.AddUser("boss", role: SystemRoles.Manager, fullName: "Boss Manager");
+        harness.AddUser("admin", role: SystemRoles.Administrator, fullName: "Admin User");
         harness.AddTask(employee.Id, Future, TaskStatus.ToDo);
 
         var workload = await harness.Workload.GetWorkloadAsync(null, CancellationToken.None);

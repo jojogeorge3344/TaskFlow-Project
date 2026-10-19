@@ -10,7 +10,7 @@ public record SendMailPayload(IReadOnlyList<MailRecipientRef> To, string Subject
 
 public record UpdateProfilePayload(string? FullName, string? Email, string CurrentFullName, string CurrentEmail);
 
-public record ChangeRolePayload(int TargetUserId, string TargetName, Role CurrentRole, Role NewRole);
+public record ChangeRolePayload(int TargetUserId, string TargetName, string CurrentRole, int NewRoleId, string NewRole);
 
 // ---- Requests and results
 
@@ -39,7 +39,7 @@ public static class AssistantActionRules
     /// <summary>The policy the action needs when it is confirmed, with the words for the fixed refusal.</summary>
     public static (string? Policy, string Description, string WhoCanDoIt) Requirement(AssistantActionKind kind) => kind switch
     {
-        AssistantActionKind.ChangeUserRole => (AssistantPolicies.AdminOnly, "Changing a user's role", "an authorized administrator"),
+        AssistantActionKind.ChangeUserRole => (AssistantPolicies.RolesManage, "Changing a user's role", "an authorized administrator"),
         AssistantActionKind.UpdateOwnProfile => (null, "Updating a profile", "the account owner"),
         _ => (null, "Sending mail", "a signed-in user")
     };

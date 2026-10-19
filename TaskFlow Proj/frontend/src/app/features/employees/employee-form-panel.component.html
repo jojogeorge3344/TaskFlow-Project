@@ -64,11 +64,19 @@
     <div class="tf-form-grid">
       <div class="tf-field">
         <label for="emp-role">Role</label>
-        <select id="emp-role" class="tf-select" formControlName="role">
-          @for (role of roles; track role) {
-            <option [value]="role">{{ role }}</option>
+        @if (canChangeRole()) {
+          <select id="emp-role" class="tf-select" formControlName="roleId">
+            @for (role of roles(); track role.id) {
+              <option [ngValue]="role.id">{{ role.name }}</option>
+            }
+          </select>
+          @if (roleLoadFailed()) {
+            <span class="tf-field__hint">Custom roles could not be loaded. Only the standard roles are listed.</span>
           }
-        </select>
+        } @else {
+          <input id="emp-role" class="tf-input" [value]="currentRoleName()" readonly aria-describedby="emp-role-hint" />
+          <span id="emp-role-hint" class="tf-field__hint">Only an Administrator can change a role.</span>
+        }
       </div>
       <div class="tf-field">
         <label for="emp-department">Department</label>

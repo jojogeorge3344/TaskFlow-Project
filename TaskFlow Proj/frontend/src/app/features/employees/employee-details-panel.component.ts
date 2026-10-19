@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { User } from '../../core/models';
 import { IconComponent } from '../../core/layout/icon.component';
+import { roleBadgeClass } from './role-badge';
 import { initials } from '../../shared/ui/initials';
 
 /** Read-only employee details shown inside the side panel. */
@@ -27,7 +28,7 @@ import { initials } from '../../shared/ui/initials';
         <dt>Email</dt>
         <dd>{{ employee().email }}</dd>
         <dt>Role</dt>
-        <dd><span [class]="'tf-badge tf-badge--' + employee().role.toLowerCase()">{{ employee().role }}</span></dd>
+        <dd><span [class]="roleBadgeClass(employee().role)">{{ employee().role }}</span></dd>
         <dt>Department</dt>
         <dd>{{ employee().departmentName || 'Unassigned' }}</dd>
         <dt>Status</dt>
@@ -88,6 +89,8 @@ import { initials } from '../../shared/ui/initials';
   `
 })
 export class EmployeeDetailsPanelComponent {
+  readonly roleBadgeClass = roleBadgeClass;
+
   readonly employee = input.required<User>();
   readonly edit = output<void>();
   readonly closed = output<void>();

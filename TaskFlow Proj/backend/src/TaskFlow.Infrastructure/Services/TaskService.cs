@@ -3,6 +3,7 @@ using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
@@ -39,8 +40,14 @@ public class TaskService : ITaskService
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
-    private static bool IsManagerOrAdmin(string role) =>
-        role is nameof(Role.Manager) or nameof(Role.Administrator);
+    /// <summary>Whether the named role holds the permission, read from the database so changes apply immediately.</summary>
+    private Task<bool> HasPermissionAsync(string roleName, string permissionKey, CancellationToken cancellationToken) =>
+        _dbContext.RolePermissions
+            .AsNoTracking()
+            .AnyAsync(grant => grant.Role.Name == roleName && grant.Permission.Key == permissionKey, cancellationToken);
+
+    private Task<bool> CanViewAllAsync(string roleName, CancellationToken cancellationToken) =>
+        HasPermissionAsync(roleName, PermissionKeys.TasksViewAll, cancellationToken);
 
     public async Task<TaskDetailsDto?> GetDetailsAsync(
         int taskId,
@@ -55,7 +62,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
         {
             return null;
         }
@@ -69,7 +76,7 @@ public class TaskService : ITaskService
         CancellationToken cancellationToken)
     {
         var now = Now;
-        var tasks = await ScopedTasks(currentUserId, currentUserRole)
+        var tasks = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
             .Include(task => task.AssignedTo)
             .OrderBy(task => task.Deadline)
             .ToListAsync(cancellationToken);
@@ -86,7 +93,7 @@ public class TaskService : ITaskService
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize is < 1 or > 100 ? 20 : filter.PageSize;
 
-        var query = ScopedTasks(currentUserId, currentUserRole);
+        var query = ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken));
 
         if (filter.AssignedToUserId is int assignedTo)
         {
@@ -147,7 +154,7 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        var assignees = await ScopedTasks(currentUserId, currentUserRole)
+        var assignees = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
             .Select(task => new { task.AssignedToUserId, task.AssignedTo!.FullName })
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -158,13 +165,13 @@ public class TaskService : ITaskService
             .ToList();
     }
 
-    /// <summary>Non-deleted tasks the caller may access: everything for Managers/Administrators,
+    /// <summary>Non-deleted tasks the caller may access: everything for roles holding tasks.view.all,
     /// otherwise tasks they are assigned to, created, or receive notifications for.</summary>
-    private IQueryable<TaskEntity> ScopedTasks(int currentUserId, string currentUserRole)
+    private IQueryable<TaskEntity> ScopedTasks(int currentUserId, bool canViewAll)
     {
         IQueryable<TaskEntity> query = _dbContext.Tasks.AsNoTracking().Where(task => !task.IsDeleted);
 
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!canViewAll)
         {
             var recipientTaskIds = _dbContext.TaskRecipients
                 .Where(recipient => recipient.UserId == currentUserId)
@@ -185,9 +192,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksCreate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can create tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to create tasks.");
         }
 
         ValidateCreate(request);
@@ -310,9 +317,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can edit tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to edit tasks.");
         }
 
         ValidateUpdate(request);
@@ -324,7 +331,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -380,7 +387,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -436,9 +443,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksReassign, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can reassign tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to reassign tasks.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Reason))
@@ -453,7 +460,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -520,7 +527,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
         {
             return null;
         }
@@ -535,9 +542,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksRecipients, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can manage task recipients.");
+            throw new UnauthorizedAccessException("Your role is not allowed to manage task recipients.");
         }
 
         var task = await LoadTaskAsync(taskId, cancellationToken);

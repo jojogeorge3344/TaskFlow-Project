@@ -1,10 +1,12 @@
 import { signal } from '@angular/core';
+import { fakeAuthService } from '../../testing/permissions';
 import { ComponentFixture, TestBed, fakeAsync, flush, flushMicrotasks, tick } from '@angular/core/testing';
 import { AuthService } from '../../core/auth/auth.service';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DepartmentWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeListComponent, SEARCH_DEBOUNCE_MS } from './employee-list.component';
@@ -23,6 +25,7 @@ describe('EmployeeListComponent', () => {
       username: 'rahul.m',
       email: 'rahul.menon@taskflow.local',
       role: 'Employee',
+      roleId: 3,
       isActive: true,
       createdAt: '2026-09-05T00:00:00Z',
       lastLoginAt: null,
@@ -48,7 +51,8 @@ describe('EmployeeListComponent', () => {
         provideRouter([]),
         { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy } },
         { provide: DepartmentService, useValue: { getAll: () => of(departments) } },
-        { provide: AuthService, useValue: { currentUser: signal(null).asReadonly(), clearSession: () => undefined } },
+        { provide: AuthService, useValue: fakeAuthService(signal(null).asReadonly(), { clearSession: () => undefined }) },
+        { provide: RoleService, useValue: { list: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
       ]
     });
