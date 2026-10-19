@@ -79,6 +79,39 @@ public class EmailDomainMigrationTests : IDisposable
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task CharactersTheNewRulesRejectAreDroppedSoTheAddressStaysUsable()
+    {
+        var emails = await MigrateAsync(
+            ("obrien", "O'Brien@gmail.com", false),
+            ("tagged", "jo+tag@gmail.com", false),
+            ("dots", "a..b@gmail.com", false),
+            ("edges", ".lead.@gmail.com", false),
+            ("spaced", "first last@gmail.com", false),
+            ("symbols", "!!!@gmail.com", false),
+            ("long", new string('x', 80) + "@gmail.com", false));
+
+        Assert.Equal("obrien@taskflow.com", emails["obrien"]);
+        Assert.Equal("jotag@taskflow.com", emails["tagged"]);
+        Assert.Equal("a.b@taskflow.com", emails["dots"]);
+        Assert.Equal("lead@taskflow.com", emails["edges"]);
+        Assert.Equal("firstlast@taskflow.com", emails["spaced"]);
+        Assert.StartsWith("user", emails["symbols"]);
+        Assert.Equal(new string('x', 64) + "@taskflow.com", emails["long"]);
+        Assert.All(emails.Values, email => Assert.True(TaskFlow.Application.Users.EmailPolicy.IsValid(email), email));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task CleanedAddressesThatCollideAreStillNumbered()
+    {
+        var emails = await MigrateAsync(
+            ("a", "o'brien@gmail.com", false),
+            ("b", "obrien@yahoo.com", false));
+
+        Assert.Equal("obrien@taskflow.com", emails["a"]);
+        Assert.Equal("obrien2@taskflow.com", emails["b"]);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ANumberedAddressNeverStealsAnotherUsersOwnName()
     {
         var emails = await MigrateAsync(

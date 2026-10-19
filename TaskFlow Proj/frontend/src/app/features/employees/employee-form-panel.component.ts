@@ -63,8 +63,18 @@ export class EmployeeFormPanelComponent implements OnInit {
   readonly isManagerRole = computed(() =>
     this.canChangeRole() ? this.selectedRoleId() === SYSTEM_ROLE_IDS.Manager : this.employee()?.roleId === SYSTEM_ROLE_IDS.Manager
   );
-  /** The managers a user can report to: never themselves. */
-  readonly managerOptions = computed(() => this.managers().filter((manager) => manager.id !== this.employee()?.id));
+  /** The managers a user can report to: active Managers, never themselves. A current manager who is no longer active
+   * stays listed (marked inactive) so the select keeps showing who the user reports to. */
+  readonly managerOptions = computed(() => {
+    const options = this.managers()
+      .filter((manager) => manager.id !== this.employee()?.id)
+      .map((manager) => ({ id: manager.id, label: manager.fullName }));
+    const current = this.employee();
+    if (current?.managerId != null && !options.some((option) => option.id === current.managerId)) {
+      options.push({ id: current.managerId, label: `${current.managerName ?? 'Current manager'} (inactive)` });
+    }
+    return options;
+  });
   readonly roles = signal<AccessRole[]>([]);
   readonly roleLoadFailed = signal(false);
   readonly minPasswordLength = MIN_PASSWORD_LENGTH;

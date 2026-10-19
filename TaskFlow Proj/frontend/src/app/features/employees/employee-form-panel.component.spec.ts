@@ -245,6 +245,17 @@ describe('EmployeeFormPanelComponent', () => {
       expect(options).toEqual(['No manager', 'Anupama Nair']);
     });
 
+    it('keeps an inactive current manager in the list, marked inactive, so the select is not blank', () => {
+      const fixture = create({ ...existing, managerId: 55, managerName: 'Old Boss' });
+      fixture.detectChanges();
+
+      const select = el(fixture).querySelector('#emp-manager') as HTMLSelectElement;
+      const options = Array.from(select.options).map((option) => option.text.trim());
+
+      expect(options).toEqual(['No manager', 'Anupama Nair', 'Old Boss (inactive)']);
+      expect(select.selectedOptions[0].text.trim()).toBe('Old Boss (inactive)');
+    });
+
     it('is not offered to someone who can manage employees but is not an Administrator', () => {
       currentUser.set({ id: 2, fullName: 'People', username: 'people', email: 'people@taskflow.com', role: 'People', employeeCode: null, permissions: ['employees.manage'] });
       const fixture = create(existing);

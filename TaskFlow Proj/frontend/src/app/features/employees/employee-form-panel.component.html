@@ -106,7 +106,7 @@
           <select id="emp-manager" class="tf-select" formControlName="managerId">
             <option [ngValue]="null">No manager</option>
             @for (manager of managerOptions(); track manager.id) {
-              <option [ngValue]="manager.id">{{ manager.fullName }}</option>
+              <option [ngValue]="manager.id">{{ manager.label }}</option>
             }
           </select>
         </div>

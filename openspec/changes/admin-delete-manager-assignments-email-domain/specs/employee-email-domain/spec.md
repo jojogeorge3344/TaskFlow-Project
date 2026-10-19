@@ -84,7 +84,7 @@ The system SHALL treat two emails with the same local part, compared case-insens
 
 ### Requirement: Existing emails are converted
 
-The system SHALL convert every existing employee email to the fixed domain by keeping its local part and replacing its domain with `taskflow.com`, and SHALL make any collision unique by appending a number to the local part of the later-created user.
+The system SHALL convert every existing employee email to the fixed domain by keeping its local part (dropping any character the local part rules do not allow) and replacing its domain with `taskflow.com`, and SHALL make any collision unique by appending a number to the local part of the later-created user.
 
 #### Scenario: Different domain
 
@@ -95,6 +95,11 @@ The system SHALL convert every existing employee email to the fixed domain by ke
 
 - **WHEN** the seeded `admin@taskflow.local`, `manager@taskflow.local` and `employee@taskflow.local` accounts are migrated
 - **THEN** they become `admin@taskflow.com`, `manager@taskflow.com` and `employee@taskflow.com`
+
+#### Scenario: Characters that are not allowed
+
+- **WHEN** existing user `o'brien@gmail.com` is migrated
+- **THEN** their email becomes `obrien@taskflow.com`, which the local part rules accept
 
 #### Scenario: Collision
 

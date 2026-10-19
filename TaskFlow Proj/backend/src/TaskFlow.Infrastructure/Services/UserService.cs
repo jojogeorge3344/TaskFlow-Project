@@ -139,8 +139,10 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email already exists.");
         }
 
+        // Deleted users keep their username (the unique index still covers them), so they count here too.
         var usernameTaken = await _dbContext.Users
-            .AnyAsync(u => !u.IsDeleted && u.Username.ToLower() == username.ToLower(), cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Username.ToLower() == username.ToLower(), cancellationToken);
 
         if (usernameTaken)
         {
@@ -206,7 +208,8 @@ public class UserService : IUserService
         }
 
         var usernameTaken = await _dbContext.Users
-            .AnyAsync(u => u.Id != id && !u.IsDeleted && u.Username.ToLower() == username.ToLower(), cancellationToken);
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Id != id && u.Username.ToLower() == username.ToLower(), cancellationToken);
 
         if (usernameTaken)
         {

@@ -161,6 +161,27 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Create_rejects_a_username_that_belongs_to_a_deleted_user()
+    {
+        AddUser("gone", "gone@taskflow.com", deleted: true);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateAsync(Create("GONE", "fresh@taskflow.com"), default));
+        Assert.Contains("already exists", ex.Message);
+    }
+
+    [Fact]
+    public async Task Update_rejects_taking_a_deleted_users_username()
+    {
+        AddUser("gone2", "gone2@taskflow.com", deleted: true);
+        var other = AddUser("other2", "other2@taskflow.com");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.UpdateAsync(other.Id, new UpdateUserRequest(null, "Other", "gone2", "other2@taskflow.com", SystemRoles.EmployeeId, null), default));
+        Assert.Contains("already exists", ex.Message);
+    }
+
+    [Fact]
     public async Task Create_rejects_another_domain()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>

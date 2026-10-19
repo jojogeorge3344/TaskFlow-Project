@@ -53,6 +53,15 @@ The system SHALL NOT allow an Administrator to delete their own account, and SHA
 - **WHEN** an Administrator attempts to delete the only remaining active Administrator
 - **THEN** the system rejects the request with an explanatory message
 
+### Requirement: Deleted employees keep their username
+
+The system SHALL keep a deleted employee's username reserved, so it cannot be given to another employee.
+
+#### Scenario: Reusing a deleted username
+
+- **WHEN** an Administrator creates or renames an employee to the username of a deleted employee
+- **THEN** the system rejects the request with the "already exists" message
+
 ### Requirement: Deleted employees lose access
 
 The system SHALL end a deleted employee's ability to sign in and to use existing sessions.
