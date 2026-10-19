@@ -14,13 +14,25 @@
       }
     </div>
 
-    @if ((canReassign() || canEdit()) && task(); as current) {
+    @if ((canReassign() || canEdit() || canDelete()) && task(); as current) {
       <div class="tf-page-actions">
         @if (canReassign()) {
           <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
             <tf-icon name="users" />
             Reassign
           </a>
+        }
+        @if (canDelete()) {
+          <button
+            type="button"
+            class="tf-btn tf-btn--ghost tf-btn--danger"
+            data-action="delete-task"
+            [disabled]="deleting()"
+            (click)="deleteTask()"
+          >
+            <tf-icon name="trash" />
+            Delete
+          </button>
         }
         @if (canEdit() && !editing()) {
           <button type="button" class="tf-btn tf-btn--primary" (click)="startEdit()" data-action="edit-task">
@@ -225,3 +237,5 @@
     }
   }
 </section>
+
+<tf-confirm-dialog />

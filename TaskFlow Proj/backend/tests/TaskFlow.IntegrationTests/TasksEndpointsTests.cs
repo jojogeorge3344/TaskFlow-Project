@@ -612,7 +612,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {
@@ -636,7 +636,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<Domain.Entities.User> SeedUserAsync(string username)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, SystemRoles.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

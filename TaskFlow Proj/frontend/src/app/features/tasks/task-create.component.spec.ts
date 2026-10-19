@@ -17,7 +17,7 @@ describe('TaskCreateComponent', () => {
       employeeCode: 'EMP-003',
       fullName: 'Joe Thomas',
       username: 'joe',
-      email: 'joe@taskflow.local',
+      email: 'joe@taskflow.com',
       role: 'Employee',
       roleId: 3,
       isActive: true,

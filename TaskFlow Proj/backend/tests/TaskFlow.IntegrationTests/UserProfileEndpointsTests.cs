@@ -23,14 +23,14 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "prof-reader", SystemRoles.Employee);
-        await _factory.SeedUserAsync("prof-victim", "prof-victim@taskflow.local", "P@ssw0rd!", SystemRoles.Manager);
+        await _factory.SeedUserAsync("prof-victim", "prof-victim@taskflow.com", "P@ssw0rd!", SystemRoles.Manager);
 
         var response = await SendAsync(client, HttpMethod.Get, MeUrl, token);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("prof-reader", document.RootElement.GetProperty("username").GetString());
-        Assert.Equal("prof-reader@taskflow.local", document.RootElement.GetProperty("email").GetString());
+        Assert.Equal("prof-reader@taskflow.com", document.RootElement.GetProperty("email").GetString());
     }
 
     [Fact]
@@ -40,12 +40,12 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await LoginAsync(client, "prof-edit", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
-            JsonContent.Create(new { fullName = "Prof Edited", email = "prof-edited@taskflow.local" }));
+            JsonContent.Create(new { fullName = "Prof Edited", email = "prof-edited@taskflow.com" }));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("Prof Edited", document.RootElement.GetProperty("fullName").GetString());
-        Assert.Equal("prof-edited@taskflow.local", document.RootElement.GetProperty("email").GetString());
+        Assert.Equal("prof-edited@taskflow.com", document.RootElement.GetProperty("email").GetString());
 
         // Username and role stay untouched by self-service.
         Assert.Equal("prof-edit", document.RootElement.GetProperty("username").GetString());
@@ -56,11 +56,11 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task PutMe_DuplicateEmail_Returns400()
     {
         var client = _factory.CreateClient();
-        await _factory.SeedUserAsync("prof-taken-owner", "taken@taskflow.local", "P@ssw0rd!", SystemRoles.Employee);
+        await _factory.SeedUserAsync("prof-taken-owner", "taken@taskflow.com", "P@ssw0rd!", SystemRoles.Employee);
         var token = await LoginAsync(client, "prof-taken", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Put, MeUrl, token,
-            JsonContent.Create(new { fullName = "Prof Taken", email = "taken@taskflow.local" }));
+            JsonContent.Create(new { fullName = "Prof Taken", email = "taken@taskflow.com" }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -90,7 +90,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
             JsonContent.Create(new
             {
                 fullName = "Still Employee",
-                email = "prof-escalate@taskflow.local",
+                email = "prof-escalate@taskflow.com",
                 role = "Administrator",
                 username = "hacked",
                 isActive = false
@@ -175,7 +175,7 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, role);
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { emailOrUsername = username, password });
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

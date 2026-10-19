@@ -16,6 +16,29 @@ export interface User {
   lastLoginAt?: string | null;
   departmentId?: number | null;
   departmentName?: string | null;
+  /** Who this user reports to. Recorded data only; it does not change what anyone can see. */
+  managerId?: number | null;
+  managerName?: string | null;
+  /** For a manager: the departments they are assigned to. */
+  managerDepartments?: ManagerDepartmentRef[];
+  /** For a manager: the people who report to them. */
+  reports?: ManagerReportRef[];
+}
+
+export interface ManagerDepartmentRef {
+  id: number;
+  name: string;
+}
+
+export interface ManagerReportRef {
+  id: number;
+  fullName: string;
+}
+
+/** Replaces a user's manager and, for a manager, their departments. Administrator only. */
+export interface ManagerAssignmentRequest {
+  managerId: number | null;
+  managerDepartmentIds: number[];
 }
 
 export interface CreateUserRequest {

@@ -1,5 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
-import { fakeAuthService } from '../../testing/permissions';
+import { Permissions } from '../../core/auth/permissions';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed, fakeAsync, flush, flushMicrotasks, tick } from '@angular/core/testing';
 import { AuthService } from '../../core/auth/auth.service';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -23,7 +25,7 @@ describe('EmployeeListComponent', () => {
       employeeCode: 'EMP-001',
       fullName: 'Rahul Menon',
       username: 'rahul.m',
-      email: 'rahul.menon@taskflow.local',
+      email: 'rahul.menon@taskflow.com',
       role: 'Employee',
       roleId: 3,
       isActive: true,
@@ -42,6 +44,8 @@ describe('EmployeeListComponent', () => {
 
   let getAllSpy: jasmine.Spy;
   let updateStatusSpy: jasmine.Spy;
+  let deleteSpy: jasmine.Spy;
+  const currentUser = signal<{ id: number; permissions: string[] } | null>(null);
   let queryParams: Record<string, string>;
 
   function configure(): void {
@@ -49,9 +53,9 @@ describe('EmployeeListComponent', () => {
       imports: [EmployeeListComponent],
       providers: [
         provideRouter([]),
-        { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy } },
+        { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy, delete: deleteSpy } },
         { provide: DepartmentService, useValue: { getAll: () => of(departments) } },
-        { provide: AuthService, useValue: fakeAuthService(signal(null).asReadonly(), { clearSession: () => undefined }) },
+        { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
         { provide: RoleService, useValue: { list: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
       ]
@@ -77,6 +81,78 @@ describe('EmployeeListComponent', () => {
     queryParams = {};
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(employees));
     updateStatusSpy = jasmine.createSpy('updateStatus').and.returnValue(of(employees[0]));
+    deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
+    currentUser.set(null);
+  });
+
+  describe('delete', () => {
+    it('is not offered to a Manager, even one who can manage employees', () => {
+      currentUser.set({ id: 50, permissions: [Permissions.EmployeesView, Permissions.EmployeesManage] });
+      configure();
+      const fixture = create();
+
+      expect(el(fixture).querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('is offered to an Administrator on every row except their own', () => {
+      currentUser.set({ id: 2, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+
+      const rows = Array.from(el(fixture).querySelectorAll('tr.employee-row'));
+      expect(rows[0].querySelector('[data-action="delete"]')).not.toBeNull();
+      expect(rows[1].querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('does nothing when the confirmation is cancelled', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const dialog = el(fixture).querySelector('dialog') as HTMLDialogElement;
+      expect(dialog.open).toBeTrue();
+      expect(dialog.textContent).toContain('Rahul Menon');
+      (dialog.querySelector('[data-action="cancel"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    }));
+
+    it('deletes after confirmation, shows a toast and reloads the list', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+      const toastSpy = spyOn(TestBed.inject(ToastService), 'success');
+      getAllSpy.calls.reset();
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).toHaveBeenCalledWith(1);
+      expect(toastSpy).toHaveBeenCalledWith('Rahul Menon deleted');
+      expect(getAllSpy).toHaveBeenCalled();
+    }));
+
+    it('shows the server message when the delete is rejected', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      deleteSpy.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'Rahul Menon still has 2 unfinished tasks.' } }))
+      );
+      configure();
+      const fixture = create();
+      const errorSpy = spyOn(TestBed.inject(ToastService), 'error');
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(errorSpy).toHaveBeenCalledWith('Rahul Menon still has 2 unfinished tasks.');
+    }));
   });
 
   afterEach(() => closeOpenDialogs());

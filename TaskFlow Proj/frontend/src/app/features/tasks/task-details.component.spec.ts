@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { fakeAuthService, systemPermissions } from '../../testing/permissions';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
@@ -36,12 +36,14 @@ describe('TaskDetailsComponent', () => {
   let getByIdSpy: jasmine.Spy;
   let changeStatusSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
+  let deleteSpy: jasmine.Spy;
   let toast: { success: jasmine.Spy; error: jasmine.Spy };
 
   function create(role: string, task: TaskDetails = details): void {
     getByIdSpy = jasmine.createSpy('getById').and.returnValue(of(task));
     changeStatusSpy = jasmine.createSpy('changeStatus');
     updateSpy = jasmine.createSpy('update');
+    deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
     toast = { success: jasmine.createSpy('success'), error: jasmine.createSpy('error') };
 
     TestBed.configureTestingModule({
@@ -58,7 +60,7 @@ describe('TaskDetailsComponent', () => {
         },
         {
           provide: TaskService,
-          useValue: { getById: getByIdSpy, changeStatus: changeStatusSpy, update: updateSpy }
+          useValue: { getById: getByIdSpy, changeStatus: changeStatusSpy, update: updateSpy, delete: deleteSpy }
         },
         { provide: ToastService, useValue: toast }
       ]
@@ -167,6 +169,75 @@ describe('TaskDetailsComponent', () => {
 
     expect(component.changingStatus()).toBeNull();
     expect(toast.error).toHaveBeenCalledWith('Invalid transition');
+  });
+
+  describe('delete', () => {
+    afterEach(() => document.querySelectorAll('dialog[open]').forEach((dialog) => (dialog as HTMLDialogElement).close()));
+
+    function deleteButton(): HTMLButtonElement | null {
+      return (fixture.nativeElement as HTMLElement).querySelector('[data-action="delete-task"]');
+    }
+
+    it('is not offered to a Manager who can edit and reassign', () => {
+      create('Manager');
+
+      expect(component.canEdit()).toBeTrue();
+      expect(deleteButton()).toBeNull();
+    });
+
+    it('is not offered to an Employee', () => {
+      create('Employee');
+
+      expect(deleteButton()).toBeNull();
+    });
+
+    it('is offered to an Administrator', () => {
+      create('Administrator');
+
+      expect(deleteButton()).not.toBeNull();
+    });
+
+    it('does nothing when the confirmation is cancelled', fakeAsync(() => {
+      create('Administrator');
+
+      deleteButton()!.click();
+      fixture.detectChanges();
+      const dialog = (fixture.nativeElement as HTMLElement).querySelector('dialog') as HTMLDialogElement;
+      expect(dialog.open).toBeTrue();
+      expect(dialog.textContent).toContain('TSK-1007');
+      (dialog.querySelector('[data-action="cancel"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    }));
+
+    it('deletes after confirmation, shows a toast and returns to the task list', fakeAsync(() => {
+      create('Administrator');
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+
+      deleteButton()!.click();
+      fixture.detectChanges();
+      ((fixture.nativeElement as HTMLElement).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).toHaveBeenCalledWith(7);
+      expect(toast.success).toHaveBeenCalledWith('TSK-1007 deleted');
+      expect(navigateSpy).toHaveBeenCalledWith(['/tasks']);
+    }));
+
+    it('stays on the page and shows the server message when the delete is rejected', fakeAsync(() => {
+      create('Administrator');
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+      deleteSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404, error: { error: 'Task not found.' } })));
+
+      deleteButton()!.click();
+      fixture.detectChanges();
+      ((fixture.nativeElement as HTMLElement).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(toast.error).toHaveBeenCalledWith('Task not found.');
+      expect(navigateSpy).not.toHaveBeenCalled();
+    }));
   });
 
   it('shows the error state when details cannot be loaded', () => {

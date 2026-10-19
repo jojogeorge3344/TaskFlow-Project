@@ -98,7 +98,7 @@ public class PermissionAuthorizationTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task TheLoginResponseAlsoCarriesThePermissions()
     {
-        await _factory.SeedUserAsync("perm-login", "perm-login@taskflow.local", Password, SystemRoles.Manager);
+        await _factory.SeedUserAsync("perm-login", "perm-login@taskflow.com", Password, SystemRoles.Manager);
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { emailOrUsername = "perm-login", password = Password });
@@ -234,7 +234,7 @@ public class PermissionAuthorizationTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<string> LoginInRoleAsync(HttpClient client, string username, int roleId)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -249,7 +249,7 @@ public class PermissionAuthorizationTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, role);
         return await SignInAsync(client, username);
     }
 

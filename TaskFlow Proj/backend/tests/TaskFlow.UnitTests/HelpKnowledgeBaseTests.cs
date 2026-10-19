@@ -57,7 +57,7 @@ public class HelpKnowledgeBaseTests
         var topic = Help.Search("How do I create a department?", "Administrator").First();
 
         Assert.False(topic.IsRestricted);
-        Assert.Contains("Department Management", topic.Content);
+        Assert.Contains("Project Management", topic.Content);
         Assert.Equal("/departments", topic.Link);
     }
 

@@ -62,8 +62,8 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
             await setup.Database.EnsureCreatedAsync();
             await TestAccessControl.SeedAsync(setup);
             setup.Users.AddRange(
-                new User { FullName = "Asha", Username = "asha", Email = "asha@taskflow.local", RoleId = SystemRoles.EmployeeId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-                new User { FullName = "Ravi", Username = "ravi", Email = "ravi@taskflow.local", RoleId = SystemRoles.ManagerId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+                new User { FullName = "Asha", Username = "asha", Email = "asha@taskflow.com", RoleId = SystemRoles.EmployeeId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+                new User { FullName = "Ravi", Username = "ravi", Email = "ravi@taskflow.com", RoleId = SystemRoles.ManagerId, IsActive = true, PasswordHash = "x", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
             await setup.SaveChangesAsync();
         }
 
@@ -81,7 +81,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
                 AssistantServiceHarness.Caller(new User { Id = ashaId, RoleId = SystemRoles.EmployeeId }),
                 conversation.Id,
                 AssistantActionKind.SendMail,
-                new SendMailPayload([new MailRecipientRef(raviId, "Ravi", "ravi@taskflow.local")], "Hello", "Body", null));
+                new SendMailPayload([new MailRecipientRef(raviId, "Ravi", "ravi@taskflow.com")], "Hello", "Body", null));
             actionId = card.Id;
         }
 

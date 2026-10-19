@@ -13,7 +13,7 @@ public class ReportCsvTests
 
         var header = csv.Split("\r\n")[0];
         Assert.Equal(
-            "TaskCode,Title,Assignee,Department,Priority,Status,StartDate,Deadline,EstimatedHours,CompletedAt",
+            "TaskCode,Title,Assignee,Project,Priority,Status,StartDate,Deadline,EstimatedHours,CompletedAt",
             header);
     }
 

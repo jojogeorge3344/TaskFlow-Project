@@ -106,7 +106,7 @@ public class AssistantActionToolsTests
         var emptyDepartment = await Run(DraftTool(h), h, noManagers, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
 
         Assert.Null(noDepartment.PendingActionId);
-        Assert.Contains("not in a department", noDepartment.ResultForModel);
+        Assert.Contains("not in a project", noDepartment.ResultForModel);
         Assert.Null(emptyDepartment.PendingActionId);
         Assert.Contains("could not find a manager", emptyDepartment.ResultForModel);
         Assert.Contains("Ask the user", emptyDepartment.ResultForModel);

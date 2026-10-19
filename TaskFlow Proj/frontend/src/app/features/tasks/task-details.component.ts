@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -6,6 +6,7 @@ import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { TaskDetails, TaskPriority, TaskStage, TaskStatus } from '../../core/models';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskService } from './task.service';
 
@@ -39,7 +40,7 @@ function toInputDate(iso: string): string {
 @Component({
   selector: 'app-task-details',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [ReactiveFormsModule, RouterLink, IconComponent, ConfirmDialogComponent],
   templateUrl: './task-details.component.html',
   styleUrl: './task-details.component.css'
 })
@@ -50,6 +51,7 @@ export class TaskDetailsComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   readonly task = signal<TaskDetails | null>(null);
   readonly loading = signal(true);
@@ -57,6 +59,7 @@ export class TaskDetailsComponent implements OnInit {
   readonly editing = signal(false);
   readonly saving = signal(false);
   readonly changingStatus = signal<TaskStatus | null>(null);
+  readonly deleting = signal(false);
 
   readonly editForm = this.fb.group(
     {
@@ -80,6 +83,12 @@ export class TaskDetailsComponent implements OnInit {
     return this.authService.hasPermission(Permissions.TasksReassign);
   });
 
+  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  readonly canDelete = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.RolesManage);
+  });
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.load(id);
@@ -101,6 +110,36 @@ export class TaskDetailsComponent implements OnInit {
       error: (err: unknown) => {
         this.error.set(apiErrorMessage(err, 'Could not load the task.'));
         this.loading.set(false);
+      }
+    });
+  }
+
+  async deleteTask(): Promise<void> {
+    const task = this.task();
+    if (!task || this.deleting()) {
+      return;
+    }
+
+    const confirmed = await this.confirmDialog().open({
+      title: 'Delete task?',
+      message: `${task.taskCode} "${task.title}" will be removed for everyone. Its comments and history are kept.`,
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.deleting.set(true);
+    this.taskService.delete(task.id).subscribe({
+      next: () => {
+        this.deleting.set(false);
+        this.toast.success(`${task.taskCode} deleted`);
+        void this.router.navigate(['/tasks']);
+      },
+      error: (err: unknown) => {
+        this.deleting.set(false);
+        this.toast.error(apiErrorMessage(err, 'Could not delete the task.'));
       }
     });
   }

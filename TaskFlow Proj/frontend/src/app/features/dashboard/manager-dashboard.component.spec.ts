@@ -14,7 +14,7 @@ describe('ManagerDashboardComponent', () => {
     id: 2,
     fullName: 'Manager User',
     username: 'manager',
-    email: 'manager@taskflow.local',
+    email: 'manager@taskflow.com',
     role: 'Manager',
     employeeCode: null,
     permissions: systemPermissions('Manager')

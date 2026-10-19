@@ -1,14 +1,14 @@
 ---
-title: Department management
+title: Project management
 roles: Administrator
-others: Departments are managed by an Administrator. Please contact your system administrator.
-keywords: department, departments, create department, add department, new department, edit department, delete department
+others: Projects are managed by an Administrator. Please contact your system administrator.
+keywords: project, projects, create project, add project, new project, edit project, delete project, department, departments
 link: /departments
 ---
-Administrators open **Department Management** under TaskFlow Management.
+Administrators open **Project Management** under TaskFlow Management.
 
-- **Add** a department with a name and description.
-- **Edit** a department to rename it.
-- **Delete** a department you no longer need.
+- **Add** a project with a name and description.
+- **Edit** a project to rename it.
+- **Delete** a project you no longer need.
 
-Employees are assigned to a department in Employee Management.
+Employees are assigned to a project in Employee Management.

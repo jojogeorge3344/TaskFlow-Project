@@ -1,10 +1,13 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
+import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { ToastService } from '../../shared/ui/toast.service';
 import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import {
   PagedResult,
@@ -43,7 +46,7 @@ const STAGE_LABELS: Partial<Record<TaskStage, string>> = {
 @Component({
   selector: 'app-task-list',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [RouterLink, IconComponent, ConfirmDialogComponent],
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.css'
 })
@@ -51,6 +54,8 @@ export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
+  private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   private readonly searchInput$ = new Subject<string>();
   private readonly reload$ = new Subject<void>();
@@ -69,6 +74,14 @@ export class TaskListComponent implements OnInit {
     this.auth.currentUser();
     return this.auth.hasPermission(Permissions.TasksCreate);
   });
+
+  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  readonly canDelete = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.RolesManage);
+  });
+
+  readonly deletingId = signal<number | null>(null);
 
   readonly tasks = signal<TaskListItem[]>([]);
   readonly total = signal(0);
@@ -156,6 +169,35 @@ export class TaskListComponent implements OnInit {
 
   load(): void {
     this.reload$.next();
+  }
+
+  async deleteTask(task: TaskListItem): Promise<void> {
+    const confirmed = await this.confirmDialog().open({
+      title: 'Delete task?',
+      message: `${task.taskCode} "${task.title}" will be removed for everyone. Its comments and history are kept.`,
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.deletingId.set(task.id);
+    this.taskService.delete(task.id).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.toast.success(`${task.taskCode} deleted`);
+        // The last row of a later page is gone, so step back instead of showing an empty page.
+        if (this.tasks().length === 1 && this.page() > 1) {
+          this.page.set(this.page() - 1);
+        }
+        this.load();
+      },
+      error: (err: unknown) => {
+        this.deletingId.set(null);
+        this.toast.error(apiErrorMessage(err, 'Could not delete the task.'));
+      }
+    });
   }
 
   onSearch(value: string): void {

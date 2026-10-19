@@ -1,19 +1,19 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <h1>Department Management</h1>
-      <p>{{ loading() && departments().length === 0 ? 'Loading departments…' : countLabel() }}</p>
+      <h1>Project Management</h1>
+      <p>{{ loading() && departments().length === 0 ? 'Loading projects…' : countLabel() }}</p>
     </div>
     <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
       <tf-icon name="plus" />
-      Add department
+      Add project
     </button>
   </header>
 
   <div class="dept-tools" role="search">
     <div class="tf-search dept-tools__search">
       <tf-icon name="search" />
-      <label for="dept-search" class="tf-sr-only">Search departments</label>
+      <label for="dept-search" class="tf-sr-only">Search projects</label>
       <input
         id="dept-search"
         class="tf-input"
@@ -46,14 +46,14 @@
   } @else if (departments().length === 0) {
     <div class="tf-card tf-empty">
       <tf-icon name="building" />
-      <strong>No departments yet</strong>
-      <p>Add the first department to start organising employees.</p>
-      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add department</button>
+      <strong>No projects yet</strong>
+      <p>Add the first project to start organising employees.</p>
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add project</button>
     </div>
   } @else if (filtered().length === 0) {
     <div class="tf-card tf-empty">
       <tf-icon name="search" />
-      <strong>No departments match "{{ query().trim() }}"</strong>
+      <strong>No projects match "{{ query().trim() }}"</strong>
       <button type="button" class="tf-btn tf-btn--ghost" (click)="query.set('')">Clear search</button>
     </div>
   } @else {

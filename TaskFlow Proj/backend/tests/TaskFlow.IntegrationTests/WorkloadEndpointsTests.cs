@@ -111,7 +111,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {
@@ -127,7 +127,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<User> SeedEmployeeAsync(string username, int? departmentId = null)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

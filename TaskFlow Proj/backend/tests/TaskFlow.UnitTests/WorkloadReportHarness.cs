@@ -89,7 +89,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
         {
             FullName = fullName ?? $"{username} full name",
             Username = username,
-            Email = $"{username}@taskflow.local",
+            Email = $"{username}@taskflow.com",
             PasswordHash = "hash",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,

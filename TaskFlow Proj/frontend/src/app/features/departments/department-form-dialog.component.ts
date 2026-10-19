@@ -19,7 +19,7 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
     <dialog #dialog class="tf-modal" aria-labelledby="dept-dialog-title" (cancel)="onCancelEvent($event)">
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <header class="tf-modal__head">
-          <h2 id="dept-dialog-title">{{ editing() ? 'Edit department' : 'Add department' }}</h2>
+          <h2 id="dept-dialog-title">{{ editing() ? 'Edit project' : 'Add project' }}</h2>
           <button type="button" class="tf-btn tf-btn--icon" aria-label="Close dialog" (click)="close()">
             <tf-icon name="x" />
           </button>
@@ -54,7 +54,7 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
         <footer class="tf-modal__foot">
           <button type="button" class="tf-btn tf-btn--ghost" (click)="close()">Cancel</button>
           <button type="submit" class="tf-btn tf-btn--primary" [disabled]="saving()">
-            {{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Add department' }}
+            {{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Add project' }}
           </button>
         </footer>
       </form>
@@ -134,7 +134,7 @@ export class DepartmentFormDialogComponent {
       },
       error: (err) => {
         this.saving.set(false);
-        this.serverError.set(apiErrorMessage(err, department ? 'Could not update the department.' : 'Could not add the department.'));
+        this.serverError.set(apiErrorMessage(err, department ? 'Could not update the project.' : 'Could not add the project.'));
       }
     });
   }

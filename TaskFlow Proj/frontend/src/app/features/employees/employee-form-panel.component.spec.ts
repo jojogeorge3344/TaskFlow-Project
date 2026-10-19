@@ -18,7 +18,7 @@ const existing: User = {
   employeeCode: 'EMP-022',
   fullName: 'Rahul Menon',
   username: 'rahul.m',
-  email: 'rahul.menon@taskflow.local',
+  email: 'rahul.menon@taskflow.com',
   role: 'Employee',
   roleId: 3,
   isActive: true,
@@ -28,9 +28,24 @@ const existing: User = {
   departmentName: 'Engineering'
 };
 
+const manager: User = {
+  ...existing,
+  id: 20,
+  fullName: 'Anupama Nair',
+  username: 'anupama.n',
+  email: 'anupama.nair@taskflow.com',
+  role: 'Manager',
+  roleId: 2,
+  managerDepartments: [],
+  reports: []
+};
+
 describe('EmployeeFormPanelComponent', () => {
   let createSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
+  let assignSpy: jasmine.Spy;
+  let getAllSpy: jasmine.Spy;
+  let errorToastSpy: jasmine.Spy;
   let toastSpy: jasmine.Spy;
   let clearSessionSpy: jasmine.Spy;
   let navigateSpy: jasmine.Spy;
@@ -64,15 +79,17 @@ describe('EmployeeFormPanelComponent', () => {
   beforeEach(async () => {
     createSpy = jasmine.createSpy('create');
     updateSpy = jasmine.createSpy('update');
+    assignSpy = jasmine.createSpy('updateAssignments');
+    getAllSpy = jasmine.createSpy('getAll').and.returnValue(of([manager]));
 
-    currentUser.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role: 'Administrator', employeeCode: null, permissions: systemPermissions('Administrator') });
+    currentUser.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.com', role: 'Administrator', employeeCode: null, permissions: systemPermissions('Administrator') });
     clearSessionSpy = jasmine.createSpy('clearSession');
 
     await TestBed.configureTestingModule({
       imports: [EmployeeFormPanelComponent],
       providers: [
         provideRouter([]),
-        { provide: UserService, useValue: { create: createSpy, update: updateSpy } },
+        { provide: UserService, useValue: { create: createSpy, update: updateSpy, getAll: getAllSpy, updateAssignments: assignSpy } },
         { provide: AuthService, useValue: fakeAuthService(currentUser.asReadonly(), { clearSession: clearSessionSpy }) },
         {
           provide: RoleService,
@@ -90,6 +107,7 @@ describe('EmployeeFormPanelComponent', () => {
     }).compileComponents();
 
     toastSpy = spyOn(TestBed.inject(ToastService), 'success');
+    errorToastSpy = spyOn(TestBed.inject(ToastService), 'error');
     navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
   });
 
@@ -186,16 +204,161 @@ describe('EmployeeFormPanelComponent', () => {
 
   it('shows inline required and email errors on submit without saving', () => {
     const fixture = create(null);
-    type(fixture, 'emp-email', 'not-an-email');
+    type(fixture, 'emp-email', 'bad!name');
 
     submit(fixture);
 
     const errors = Array.from(el(fixture).querySelectorAll('.tf-field__error')).map((node) => node.textContent?.trim());
     expect(errors).toContain('Full name is required.');
     expect(errors).toContain('Username is required.');
-    expect(errors).toContain('Enter a valid email address.');
+    expect(errors).toContain('Use letters, digits, dot, underscore or hyphen before @taskflow.com.');
     expect(errors).toContain('Password is required.');
     expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('shows the fixed domain beside the email input and edits only the local part', () => {
+    const fixture = create(existing);
+
+    expect(el(fixture).querySelector('[data-email-suffix]')?.textContent?.trim()).toBe('@taskflow.com');
+    expect((el(fixture).querySelector('#emp-email') as HTMLInputElement).value).toBe('rahul.menon');
+  });
+
+  describe('manager assignments', () => {
+    function select(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: string, value: string): void {
+      const field = el(fixture).querySelector(`#${id}`) as HTMLSelectElement;
+      field.value = Array.from(field.options).find((option) => option.text.trim() === value)!.value;
+      field.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    function departmentBox(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: number): HTMLInputElement | null {
+      return el(fixture).querySelector(`[data-department="${id}"]`);
+    }
+
+    it('offers the active managers but not the employee being edited', () => {
+      getAllSpy.and.returnValue(of([manager, { ...manager, id: 7, fullName: 'Rahul Menon' }]));
+      const fixture = create(existing);
+
+      const options = Array.from((el(fixture).querySelector('#emp-manager') as HTMLSelectElement).options).map((o) => o.text.trim());
+
+      expect(getAllSpy).toHaveBeenCalledWith({ role: 'Manager', isActive: true });
+      expect(options).toEqual(['No manager', 'Anupama Nair']);
+    });
+
+    it('keeps an inactive current manager in the list, marked inactive, so the select is not blank', () => {
+      const fixture = create({ ...existing, managerId: 55, managerName: 'Old Boss' });
+      fixture.detectChanges();
+
+      const select = el(fixture).querySelector('#emp-manager') as HTMLSelectElement;
+      const options = Array.from(select.options).map((option) => option.text.trim());
+
+      expect(options).toEqual(['No manager', 'Anupama Nair', 'Old Boss (inactive)']);
+      expect(select.selectedOptions[0].text.trim()).toBe('Old Boss (inactive)');
+    });
+
+    it('is not offered to someone who can manage employees but is not an Administrator', () => {
+      currentUser.set({ id: 2, fullName: 'People', username: 'people', email: 'people@taskflow.com', role: 'People', employeeCode: null, permissions: ['employees.manage'] });
+      const fixture = create(existing);
+
+      expect(el(fixture).querySelector('#emp-manager')).toBeNull();
+      expect(getAllSpy).not.toHaveBeenCalled();
+    });
+
+    it('shows the department choices only while the Manager role is chosen', () => {
+      const fixture = create(null);
+      expect(departmentBox(fixture, 1)).toBeNull();
+
+      select(fixture, 'emp-role', 'Manager');
+
+      expect(departmentBox(fixture, 1)).not.toBeNull();
+      select(fixture, 'emp-role', 'Employee');
+      expect(departmentBox(fixture, 1)).toBeNull();
+    });
+
+    it('assigns the chosen manager to a new employee once they are created', () => {
+      const fixture = create(null);
+      createSpy.and.returnValue(of({ ...existing, id: 31, fullName: 'Nia New' }));
+      assignSpy.and.returnValue(of({ ...existing, id: 31, fullName: 'Nia New', managerId: 20, managerName: 'Anupama Nair' }));
+      const savedSpy = jasmine.createSpy('saved');
+      fixture.componentInstance.saved.subscribe(savedSpy);
+
+      type(fixture, 'emp-name', 'Nia New');
+      type(fixture, 'emp-username', 'nia.n');
+      type(fixture, 'emp-email', 'nia');
+      type(fixture, 'emp-password', 'Temp#1234');
+      select(fixture, 'emp-manager', 'Anupama Nair');
+      submit(fixture);
+
+      expect(assignSpy).toHaveBeenCalledOnceWith(31, { managerId: 20, managerDepartmentIds: [] });
+      expect(savedSpy).toHaveBeenCalledWith(jasmine.objectContaining({ managerName: 'Anupama Nair' }));
+    });
+
+    it('assigns the ticked departments to a manager', () => {
+      const fixture = create({ ...manager, id: 21, managerDepartments: [] });
+      updateSpy.and.returnValue(of({ ...manager, id: 21 }));
+      assignSpy.and.returnValue(of({ ...manager, id: 21, managerDepartments: [{ id: 1, name: 'Engineering' }] }));
+
+      const box = departmentBox(fixture, 1)!;
+      box.checked = true;
+      box.dispatchEvent(new Event('change'));
+      submit(fixture);
+
+      expect(assignSpy).toHaveBeenCalledOnceWith(21, { managerId: null, managerDepartmentIds: [1] });
+    });
+
+    it('does not call the assignments endpoint when nothing about them changed', () => {
+      const fixture = create({ ...existing, managerId: 20, managerName: 'Anupama Nair' });
+      updateSpy.and.returnValue(of(existing));
+
+      type(fixture, 'emp-name', 'Rahul M');
+      submit(fixture);
+
+      expect(updateSpy).toHaveBeenCalled();
+      expect(assignSpy).not.toHaveBeenCalled();
+    });
+
+    it('sends no departments for someone who is not a manager', () => {
+      const fixture = create({ ...existing, managerId: 20 });
+      updateSpy.and.returnValue(of(existing));
+      assignSpy.and.returnValue(of(existing));
+
+      select(fixture, 'emp-manager', 'No manager');
+      submit(fixture);
+
+      expect(assignSpy).toHaveBeenCalledOnceWith(7, { managerId: null, managerDepartmentIds: [] });
+    });
+
+    it('still reports the employee as saved when only the assignments are rejected', () => {
+      const fixture = create(null);
+      createSpy.and.returnValue(of({ ...existing, id: 32, fullName: 'Omar Odd' }));
+      assignSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'The manager must be an active Manager.' } })));
+      const savedSpy = jasmine.createSpy('saved');
+      fixture.componentInstance.saved.subscribe(savedSpy);
+
+      type(fixture, 'emp-name', 'Omar Odd');
+      type(fixture, 'emp-username', 'omar.o');
+      type(fixture, 'emp-email', 'omar');
+      type(fixture, 'emp-password', 'Temp#1234');
+      select(fixture, 'emp-manager', 'Anupama Nair');
+      submit(fixture);
+
+      expect(errorToastSpy).toHaveBeenCalledWith('Omar Odd was saved, but The manager must be an active Manager.');
+      expect(savedSpy).toHaveBeenCalled();
+    });
+  });
+
+  it('keeps only the part before the @ when a full address is pasted and saves it on the fixed domain', () => {
+    const fixture = create(null);
+    createSpy.and.returnValue(of({ ...existing, id: 11, fullName: 'Pia Paste' }));
+
+    type(fixture, 'emp-name', 'Pia Paste');
+    type(fixture, 'emp-username', 'pia.p');
+    type(fixture, 'emp-email', 'Pia.Paste@other.com');
+    type(fixture, 'emp-password', 'Temp#1234');
+    submit(fixture);
+
+    expect((el(fixture).querySelector('#emp-email') as HTMLInputElement).value).toBe('pia.paste');
+    expect(createSpy).toHaveBeenCalledWith(jasmine.objectContaining({ email: 'pia.paste@taskflow.com' }));
   });
 
   it('requires a password of at least 6 characters, like the API', () => {
@@ -224,7 +387,7 @@ describe('EmployeeFormPanelComponent', () => {
 
     type(fixture, 'emp-name', 'Lena Lead');
     type(fixture, 'emp-username', 'lena.l');
-    type(fixture, 'emp-email', 'lena@taskflow.local');
+    type(fixture, 'emp-email', 'lena@taskflow.com');
     type(fixture, 'emp-password', 'Temp#1234');
     const select = el(fixture).querySelector('#emp-role') as HTMLSelectElement;
     select.value = Array.from(select.options).find((option) => option.text.trim() === 'Team Lead')!.value;
@@ -239,7 +402,7 @@ describe('EmployeeFormPanelComponent', () => {
       id: 2,
       fullName: 'People Manager',
       username: 'people',
-      email: 'people@taskflow.local',
+      email: 'people@taskflow.com',
       role: 'People Managers',
       employeeCode: null,
       permissions: ['employees.manage']
@@ -265,7 +428,7 @@ describe('EmployeeFormPanelComponent', () => {
 
     type(fixture, 'emp-name', '  Divya Krishnan ');
     type(fixture, 'emp-username', 'divya.k');
-    type(fixture, 'emp-email', 'divya@taskflow.local');
+    type(fixture, 'emp-email', 'divya@taskflow.com');
     type(fixture, 'emp-code', 'EMP-047');
     type(fixture, 'emp-password', 'Temp#1234');
     submit(fixture);
@@ -293,7 +456,7 @@ describe('EmployeeFormPanelComponent', () => {
 
     submit(fixture);
 
-    expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ email: 'rahul.menon@taskflow.local' }));
+    expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ email: 'rahul.menon@taskflow.com' }));
     expect(el(fixture).querySelector('.tf-alert')?.textContent).toContain('Email is already in use.');
     expect(savedSpy).not.toHaveBeenCalled();
     expect(toastSpy).not.toHaveBeenCalled();
@@ -306,6 +469,54 @@ describe('EmployeeFormPanelComponent', () => {
     submit(fixture);
 
     expect((el(fixture).querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBeTrue();
+  });
+});
+
+describe('EmployeeDetailsPanelComponent manager details', () => {
+  async function render(employee: User): Promise<HTMLElement> {
+    await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
+    const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
+    fixture.componentRef.setInput('employee', employee);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('shows an employee their manager and nothing about departments or a team', async () => {
+    const element = await render({ ...existing, managerId: 20, managerName: 'Anupama Nair' });
+
+    expect(element.querySelector('[data-field="manager"]')?.textContent?.trim()).toBe('Anupama Nair');
+    expect(element.querySelector('[data-field="managed-departments"]')).toBeNull();
+    expect(element.querySelector('[data-field="team"]')).toBeNull();
+  });
+
+  it('says there is no manager when none is assigned', async () => {
+    const element = await render(existing);
+
+    expect(element.querySelector('[data-field="manager"]')?.textContent?.trim()).toBe('None');
+  });
+
+  it('shows a manager the departments they oversee and the people who report to them', async () => {
+    const element = await render({
+      ...existing,
+      id: 20,
+      role: 'Manager',
+      roleId: 2,
+      managerDepartments: [
+        { id: 1, name: 'Engineering' },
+        { id: 3, name: 'Finance' }
+      ],
+      reports: [{ id: 7, fullName: 'Rahul Menon' }]
+    });
+
+    expect(element.querySelector('[data-field="managed-departments"]')?.textContent?.trim()).toBe('Engineering, Finance');
+    expect(element.querySelector('[data-field="team"]')?.textContent?.trim()).toBe('Rahul Menon');
+  });
+
+  it('says so when a manager has no departments or team yet', async () => {
+    const element = await render({ ...existing, id: 20, role: 'Manager', roleId: 2, managerDepartments: [], reports: [] });
+
+    expect(element.querySelector('[data-field="managed-departments"]')?.textContent?.trim()).toBe('None');
+    expect(element.querySelector('[data-field="team"]')?.textContent?.trim()).toBe('No one yet');
   });
 });
 

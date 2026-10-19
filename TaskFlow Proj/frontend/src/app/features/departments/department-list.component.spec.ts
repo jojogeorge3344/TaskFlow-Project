@@ -49,7 +49,7 @@ describe('DepartmentListComponent', () => {
   it('shows the header count and one card per department', () => {
     const fixture = create();
 
-    expect(el(fixture).querySelector('.tf-page-header p')?.textContent).toContain('3 departments');
+    expect(el(fixture).querySelector('.tf-page-header p')?.textContent).toContain('3 projects');
     expect(el(fixture).querySelectorAll('article.dept').length).toBe(3);
     expect(card(fixture, 'Engineering').textContent).toContain('12');
     expect(card(fixture, 'Engineering').textContent).toContain('employees');
@@ -75,7 +75,7 @@ describe('DepartmentListComponent', () => {
     fixture.componentInstance.query.set('zzz');
     fixture.detectChanges();
 
-    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No departments match');
+    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No projects match');
   });
 
   it('links View employees to the filtered employee list', () => {
@@ -135,14 +135,14 @@ describe('DepartmentListComponent', () => {
     getAllSpy.and.returnValue(of([]));
     const fixture = create();
 
-    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No departments yet');
+    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No projects yet');
   });
 
   it('shows an error with Retry when loading fails', () => {
     getAllSpy.and.returnValue(throwError(() => new Error('offline')));
     const fixture = create();
 
-    expect(el(fixture).querySelector('[role="alert"]')?.textContent).toContain('Could not load departments');
+    expect(el(fixture).querySelector('[role="alert"]')?.textContent).toContain('Could not load projects');
 
     getAllSpy.and.returnValue(of(departments));
     (el(fixture).querySelector('[role="alert"] button') as HTMLButtonElement).click();

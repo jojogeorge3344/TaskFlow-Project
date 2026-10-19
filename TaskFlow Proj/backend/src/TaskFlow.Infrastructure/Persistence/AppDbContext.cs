@@ -20,6 +20,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     public DbSet<Department> Departments => Set<Department>();
+    public DbSet<ManagerDepartment> ManagerDepartments => Set<ManagerDepartment>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
@@ -68,6 +69,31 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .WithMany(department => department.Users)
                 .HasForeignKey(user => user.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(user => user.Manager)
+                .WithMany(manager => manager.Reports)
+                .HasForeignKey(user => user.ManagerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ManagerDepartment>(entity =>
+        {
+            entity.HasKey(link => new { link.ManagerUserId, link.DepartmentId });
+
+            entity
+                .HasOne(link => link.Manager)
+                .WithMany(manager => manager.ManagerDepartments)
+                .HasForeignKey(link => link.ManagerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Department)
+                .WithMany()
+                .HasForeignKey(link => link.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.DepartmentId);
         });
 
         modelBuilder.Entity<Role>(entity =>

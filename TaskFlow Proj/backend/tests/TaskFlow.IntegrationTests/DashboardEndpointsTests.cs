@@ -109,7 +109,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {

@@ -11,7 +11,7 @@ describe('TfaSettingsComponent', () => {
   const user = signal<AuthUser | null>(null);
 
   async function create(role: AuthUser['role']) {
-    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.local', role, employeeCode: null, permissions: systemPermissions(role) });
+    user.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.com', role, employeeCode: null, permissions: systemPermissions(role) });
     await TestBed.configureTestingModule({
       imports: [TfaSettingsComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: fakeAuthService(user.asReadonly()) }]

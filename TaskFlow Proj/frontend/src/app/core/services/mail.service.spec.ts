@@ -54,7 +54,7 @@ describe('MailService', () => {
   });
 
   it('sends mail and refreshes the badge afterwards', () => {
-    const body = { to: ['a@taskflow.local'], cc: [], subject: 'Hi', body: 'x', attachmentIds: [1] };
+    const body = { to: ['a@taskflow.com'], cc: [], subject: 'Hi', body: 'x', attachmentIds: [1] };
     service.send(body).subscribe();
 
     const send = http.expectOne('/api/v1/mail/send');

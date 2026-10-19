@@ -72,7 +72,17 @@ public class UserService : IUserService
                 u.UpdatedAt,
                 u.LastLoginAt,
                 u.DepartmentId,
-                u.Department != null ? u.Department.Name : null))
+                u.Department != null ? u.Department.Name : null,
+                u.ManagerId,
+                u.Manager != null ? u.Manager.FullName : null,
+                u.ManagerDepartments
+                    .OrderBy(link => link.Department.Name)
+                    .Select(link => new ManagerDepartmentDto(link.DepartmentId, link.Department.Name))
+                    .ToList(),
+                u.Reports
+                    .OrderBy(report => report.FullName)
+                    .Select(report => new ManagerReportDto(report.Id, report.FullName))
+                    .ToList()))
             .ToListAsync(cancellationToken);
 
         return users;
@@ -98,7 +108,17 @@ public class UserService : IUserService
                 u.UpdatedAt,
                 u.LastLoginAt,
                 u.DepartmentId,
-                u.Department != null ? u.Department.Name : null))
+                u.Department != null ? u.Department.Name : null,
+                u.ManagerId,
+                u.Manager != null ? u.Manager.FullName : null,
+                u.ManagerDepartments
+                    .OrderBy(link => link.Department.Name)
+                    .Select(link => new ManagerDepartmentDto(link.DepartmentId, link.Department.Name))
+                    .ToList(),
+                u.Reports
+                    .OrderBy(report => report.FullName)
+                    .Select(report => new ManagerReportDto(report.Id, report.FullName))
+                    .ToList()))
             .FirstOrDefaultAsync(cancellationToken);
 
         return user;
@@ -111,13 +131,20 @@ public class UserService : IUserService
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLower();
+        var email = RequireValidEmail(request.Email);
         var username = request.Username.Trim();
 
-        var exists = await _dbContext.Users
-            .AnyAsync(u => (!u.IsDeleted) && (u.Email.ToLower() == email || u.Username.ToLower() == username.ToLower()), cancellationToken);
+        if (await EmailTakenAsync(email, null, cancellationToken))
+        {
+            throw new InvalidOperationException("Email already exists.");
+        }
 
-        if (exists)
+        // Deleted users keep their username (the unique index still covers them), so they count here too.
+        var usernameTaken = await _dbContext.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Username.ToLower() == username.ToLower(), cancellationToken);
+
+        if (usernameTaken)
         {
             throw new InvalidOperationException("Email or username already exists.");
         }
@@ -128,7 +155,7 @@ public class UserService : IUserService
                 .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
             if (!deptExists)
             {
-                throw new InvalidOperationException("Department does not exist.");
+                throw new InvalidOperationException("Project does not exist.");
             }
         }
 
@@ -157,20 +184,7 @@ public class UserService : IUserService
             ? (await _dbContext.Departments.Where(d => d.Id == request.DepartmentId.Value).Select(d => d.Name).FirstAsync(cancellationToken))
             : null;
 
-        return new UserDto(
-            user.Id,
-            user.EmployeeCode,
-            user.FullName,
-            user.Username,
-            user.Email,
-            user.RoleId,
-            user.Role.Name,
-            user.IsActive,
-            user.CreatedAt,
-            user.UpdatedAt,
-            user.LastLoginAt,
-            user.DepartmentId,
-            departmentName);
+        return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
     public async Task<UserDto?> UpdateAsync(int id, UpdateUserRequest request, CancellationToken cancellationToken)
@@ -185,13 +199,19 @@ public class UserService : IUserService
             return null;
         }
 
-        var email = request.Email.Trim().ToLower();
+        var email = RequireValidEmail(request.Email);
         var username = request.Username.Trim();
 
-        var exists = await _dbContext.Users
-            .AnyAsync(u => u.Id != id && !u.IsDeleted && (u.Email.ToLower() == email || u.Username.ToLower() == username.ToLower()), cancellationToken);
+        if (await EmailTakenAsync(email, id, cancellationToken))
+        {
+            throw new InvalidOperationException("Email already exists.");
+        }
 
-        if (exists)
+        var usernameTaken = await _dbContext.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Id != id && u.Username.ToLower() == username.ToLower(), cancellationToken);
+
+        if (usernameTaken)
         {
             throw new InvalidOperationException("Email or username already exists.");
         }
@@ -202,7 +222,7 @@ public class UserService : IUserService
                 .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
             if (!deptExists)
             {
-                throw new InvalidOperationException("Department does not exist.");
+                throw new InvalidOperationException("Project does not exist.");
             }
         }
 
@@ -230,6 +250,12 @@ public class UserService : IUserService
 
         var now = DateTime.UtcNow;
 
+        if (roleChanged && user.RoleId == SystemRoles.ManagerId)
+        {
+            // Someone who is no longer a Manager oversees no departments and has no reports.
+            await ClearManagerDutiesAsync(user.Id, now, cancellationToken);
+        }
+
         user.EmployeeCode = request.EmployeeCode?.Trim();
         user.FullName = request.FullName.Trim();
         user.Username = username;
@@ -252,20 +278,7 @@ public class UserService : IUserService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(
-            user.Id,
-            user.EmployeeCode,
-            user.FullName,
-            user.Username,
-            user.Email,
-            user.RoleId,
-            user.Role.Name,
-            user.IsActive,
-            user.CreatedAt,
-            user.UpdatedAt,
-            user.LastLoginAt,
-            user.DepartmentId,
-            user.Department?.Name);
+        return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
     public async Task<UserDto?> UpdateStatusAsync(int id, UserStatusRequest request, CancellationToken cancellationToken)
@@ -294,20 +307,7 @@ public class UserService : IUserService
         user.UpdatedAt = now;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(
-            user.Id,
-            user.EmployeeCode,
-            user.FullName,
-            user.Username,
-            user.Email,
-            user.RoleId,
-            user.Role.Name,
-            user.IsActive,
-            user.CreatedAt,
-            user.UpdatedAt,
-            user.LastLoginAt,
-            user.DepartmentId,
-            user.Department?.Name);
+        return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
     public async Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default)
@@ -322,12 +322,9 @@ public class UserService : IUserService
             return null;
         }
 
-        var email = request.Email!.Trim().ToLower();
+        var email = RequireValidEmail(request.Email);
 
-        var exists = await _dbContext.Users
-            .AnyAsync(u => u.Id != id && !u.IsDeleted && u.Email.ToLower() == email, cancellationToken);
-
-        if (exists)
+        if (await EmailTakenAsync(email, id, cancellationToken))
         {
             throw new InvalidOperationException("Email already exists.");
         }
@@ -339,10 +336,7 @@ public class UserService : IUserService
         // Role, department, username, employee code and status are deliberately untouched.
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(
-            user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
-            user.RoleId, user.Role.Name, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
-            user.DepartmentId, user.Department?.Name);
+        return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
     public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)
@@ -371,10 +365,152 @@ public class UserService : IUserService
         await EndSessionsAsync(user, now, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new UserDto(
-            user.Id, user.EmployeeCode, user.FullName, user.Username, user.Email,
-            user.RoleId, user.Role.Name, user.IsActive, user.CreatedAt, user.UpdatedAt, user.LastLoginAt,
-            user.DepartmentId, user.Department?.Name);
+        return (await GetByIdAsync(user.Id, cancellationToken))!;
+    }
+
+    public async Task<UserDto?> UpdateManagerAssignmentsAsync(int id, ManagerAssignmentRequest request, CancellationToken cancellationToken)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var departmentIds = request.ManagerDepartmentIds?.Distinct().ToList() ?? [];
+        if (departmentIds.Count > 0)
+        {
+            if (user.RoleId != SystemRoles.ManagerId)
+            {
+                throw new InvalidOperationException("Only a Manager can be assigned projects.");
+            }
+
+            var existing = await _dbContext.Departments.CountAsync(d => departmentIds.Contains(d.Id), cancellationToken);
+            if (existing != departmentIds.Count)
+            {
+                throw new InvalidOperationException("One or more projects do not exist.");
+            }
+        }
+
+        if (request.ManagerId is int managerId)
+        {
+            if (managerId == id)
+            {
+                throw new InvalidOperationException("A user cannot be their own manager.");
+            }
+
+            var manager = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == managerId, cancellationToken);
+            if (manager is null || manager.RoleId != SystemRoles.ManagerId || !manager.IsActive)
+            {
+                throw new InvalidOperationException("The manager must be an active Manager.");
+            }
+
+            // Walking up from the chosen manager must never come back to this user.
+            var cursor = manager.ManagerId;
+            for (var steps = 0; cursor is int above && steps < 100; steps++)
+            {
+                if (above == id)
+                {
+                    throw new InvalidOperationException("That would make two people each other's manager.");
+                }
+
+                cursor = await _dbContext.Users.Where(u => u.Id == above).Select(u => u.ManagerId).FirstOrDefaultAsync(cancellationToken);
+            }
+        }
+
+        var links = await _dbContext.ManagerDepartments.Where(link => link.ManagerUserId == id).ToListAsync(cancellationToken);
+        _dbContext.ManagerDepartments.RemoveRange(links.Where(link => !departmentIds.Contains(link.DepartmentId)));
+        foreach (var departmentId in departmentIds.Where(departmentId => links.All(link => link.DepartmentId != departmentId)))
+        {
+            _dbContext.ManagerDepartments.Add(new ManagerDepartment { ManagerUserId = id, DepartmentId = departmentId });
+        }
+
+        user.ManagerId = request.ManagerId;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return await GetByIdAsync(id, cancellationToken);
+    }
+
+    /// <summary>Clears the manager link of everyone who reports to this user and removes their department assignments.</summary>
+    private async System.Threading.Tasks.Task ClearManagerDutiesAsync(int managerUserId, DateTime now, CancellationToken cancellationToken)
+    {
+        var reports = await _dbContext.Users.Where(u => u.ManagerId == managerUserId).ToListAsync(cancellationToken);
+        foreach (var report in reports)
+        {
+            report.ManagerId = null;
+            report.UpdatedAt = now;
+        }
+
+        _dbContext.ManagerDepartments.RemoveRange(
+            await _dbContext.ManagerDepartments.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
+    }
+
+    public async Task<bool> DeleteAsync(int id, int currentUserId, CancellationToken cancellationToken)
+    {
+        var user = await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+
+        if (user is null)
+        {
+            return false;
+        }
+
+        if (user.Id == currentUserId)
+        {
+            throw new InvalidOperationException("You cannot delete your own account.");
+        }
+
+        await EnsureAnotherActiveAdministratorAsync(
+            user, "The only active Administrator cannot be deleted.", cancellationToken);
+
+        var unfinished = await _dbContext.Tasks
+            .CountAsync(
+                t => t.AssignedToUserId == id
+                     && !t.IsDeleted
+                     && t.Status != Domain.Enums.TaskStatus.Completed
+                     && t.Status != Domain.Enums.TaskStatus.Cancelled,
+                cancellationToken);
+        if (unfinished > 0)
+        {
+            throw new InvalidOperationException(
+                $"{user.FullName} still has {unfinished} unfinished task{(unfinished == 1 ? string.Empty : "s")}. Reassign {(unfinished == 1 ? "it" : "them")} before deleting this employee.");
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Their reports have no manager any more, and a deleted manager oversees no departments.
+        await ClearManagerDutiesAsync(id, now, cancellationToken);
+
+        // The email and username stay on the row, so they remain reserved and history is never ambiguous.
+        await EndSessionsAsync(user, now, cancellationToken);
+        user.ManagerId = null;
+        user.IsActive = false;
+        user.IsDeleted = true;
+        user.UpdatedAt = now;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static string RequireValidEmail(string? email)
+    {
+        var normalized = EmailPolicy.Normalize(email);
+        if (!EmailPolicy.IsValid(normalized))
+        {
+            throw new InvalidOperationException(EmailPolicy.InvalidMessage);
+        }
+
+        return normalized;
+    }
+
+    /// <summary>The domain is fixed, so two addresses are the same person's mailbox when their local parts match.
+    /// Deleted users still count: their address stays reserved so history is never ambiguous.</summary>
+    private async Task<bool> EmailTakenAsync(string normalizedEmail, int? exceptUserId, CancellationToken cancellationToken)
+    {
+        var prefix = EmailPolicy.LocalPart(normalizedEmail) + "@";
+        return await _dbContext.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => (exceptUserId == null || u.Id != exceptUserId) && u.Email.ToLower().StartsWith(prefix), cancellationToken);
     }
 
     /// <summary>Keeps at least one active Administrator, the only role that can manage roles.</summary>

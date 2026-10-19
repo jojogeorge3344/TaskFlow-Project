@@ -36,7 +36,7 @@ public class DatabaseSeeder
             "ADM-001",
             "System Administrator",
             "admin",
-            "admin@taskflow.local",
+            "admin@taskflow.com",
             _options.AdministratorPassword,
             SystemRoles.AdministratorId,
             cancellationToken);
@@ -45,7 +45,7 @@ public class DatabaseSeeder
             "MGR-001",
             "Default Manager",
             "manager",
-            "manager@taskflow.local",
+            "manager@taskflow.com",
             _options.ManagerPassword,
             SystemRoles.ManagerId,
             cancellationToken);
@@ -54,7 +54,7 @@ public class DatabaseSeeder
             "EMP-001",
             "Default Employee",
             "employee",
-            "employee@taskflow.local",
+            "employee@taskflow.com",
             _options.EmployeePassword,
             SystemRoles.EmployeeId,
             cancellationToken);

@@ -52,7 +52,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
             employeeCode = "EMP-900",
             fullName = "Created Through Api",
             username = "created.api",
-            email = "created.api@taskflow.local",
+            email = "created.api@taskflow.com",
             password = "Temp#12345",
             roleId = SystemRoles.ManagerId,
             isActive = true,
@@ -220,7 +220,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
         employeeCode = (string?)null,
         fullName,
         username,
-        email = $"{username}@taskflow.local",
+        email = $"{username}@taskflow.com",
         roleId,
         departmentId = (int?)null,
         password
@@ -228,7 +228,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<Session> LoginAsync(HttpClient client, string username, string role)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, role);
 
         var response = await PostLoginAsync(client, username, Password);
         response.EnsureSuccessStatusCode();

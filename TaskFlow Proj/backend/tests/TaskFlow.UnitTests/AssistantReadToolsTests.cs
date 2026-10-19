@@ -261,7 +261,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
 
         using var result = Parse(outcome);
         var users = result.RootElement.GetProperty("users").EnumerateArray().Select(user => user.GetProperty("email").GetString()).ToList();
-        Assert.Equal(["priya.active@taskflow.local"], users);
+        Assert.Equal(["priya.active@taskflow.com"], users);
     }
 
     [Fact]

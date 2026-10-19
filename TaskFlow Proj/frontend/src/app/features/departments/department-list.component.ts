@@ -41,7 +41,7 @@ export class DepartmentListComponent implements OnInit {
 
   readonly countLabel = computed(() => {
     const count = this.departments().length;
-    return count === 1 ? '1 department' : `${count} departments`;
+    return count === 1 ? '1 project' : `${count} projects`;
   });
 
   ngOnInit(): void {
@@ -57,7 +57,7 @@ export class DepartmentListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load departments. Check your connection and try again.');
+        this.error.set('Could not load projects. Check your connection and try again.');
         this.loading.set(false);
       }
     });
@@ -81,7 +81,7 @@ export class DepartmentListComponent implements OnInit {
     }
 
     const confirmed = await this.confirmDialog().open({
-      title: 'Delete department?',
+      title: 'Delete project?',
       message: `"${department.name}" will be permanently deleted.`,
       confirmLabel: 'Delete',
       variant: 'danger'
@@ -99,7 +99,7 @@ export class DepartmentListComponent implements OnInit {
       },
       error: (err) => {
         this.deletingId.set(null);
-        this.toast.error(apiErrorMessage(err, 'Could not delete the department.'));
+        this.toast.error(apiErrorMessage(err, 'Could not delete the project.'));
       }
     });
   }

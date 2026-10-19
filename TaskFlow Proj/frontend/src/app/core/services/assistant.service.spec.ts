@@ -38,7 +38,7 @@ function card(id: string, status: AssistantPendingAction['status'] = 'Pending'):
     status,
     expiresAt: '2026-10-19T09:10:00Z',
     title: 'Mail draft',
-    fields: [{ label: 'To', value: 'Ravi <ravi@taskflow.local>' }],
+    fields: [{ label: 'To', value: 'Ravi <ravi@taskflow.com>' }],
     body: 'Hello',
     canEdit: status === 'Pending'
   };
@@ -50,7 +50,7 @@ describe('AssistantService', () => {
   const user = signal<AuthUser | null>(null);
 
   function signIn(id = 1): void {
-    user.set({ id, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
+    user.set({ id, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.com', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
   }
 
@@ -91,9 +91,9 @@ describe('AssistantService', () => {
     flushStartup([ollama], [message(1, 'User', 'question'), message(2, 'Assistant', 'answer')]);
     service.open();
 
-    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
+    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.com', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
-    user.set({ id: 1, fullName: 'Asha Nair', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
+    user.set({ id: 1, fullName: 'Asha Nair', username: 'asha', email: 'asha@taskflow.com', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
 
     expect(service.panelOpen()).toBeTrue();

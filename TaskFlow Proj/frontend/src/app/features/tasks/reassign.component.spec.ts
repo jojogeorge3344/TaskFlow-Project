@@ -32,9 +32,9 @@ describe('TaskReassignComponent', () => {
   };
 
   const employees: User[] = [
-    { id: 3, fullName: 'Joe', username: 'joe', email: 'joe@taskflow.local', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
-    { id: 9, fullName: 'Sara Dev', username: 'sara', email: 'sara@taskflow.local', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
-    { id: 11, fullName: 'Old Ten', username: 'old', email: 'old@taskflow.local', role: 'Employee', roleId: 3, isActive: false, createdAt: '2026-09-01' }
+    { id: 3, fullName: 'Joe', username: 'joe', email: 'joe@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
+    { id: 9, fullName: 'Sara Dev', username: 'sara', email: 'sara@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
+    { id: 11, fullName: 'Old Ten', username: 'old', email: 'old@taskflow.com', role: 'Employee', roleId: 3, isActive: false, createdAt: '2026-09-01' }
   ];
 
   let fixture: ComponentFixture<TaskReassignComponent>;

@@ -11,9 +11,9 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithEmail_ReturnsTokensAndRole()
     {
         await using var harness = AuthServiceHarness.Create();
-        var user = harness.AddUser("admin", "admin@taskflow.local", "P@ssw0rd!", role: SystemRoles.Administrator);
+        var user = harness.AddUser("admin", "admin@taskflow.com", "P@ssw0rd!", role: SystemRoles.Administrator);
 
-        var result = await harness.Service.LoginAsync(new LoginRequest("admin@taskflow.local", "P@ssw0rd!"));
+        var result = await harness.Service.LoginAsync(new LoginRequest("admin@taskflow.com", "P@ssw0rd!"));
 
         Assert.True(result.Succeeded);
         Assert.Equal(user.Id, result.User!.Id);
@@ -30,7 +30,7 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithUsername_ReturnsTokens()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("manager", "manager@taskflow.local", "P@ssw0rd!", role: SystemRoles.Manager);
+        harness.AddUser("manager", "manager@taskflow.com", "P@ssw0rd!", role: SystemRoles.Manager);
 
         var result = await harness.Service.LoginAsync(new LoginRequest("manager", "P@ssw0rd!"));
 
@@ -42,7 +42,7 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithWrongPassword_Fails()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("employee", "employee@taskflow.local", "P@ssw0rd!");
+        harness.AddUser("employee", "employee@taskflow.com", "P@ssw0rd!");
 
         var result = await harness.Service.LoginAsync(new LoginRequest("employee", "wrong-password"));
 
@@ -55,9 +55,9 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithUnknownIdentifier_Fails()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("employee", "employee@taskflow.local", "P@ssw0rd!");
+        harness.AddUser("employee", "employee@taskflow.com", "P@ssw0rd!");
 
-        var result = await harness.Service.LoginAsync(new LoginRequest("ghost@taskflow.local", "P@ssw0rd!"));
+        var result = await harness.Service.LoginAsync(new LoginRequest("ghost@taskflow.com", "P@ssw0rd!"));
 
         Assert.False(result.Succeeded);
     }
@@ -66,7 +66,7 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WhenInactive_Fails()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("disabled", "disabled@taskflow.local", "P@ssw0rd!", isActive: false);
+        harness.AddUser("disabled", "disabled@taskflow.com", "P@ssw0rd!", isActive: false);
 
         var result = await harness.Service.LoginAsync(new LoginRequest("disabled", "P@ssw0rd!"));
 

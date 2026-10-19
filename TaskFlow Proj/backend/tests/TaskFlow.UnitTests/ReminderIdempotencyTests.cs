@@ -284,7 +284,7 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
         {
             FullName = $"{username} full name",
             Username = username,
-            Email = $"{username}@taskflow.local",
+            Email = $"{username}@taskflow.com",
             PasswordHash = "hash",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = true,

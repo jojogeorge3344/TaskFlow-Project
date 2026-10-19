@@ -55,6 +55,12 @@ export class EmployeeListComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly busyId = signal<number | null>(null);
 
+  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  readonly canDelete = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.RolesManage);
+  });
+
   /** What is typed in the search box; `search` is the debounced value that is applied. */
   readonly searchText = signal('');
   readonly search = signal('');
@@ -213,6 +219,36 @@ export class EmployeeListComponent implements OnInit {
       error: (err) => {
         this.busyId.set(null);
         this.toast.error(apiErrorMessage(err, 'Could not update the employee status.'));
+      }
+    });
+  }
+
+  /** Nobody deletes their own account, so the action is not offered on the signed-in user's row. */
+  canDeleteEmployee(employee: User): boolean {
+    return this.canDelete() && this.authService.currentUser()?.id !== employee.id;
+  }
+
+  async deleteEmployee(employee: User): Promise<void> {
+    const confirmed = await this.confirmDialog().open({
+      title: 'Delete employee?',
+      message: `${employee.fullName} will no longer appear in the system or be able to sign in. Their tasks, comments and mail are kept.`,
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.busyId.set(employee.id);
+    this.userService.delete(employee.id).subscribe({
+      next: () => {
+        this.busyId.set(null);
+        this.toast.success(`${employee.fullName} deleted`);
+        this.load();
+      },
+      error: (err) => {
+        this.busyId.set(null);
+        this.toast.error(apiErrorMessage(err, 'Could not delete the employee.'));
       }
     });
   }

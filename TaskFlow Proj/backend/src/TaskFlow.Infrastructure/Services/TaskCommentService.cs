@@ -28,6 +28,7 @@ public class TaskCommentService : ITaskCommentService
     {
         var comments = await _dbContext.TaskComments
             .AsNoTracking()
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(comment => comment.Author)
             .Where(comment => comment.TaskId == taskId)
             .OrderBy(comment => comment.CreatedAt)

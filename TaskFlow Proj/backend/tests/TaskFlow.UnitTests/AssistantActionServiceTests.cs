@@ -345,14 +345,14 @@ public class AssistantActionServiceTests
         await using var h = new AssistantActionHarness();
         var caller = AssistantActionHarness.Caller(h.Asha);
         var card = await h.Actions.CreateAsync(caller, h.Conversation(h.Asha).Id, AssistantActionKind.UpdateOwnProfile,
-            new UpdateProfilePayload("Asha Nair", "asha.nair@taskflow.local", h.Asha.FullName, h.Asha.Email));
+            new UpdateProfilePayload("Asha Nair", "asha.nair@taskflow.com", h.Asha.FullName, h.Asha.Email));
 
         var result = await h.Actions.ConfirmAsync(caller, card.Id);
 
         Assert.Equal(AssistantActionStatus.Confirmed, result!.Status);
         var user = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Asha.Id);
         Assert.Equal("Asha Nair", user.FullName);
-        Assert.Equal("asha.nair@taskflow.local", user.Email);
+        Assert.Equal("asha.nair@taskflow.com", user.Email);
         Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
         Assert.Equal(h.Engineering.Id, user.DepartmentId);
         Assert.True(user.IsActive);
@@ -407,7 +407,7 @@ public class AssistantActionServiceTests
 
         Assert.Equal("Mail draft", card.Title);
         Assert.Contains("ravi full name", card.Fields.Single(field => field.Label == "To").Value);
-        Assert.Contains("priya@taskflow.local", card.Fields.Single(field => field.Label == "To").Value);
+        Assert.Contains("priya@taskflow.com", card.Fields.Single(field => field.Label == "To").Value);
         Assert.Equal("It is in review.", card.Body);
         Assert.True(card.CanEdit);
         Assert.True(card.ExpiresAt > h.Clock.GetUtcNow().UtcDateTime);

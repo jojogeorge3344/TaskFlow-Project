@@ -34,7 +34,7 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
 
         // Tokens are only honoured for users that exist and whose security stamp matches.
-        await _factory.SeedUserAsync("wiring-admin", "wiring-admin@taskflow.local", "P@ssw0rd!", SystemRoles.Administrator);
+        await _factory.SeedUserAsync("wiring-admin", "wiring-admin@taskflow.com", "P@ssw0rd!", SystemRoles.Administrator);
 
         using var scope = _factory.Services.CreateScope();
         var tokenService = scope.ServiceProvider.GetRequiredService<ITokenService>();
