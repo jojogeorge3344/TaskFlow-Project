@@ -39,6 +39,132 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EveryProviderListsTheModelsToChooseFromAndAlwaysIncludesTheChosenOne()
+    {
+        var seeder = new AiProviderSeeder(_harness.Db, TimeProvider.System);
+        await seeder.SeedAsync();
+
+        var config = await Service().GetAdminConfigAsync();
+
+        foreach (var provider in config)
+        {
+            Assert.Equal(AiProviderCatalog.BuiltInModels(provider.Kind), provider.Models);
+            Assert.Contains(provider.ModelName, provider.Models);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AnEmptyModelNameIsRejected(string name)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: name)));
+        Assert.Empty(await _harness.Db.AiModels.ToListAsync());
+    }
+
+    [Fact]
+    public async Task AModelNameLongerThanTheStoredLengthIsRejected()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: new string('m', 101))));
+        Assert.Empty(await _harness.Db.AiModels.ToListAsync());
+
+        await Save(Update(AiProviderKind.Ollama, model: new string('m', 100)));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync());
+    }
+
+    [Fact]
+    public async Task OnlyTheModelOfTheEnabledServerIsAddedToTheList()
+    {
+        await Save(
+            Update(AiProviderKind.Ollama, enabled: true, model: "phi3:mini"),
+            Update(AiProviderKind.Gemini, enabled: false, model: "leftover-typo"));
+
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "leftover-typo"));
+    }
+
+    [Fact]
+    public async Task ACustomModelIsListedAsRemovableAndCanBeRemovedOnceNoServerUsesIt()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+        await Save(Update(AiProviderKind.Ollama, model: "typo-model"));
+
+        var config = await Service().GetAdminConfigAsync();
+        Assert.Equal(["typo-model"], config.Single(provider => provider.Kind == AiProviderKind.Ollama).CustomModels);
+        Assert.All(config.Where(provider => provider.Kind != AiProviderKind.Ollama), provider => Assert.Empty(provider.CustomModels));
+
+        // It is the saved model, so it stays until another one is saved.
+        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model"));
+        await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"));
+
+        var after = await Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model");
+
+        var ollama = after.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        Assert.DoesNotContain("typo-model", ollama.Models);
+        Assert.Empty(ollama.CustomModels);
+        Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "typo-model"));
+    }
+
+    [Fact]
+    public async Task ABuiltInModelCannotBeRemovedAndAnUnknownOneIsNotFound()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "llama3.1:8b"));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "never-added"));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "llama3.1:8b"));
+    }
+
+    [Fact]
+    public async Task TwoAdministratorsAddingTheSameNewModelAtOnceDoNotFailTheSecondSave()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        // Just before our save reaches the database, another administrator's save adds the same model.
+        var raced = false;
+        _harness.Db.SavingChanges += (_, _) =>
+        {
+            if (raced)
+            {
+                return;
+            }
+
+            raced = true;
+            var options = new DbContextOptionsBuilder<TaskFlow.Infrastructure.Persistence.AppDbContext>()
+                .UseSqlite(_harness.Db.Database.GetDbConnection())
+                .Options;
+            using var other = new TaskFlow.Infrastructure.Persistence.AppDbContext(options);
+            other.AiModels.Add(new TaskFlow.Domain.Entities.AiModel { Kind = AiProviderKind.Ollama, Name = "phi3:mini", IsBuiltIn = false });
+            other.SaveChanges();
+        };
+
+        var config = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini"));
+
+        Assert.True(raced);
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.Equal("phi3:mini", config.Single(provider => provider.Kind == AiProviderKind.Ollama).ModelName);
+    }
+
+    [Fact]
+    public async Task AModelTypedInSettingsIsAddedToTheListForEveryone()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+
+        var config = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini", baseUrl: "http://localhost:11434"));
+
+        var ollama = config.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        Assert.Equal("phi3:mini", ollama.ModelName);
+        Assert.Equal(AiProviderCatalog.BuiltInModels(AiProviderKind.Ollama).Append("phi3:mini"), ollama.Models);
+        var stored = await _harness.Db.AiModels.SingleAsync(model => model.Name == "phi3:mini");
+        Assert.False(stored.IsBuiltIn);
+
+        // Saving it again does not add it twice, and the other providers are unaffected.
+        var again = await Save(Update(AiProviderKind.Ollama, model: "phi3:mini", baseUrl: "http://localhost:11434"));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "phi3:mini"));
+        Assert.DoesNotContain("phi3:mini", again.Single(provider => provider.Kind == AiProviderKind.Gemini).Models);
+    }
+
+    [Fact]
     public async Task CloudProviderEnabledWithoutAKeyIsNotConfigured()
     {
         var config = await Save(Update(AiProviderKind.Gemini));

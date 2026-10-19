@@ -92,6 +92,12 @@ export const routes: Routes = [
           import('./features/settings/application-settings.component').then((m) => m.ApplicationSettingsComponent)
       },
       {
+        path: 'settings/tfa',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.SettingsAi] },
+        loadComponent: () => import('./features/settings/tfa-settings.component').then((m) => m.TfaSettingsComponent)
+      },
+      {
         path: 'settings/permissions',
         canActivate: [permissionGuard],
         data: { permissions: [Permissions.RolesManage] },

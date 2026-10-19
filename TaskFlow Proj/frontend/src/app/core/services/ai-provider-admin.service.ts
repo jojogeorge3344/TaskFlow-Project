@@ -18,6 +18,11 @@ export class AiProviderAdminService {
     return this.http.put<AiProviderConfig[]>(`${this.url}/config`, { providers });
   }
 
+  /** Removes a model an administrator added. The server refuses built-in models and the one saved for the server. */
+  removeModel(kind: AiProviderKind, name: string): Observable<AiProviderConfig[]> {
+    return this.http.delete<AiProviderConfig[]>(`${this.url}/${kind}/models`, { params: { name } });
+  }
+
   /** Sends one tiny request to the saved provider settings. */
   test(kind: AiProviderKind): Observable<AiProviderTestResult> {
     return this.http.post<AiProviderTestResult>(`${this.url}/${kind}/test`, {});

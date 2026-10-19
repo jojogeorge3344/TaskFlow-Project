@@ -152,6 +152,7 @@ describe('ShellComponent', () => {
       'Reports',
       'Reminder Settings',
       'Application Settings',
+      'TFA Settings',
       'Role Configuration',
       'My Profile'
     ]);
@@ -188,7 +189,7 @@ describe('ShellComponent', () => {
     expect(childrenOf(0)).toEqual(['Task Management', 'Employee Workload', 'Board']);
     expect(childrenOf(1)).toEqual(['Employee Management', 'Department Management']);
     expect(childrenOf(2)).toEqual(['Mail', 'Notifications']);
-    expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'Role Configuration']);
+    expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'TFA Settings', 'Role Configuration']);
   });
 
   it('collapses and expands a parent module group', () => {

@@ -7,7 +7,6 @@
   flex-direction: column;
   gap: var(--tf-space-4);
   max-width: 48rem;
-  margin-top: var(--tf-space-6);
 }
 
 .ai-settings__head h2 {
@@ -113,4 +112,26 @@
 
 .ai-settings__result.is-ok {
   color: var(--tf-success);
+}
+
+.ai-settings__pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--tf-space-3);
+}
+
+.ai-settings__picker {
+  max-width: 28rem;
+}
+
+.ai-settings__linked {
+  margin-top: calc(var(--tf-space-2) * -1);
+}
+
+.ai-settings__using {
+  margin: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-radius: var(--tf-radius-md, 0.5rem);
+  background: var(--tf-primary-soft, var(--tf-surface-alt));
+  font-size: 0.875rem;
 }

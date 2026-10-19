@@ -14,6 +14,9 @@ public interface IAiProviderConfigService
     /// <summary>Saves an already-validated request and returns the resulting status of every provider.</summary>
     Task<IReadOnlyList<AiProviderConfigDto>> SaveAsync(int userId, UpdateAiProvidersRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Removes a model an administrator added. A built-in model, or the one saved for its server, cannot be removed.</summary>
+    Task<IReadOnlyList<AiProviderConfigDto>> RemoveModelAsync(AiProviderKind kind, string name, CancellationToken cancellationToken = default);
+
     /// <summary>What a call to the provider needs, or null when the provider is not configured.</summary>
     Task<AiProviderRuntime?> GetRuntimeAsync(AiProviderKind kind, CancellationToken cancellationToken = default);
 }

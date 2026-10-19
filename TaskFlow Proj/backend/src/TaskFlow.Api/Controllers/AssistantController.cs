@@ -166,6 +166,33 @@ public class AssistantController : ControllerBase
         }
     }
 
+    /// <summary>Removes a model an administrator added. Built-in models and the one saved for its server stay.</summary>
+    [HttpDelete("providers/{kind}/models")]
+    [RequirePermission(PermissionKeys.SettingsAi)]
+    public async Task<ActionResult<IReadOnlyList<AiProviderConfigDto>>> RemoveProviderModel(
+        AiProviderKind kind,
+        [FromQuery] string? name,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = ["The model name is required."] }));
+        }
+
+        try
+        {
+            return Ok(await _providers.RemoveModelAsync(kind, name.Trim(), cancellationToken));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException exception)
+        {
+            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = [exception.Message] }));
+        }
+    }
+
     /// <summary>Sends one tiny request to the provider so an administrator can see whether it works.</summary>
     [HttpPost("providers/{kind}/test")]
     [RequirePermission(PermissionKeys.SettingsAi)]

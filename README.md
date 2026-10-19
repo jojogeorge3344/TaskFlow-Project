@@ -87,7 +87,7 @@ the task. These mails cannot be replied to, but they can be forwarded. To turn t
 ## TFA, the AI assistant
 
 TFA is a chat assistant in a small panel on the right of every signed-in screen. Open it with the **TFA** button, by
-typing, or by saying **"Hey TFA"**. It answers how-to questions about TaskFlow, tells you what is upcoming or overdue,
+typing, or by saying **"Hey TF assistant"**. It answers how-to questions about TaskFlow, tells you what is upcoming or overdue,
 suggests what to work on first, and drafts mail for you to review. Replies are written, in the same window.
 
 ### What TFA can do
@@ -113,16 +113,68 @@ department. If there is none, or more than one, TFA asks you to choose.
 
 ### Setting up the AI models (Administrator)
 
-Open **Settings → Application Settings → AI assistant (TFA)**. Turn on at least one model, then use **Test connection**.
-Nothing is enabled by default, and TFA says it is not available until you do.
+Open **Settings → TFA Settings** (Administrator only).
+
+- The **Model** dropdown lists the models kept in the database, grouped by server (Ollama, Google Gemini, OpenAI GPT).
+  Choose **Add new model…** to type one that is not in the list: it is saved to the database and offered from then on.
+  A model you added can be taken out again with **Remove this model from the list** (not the built-in ones, and not the
+  one saved for its server).
+- The **Server** dropdown lists where each model runs: your Ollama address, or Google's or OpenAI's server. The two
+  dropdowns are linked: choosing a model selects its server, and choosing a server shows that server's model.
+- **The model and server you choose and save is the only one TFA offers.** The screen says "TFA uses …" for what is
+  saved and "After you save, TFA will use …" for a change not saved yet. Saving switches the other servers off; their
+  models and keys stay stored. With one model there is nothing to switch to, so the TFA window just shows it.
+- Below them are only the fields of the chosen server: the **server address** for Ollama, the **API key** for Gemini and
+  OpenAI, and **Test connection**. Test connection is always available: unsaved changes are saved first.
+- Click **Save TFA settings**, then **Test connection**.
+
+**First run.** The database is created, migrated and filled the first time the API starts, on any machine, with no
+manual step. For TFA that means the list of models (Ollama, Gemini and OpenAI models) and one row per provider:
+**Ollama is switched on** with `llama3.2:3b` at `http://localhost:11434`, and Gemini and OpenAI are off with no key. So
+TFA works as soon as Ollama and the model are installed (see the setup script below), and nothing has to be configured.
+This applies to a brand-new installation only. An installation that already has users keeps all three providers off
+until an administrator turns one on in TFA Settings.
+Starting again never overwrites what an administrator saved. The built-in model names are in `AiProviderCatalog.cs`
+(`BuiltInModels`): add a name there to have it offered on every new installation. A model added in Settings is kept
+in that installation's database only.
+
+**API keys are never in the code or in git.** They are typed in Settings, encrypted, and kept in the database only, so
+each installation enters its own.
 
 | Model | Cost | Where it runs | Setup |
 |---|---|---|---|
-| **Ollama** | Free | On your own server: nothing leaves it | Install Ollama, run `ollama pull llama3.1:8b`, and keep the address `http://localhost:11434` |
+| **Ollama** | Free | On your own server: nothing leaves it | Run the setup script below (installs Ollama and the `llama3.2:3b` model), and keep the address `http://localhost:11434` |
 | **Google Gemini** | Free tier, with rate limits | Google's cloud | Create a key in Google AI Studio and paste it |
 | **OpenAI GPT** | **No free tier**: needs a paid key | OpenAI's cloud | Paste a paid API key |
 
-Users switch model from the selector in the TFA header at any time, without closing the chat. Cloud models are marked
+#### Free local AI in one command (Ollama)
+
+The model itself is not stored in this repository (it is about 2 GB). A setup script downloads it instead. After
+cloning, run it once from the repository root:
+
+```powershell
+# Windows (PowerShell)
+.\scripts\setup-ai.ps1
+```
+
+```bash
+# macOS / Linux
+./scripts/setup-ai.sh
+```
+
+The script installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on Linux after
+you confirm), starts the Ollama server, downloads `llama3.2:3b` if it is not already there, and checks that the model
+answers. It is safe to run again. To use a different model, pass its name: `.\scripts\setup-ai.ps1 -Model llama3.1:8b`
+or `./scripts/setup-ai.sh llama3.1:8b`. A larger model answers better but needs more memory (`llama3.1:8b` wants about
+8 GB free).
+
+Then, as an Administrator, open **Settings → TFA Settings**, choose **Ollama**, check the
+model name matches what you installed (`llama3.2:3b` by default), and click **Test connection**. If Test connection says
+the model is not available, the name in Settings is not one of the models Ollama has: run `ollama list` to see them.
+
+The TFA window offers the model the administrator chose in TFA Settings. If more than one model is available (for example
+an older installation that has several switched on), users switch from the selector in the TFA header without closing the
+chat. Cloud models are marked
 **Cloud**, and a user is told once that their message and related task details are sent to that provider. TFA never
 switches model by itself: if a model fails (rate limit, wrong key, Ollama not running, model not installed), the chat
 explains what happened and the user chooses another one.
@@ -139,13 +191,30 @@ If it is lost, the stored keys can no longer be read and must be entered again. 
 **Existing installs:** DPAPI only protects keys created after it was turned on, so a key ring made earlier keeps one
 plain (unprotected) key. At startup on Windows the API logs a warning when it finds one. To protect it, stop the API,
 delete the `C:\TaskFlow\dp-keys` folder, start the API, and enter the AI provider API keys again in
-**Settings → Application Settings → AI assistant (TFA)**. Do this after the first time you run a build with DPAPI.
+**Settings → TFA Settings**. Do this after the first time you run a build with DPAPI.
 
 The Ollama server address cannot be a link-local or cloud metadata address (for example `169.254.169.254`).
 
 ### Voice
 
-Voice is **off until you turn it on** with the microphone button in the panel. While it is on, the panel shows that it
-is listening. Say "Hey TFA", then your question: it appears in the message box and is sent only when you press Send.
-Voice uses the browser's speech recognition, so it works in **Chrome and Edge** only, and Chrome processes the audio on
-Google's servers. Typing always works.
+Voice has two parts, both for Chrome and Edge:
+
+- **Hands-free** is on by default while you are signed in. Say **"Hey TF assistant"** at any time: the panel opens on
+  the right, TFA greets you by name ("Hi Asha, how can I help you?"), and then listens for your command. If you say the
+  command in the same breath ("Hey TF assistant, what is due today?"), it skips the greeting. You can turn hands-free
+  off with **Turn off** in the panel, and TaskFlow remembers that.
+- **The mic button** listens once, without the wake phrase. Press it, say your command, and it closes by itself.
+
+Either way your words appear in the message box as you speak. A long command is collected piece by piece, and it is sent
+after you have been quiet for about two seconds, so a short pause to think does not cut it off. TFA then answers in
+the chat **and reads the answer aloud** (long answers are read in part; the rest is on screen). Typed questions get a
+written answer only. The microphone rests while TFA is speaking, so it does not hear itself.
+
+While the panel is closed, the **TFA button** shows whether the microphone is listening and, above it, the last words it
+heard. If "Hey TF assistant" does nothing, that line shows whether the microphone is off, blocked, or hearing something
+different from what you said.
+
+The browser asks for microphone permission the first time. After a page reload it may need one click before it lets the
+page listen again; the TFA button then says "Click anywhere on the page to turn "Hey TF assistant" back on". A microphone
+error stops voice for that visit only and is never saved as your choice, so the next visit tries again. Voice uses the
+browser's speech recognition and speech output, and Chrome processes the audio on Google's servers. Typing always works.

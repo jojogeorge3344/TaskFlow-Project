@@ -28,7 +28,7 @@ describe('buildNavigation', () => {
       expect(child(monitoring.children!, 'Board').icon).toBe('kanban');
     });
 
-    it('groups Reminder Settings, Application Settings and Role Configuration under Settings', () => {
+    it('groups Reminder Settings, Application Settings, TFA Settings and Role Configuration under Settings', () => {
       const settings = child(admin, 'Settings');
       expect(settings.route)
         .withContext('the parent module itself is not a route')
@@ -36,11 +36,13 @@ describe('buildNavigation', () => {
       expect(settings.children!.map((item) => item.label)).toEqual([
         'Reminder Settings',
         'Application Settings',
+        'TFA Settings',
         'Role Configuration'
       ]);
       expect(settings.children!.map((item) => item.route)).toEqual([
         '/settings/reminders',
         '/settings/application',
+        '/settings/tfa',
         '/settings/permissions'
       ]);
     });

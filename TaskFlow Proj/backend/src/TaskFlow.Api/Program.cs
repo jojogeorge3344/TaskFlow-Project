@@ -130,6 +130,7 @@ builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionCards>
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantService, TaskFlow.Infrastructure.Assistant.AssistantService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.AddScoped<AccessControlSeeder>();
+builder.Services.AddScoped<TaskFlow.Infrastructure.Assistant.AiProviderSeeder>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -236,6 +237,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Settings.SettingsInitializer>().InitializeAsync();
 
     await scope.ServiceProvider.GetRequiredService<AccessControlSeeder>().SeedAsync();
+    await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Assistant.AiProviderSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
 }
 

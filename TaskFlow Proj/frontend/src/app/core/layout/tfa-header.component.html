@@ -21,6 +21,7 @@
         data-action="model-selector"
         aria-haspopup="listbox"
         [attr.aria-expanded]="menuOpen()"
+        [disabled]="assistant.providers().length < 2"
         (click)="menuOpen.set(!menuOpen())"
       >
         <span class="tfa__mi" [attr.data-provider]="selected.kind">{{ providerInitial(selected.kind) }}</span>
@@ -31,10 +32,12 @@
         <span class="tfa__pill" [class.tfa__pill--local]="selected.locality === 'Local'" [class.tfa__pill--cloud]="selected.locality === 'Cloud'" data-locality>
           {{ selected.locality }}
         </span>
-        <tf-icon name="chevron" />
+        @if (assistant.providers().length > 1) {
+          <tf-icon name="chevron" />
+        }
       </button>
 
-      @if (menuOpen()) {
+      @if (menuOpen() && assistant.providers().length > 1) {
         <div class="tfa__menu" role="listbox" aria-label="Choose AI model">
           @for (option of assistant.providers(); track option.kind) {
             <button

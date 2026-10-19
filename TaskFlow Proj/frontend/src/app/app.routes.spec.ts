@@ -13,6 +13,7 @@ import { NotificationCenterComponent } from './features/notifications/notificati
 import { ReportComponent } from './features/reports/report.component';
 import { PermissionsManagementComponent } from './features/settings/permissions-management.component';
 import { ReminderSettingsComponent } from './features/settings/reminder-settings.component';
+import { TfaSettingsComponent } from './features/settings/tfa-settings.component';
 import { WorkloadComponent } from './features/workload/workload.component';
 import { ActivityComponent } from './features/tasks/activity.component';
 import { KanbanComponent } from './features/tasks/kanban.component';
@@ -86,6 +87,7 @@ describe('app routes', () => {
       'notifications',
       'settings/reminders',
       'settings/application',
+      'settings/tfa',
       'settings/permissions',
       'profile',
       'board',
@@ -154,6 +156,13 @@ describe('app routes', () => {
     expect(settings.canActivate).toEqual([permissionGuard]);
     expect(settings.data?.['permissions']).toEqual([Permissions.SettingsReminders]);
     expect(await load(settings)).toBe(ReminderSettingsComponent);
+  });
+
+  it('protects TFA Settings with settings.ai.manage, which only the Administrator role holds', async () => {
+    const route = childRoute('settings/tfa');
+    expect(route.canActivate).toEqual([permissionGuard]);
+    expect(route.data?.['permissions']).toEqual([Permissions.SettingsAi]);
+    expect(await load(route)).toBe(TfaSettingsComponent);
   });
 
   it('protects Permissions Management with roles.manage, which only the Administrator role holds', async () => {
