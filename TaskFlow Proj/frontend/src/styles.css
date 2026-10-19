@@ -363,7 +363,8 @@ textarea {
   color: var(--tf-primary-hover);
 }
 
-.tf-badge--employee {
+.tf-badge--employee,
+.tf-badge--custom {
   background: var(--tf-bg);
   color: #334155;
 }

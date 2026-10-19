@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { systemPermissions } from '../../testing/permissions';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
@@ -15,7 +16,8 @@ describe('EmployeeDashboardComponent', () => {
     username: 'employee',
     email: 'employee@taskflow.local',
     role: 'Employee',
-    employeeCode: null
+    employeeCode: null,
+    permissions: systemPermissions('Employee')
   });
 
   const stats: EmployeeDashboardStats = {

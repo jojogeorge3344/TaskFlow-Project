@@ -10,8 +10,8 @@ public class LocalMailFileStore : IMailFileStore
 {
     private readonly string _root;
 
-    public LocalMailFileStore(IOptions<MailOptions> options)
-        : this(ResolveRoot(options.Value.AttachmentsPath))
+    public LocalMailFileStore(IOptions<MailOptions> options, IOptions<StorageOptions> storage)
+        : this(ResolveRoot(options.Value.AttachmentsPath, StorageRoot.Resolve(storage.Value.Root)))
     {
     }
 
@@ -20,10 +20,8 @@ public class LocalMailFileStore : IMailFileStore
         _root = root;
     }
 
-    public static string ResolveRoot(string configured) =>
-        Path.IsPathRooted(configured)
-            ? configured
-            : Path.GetFullPath(Path.Combine(DatabasePathResolver.FindSolutionDirectory(), configured));
+    public static string ResolveRoot(string configured, string storageRoot) =>
+        StorageRoot.ResolveUnder(storageRoot, configured);
 
     public async Task<(Guid Key, long Size)> SaveAsync(Stream content, long maxBytes, CancellationToken cancellationToken = default)
     {

@@ -6,11 +6,12 @@ using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Users;
 using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.Infrastructure.Assistant;
 
-public record ResolvedUser(int Id, string FullName, string Email, Role Role, bool IsActive);
+public record ResolvedUser(int Id, string FullName, string Email, string Role, bool IsActive);
 
 /// <summary>Finds TaskFlow users for a name or an address. The model never supplies a user id: it names a person, and
 /// the server decides who that is, or says it is ambiguous.</summary>
@@ -26,6 +27,24 @@ public class AssistantUserResolver
     }
 
     public record Match(ResolvedUser? User, IReadOnlyList<ResolvedUser> Candidates);
+
+    public record RoleRef(int Id, string Name);
+
+    /// <summary>An existing role by name, or null. The model names a role; the server decides which role that is.</summary>
+    public async Task<RoleRef?> FindRoleAsync(string? name, CancellationToken cancellationToken)
+    {
+        var term = name?.Trim();
+        if (string.IsNullOrEmpty(term))
+        {
+            return null;
+        }
+
+        return await _dbContext.Roles
+            .AsNoTracking()
+            .Where(role => role.Name == term)
+            .Select(role => new RoleRef(role.Id, role.Name))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     /// <summary>An exact address wins, then an exact full name, then a single partial match. More than one partial match
     /// returns the candidates so the user can be asked which one they mean.</summary>
@@ -44,14 +63,14 @@ public class AssistantUserResolver
         {
             var byEmail = await users
                 .Where(user => user.Email.ToLower() == lower)
-                .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role, user.IsActive))
+                .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
                 .FirstOrDefaultAsync(cancellationToken);
             return new Match(byEmail, byEmail is null ? [] : [byEmail]);
         }
 
         var exact = await users
             .Where(user => user.FullName.ToLower() == lower || user.Username.ToLower() == lower)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role, user.IsActive))
+            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
             .Take(MaxCandidates + 1)
             .ToListAsync(cancellationToken);
         if (exact.Count == 1)
@@ -63,7 +82,7 @@ public class AssistantUserResolver
         var partial = await users
             .Where(user => EF.Functions.Like(user.FullName, $"%{escaped}%", "\\") || EF.Functions.Like(user.Username, $"%{escaped}%", "\\"))
             .OrderBy(user => user.FullName)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role, user.IsActive))
+            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
             .Take(MaxCandidates)
             .ToListAsync(cancellationToken);
 
@@ -102,7 +121,7 @@ public class AssistantManagerResolver
                 var creator = await _dbContext.Users
                     .AsNoTracking()
                     .Where(user => user.Id == task.CreatedByUserId && user.IsActive)
-                    .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role, user.IsActive))
+                    .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
                     .FirstOrDefaultAsync(cancellationToken);
                 if (creator is not null)
                 {
@@ -123,9 +142,9 @@ public class AssistantManagerResolver
 
         var managers = await _dbContext.Users
             .AsNoTracking()
-            .Where(user => user.DepartmentId == departmentId && user.Role == Role.Manager && user.IsActive && user.Id != caller.UserId)
+            .Where(user => user.DepartmentId == departmentId && user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId)
             .OrderBy(user => user.FullName)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role, user.IsActive))
+            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
             .ToListAsync(cancellationToken);
 
         return managers.Count switch
@@ -321,7 +340,7 @@ public class ProposeProfileUpdateTool : IAssistantTool
     }
 }
 
-/// <summary>Changing a role needs the <c>AdminOnly</c> policy, checked here when the tool is used and again when the
+/// <summary>Changing a role needs the <c>roles.manage</c> permission, checked here when the tool is used and again when the
 /// action is confirmed. A non-administrator never reaches <see cref="ExecuteAsync"/>: the gate answers with the fixed
 /// refusal.</summary>
 public class ProposeRoleChangeTool : IAssistantTool
@@ -338,16 +357,16 @@ public class ProposeRoleChangeTool : IAssistantTool
     public string Name => "propose_role_change";
 
     public string Description =>
-        "Prepares a change of another user's role (Administrator, Manager or Employee) for the administrator to confirm. Only administrators can use this.";
+        "Prepares a change of another user's role to an existing role, such as Administrator, Manager, Employee or a custom role, for the administrator to confirm. Only administrators can use this.";
 
     public string ParametersSchema => """
         {"type":"object","properties":{
           "user":{"type":"string","description":"The person's name or email."},
-          "role":{"type":"string","enum":["Administrator","Manager","Employee"]}},
+          "role":{"type":"string","description":"The name of an existing role."}},
          "required":["user","role"]}
         """;
 
-    public string? Policy => AssistantPolicies.AdminOnly;
+    public string? Policy => AssistantPolicies.RolesManage;
     public string ActionDescription => "Changing a user's role";
     public string WhoCanDoIt => "an authorized administrator";
     public AssistantActionKind? ActionKind => AssistantActionKind.ChangeUserRole;
@@ -355,9 +374,10 @@ public class ProposeRoleChangeTool : IAssistantTool
     public async Task<ToolOutcome> ExecuteAsync(AssistantCaller caller, int conversationId, JsonElement arguments, CancellationToken cancellationToken)
     {
         var name = ToolJson.String(arguments, "user") ?? string.Empty;
-        if (!Enum.TryParse<Role>(ToolJson.String(arguments, "role"), ignoreCase: true, out var newRole) || !Enum.IsDefined(newRole))
+        var newRole = await _users.FindRoleAsync(ToolJson.String(arguments, "role"), cancellationToken);
+        if (newRole is null)
         {
-            return new ToolOutcome("The role must be Administrator, Manager or Employee. Ask the user which.");
+            return new ToolOutcome("That role does not exist. Ask the user which existing role they mean.");
         }
 
         var match = await _users.FindAsync(name, cancellationToken);
@@ -375,16 +395,16 @@ public class ProposeRoleChangeTool : IAssistantTool
             return new ToolOutcome(own, own);
         }
 
-        if (target.Role == newRole)
+        if (string.Equals(target.Role, newRole.Name, StringComparison.OrdinalIgnoreCase))
         {
-            return new ToolOutcome($"{target.FullName} is already a {newRole}. Tell the user nothing needs to change.");
+            return new ToolOutcome($"{target.FullName} is already a {newRole.Name}. Tell the user nothing needs to change.");
         }
 
         var card = await _actions.CreateAsync(
             caller,
             conversationId,
             AssistantActionKind.ChangeUserRole,
-            new ChangeRolePayload(target.Id, target.FullName, target.Role, newRole),
+            new ChangeRolePayload(target.Id, target.FullName, target.Role, newRole.Id, newRole.Name),
             cancellationToken);
 
         return new ToolOutcome(

@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using TaskFlow.Domain.Security;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
@@ -33,7 +34,8 @@ public class JwtTokenServiceTests
             Id = 42,
             Username = "admin",
             FullName = "Admin User",
-            Role = Role.Administrator
+            RoleId = SystemRoles.AdministratorId,
+            Role = new Role { Id = SystemRoles.AdministratorId, Name = SystemRoles.Administrator }
         };
 
         var accessToken = service.CreateAccessToken(user);

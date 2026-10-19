@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard } from './core/auth/auth.guard';
+import { authGuard, permissionGuard } from './core/auth/auth.guard';
+import { Permissions } from './core/auth/permissions';
 
 /**
  * Authenticated screens are children of the shell route, so they get the header and side menu
@@ -18,50 +19,49 @@ export const routes: Routes = [
     children: [
       {
         path: 'admin',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.DashboardAdmin] },
         loadComponent: () =>
           import('./features/dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent)
       },
       {
         path: 'manager',
-        canActivate: [roleGuard],
-        data: { roles: ['Manager'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.DashboardManager] },
         loadComponent: () =>
           import('./features/dashboard/manager-dashboard.component').then((m) => m.ManagerDashboardComponent)
       },
       {
+        // Every signed-in user has a personal dashboard; custom roles land here.
         path: 'me',
-        canActivate: [roleGuard],
-        data: { roles: ['Employee'] },
         loadComponent: () =>
           import('./features/dashboard/employee-dashboard.component').then((m) => m.EmployeeDashboardComponent)
       },
       {
         path: 'departments',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.DepartmentsManage] },
         loadComponent: () =>
           import('./features/departments/department-list.component').then((m) => m.DepartmentListComponent)
       },
       {
         path: 'employees',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.EmployeesManage] },
         loadComponent: () =>
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
         path: 'workload',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator', 'Manager'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.WorkloadView] },
         loadComponent: () =>
           import('./features/workload/workload.component').then((m) => m.WorkloadComponent)
       },
       {
         path: 'reports',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator', 'Manager'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.ReportsView] },
         loadComponent: () =>
           import('./features/reports/report.component').then((m) => m.ReportComponent)
       },
@@ -79,17 +79,24 @@ export const routes: Routes = [
       },
       {
         path: 'settings/reminders',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator', 'Manager'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.SettingsReminders] },
         loadComponent: () =>
           import('./features/settings/reminder-settings.component').then((m) => m.ReminderSettingsComponent)
       },
       {
         path: 'settings/application',
-        canActivate: [roleGuard],
-        data: { roles: ['Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.SettingsApplication] },
         loadComponent: () =>
           import('./features/settings/application-settings.component').then((m) => m.ApplicationSettingsComponent)
+      },
+      {
+        path: 'settings/permissions',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.RolesManage] },
+        loadComponent: () =>
+          import('./features/settings/permissions-management.component').then((m) => m.PermissionsManagementComponent)
       },
       {
         // Every signed-in user maintains their own profile (Screen 19).
@@ -108,8 +115,8 @@ export const routes: Routes = [
       {
         // Before 'tasks/:id' so "new" is not read as a task id.
         path: 'tasks/new',
-        canActivate: [roleGuard],
-        data: { roles: ['Manager', 'Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.TasksCreate] },
         loadComponent: () =>
           import('./features/tasks/task-create.component').then((m) => m.TaskCreateComponent)
       },
@@ -129,8 +136,8 @@ export const routes: Routes = [
       },
       {
         path: 'tasks/:id/reassign',
-        canActivate: [roleGuard],
-        data: { roles: ['Manager', 'Administrator'] },
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.TasksReassign] },
         loadComponent: () =>
           import('./features/tasks/reassign.component').then((m) => m.TaskReassignComponent)
       }

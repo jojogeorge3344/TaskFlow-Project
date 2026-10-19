@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Reports;
 
 namespace TaskFlow.Api.Controllers;
@@ -10,7 +11,7 @@ namespace TaskFlow.Api.Controllers;
 /// <summary>Task reports and CSV export (Screen 17). Administrator and Manager only.</summary>
 [ApiController]
 [Route("api/v1/reports")]
-[Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+[RequirePermission(PermissionKeys.ReportsView)]
 public class ReportController : ControllerBase
 {
     private readonly IReportService _reportService;

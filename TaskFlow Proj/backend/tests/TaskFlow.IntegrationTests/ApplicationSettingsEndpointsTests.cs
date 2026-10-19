@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -18,10 +19,10 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
     }
 
     [Theory]
-    [InlineData("app-get-employee", Role.Employee)]
-    [InlineData("app-get-manager", Role.Manager)]
-    [InlineData("app-get-admin", Role.Administrator)]
-    public async Task Get_ReturnsSettings_ForEverySignedInRole(string username, Role role)
+    [InlineData("app-get-employee", SystemRoles.Employee)]
+    [InlineData("app-get-manager", SystemRoles.Manager)]
+    [InlineData("app-get-admin", SystemRoles.Administrator)]
+    public async Task Get_ReturnsSettings_ForEverySignedInRole(string username, string role)
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, username, role);
@@ -39,7 +40,7 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
     public async Task Put_PersistsAndReturnsSavedValues()
     {
         var client = _factory.CreateClient();
-        var adminToken = await LoginAsync(client, "app-admin", Role.Administrator);
+        var adminToken = await LoginAsync(client, "app-admin", SystemRoles.Administrator);
         var body = JsonContent.Create(new
         {
             name = "Acme Tasks",
@@ -78,7 +79,7 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
     public async Task Manager_IsForbiddenFromWriting()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "app-manager-write", Role.Manager);
+        var token = await LoginAsync(client, "app-manager-write", SystemRoles.Manager);
         var body = JsonContent.Create(new
         {
             name = "Nope",
@@ -96,7 +97,7 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
     public async Task UnknownTimezone_Returns400WithFieldError_AndSavesNothing()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "app-admin-bad-tz", Role.Administrator);
+        var token = await LoginAsync(client, "app-admin-bad-tz", SystemRoles.Administrator);
         var body = JsonContent.Create(new
         {
             name = "Broken",
@@ -120,7 +121,7 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
     public async Task BlankName_Returns400()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "app-admin-blank-name", Role.Administrator);
+        var token = await LoginAsync(client, "app-admin-blank-name", SystemRoles.Administrator);
         var body = JsonContent.Create(new
         {
             name = "   ",
@@ -146,7 +147,7 @@ public class ApplicationSettingsEndpointsTests : IClassFixture<TaskFlowApiFactor
         Assert.Equal(HttpStatusCode.Unauthorized, put.StatusCode);
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);

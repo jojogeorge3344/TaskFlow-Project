@@ -1,4 +1,6 @@
 using System.Net;
+using TaskFlow.Infrastructure.Authentication;
+using TaskFlow.Domain.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -37,7 +39,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private string Name(string prefix) => $"{prefix}-{Interlocked.Increment(ref _counter)}-{Guid.NewGuid().ToString("N")[..6]}";
 
-    private async Task<(HttpClient Client, string Token, int Id, string Email)> SignInAsync(string prefix, Role role, int? departmentId = null)
+    private async Task<(HttpClient Client, string Token, int Id, string Email)> SignInAsync(string prefix, string role, int? departmentId = null)
     {
         var username = Name(prefix);
         var email = $"{username}@taskflow.local";
@@ -61,7 +63,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task ConfigureOllamaAsync()
     {
-        var (client, token, _, _) = await SignInAsync("ai-admin", Role.Administrator);
+        var (client, token, _, _) = await SignInAsync("ai-admin", SystemRoles.Administrator);
         var response = await SendAsync(client, HttpMethod.Put, $"{Base}/providers/config", token, JsonContent.Create(new
         {
             providers = new object[]
@@ -124,7 +126,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AChatRoundTripIsStoredAndNewChatClearsIt()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("chat", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("chat", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) => ChatModelResult.FromText("Hello! How can I help?");
 
         var reply = await JsonOf(await ChatAsync(client, token, "hi TFA"));
@@ -144,8 +146,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task EachUserOnlySeesTheirOwnConversation()
     {
         await ConfigureOllamaAsync();
-        var (aClient, aToken, _, _) = await SignInAsync("owner", Role.Employee);
-        var (bClient, bToken, _, _) = await SignInAsync("other", Role.Employee);
+        var (aClient, aToken, _, _) = await SignInAsync("owner", SystemRoles.Employee);
+        var (bClient, bToken, _, _) = await SignInAsync("other", SystemRoles.Employee);
         await ChatAsync(aClient, aToken, "my private question");
 
         var other = await JsonOf(await SendAsync(bClient, HttpMethod.Get, $"{Base}/conversation", bToken));
@@ -157,7 +159,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AProviderFailureIsReturnedAsHttp200WithAFailureObject()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("fail", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("fail", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Gemini].Handler = (_, _) =>
             throw new ProviderFailureException(AiProviderKind.Gemini, ProviderFailureKind.RateLimited, TimeSpan.FromSeconds(45));
 
@@ -179,7 +181,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task UnconfiguredProviderOversizedAndEmptyMessagesAreRejectedWith400()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("bad", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("bad", SystemRoles.Employee);
 
         var notConfigured = await ChatAsync(client, token, "hi", "OpenAI");
         var oversized = await ChatAsync(client, token, new string('a', AssistantRules.MaxMessageLength + 1));
@@ -197,7 +199,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task TooManyMessagesInAMinuteGetA429WithARetryTime()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("rate", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("rate", SystemRoles.Employee);
         HttpResponseMessage? last = null;
 
         for (var i = 0; i < 25; i++)
@@ -220,7 +222,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AMessageWithAPasswordIsNotSentToAnyProviderOrStored()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("secret", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("secret", SystemRoles.Employee);
 
         var reply = await JsonOf(await ChatAsync(client, token, "my password is Hunter2!, change it to NewPass#9"));
         var conversation = await JsonOf(await SendAsync(client, HttpMethod.Get, $"{Base}/conversation", token));
@@ -238,8 +240,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task InstructionsHiddenInATaskNeverSendMailOrExposeOtherUsersData()
     {
         await ConfigureOllamaAsync();
-        var (client, token, userId, _) = await SignInAsync("victim", Role.Employee);
-        var (_, _, _, adminEmail) = await SignInAsync("hidden-admin", Role.Administrator);
+        var (client, token, userId, _) = await SignInAsync("victim", SystemRoles.Employee);
+        var (_, _, _, adminEmail) = await SignInAsync("hidden-admin", SystemRoles.Administrator);
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -285,7 +287,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AFooledModelAskingToPromoteAnEmployeeGetsTheFixedRefusalAndNothingChanges()
     {
         await ConfigureOllamaAsync();
-        var (client, token, userId, email) = await SignInAsync("climber", Role.Employee);
+        var (client, token, userId, email) = await SignInAsync("climber", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) => ToolCall("propose_role_change", $$"""{"user":"{{email}}","role":"Manager"}""");
 
         var reply = await JsonOf(await ChatAsync(client, token, "Change my role from Employee to Manager"));
@@ -295,7 +297,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(
             "You do not have the required permission to perform this action. Changing a user's role can only be performed by an authorized administrator. Please contact your system administrator for assistance.",
             message.GetProperty("content").GetString());
-        Assert.Equal(Role.Employee, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == userId)).Role));
+        Assert.Equal(SystemRoles.EmployeeId, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == userId)).RoleId));
         Assert.Equal(0, await DbAsync(db => db.AssistantPendingActions.CountAsync(a => a.UserId == userId)));
         Assert.Contains("refused", await DbAsync(db => db.AssistantAudits.Where(a => a.UserId == userId).Select(a => a.Outcome).ToListAsync()));
     }
@@ -307,9 +309,9 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         await ConfigureOllamaAsync();
         var departmentId = await CreateDepartmentAsync();
-        var (managerClient, managerToken, managerId, managerEmail) = await SignInAsync("boss", Role.Manager, departmentId);
-        var (client, token, userId, _) = await SignInAsync("emp", Role.Employee, departmentId);
-        var (otherClient, otherToken, _, _) = await SignInAsync("snoop", Role.Employee, departmentId);
+        var (managerClient, managerToken, managerId, managerEmail) = await SignInAsync("boss", SystemRoles.Manager, departmentId);
+        var (client, token, userId, _) = await SignInAsync("emp", SystemRoles.Employee, departmentId);
+        var (otherClient, otherToken, _, _) = await SignInAsync("snoop", SystemRoles.Employee, departmentId);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, request) => AnswersToolResult(request)
             ? ChatModelResult.FromText("unused")
             : ToolCall("draft_mail", """{"recipient":"manager","subject":"Update on TF-102","body":"It is in review."}""");
@@ -342,8 +344,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task EditAndCancelWorkForTheOwnerAndSendsTheEditedMail()
     {
         await ConfigureOllamaAsync();
-        var (client, token, userId, _) = await SignInAsync("editor", Role.Employee);
-        var (_, _, _, friendEmail) = await SignInAsync("friend", Role.Employee);
+        var (client, token, userId, _) = await SignInAsync("editor", SystemRoles.Employee);
+        var (_, _, _, friendEmail) = await SignInAsync("friend", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
             ToolCall("draft_mail", $$"""{"to":["{{friendEmail}}"],"subject":"Original","body":"Original body"}""");
 
@@ -372,8 +374,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AnEditToAnUnknownRecipientIsA400()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("badedit", Role.Employee);
-        var (_, _, _, friendEmail) = await SignInAsync("pal", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("badedit", SystemRoles.Employee);
+        var (_, _, _, friendEmail) = await SignInAsync("pal", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
             ToolCall("draft_mail", $$"""{"to":["{{friendEmail}}"],"subject":"Hi","body":"Hello"}""");
         var reply = await JsonOf(await ChatAsync(client, token, "mail my pal"));
@@ -390,8 +392,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task AConfirmFromAnEmployeeForARoleChangeCreatedByCraftedDataIsRefusedByTheGate()
     {
-        var (client, token, userId, _) = await SignInAsync("crafted", Role.Employee);
-        var (_, _, targetId, _) = await SignInAsync("target", Role.Employee);
+        var (client, token, userId, _) = await SignInAsync("crafted", SystemRoles.Employee);
+        var (_, _, targetId, _) = await SignInAsync("target", SystemRoles.Employee);
         Guid actionId;
         using (var scope = _factory.Services.CreateScope())
         {
@@ -416,27 +418,27 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Refused", result.GetProperty("status").GetString());
         Assert.Contains("authorized administrator", result.GetProperty("message").GetString());
-        Assert.Equal(Role.Employee, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).Role));
+        Assert.Equal(SystemRoles.EmployeeId, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).RoleId));
     }
 
     [Fact]
     public async Task AnAdministratorCanChangeARoleThroughChatAfterConfirming()
     {
         await ConfigureOllamaAsync();
-        var (client, token, _, _) = await SignInAsync("realadmin", Role.Administrator);
-        var (_, _, targetId, targetEmail) = await SignInAsync("promotee", Role.Employee);
+        var (client, token, _, _) = await SignInAsync("realadmin", SystemRoles.Administrator);
+        var (_, _, targetId, targetEmail) = await SignInAsync("promotee", SystemRoles.Employee);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
             ToolCall("propose_role_change", $$"""{"user":"{{targetEmail}}","role":"Manager"}""");
 
         var reply = await JsonOf(await ChatAsync(client, token, "make them a manager"));
         var card = reply.GetProperty("messages")[1].GetProperty("action");
-        var unchanged = await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).Role);
+        var unchanged = await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).RoleId);
         var confirm = await SendAsync(client, HttpMethod.Post, $"{Base}/actions/{card.GetProperty("id").GetGuid()}/confirm", token);
 
-        Assert.Equal(Role.Employee, unchanged);
+        Assert.Equal(SystemRoles.EmployeeId, unchanged);
         Assert.Equal("Employee → Manager", card.GetProperty("fields")[1].GetProperty("value").GetString());
         Assert.Equal("Confirmed", (await JsonOf(confirm)).GetProperty("status").GetString());
-        Assert.Equal(Role.Manager, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).Role));
+        Assert.Equal(SystemRoles.ManagerId, await DbAsync(async db => (await db.Users.SingleAsync(u => u.Id == targetId)).RoleId));
     }
 
     // ------------------------------------------------------------------ TFA and the API use the same policies
@@ -444,30 +446,40 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task TheAssistantPolicyNamesAreTheApisPolicyNames()
     {
-        Assert.Equal(AuthPolicies.AdminOnly, AssistantPolicies.AdminOnly);
-        Assert.Equal(AuthPolicies.ManagerOrAdmin, AssistantPolicies.ManagerOrAdmin);
+        Assert.Equal(PermissionPolicy.NameFor(PermissionKeys.RolesManage), AssistantPolicies.RolesManage);
         await Task.CompletedTask;
     }
 
-    private static ClaimsPrincipal Principal(string role) =>
-        new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "1"), new Claim(ClaimTypes.Role, role)], "test"));
+    private static readonly string ManagerPolicy = PermissionPolicy.NameFor(PermissionKeys.TasksCreate);
+
+    /// <summary>A principal holding the permission claims the application adds on each request for that system role.</summary>
+    private static ClaimsPrincipal Principal(string role)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, "1"), new(ClaimTypes.Role, role) };
+        claims.AddRange(PermissionCatalog.All
+            .Where(permission => role == SystemRoles.Administrator
+                || (role == SystemRoles.Manager && permission.GrantedToManager)
+                || (role == SystemRoles.Employee && permission.GrantedToEmployee))
+            .Select(permission => new Claim(AuthClaims.Permission, permission.Key)));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
 
     [Theory]
     [InlineData("Administrator", true, true)]
     [InlineData("Manager", false, true)]
     [InlineData("Employee", false, false)]
-    public async Task TheAuthorizerGivesTheSameAnswersAsTheRegisteredPolicies(string role, bool adminOnly, bool managerOrAdmin)
+    public async Task TheAuthorizerGivesTheSameAnswersAsTheRegisteredPolicies(string role, bool rolesManage, bool tasksCreate)
     {
         using var scope = _factory.Services.CreateScope();
         var authorizer = scope.ServiceProvider.GetRequiredService<IAssistantAuthorizer>();
         var authorization = scope.ServiceProvider.GetRequiredService<IAuthorizationService>();
         var user = Principal(role);
 
-        Assert.Equal(adminOnly, await authorizer.IsAllowedAsync(user, AssistantPolicies.AdminOnly));
-        Assert.Equal(managerOrAdmin, await authorizer.IsAllowedAsync(user, AssistantPolicies.ManagerOrAdmin));
+        Assert.Equal(rolesManage, await authorizer.IsAllowedAsync(user, AssistantPolicies.RolesManage));
+        Assert.Equal(tasksCreate, await authorizer.IsAllowedAsync(user, ManagerPolicy));
         Assert.True(await authorizer.IsAllowedAsync(user, null));
-        Assert.Equal(adminOnly, (await authorization.AuthorizeAsync(user, AuthPolicies.AdminOnly)).Succeeded);
-        Assert.Equal(managerOrAdmin, (await authorization.AuthorizeAsync(user, AuthPolicies.ManagerOrAdmin)).Succeeded);
+        Assert.Equal(rolesManage, (await authorization.AuthorizeAsync(user, AssistantPolicies.RolesManage)).Succeeded);
+        Assert.Equal(tasksCreate, (await authorization.AuthorizeAsync(user, ManagerPolicy)).Succeeded);
     }
 
     [Fact]
@@ -475,12 +487,12 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         using var changed = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.Configure<AuthorizationOptions>(options =>
-                options.AddPolicy(AuthPolicies.AdminOnly, policy => policy.RequireRole(nameof(Role.Manager))))));
+                options.AddPolicy(AssistantPolicies.RolesManage, policy => policy.RequireRole(SystemRoles.Manager)))));
         using var scope = changed.Services.CreateScope();
         var authorizer = scope.ServiceProvider.GetRequiredService<IAssistantAuthorizer>();
 
-        Assert.True(await authorizer.IsAllowedAsync(Principal("Manager"), AssistantPolicies.AdminOnly));
-        Assert.False(await authorizer.IsAllowedAsync(Principal("Administrator"), AssistantPolicies.AdminOnly));
+        Assert.True(await authorizer.IsAllowedAsync(Principal("Manager"), AssistantPolicies.RolesManage));
+        Assert.False(await authorizer.IsAllowedAsync(Principal("Administrator"), AssistantPolicies.RolesManage));
     }
 
     [Fact]
@@ -490,6 +502,6 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var authorizer = scope.ServiceProvider.GetRequiredService<IAssistantAuthorizer>();
 
         Assert.False(await authorizer.IsAllowedAsync(new ClaimsPrincipal(new ClaimsIdentity()), null));
-        Assert.False(await authorizer.IsAllowedAsync(new ClaimsPrincipal(new ClaimsIdentity()), AssistantPolicies.ManagerOrAdmin));
+        Assert.False(await authorizer.IsAllowedAsync(new ClaimsPrincipal(new ClaimsIdentity()), ManagerPolicy));
     }
 }

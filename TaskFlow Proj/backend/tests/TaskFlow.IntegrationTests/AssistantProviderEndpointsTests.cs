@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -19,9 +20,9 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Theory]
-    [InlineData("ai-cfg-get-employee", Role.Employee)]
-    [InlineData("ai-cfg-get-manager", Role.Manager)]
-    public async Task NonAdministrators_AreForbiddenFromTheAdminEndpoints(string username, Role role)
+    [InlineData("ai-cfg-get-employee", SystemRoles.Employee)]
+    [InlineData("ai-cfg-get-manager", SystemRoles.Manager)]
+    public async Task NonAdministrators_AreForbiddenFromTheAdminEndpoints(string username, string role)
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, username, role);
@@ -49,8 +50,8 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         const string key = "sk-proj-INTEGRATIONSECRET-4321";
         var client = _factory.CreateClient();
-        var admin = await LoginAsync(client, "ai-cfg-admin", Role.Administrator);
-        var employee = await LoginAsync(client, "ai-cfg-reader", Role.Employee);
+        var admin = await LoginAsync(client, "ai-cfg-admin", SystemRoles.Administrator);
+        var employee = await LoginAsync(client, "ai-cfg-reader", SystemRoles.Employee);
 
         var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
@@ -96,7 +97,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task OnWindowsTheKeyRingIsProtectedWithDpapiAndTheKeyStillRoundTrips()
     {
         var client = _factory.CreateClient();
-        var admin = await LoginAsync(client, "ai-cfg-admin-dpapi", Role.Administrator);
+        var admin = await LoginAsync(client, "ai-cfg-admin-dpapi", SystemRoles.Administrator);
 
         var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
@@ -123,7 +124,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task InvalidInput_Returns400()
     {
         var client = _factory.CreateClient();
-        var admin = await LoginAsync(client, "ai-cfg-admin-bad", Role.Administrator);
+        var admin = await LoginAsync(client, "ai-cfg-admin-bad", SystemRoles.Administrator);
 
         var response = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
@@ -137,7 +138,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task TestConnection_ReportsSuccessAndClassifiedFailures()
     {
         var client = _factory.CreateClient();
-        var admin = await LoginAsync(client, "ai-cfg-admin-test", Role.Administrator);
+        var admin = await LoginAsync(client, "ai-cfg-admin-test", SystemRoles.Administrator);
         await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
             providers = new object[]
@@ -171,7 +172,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);

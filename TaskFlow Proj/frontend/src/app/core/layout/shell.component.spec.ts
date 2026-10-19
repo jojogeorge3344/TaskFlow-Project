@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
@@ -33,7 +34,8 @@ describe('ShellComponent', () => {
       username: 'test',
       email: 'test@taskflow.local',
       role,
-      employeeCode: null
+      employeeCode: null,
+      permissions: systemPermissions(role)
     });
   }
 
@@ -105,7 +107,7 @@ describe('ShellComponent', () => {
         provideHttpClientTesting(),
         {
           provide: AuthService,
-          useValue: { currentUser: userSignal.asReadonly(), logout: logoutSpy, checkSession: checkSessionSpy }
+          useValue: fakeAuthService(userSignal.asReadonly(), { logout: logoutSpy, checkSession: checkSessionSpy })
         },
         {
           provide: NotificationService,
@@ -150,6 +152,7 @@ describe('ShellComponent', () => {
       'Reports',
       'Reminder Settings',
       'Application Settings',
+      'Role Configuration',
       'My Profile'
     ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
@@ -185,7 +188,7 @@ describe('ShellComponent', () => {
     expect(childrenOf(0)).toEqual(['Task Management', 'Employee Workload', 'Board']);
     expect(childrenOf(1)).toEqual(['Employee Management', 'Department Management']);
     expect(childrenOf(2)).toEqual(['Mail', 'Notifications']);
-    expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings']);
+    expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'Role Configuration']);
   });
 
   it('collapses and expands a parent module group', () => {

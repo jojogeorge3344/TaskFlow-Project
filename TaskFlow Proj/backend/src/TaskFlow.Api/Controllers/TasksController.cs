@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 
@@ -66,7 +67,7 @@ public class TasksController : ControllerBase
 
     /// <summary>Creates a task and assigns it to an employee (Screen 8). Manager/Administrator only.</summary>
     [HttpPost]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.TasksCreate)]
     public async Task<ActionResult<TaskDetailsDto>> Create(
         [FromBody] CreateTaskRequest request,
         CancellationToken cancellationToken)
@@ -141,7 +142,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.TasksUpdate)]
     public async Task<ActionResult<TaskDetailsDto>> Update(
         int id,
         [FromBody] UpdateTaskRequest request,
@@ -211,7 +212,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost("{id:int}/reassign")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.TasksReassign)]
     public async Task<ActionResult<TaskDetailsDto>> Reassign(
         int id,
         [FromBody] ReassignTaskRequest request,
@@ -261,7 +262,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPut("{id:int}/recipients")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.TasksRecipients)]
     public async Task<IActionResult> SetRecipients(
         int id,
         [FromBody] SetRecipientsRequest request,

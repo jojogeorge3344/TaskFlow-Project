@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import {
@@ -58,9 +59,15 @@ export class TaskListComponent implements OnInit {
   readonly priorities = TASK_PRIORITIES;
   readonly statusLabels = STATUS_LABELS;
 
+  /** Roles that see every task get the employee filter and the "Task Management" title. */
   readonly canManage = computed(() => {
-    const role = this.auth.currentUser()?.role;
-    return role === 'Manager' || role === 'Administrator';
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksViewAll);
+  });
+
+  readonly canCreate = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksCreate);
   });
 
   readonly tasks = signal<TaskListItem[]>([]);

@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
@@ -51,7 +52,10 @@ describe('TaskDetailsComponent', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => '7' } } }
         },
-        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role }) } },
+        {
+          provide: AuthService,
+          useValue: fakeAuthService(() => ({ id: 1, fullName: 'Boss', role, permissions: systemPermissions(role) }))
+        },
         {
           provide: TaskService,
           useValue: { getById: getByIdSpy, changeStatus: changeStatusSpy, update: updateSpy }
@@ -78,7 +82,8 @@ describe('TaskDetailsComponent', () => {
     create('Employee', { ...details, stage: 'Overdue' });
 
     expect(component.stageLabel(component.task()!.stage)).toBe('Overdue');
-    expect(component.isManager()).toBeFalse();
+    expect(component.canEdit()).toBeFalse();
+    expect(component.canReassign()).toBeFalse();
   });
 
   it('calls changeStatus for an allowed transition and reloads details', () => {

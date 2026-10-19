@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Dashboard;
 
 namespace TaskFlow.Api.Controllers;
@@ -18,7 +19,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("admin")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.DashboardAdmin)]
     public async Task<ActionResult<AdminDashboardDto>> GetAdminStats(CancellationToken cancellationToken)
     {
         var stats = await _dashboardService.GetAdminStatsAsync(cancellationToken);
@@ -26,7 +27,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("manager")]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.DashboardManager)]
     public async Task<ActionResult<ManagerDashboardDto>> GetManagerStats(CancellationToken cancellationToken)
     {
         var stats = await _dashboardService.GetManagerStatsAsync(cancellationToken);

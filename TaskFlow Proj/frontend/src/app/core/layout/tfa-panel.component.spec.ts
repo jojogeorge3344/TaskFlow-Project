@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -121,7 +122,7 @@ describe('TfaPanelComponent', () => {
     fixture = TestBed.createComponent(TfaPanelComponent);
     fixture.detectChanges();
 
-    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
     http.expectOne('/api/v1/assistant/providers').flush(providers);
     http.expectOne('/api/v1/assistant/conversation').flush({ conversationId: messages.length ? 1 : null, messages });

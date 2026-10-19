@@ -1,4 +1,6 @@
-import { UserRole } from '../auth/auth.models';
+import { AuthUser } from '../auth/auth.models';
+import { Permissions } from '../auth/permissions';
+import { dashboardRouteFor } from '../auth/role-routes';
 import { IconName } from './icon.component';
 
 export interface NavItem {
@@ -13,93 +15,82 @@ export interface NavItem {
 }
 
 /**
- * Side navigation per role. New authenticated screens register as children of the shell route
- * in app.routes.ts and add their entry here.
+ * Side navigation for a signed-in user, built from the permissions their role holds, so a custom role sees exactly the
+ * screens it may open. The three system roles get the same menus as before permissions existed. New authenticated
+ * screens register as children of the shell route in app.routes.ts and add their entry here.
  */
-export const ROLE_NAVIGATION: Record<UserRole, NavItem[]> = {
-  Administrator: [
-    { label: 'Dashboard', icon: 'home', route: '/admin' },
-    {
+export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | null | undefined): NavItem[] {
+  if (!user) {
+    return [];
+  }
+
+  const has = (key: string) => user.permissions.includes(key);
+  const canViewAllTasks = has(Permissions.TasksViewAll);
+  const workload: NavItem[] = has(Permissions.WorkloadView)
+    ? [{ label: 'Employee Workload', icon: 'gauge', route: '/workload' }]
+    : [];
+
+  const items: NavItem[] = [{ label: 'Dashboard', icon: 'home', route: dashboardRouteFor(user.role) }];
+
+  if (canViewAllTasks) {
+    items.push({
       label: 'TaskFlow Monitoring',
       icon: 'tasks',
       children: [
         { label: 'Task Management', icon: 'tasks', route: '/tasks' },
-        { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
+        ...workload,
         { label: 'Board', icon: 'kanban', route: '/board' }
       ]
-    },
-    {
-      label: 'TaskFlow Management',
-      icon: 'tasks',
-      children: [
-        { label: 'Employee Management', icon: 'users', route: '/employees' },
-        { label: 'Department Management', icon: 'building', route: '/departments' }
-      ]
-    },
-    {
-      label: 'Communication Management',
-      icon: 'mail',
-      children: [
-        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-        { label: 'Notifications', icon: 'bell', route: '/notifications' }
-      ]
-    },
-    { label: 'Reports', icon: 'chart', route: '/reports' },
-    {
-      label: 'Settings',
-      icon: 'settings',
-      children: [
-        { label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' },
-        { label: 'Application Settings', icon: 'settings', route: '/settings/application' }
-      ]
-    },
-    { label: 'My Profile', icon: 'user', route: '/profile' }
-  ],
-  Manager: [
-    { label: 'Dashboard', icon: 'home', route: '/manager' },
-    {
-      label: 'TaskFlow Monitoring',
-      icon: 'tasks',
-      children: [
-        { label: 'Task Management', icon: 'tasks', route: '/tasks' },
-        { label: 'Employee Workload', icon: 'gauge', route: '/workload' },
-        { label: 'Board', icon: 'kanban', route: '/board' }
-      ]
-    },
-    {
-      label: 'Communication Management',
-      icon: 'mail',
-      children: [
-        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-        { label: 'Notifications', icon: 'bell', route: '/notifications' }
-      ]
-    },
-    { label: 'Reports', icon: 'chart', route: '/reports' },
-    {
-      label: 'Settings',
-      icon: 'settings',
-      children: [{ label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' }]
-    },
-    { label: 'My Profile', icon: 'user', route: '/profile' }
-  ],
-  Employee: [
-    { label: 'Dashboard', icon: 'home', route: '/me' },
-    {
-      label: 'Communication Management',
-      icon: 'mail',
-      children: [
-        { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-        { label: 'Notifications', icon: 'bell', route: '/notifications' }
-      ]
-    },
-    {
+    });
+  }
+
+  const management: NavItem[] = [];
+  if (has(Permissions.EmployeesManage)) {
+    management.push({ label: 'Employee Management', icon: 'users', route: '/employees' });
+  }
+  if (has(Permissions.DepartmentsManage)) {
+    management.push({ label: 'Department Management', icon: 'building', route: '/departments' });
+  }
+  if (management.length > 0) {
+    items.push({ label: 'TaskFlow Management', icon: 'tasks', children: management });
+  }
+
+  items.push({
+    label: 'Communication Management',
+    icon: 'mail',
+    children: [
+      { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
+      { label: 'Notifications', icon: 'bell', route: '/notifications' }
+    ]
+  });
+
+  if (!canViewAllTasks) {
+    items.push({
       label: 'Task Management',
       icon: 'tasks',
-      children: [
-        { label: 'My Tasks', icon: 'tasks', route: '/tasks' },
-        { label: 'Board', icon: 'kanban', route: '/board' }
-      ]
-    },
-    { label: 'My Profile', icon: 'user', route: '/profile' }
-  ]
-};
+      children: [{ label: 'My Tasks', icon: 'tasks', route: '/tasks' }, ...workload, { label: 'Board', icon: 'kanban', route: '/board' }]
+    });
+  }
+
+  if (has(Permissions.ReportsView)) {
+    items.push({ label: 'Reports', icon: 'chart', route: '/reports' });
+  }
+
+  const settings: NavItem[] = [];
+  if (has(Permissions.SettingsReminders)) {
+    settings.push({ label: 'Reminder Settings', icon: 'clock', route: '/settings/reminders' });
+  }
+  if (has(Permissions.SettingsApplication)) {
+    settings.push({ label: 'Application Settings', icon: 'settings', route: '/settings/application' });
+  }
+  if (has(Permissions.RolesManage)) {
+    settings.push({ label: 'Role Configuration', icon: 'shield', route: '/settings/permissions' });
+  }
+  if (settings.length > 0) {
+    items.push({ label: 'Settings', icon: 'settings', children: settings });
+  }
+
+  items.push({ label: 'My Profile', icon: 'user', route: '/profile' });
+
+  return items;
+}

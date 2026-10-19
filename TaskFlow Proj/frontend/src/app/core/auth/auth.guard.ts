@@ -1,6 +1,5 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { UserRole } from './auth.models';
 import { AuthService } from './auth.service';
 import { dashboardRouteFor } from './role-routes';
 
@@ -11,16 +10,22 @@ export const authGuard: CanActivateFn = () => {
   return authService.currentUser() !== null ? true : router.createUrlTree(['/login']);
 };
 
-export const roleGuard: CanActivateFn = (route) => {
+/**
+ * Allows the route when the user's role holds at least one of the permissions in `data.permissions`; otherwise sends the
+ * user to their own dashboard. This only hides screens: the API checks every request again.
+ */
+export const permissionGuard: CanActivateFn = (route) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const allowedRoles = (route.data['roles'] as UserRole[] | undefined) ?? [];
+  const required = (route.data['permissions'] as string[] | undefined) ?? [];
   const user = authService.currentUser();
 
   if (user === null) {
     return router.createUrlTree(['/login']);
   }
 
-  return allowedRoles.includes(user.role) ? true : router.createUrlTree([dashboardRouteFor(user.role)]);
+  return required.some((key) => user.permissions.includes(key))
+    ? true
+    : router.createUrlTree([dashboardRouteFor(user.role)]);
 };

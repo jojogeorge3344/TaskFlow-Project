@@ -1,4 +1,5 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -66,7 +67,8 @@ describe('authInterceptor', () => {
         username: 'test',
         email: 'test@taskflow.local',
         role: 'Employee',
-        employeeCode: null
+        employeeCode: null,
+        permissions: systemPermissions('Employee')
       }
     });
 

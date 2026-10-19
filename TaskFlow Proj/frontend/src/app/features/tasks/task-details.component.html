@@ -14,13 +14,15 @@
       }
     </div>
 
-    @if (isManager() && task(); as current) {
+    @if ((canReassign() || canEdit()) && task(); as current) {
       <div class="tf-page-actions">
-        <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
-          <tf-icon name="users" />
-          Reassign
-        </a>
-        @if (!editing()) {
+        @if (canReassign()) {
+          <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
+            <tf-icon name="users" />
+            Reassign
+          </a>
+        }
+        @if (canEdit() && !editing()) {
           <button type="button" class="tf-btn tf-btn--primary" (click)="startEdit()" data-action="edit-task">
             <tf-icon name="edit" />
             Edit task
@@ -192,7 +194,7 @@
               Activity history
             </a>
           </li>
-          @if (isManager()) {
+          @if (canReassign()) {
             <li>
               <a [routerLink]="['/tasks', current.id, 'reassign']">
                 <tf-icon name="users" />

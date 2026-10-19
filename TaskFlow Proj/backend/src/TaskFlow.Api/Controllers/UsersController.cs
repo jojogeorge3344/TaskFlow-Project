@@ -3,6 +3,8 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
+using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Application.Users;
 
 namespace TaskFlow.Api.Controllers;
@@ -99,11 +101,11 @@ public class UsersController : ControllerBase
     /// <summary>Read-only user list. Managers need it to pick assignees and recipients when
     /// creating or reassigning tasks; changes to users stay Administrator-only.</summary>
     [HttpGet]
-    [Authorize(Policy = AuthPolicies.ManagerOrAdmin)]
+    [RequirePermission(PermissionKeys.EmployeesView)]
     public async Task<ActionResult<IReadOnlyCollection<UserDto>>> GetAll(
         [FromQuery] string? search,
         [FromQuery] int? departmentId,
-        [FromQuery] Domain.Enums.Role? role,
+        [FromQuery] string? role,
         [FromQuery] bool? isActive,
         CancellationToken cancellationToken)
     {
@@ -122,7 +124,7 @@ public class UsersController : ControllerBase
             return Unauthorized();
         }
 
-        var isAdmin = User.IsInRole(nameof(Domain.Enums.Role.Administrator));
+        var isAdmin = User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesManage);
         if (!isAdmin && currentUserId != id)
         {
             return Forbid();
@@ -137,9 +139,15 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.EmployeesManage)]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
+        // Choosing any role other than Employee is role management, which only Administrators may do.
+        if (request.RoleId != SystemRoles.EmployeeId && !CanManageRoles())
+        {
+            return Forbid();
+        }
+
         try
         {
             var user = await _userService.CreateAsync(request, cancellationToken);
@@ -152,9 +160,19 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.EmployeesManage)]
     public async Task<ActionResult<UserDto>> Update(int id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
     {
+        // Changing a user's role is role management, which only Administrators may do.
+        if (!CanManageRoles())
+        {
+            var current = await _userService.GetByIdAsync(id, cancellationToken);
+            if (current is not null && current.RoleId != request.RoleId)
+            {
+                return Forbid();
+            }
+        }
+
         try
         {
             var user = await _userService.UpdateAsync(id, request, cancellationToken);
@@ -171,14 +189,23 @@ public class UsersController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.EmployeesManage)]
     public async Task<ActionResult<UserDto>> UpdateStatus(int id, [FromBody] UserStatusRequest request, CancellationToken cancellationToken)
     {
-        var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
-        if (user is null)
+        try
         {
-            return NotFound();
+            var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
+            if (user is null)
+            {
+                return NotFound();
+            }
+            return Ok(user);
         }
-        return Ok(user);
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
+
+    private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesManage);
 }

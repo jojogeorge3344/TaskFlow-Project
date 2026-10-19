@@ -6,7 +6,8 @@ public record AuthenticatedUserResponse(
     string Username,
     string Email,
     string Role,
-    string? EmployeeCode);
+    string? EmployeeCode,
+    IReadOnlyList<string> Permissions);
 
 public record AuthResponse(
     string AccessToken,

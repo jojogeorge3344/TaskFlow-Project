@@ -1,5 +1,3 @@
-using TaskFlow.Domain.Enums;
-
 namespace TaskFlow.Domain.Entities;
 
 public class User
@@ -19,7 +17,9 @@ public class User
     /// <summary>Changes whenever the sign-in credentials change; access tokens carrying an older stamp are rejected.</summary>
     public string SecurityStamp { get; set; } = string.Empty;
 
-    public Role Role { get; set; }
+    public int RoleId { get; set; }
+
+    public Role Role { get; set; } = null!;
 
     public bool IsActive { get; set; } = true;
 

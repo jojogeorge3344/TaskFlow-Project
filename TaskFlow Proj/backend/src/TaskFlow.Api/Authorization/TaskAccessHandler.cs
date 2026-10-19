@@ -1,7 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
+using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.Api.Authorization;
@@ -11,7 +12,7 @@ public class TaskAccessRequirement : IAuthorizationRequirement
 }
 
 /// <summary>Resource-level access rule for task-scoped endpoints. The assignee, the task
-/// creator, any additional recipient, or a Manager/Administrator may access a task.</summary>
+/// creator, any additional recipient, or a user whose role holds tasks.view.all may access a task.</summary>
 public class TaskAccessHandler : AuthorizationHandler<TaskAccessRequirement>
 {
     private readonly AppDbContext _dbContext;
@@ -41,8 +42,7 @@ public class TaskAccessHandler : AuthorizationHandler<TaskAccessRequirement>
             return;
         }
 
-        var role = context.User.FindFirstValue(ClaimTypes.Role);
-        if (role is nameof(Role.Administrator) or nameof(Role.Manager))
+        if (context.User.HasClaim(AuthClaims.Permission, PermissionKeys.TasksViewAll))
         {
             context.Succeed(requirement);
             return;

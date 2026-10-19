@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvider } from '../../core/models';
 import { AiProviderAdminService } from '../../core/services/ai-provider-admin.service';
@@ -29,8 +30,11 @@ export class AiProviderSettingsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  /** Only an Administrator sees this section. */
-  readonly visible = computed(() => this.auth.currentUser()?.role === 'Administrator');
+  /** Only roles holding settings.ai.manage (the Administrator) see this section. */
+  readonly visible = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.SettingsAi);
+  });
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);

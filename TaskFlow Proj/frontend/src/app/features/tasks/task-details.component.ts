@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { TaskDetails, TaskPriority, TaskStage, TaskStatus } from '../../core/models';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -69,9 +70,14 @@ export class TaskDetailsComponent implements OnInit {
     { validators: [deadlineAfterStartValidator] }
   );
 
-  readonly isManager = computed(() => {
-    const role = this.authService.currentUser()?.role;
-    return role === 'Manager' || role === 'Administrator';
+  readonly canEdit = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.TasksUpdate);
+  });
+
+  readonly canReassign = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.TasksReassign);
   });
 
   ngOnInit(): void {

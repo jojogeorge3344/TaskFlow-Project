@@ -1,4 +1,10 @@
-import { NavItem, ROLE_NAVIGATION } from './nav-items';
+import { Permissions } from '../auth/permissions';
+import { systemPermissions } from '../../testing/permissions';
+import { NavItem, buildNavigation } from './nav-items';
+
+function navFor(role: string, permissions: string[] = systemPermissions(role)): NavItem[] {
+  return buildNavigation({ role, permissions });
+}
 
 function child(nav: NavItem[], label: string): NavItem {
   const item = nav.find((candidate) => candidate.label === label);
@@ -6,9 +12,9 @@ function child(nav: NavItem[], label: string): NavItem {
   return item!;
 }
 
-describe('ROLE_NAVIGATION', () => {
+describe('buildNavigation', () => {
   describe('Administrator modules', () => {
-    const admin = ROLE_NAVIGATION.Administrator;
+    const admin = navFor('Administrator');
 
     it('groups Task Management, Employee Workload and Board under TaskFlow Monitoring', () => {
       const monitoring = child(admin, 'TaskFlow Monitoring');
@@ -22,18 +28,20 @@ describe('ROLE_NAVIGATION', () => {
       expect(child(monitoring.children!, 'Board').icon).toBe('kanban');
     });
 
-    it('groups Reminder Settings and Application Settings under Settings', () => {
+    it('groups Reminder Settings, Application Settings and Role Configuration under Settings', () => {
       const settings = child(admin, 'Settings');
       expect(settings.route)
         .withContext('the parent module itself is not a route')
         .toBeUndefined();
       expect(settings.children!.map((item) => item.label)).toEqual([
         'Reminder Settings',
-        'Application Settings'
+        'Application Settings',
+        'Role Configuration'
       ]);
       expect(settings.children!.map((item) => item.route)).toEqual([
         '/settings/reminders',
-        '/settings/application'
+        '/settings/application',
+        '/settings/permissions'
       ]);
     });
 
@@ -82,7 +90,7 @@ describe('ROLE_NAVIGATION', () => {
   });
 
   describe('Manager modules', () => {
-    const manager = ROLE_NAVIGATION.Manager;
+    const manager = navFor('Manager');
 
     it('groups Task Management, Employee Workload and Board under TaskFlow Monitoring', () => {
       const monitoring = child(manager, 'TaskFlow Monitoring');
@@ -115,7 +123,7 @@ describe('ROLE_NAVIGATION', () => {
   });
 
   describe('Employee modules', () => {
-    const employee = ROLE_NAVIGATION.Employee;
+    const employee = navFor('Employee');
 
     it('groups Mail and Notifications under Communication Management', () => {
       const communication = child(employee, 'Communication Management');
@@ -138,6 +146,60 @@ describe('ROLE_NAVIGATION', () => {
         'Task Management',
         'My Profile'
       ]);
+    });
+  });
+
+  describe('Role Configuration entry', () => {
+    it('is shown to the Administrator only', () => {
+      const entry = (nav: NavItem[]) =>
+        nav.find((item) => item.label === 'Settings')?.children?.find((item) => item.label === 'Role Configuration');
+
+      expect(entry(navFor('Administrator'))?.route).toBe('/settings/permissions');
+      expect(entry(navFor('Manager'))).toBeUndefined();
+      expect(entry(navFor('Employee'))).toBeUndefined();
+    });
+  });
+
+  describe('custom roles', () => {
+    it('shows nothing the role has no permission for', () => {
+      const nav = navFor('Team Lead', [Permissions.TasksCreate]);
+
+      expect(nav.map((item) => item.label)).toEqual(['Dashboard', 'Communication Management', 'Task Management', 'My Profile']);
+      expect(nav[0].route).toBe('/me');
+      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Board']);
+    });
+
+    it('adds the menu entries the permissions of the role open', () => {
+      const nav = navFor('Analyst', [
+        Permissions.TasksViewAll,
+        Permissions.ReportsView,
+        Permissions.WorkloadView,
+        Permissions.SettingsReminders,
+        Permissions.DepartmentsManage
+      ]);
+
+      expect(nav.map((item) => item.label)).toEqual([
+        'Dashboard',
+        'TaskFlow Monitoring',
+        'TaskFlow Management',
+        'Communication Management',
+        'Reports',
+        'Settings',
+        'My Profile'
+      ]);
+      expect(child(nav, 'TaskFlow Monitoring').children!.map((item) => item.label)).toEqual(['Task Management', 'Employee Workload', 'Board']);
+      expect(child(nav, 'TaskFlow Management').children!.map((item) => item.label)).toEqual(['Department Management']);
+      expect(child(nav, 'Settings').children!.map((item) => item.label)).toEqual(['Reminder Settings']);
+    });
+
+    it('lists the workload under Task Management for a role that cannot see every task', () => {
+      const nav = navFor('Planner', [Permissions.WorkloadView]);
+
+      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Employee Workload', 'Board']);
+    });
+
+    it('builds no menu without a user', () => {
+      expect(buildNavigation(null)).toEqual([]);
     });
   });
 });

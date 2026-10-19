@@ -1,5 +1,3 @@
-using TaskFlow.Domain.Enums;
-
 namespace TaskFlow.Application.Users;
 
 public record UserDto(
@@ -8,7 +6,8 @@ public record UserDto(
     string FullName,
     string Username,
     string Email,
-    Role Role,
+    int RoleId,
+    string Role,
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
@@ -22,7 +21,7 @@ public record CreateUserRequest(
     string Username,
     string Email,
     string Password,
-    Role Role,
+    int RoleId,
     bool IsActive,
     int? DepartmentId);
 
@@ -31,7 +30,7 @@ public record UpdateUserRequest(
     string FullName,
     string Username,
     string Email,
-    Role Role,
+    int RoleId,
     int? DepartmentId,
     // Optional new password; null or empty keeps the current one.
     string? Password = null);
@@ -41,5 +40,5 @@ public record UserStatusRequest(bool IsActive);
 public record UserListFilter(
     string? Search,
     int? DepartmentId,
-    Role? Role,
+    string? Role,
     bool? IsActive);

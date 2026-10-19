@@ -14,6 +14,7 @@ describe('ProfileService', () => {
     username: 'jojo',
     email: 'jojo@taskflow.local',
     role: 'Employee',
+    roleId: 3,
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z'
   };

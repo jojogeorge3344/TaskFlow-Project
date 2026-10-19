@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 
 namespace TaskFlow.Infrastructure.Persistence;
 
@@ -38,10 +38,26 @@ public class DatabaseSeeder
             "admin",
             "admin@taskflow.local",
             _options.AdministratorPassword,
-            Role.Administrator,
+            SystemRoles.AdministratorId,
             cancellationToken);
 
-        // Only the administrator is seeded; managers and employees are created from Employee Management.
+        await EnsureUserAsync(
+            "MGR-001",
+            "Default Manager",
+            "manager",
+            "manager@taskflow.local",
+            _options.ManagerPassword,
+            SystemRoles.ManagerId,
+            cancellationToken);
+
+        await EnsureUserAsync(
+            "EMP-001",
+            "Default Employee",
+            "employee",
+            "employee@taskflow.local",
+            _options.EmployeePassword,
+            SystemRoles.EmployeeId,
+            cancellationToken);
     }
 
     private async System.Threading.Tasks.Task EnsureUserAsync(
@@ -50,7 +66,7 @@ public class DatabaseSeeder
         string username,
         string email,
         string password,
-        Role role,
+        int roleId,
         CancellationToken cancellationToken)
     {
         var exists = await _db.Users
@@ -70,7 +86,7 @@ public class DatabaseSeeder
             FullName = fullName,
             Username = username,
             Email = email,
-            Role = role,
+            RoleId = roleId,
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now

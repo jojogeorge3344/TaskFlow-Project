@@ -15,7 +15,7 @@
         <tf-icon name="kanban" />
         Board view
       </a>
-      @if (canManage()) {
+      @if (canCreate()) {
         <a class="tf-btn tf-btn--primary" routerLink="/tasks/new" data-action="create">
           <tf-icon name="plus" />
           Create task
@@ -112,7 +112,7 @@
           <strong>No tasks match these filters</strong>
           <p>Try a different search or clear the filters.</p>
           <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">Clear filters</button>
-        } @else if (canManage()) {
+        } @else if (canCreate()) {
           <strong>No tasks yet</strong>
           <p>Create the first task and assign it to an employee.</p>
           <a class="tf-btn tf-btn--primary" routerLink="/tasks/new">Create task</a>

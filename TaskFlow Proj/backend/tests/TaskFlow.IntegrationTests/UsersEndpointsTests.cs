@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -22,7 +23,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_AsManager_ReturnsUsers()
     {
         var client = _factory.CreateClient();
-        var token = (await LoginAsync(client, "users-mgr-list", Role.Manager)).AccessToken;
+        var token = (await LoginAsync(client, "users-mgr-list", SystemRoles.Manager)).AccessToken;
 
         var response = await SendAsync(client, HttpMethod.Get, "/api/v1/users?role=Employee&isActive=true", token);
 
@@ -33,7 +34,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task List_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = (await LoginAsync(client, "users-emp-list", Role.Employee)).AccessToken;
+        var token = (await LoginAsync(client, "users-emp-list", SystemRoles.Employee)).AccessToken;
 
         var response = await SendAsync(client, HttpMethod.Get, "/api/v1/users", token);
 
@@ -44,7 +45,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Create_WithRoleName_ReturnsRoleName()
     {
         var client = _factory.CreateClient();
-        var token = (await LoginAsync(client, "users-admin-create", Role.Administrator)).AccessToken;
+        var token = (await LoginAsync(client, "users-admin-create", SystemRoles.Administrator)).AccessToken;
 
         var response = await SendAsync(client, HttpMethod.Post, "/api/v1/users", token, new
         {
@@ -53,7 +54,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
             username = "created.api",
             email = "created.api@taskflow.local",
             password = "Temp#12345",
-            role = "Manager",
+            roleId = SystemRoles.ManagerId,
             isActive = true,
             departmentId = (int?)null
         });
@@ -67,7 +68,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetAll_ReturnsRolesAsNames()
     {
         var client = _factory.CreateClient();
-        var token = (await LoginAsync(client, "users-admin-list", Role.Administrator)).AccessToken;
+        var token = (await LoginAsync(client, "users-admin-list", SystemRoles.Administrator)).AccessToken;
 
         var response = await SendAsync(client, HttpMethod.Get, "/api/v1/users?role=Administrator", token);
 
@@ -82,9 +83,9 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithNewPassword_EndsExistingSessions_AndOnlyNewPasswordWorks()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-pwd", Role.Administrator)).AccessToken;
+        var adminToken = (await LoginAsync(adminClient, "users-admin-pwd", SystemRoles.Administrator)).AccessToken;
         var employeeClient = _factory.CreateClient();
-        var employee = await LoginAsync(employeeClient, "users-emp-pwd", Role.Employee);
+        var employee = await LoginAsync(employeeClient, "users-emp-pwd", SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
             UpdateBody("users-emp-pwd", password: "NewPass#1"));
@@ -110,9 +111,9 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithNewUsername_EndsExistingSessions()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-uname", Role.Administrator)).AccessToken;
+        var adminToken = (await LoginAsync(adminClient, "users-admin-uname", SystemRoles.Administrator)).AccessToken;
         var employeeClient = _factory.CreateClient();
-        var employee = await LoginAsync(employeeClient, "users-emp-uname", Role.Employee);
+        var employee = await LoginAsync(employeeClient, "users-emp-uname", SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
             UpdateBody("users-emp-renamed"));
@@ -129,9 +130,9 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithoutCredentialChanges_KeepsExistingSessions()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-keep", Role.Administrator)).AccessToken;
+        var adminToken = (await LoginAsync(adminClient, "users-admin-keep", SystemRoles.Administrator)).AccessToken;
         var employeeClient = _factory.CreateClient();
-        var employee = await LoginAsync(employeeClient, "users-emp-keep", Role.Employee);
+        var employee = await LoginAsync(employeeClient, "users-emp-keep", SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
             UpdateBody("users-emp-keep", fullName: "Renamed Display Name"));
@@ -145,8 +146,8 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithTooShortPassword_IsRejected()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-short", Role.Administrator)).AccessToken;
-        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-short", Role.Employee);
+        var adminToken = (await LoginAsync(adminClient, "users-admin-short", SystemRoles.Administrator)).AccessToken;
+        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-short", SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
             UpdateBody("users-emp-short", password: "123"));
@@ -158,8 +159,8 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithBlankPassword_IsRejected()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-blank", Role.Administrator)).AccessToken;
-        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-blank", Role.Employee);
+        var adminToken = (await LoginAsync(adminClient, "users-admin-blank", SystemRoles.Administrator)).AccessToken;
+        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-blank", SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
             UpdateBody("users-emp-blank", password: "      "));
@@ -171,12 +172,12 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Update_WithNewRole_EndsExistingSessions()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-role", Role.Administrator)).AccessToken;
+        var adminToken = (await LoginAsync(adminClient, "users-admin-role", SystemRoles.Administrator)).AccessToken;
         var demotedClient = _factory.CreateClient();
-        var demoted = await LoginAsync(demotedClient, "users-demoted-admin", Role.Administrator);
+        var demoted = await LoginAsync(demotedClient, "users-demoted-admin", SystemRoles.Administrator);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{demoted.UserId}", adminToken,
-            UpdateBody("users-demoted-admin", role: "Employee"));
+            UpdateBody("users-demoted-admin", roleId: SystemRoles.EmployeeId));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
 
         // The old Administrator token no longer reaches admin-only endpoints.
@@ -188,9 +189,9 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Deactivate_ThenReactivate_DoesNotReviveOldSessions()
     {
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-status", Role.Administrator)).AccessToken;
+        var adminToken = (await LoginAsync(adminClient, "users-admin-status", SystemRoles.Administrator)).AccessToken;
         var employeeClient = _factory.CreateClient();
-        var employee = await LoginAsync(employeeClient, "users-emp-status", Role.Employee);
+        var employee = await LoginAsync(employeeClient, "users-emp-status", SystemRoles.Employee);
 
         var deactivate = await SendAsync(adminClient, HttpMethod.Patch, $"/api/v1/users/{employee.UserId}/status",
             adminToken, new { isActive = false });
@@ -214,18 +215,18 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
         string username,
         string? password = null,
         string fullName = "Updated Name",
-        string role = "Employee") => new
+        int roleId = SystemRoles.EmployeeId) => new
     {
         employeeCode = (string?)null,
         fullName,
         username,
         email = $"{username}@taskflow.local",
-        role,
+        roleId,
         departmentId = (int?)null,
         password
     };
 
-    private async Task<Session> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<Session> LoginAsync(HttpClient client, string username, string role)
     {
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
 

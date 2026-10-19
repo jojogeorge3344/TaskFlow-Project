@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using TaskFlow.Domain.Security;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
 using TaskFlow.Domain.Enums;
@@ -14,8 +15,8 @@ internal sealed class MailTestHarness : IAsyncDisposable
     private MailTestHarness()
     {
         Tracking = TaskTrackingServiceHarness.Create();
-        Asha = Tracking.AddUser("asha", Role.Administrator);
-        Ravi = Tracking.AddUser("ravi", Role.Manager);
+        Asha = Tracking.AddUser("asha", SystemRoles.Administrator);
+        Ravi = Tracking.AddUser("ravi", SystemRoles.Manager);
         Priya = Tracking.AddUser("priya");
         Kiran = Tracking.AddUser("kiran");
     }

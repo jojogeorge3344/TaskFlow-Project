@@ -1,18 +1,16 @@
-using TaskFlow.Domain.Enums;
-
 namespace TaskFlow.Application.Tasks;
 
 /// <summary>Resource-level access rule for a task: assignee, creator, an additional recipient,
-/// or a Manager/Administrator. Mirrors the API's TaskAccessHandler (defense in depth).</summary>
+/// or a caller whose role holds the tasks.view.all permission. Mirrors the API's TaskAccessHandler (defense in depth).</summary>
 public static class TaskAccessScope
 {
     public static bool CanAccess(
         int userId,
-        string currentUserRole,
+        bool canViewAll,
         TaskFlow.Domain.Entities.Task task,
         IReadOnlyCollection<int> recipientUserIds)
     {
-        if (currentUserRole is nameof(Role.Manager) or nameof(Role.Administrator))
+        if (canViewAll)
         {
             return true;
         }

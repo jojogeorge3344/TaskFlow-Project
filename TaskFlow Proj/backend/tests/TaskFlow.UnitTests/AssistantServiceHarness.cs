@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using TaskFlow.Domain.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
@@ -55,8 +56,8 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
     private AssistantServiceHarness()
     {
         Tracking = TaskTrackingServiceHarness.Create();
-        Asha = Tracking.AddUser("asha", Role.Employee);
-        Ravi = Tracking.AddUser("ravi", Role.Manager);
+        Asha = Tracking.AddUser("asha", SystemRoles.Employee);
+        Ravi = Tracking.AddUser("ravi", SystemRoles.Manager);
         Config = new AiProviderConfigService(Tracking.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
         RateLimiter = new AssistantRateLimiter(TimeProvider.System);
     }
@@ -97,7 +98,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
         new(new ClaimsPrincipal(new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, user.Role.ToString())
+                new Claim(ClaimTypes.Role, TestAccessControl.NameFor(user.RoleId))
             ],
             "test")));
 

@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -19,9 +20,9 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Theory]
-    [InlineData("set-get-manager", Role.Manager)]
-    [InlineData("set-get-admin", Role.Administrator)]
-    public async Task Get_ReturnsCurrentSettings_ForManagerAndAdmin(string username, Role role)
+    [InlineData("set-get-manager", SystemRoles.Manager)]
+    [InlineData("set-get-admin", SystemRoles.Administrator)]
+    public async Task Get_ReturnsCurrentSettings_ForManagerAndAdmin(string username, string role)
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, username, role);
@@ -44,7 +45,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_PersistsAndReturnsSavedValues_AndIgnoresTimezone()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-put-manager", Role.Manager);
+        var token = await LoginAsync(client, "set-put-manager", SystemRoles.Manager);
         var before = await GetTimezoneAsync(client, token);
 
         var save = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
@@ -80,7 +81,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_InvalidValues_Returns400WithFieldErrors_AndChangesNothing()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-invalid-admin", Role.Administrator);
+        var token = await LoginAsync(client, "set-invalid-admin", SystemRoles.Administrator);
         var before = await (await SendAsync(client, HttpMethod.Get, Url, token)).Content.ReadAsStringAsync();
 
         var outOfRange = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
@@ -123,7 +124,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_MissingFields_Returns400_AndDoesNotSwitchRemindersOff()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-partial-manager", Role.Manager);
+        var token = await LoginAsync(client, "set-partial-manager", SystemRoles.Manager);
 
         var response = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
         {
@@ -148,7 +149,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Employee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-employee", Role.Employee);
+        var token = await LoginAsync(client, "set-employee", SystemRoles.Employee);
 
         var get = await SendAsync(client, HttpMethod.Get, Url, token);
         var put = await SendAsync(client, HttpMethod.Put, Url, token, DefaultsBody());
@@ -184,7 +185,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("timezone").GetString();
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);

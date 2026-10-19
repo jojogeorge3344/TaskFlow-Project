@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Domain.Enums;
 
@@ -131,7 +132,7 @@ public class AssistantController : ControllerBase
 
     /// <summary>Every provider with its status for the administrator. The API key is never returned.</summary>
     [HttpGet("providers/config")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.SettingsAi)]
     public async Task<ActionResult<IReadOnlyList<AiProviderConfigDto>>> GetProviderConfig(CancellationToken cancellationToken)
     {
         return Ok(await _providers.GetAdminConfigAsync(cancellationToken));
@@ -139,7 +140,7 @@ public class AssistantController : ControllerBase
 
     /// <summary>Saves provider settings. An empty key keeps the stored key; <c>clearKey</c> removes it.</summary>
     [HttpPut("providers/config")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.SettingsAi)]
     public async Task<ActionResult<IReadOnlyList<AiProviderConfigDto>>> UpdateProviderConfig(
         [FromBody] UpdateAiProvidersRequest request,
         CancellationToken cancellationToken)
@@ -167,7 +168,7 @@ public class AssistantController : ControllerBase
 
     /// <summary>Sends one tiny request to the provider so an administrator can see whether it works.</summary>
     [HttpPost("providers/{kind}/test")]
-    [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [RequirePermission(PermissionKeys.SettingsAi)]
     public async Task<ActionResult<AiProviderTestResultDto>> TestProvider(AiProviderKind kind, CancellationToken cancellationToken)
     {
         var request = new ChatModelRequest(

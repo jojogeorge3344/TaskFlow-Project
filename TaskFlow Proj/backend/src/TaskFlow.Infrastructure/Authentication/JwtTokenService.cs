@@ -30,7 +30,7 @@ public class JwtTokenService : ITokenService
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, string.IsNullOrWhiteSpace(user.FullName) ? user.Username : user.FullName),
-            new(ClaimTypes.Role, user.Role.ToString()),
+            new(ClaimTypes.Role, user.Role.Name),
             new(AuthClaims.SecurityStamp, user.SecurityStamp),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

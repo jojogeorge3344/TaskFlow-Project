@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -49,7 +50,7 @@ describe('AssistantService', () => {
   const user = signal<AuthUser | null>(null);
 
   function signIn(id = 1): void {
-    user.set({ id, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    user.set({ id, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
   }
 
@@ -90,9 +91,9 @@ describe('AssistantService', () => {
     flushStartup([ollama], [message(1, 'User', 'question'), message(2, 'Assistant', 'answer')]);
     service.open();
 
-    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    user.set({ id: 1, fullName: 'Asha', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
-    user.set({ id: 1, fullName: 'Asha Nair', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null });
+    user.set({ id: 1, fullName: 'Asha Nair', username: 'asha', email: 'asha@taskflow.local', role: 'Employee', employeeCode: null, permissions: systemPermissions('Employee') });
     TestBed.flushEffects();
 
     expect(service.panelOpen()).toBeTrue();

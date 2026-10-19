@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Auth;
 using TaskFlow.Domain.Enums;
 
@@ -10,7 +11,7 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithEmail_ReturnsTokensAndRole()
     {
         await using var harness = AuthServiceHarness.Create();
-        var user = harness.AddUser("admin", "admin@taskflow.local", "P@ssw0rd!", role: Role.Administrator);
+        var user = harness.AddUser("admin", "admin@taskflow.local", "P@ssw0rd!", role: SystemRoles.Administrator);
 
         var result = await harness.Service.LoginAsync(new LoginRequest("admin@taskflow.local", "P@ssw0rd!"));
 
@@ -29,7 +30,7 @@ public class AuthServiceLoginTests
     public async Task LoginAsync_WithUsername_ReturnsTokens()
     {
         await using var harness = AuthServiceHarness.Create();
-        harness.AddUser("manager", "manager@taskflow.local", "P@ssw0rd!", role: Role.Manager);
+        harness.AddUser("manager", "manager@taskflow.local", "P@ssw0rd!", role: SystemRoles.Manager);
 
         var result = await harness.Service.LoginAsync(new LoginRequest("manager", "P@ssw0rd!"));
 

@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -20,7 +21,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AdminEndpoint_AsAdmin_ReturnsStats()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-admin", Role.Administrator);
+        var token = await LoginAsync(client, "dash-admin", SystemRoles.Administrator);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/admin", token);
 
@@ -36,7 +37,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task AdminEndpoint_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-employee", Role.Employee);
+        var token = await LoginAsync(client, "dash-employee", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/admin", token);
 
@@ -47,7 +48,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ManagerEndpoint_AsManager_ReturnsStats()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-manager", Role.Manager);
+        var token = await LoginAsync(client, "dash-manager", SystemRoles.Manager);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/manager", token);
 
@@ -62,7 +63,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ManagerEndpoint_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-employee", Role.Employee);
+        var token = await LoginAsync(client, "dash-employee", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/manager", token);
 
@@ -73,7 +74,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task EmployeeEndpoint_AsEmployee_ReturnsStats()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-employee", Role.Employee);
+        var token = await LoginAsync(client, "dash-employee", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/employee", token);
 
@@ -88,7 +89,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ManagerEndpoint_AsAdmin_IsAllowed()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "dash-admin", Role.Administrator);
+        var token = await LoginAsync(client, "dash-admin", SystemRoles.Administrator);
 
         var response = await GetWithTokenAsync(client, "/api/v1/dashboard/manager", token);
 
@@ -105,7 +106,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);

@@ -6,4 +6,5 @@ public record UserDto(
     string Username,
     string Email,
     string Role,
-    string? EmployeeCode);
+    string? EmployeeCode,
+    IReadOnlyList<string> Permissions);

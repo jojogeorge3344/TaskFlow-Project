@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Domain.Security;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Domain.Enums;
 using Task = System.Threading.Tasks.Task;
@@ -130,7 +131,7 @@ public class AssistantActionServiceTests
             AssistantActionHarness.Caller(h.Admin),
             conversation.Id,
             AssistantActionKind.ChangeUserRole,
-            new ChangeRolePayload(h.Asha.Id, h.Asha.FullName, Role.Employee, Role.Manager));
+            new ChangeRolePayload(h.Asha.Id, h.Asha.FullName, SystemRoles.Employee, SystemRoles.ManagerId, SystemRoles.Manager));
 
         // The admin was demoted after the action was prepared, so the token they confirm with is an Employee's.
         var result = await h.Actions.ConfirmAsync(AssistantActionHarness.Caller(h.Admin, roleOverride: "Employee"), card.Id);
@@ -138,7 +139,7 @@ public class AssistantActionServiceTests
         Assert.Equal(AssistantActionStatus.Refused, result!.Status);
         Assert.Contains("authorized administrator", result.Message);
         Assert.Equal(AssistantMessageKind.Refusal, result.Reply!.Kind);
-        Assert.Equal(Role.Employee, (await h.Db.Users.AsNoTracking().SingleAsync(user => user.Id == h.Asha.Id)).Role);
+        Assert.Equal(SystemRoles.EmployeeId, (await h.Db.Users.AsNoTracking().SingleAsync(user => user.Id == h.Asha.Id)).RoleId);
         Assert.Equal(["prepared", "refused"], await h.OutcomesAsync(h.Admin));
     }
 
@@ -352,7 +353,7 @@ public class AssistantActionServiceTests
         var user = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Asha.Id);
         Assert.Equal("Asha Nair", user.FullName);
         Assert.Equal("asha.nair@taskflow.local", user.Email);
-        Assert.Equal(Role.Employee, user.Role);
+        Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
         Assert.Equal(h.Engineering.Id, user.DepartmentId);
         Assert.True(user.IsActive);
     }
@@ -364,14 +365,14 @@ public class AssistantActionServiceTests
         var before = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Priya.Id);
         var caller = AssistantActionHarness.Caller(h.Admin);
         var card = await h.Actions.CreateAsync(caller, h.Conversation(h.Admin).Id, AssistantActionKind.ChangeUserRole,
-            new ChangeRolePayload(h.Priya.Id, h.Priya.FullName, Role.Employee, Role.Manager));
+            new ChangeRolePayload(h.Priya.Id, h.Priya.FullName, SystemRoles.Employee, SystemRoles.ManagerId, SystemRoles.Manager));
 
         var result = await h.Actions.ConfirmAsync(caller, card.Id);
 
         Assert.Equal(AssistantActionStatus.Confirmed, result!.Status);
         Assert.Contains("is now a Manager", result.Message);
         var after = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Priya.Id);
-        Assert.Equal(Role.Manager, after.Role);
+        Assert.Equal(SystemRoles.ManagerId, after.RoleId);
         Assert.Equal(before.FullName, after.FullName);
         Assert.Equal(before.Email, after.Email);
         Assert.Equal(before.Username, after.Username);
@@ -387,7 +388,7 @@ public class AssistantActionServiceTests
         await using var h = new AssistantActionHarness();
         var caller = AssistantActionHarness.Caller(h.Admin);
         var card = await h.Actions.CreateAsync(caller, h.Conversation(h.Admin).Id, AssistantActionKind.ChangeUserRole,
-            new ChangeRolePayload(99999, "Ghost", Role.Employee, Role.Manager));
+            new ChangeRolePayload(99999, "Ghost", SystemRoles.Employee, SystemRoles.ManagerId, SystemRoles.Manager));
 
         var result = await h.Actions.ConfirmAsync(caller, card.Id);
 

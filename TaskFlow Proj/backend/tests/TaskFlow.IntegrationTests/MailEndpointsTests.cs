@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -24,8 +25,8 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Employee_mails_a_manager_and_both_folders_update()
     {
-        var employee = await LoginAsync("mail-emp-a", Role.Employee);
-        var manager = await LoginAsync("mail-mgr-a", Role.Manager);
+        var employee = await LoginAsync("mail-emp-a", SystemRoles.Employee);
+        var manager = await LoginAsync("mail-mgr-a", SystemRoles.Manager);
 
         var send = await SendAsync(employee, HttpMethod.Post, $"{Url}/send", Json(new { to = new[] { manager.Email }, subject = "Leave request", body = "Friday off?" }));
         Assert.Equal(HttpStatusCode.OK, send.StatusCode);
@@ -45,8 +46,8 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task External_address_is_rejected_and_nothing_is_delivered()
     {
-        var sender = await LoginAsync("mail-ext-sender", Role.Employee);
-        var colleague = await LoginAsync("mail-ext-colleague", Role.Employee);
+        var sender = await LoginAsync("mail-ext-sender", SystemRoles.Employee);
+        var colleague = await LoginAsync("mail-ext-colleague", SystemRoles.Employee);
 
         var response = await SendAsync(sender, HttpMethod.Post, $"{Url}/send", Json(new { to = new[] { colleague.Email, "someone@gmail.com" }, subject = "Hi", body = "x" }));
 
@@ -59,9 +60,9 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Another_users_mail_is_not_found_even_for_an_administrator()
     {
-        var a = await LoginAsync("mail-priv-a", Role.Employee);
-        var b = await LoginAsync("mail-priv-b", Role.Employee);
-        var admin = await LoginAsync("mail-priv-admin", Role.Administrator);
+        var a = await LoginAsync("mail-priv-a", SystemRoles.Employee);
+        var b = await LoginAsync("mail-priv-b", SystemRoles.Employee);
+        var admin = await LoginAsync("mail-priv-admin", SystemRoles.Administrator);
         await SendAsync(a, HttpMethod.Post, $"{Url}/send", Json(new { to = new[] { b.Email }, subject = "Private", body = "x" }));
         var itemId = (await ListAsync(b, "Inbox"))[0].GetProperty("itemId").GetInt32();
 
@@ -86,10 +87,10 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Reply_all_addresses_everyone_but_me_and_threads_together()
     {
-        var sender = await LoginAsync("mail-ra-sender", Role.Manager);
-        var me = await LoginAsync("mail-ra-me", Role.Employee);
-        var other = await LoginAsync("mail-ra-other", Role.Employee);
-        var cc = await LoginAsync("mail-ra-cc", Role.Employee);
+        var sender = await LoginAsync("mail-ra-sender", SystemRoles.Manager);
+        var me = await LoginAsync("mail-ra-me", SystemRoles.Employee);
+        var other = await LoginAsync("mail-ra-other", SystemRoles.Employee);
+        var cc = await LoginAsync("mail-ra-cc", SystemRoles.Employee);
         await SendAsync(sender, HttpMethod.Post, $"{Url}/send", Json(new { to = new[] { me.Email, other.Email }, cc = new[] { cc.Email }, subject = "Kickoff", body = "Agenda" }));
         var itemId = (await ListAsync(me, "Inbox"))[0].GetProperty("itemId").GetInt32();
 
@@ -118,8 +119,8 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Draft_lifecycle_save_update_send()
     {
-        var author = await LoginAsync("mail-draft-author", Role.Employee);
-        var reader = await LoginAsync("mail-draft-reader", Role.Employee);
+        var author = await LoginAsync("mail-draft-author", SystemRoles.Employee);
+        var reader = await LoginAsync("mail-draft-reader", SystemRoles.Employee);
 
         var created = await SendAsync(author, HttpMethod.Post, $"{Url}/drafts", Json(new { to = new[] { "unfinished" }, subject = "Plan", body = "v1" }));
         Assert.Equal(HttpStatusCode.OK, created.StatusCode);
@@ -138,8 +139,8 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Trash_restore_delete_forever_star_and_search()
     {
-        var sender = await LoginAsync("mail-ops-sender", Role.Employee);
-        var me = await LoginAsync("mail-ops-me", Role.Employee);
+        var sender = await LoginAsync("mail-ops-sender", SystemRoles.Employee);
+        var me = await LoginAsync("mail-ops-me", SystemRoles.Employee);
         await SendAsync(sender, HttpMethod.Post, $"{Url}/send", Json(new { to = new[] { me.Email }, subject = "Invoice 42", body = "Pay soon" }));
         var itemId = (await ListAsync(me, "Inbox"))[0].GetProperty("itemId").GetInt32();
 
@@ -165,9 +166,9 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Attachments_upload_download_and_access_rules()
     {
-        var sender = await LoginAsync("mail-att-sender", Role.Employee);
-        var receiver = await LoginAsync("mail-att-receiver", Role.Employee);
-        var outsider = await LoginAsync("mail-att-outsider", Role.Employee);
+        var sender = await LoginAsync("mail-att-sender", SystemRoles.Employee);
+        var receiver = await LoginAsync("mail-att-receiver", SystemRoles.Employee);
+        var outsider = await LoginAsync("mail-att-outsider", SystemRoles.Employee);
 
         var upload = await UploadAsync(sender, "report.pdf", "PDF-CONTENT");
         Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
@@ -192,9 +193,9 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Contacts_are_available_to_employees_and_list_only_active_users()
     {
-        var employee = await LoginAsync("mail-contacts-emp", Role.Employee);
-        await _factory.SeedUserAsync("mail-contacts-gone", "mail-contacts-gone@taskflow.local", "P@ssw0rd!", Role.Employee, isActive: false);
-        await LoginAsync("mail-contacts-here", Role.Manager);
+        var employee = await LoginAsync("mail-contacts-emp", SystemRoles.Employee);
+        await _factory.SeedUserAsync("mail-contacts-gone", "mail-contacts-gone@taskflow.local", "P@ssw0rd!", SystemRoles.Employee, isActive: false);
+        await LoginAsync("mail-contacts-here", SystemRoles.Manager);
 
         var response = await SendAsync(employee, HttpMethod.Get, $"{Url}/contacts?search=mail-contacts");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -230,7 +231,7 @@ public class MailEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.Clone();
     }
 
-    private async Task<Session> LoginAsync(string username, Role role)
+    private async Task<Session> LoginAsync(string username, string role)
     {
         const string password = "P@ssw0rd!";
         var email = $"{username}@taskflow.local";

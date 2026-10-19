@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,7 +19,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Login_WithValidCredentials_ReturnsUserRoleAndSecureCookie()
     {
-        await _factory.SeedUserAsync("admin", "admin@taskflow.local", "P@ssw0rd!", Role.Administrator);
+        await _factory.SeedUserAsync("admin", "admin@taskflow.local", "P@ssw0rd!", SystemRoles.Administrator);
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -45,7 +46,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Login_WithWrongPassword_ReturnsGenericUnauthorized()
     {
-        await _factory.SeedUserAsync("employee1", "employee1@taskflow.local", "P@ssw0rd!", Role.Employee);
+        await _factory.SeedUserAsync("employee1", "employee1@taskflow.local", "P@ssw0rd!", SystemRoles.Employee);
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -65,7 +66,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Login_WhenInactive_IsIndistinguishableFromUnknownUser()
     {
-        await _factory.SeedUserAsync("disabled", "disabled@taskflow.local", "P@ssw0rd!", Role.Employee, isActive: false);
+        await _factory.SeedUserAsync("disabled", "disabled@taskflow.local", "P@ssw0rd!", SystemRoles.Employee, isActive: false);
         var client = _factory.CreateClient();
 
         var inactive = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -96,7 +97,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Login_ResponseBody_NeverLeaksPasswordMaterial()
     {
-        await _factory.SeedUserAsync("manager1", "manager1@taskflow.local", "P@ssw0rd!", Role.Manager);
+        await _factory.SeedUserAsync("manager1", "manager1@taskflow.local", "P@ssw0rd!", SystemRoles.Manager);
         var client = _factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -114,7 +115,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Refresh_RotatesCookie_AndRejectsReplay()
     {
-        await _factory.SeedUserAsync("employee2", "employee2@taskflow.local", "P@ssw0rd!", Role.Employee);
+        await _factory.SeedUserAsync("employee2", "employee2@taskflow.local", "P@ssw0rd!", SystemRoles.Employee);
         var client = _factory.CreateClient();
 
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new
@@ -144,7 +145,7 @@ public class AuthEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task Me_WithAccessToken_ReturnsCurrentUser()
     {
-        await _factory.SeedUserAsync("admin2", "admin2@taskflow.local", "P@ssw0rd!", Role.Administrator);
+        await _factory.SeedUserAsync("admin2", "admin2@taskflow.local", "P@ssw0rd!", SystemRoles.Administrator);
         var client = _factory.CreateClient();
 
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new

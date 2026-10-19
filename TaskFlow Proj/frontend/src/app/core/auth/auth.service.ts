@@ -15,6 +15,11 @@ export class AuthService {
 
   readonly currentUser = this.currentUserSignal.asReadonly();
 
+  /** Whether the signed-in user's role holds the permission. The API still decides every request. */
+  hasPermission(key: string): boolean {
+    return this.currentUserSignal()?.permissions.includes(key) ?? false;
+  }
+
   login(request: LoginRequest): Observable<AuthUser> {
     return this.http
       .post<AuthResponse>(`${this.baseUrl}/login`, request)
@@ -75,8 +80,9 @@ export class AuthService {
   }
 
   /** Re-syncs the cached user after a self-service profile edit, so the shell shows the new name. */
-  applyProfile(user: AuthUser): void {
-    this.currentUserSignal.set(user);
+  applyProfile(user: Omit<AuthUser, 'permissions'>): void {
+    // A profile edit never changes the role, so the permissions already held stay as they are.
+    this.currentUserSignal.set({ ...user, permissions: this.currentUserSignal()?.permissions ?? [] });
   }
 
   private applySession(response: AuthResponse): void {

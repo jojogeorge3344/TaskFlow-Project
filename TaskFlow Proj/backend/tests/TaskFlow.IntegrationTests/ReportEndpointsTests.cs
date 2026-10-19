@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -30,7 +31,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetReport_AsManager_ReturnsTotalsForTheFilter()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-1", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-1", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("rep-emp-1");
 
         await SeedTaskAsync(employee.Id, "Pending one", TaskStatus.ToDo, TaskPriority.High, DateTime.UtcNow.AddDays(5));
@@ -52,7 +53,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetReport_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-emp-2", Role.Employee);
+        var token = await LoginAsync(client, "rep-emp-2", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/reports", token);
 
@@ -63,7 +64,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetReport_AsAdmin_IsAllowed()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-admin-1", Role.Administrator);
+        var token = await LoginAsync(client, "rep-admin-1", SystemRoles.Administrator);
 
         var response = await GetWithTokenAsync(client, "/api/v1/reports", token);
 
@@ -74,7 +75,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetReport_CombinedFilters_ReturnOnlyMatchingRows()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-2", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-2", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("rep-emp-3");
 
         await SeedTaskAsync(employee.Id, "High pending", TaskStatus.ToDo, TaskPriority.High, DateTime.UtcNow.AddDays(5));
@@ -95,7 +96,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task GetReport_InvalidDeadlineRange_Returns400()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-3", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-3", SystemRoles.Manager);
 
         var response = await GetWithTokenAsync(client,
             "/api/v1/reports?deadlineFrom=2030-05-01&deadlineTo=2030-04-01", token);
@@ -107,7 +108,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Export_AsManager_ReturnsCsvAttachmentWithHeader()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-4", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-4", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("rep-emp-4");
         await SeedTaskAsync(employee.Id, "Exportable task", TaskStatus.ToDo, TaskPriority.Medium, DateTime.UtcNow.AddDays(5));
 
@@ -128,7 +129,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Export_EscapesFormulaInjectionInTitles()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-5", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-5", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("rep-emp-5");
         await SeedTaskAsync(employee.Id, "=1+1", TaskStatus.ToDo, TaskPriority.Medium, DateTime.UtcNow.AddDays(5));
 
@@ -144,7 +145,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Export_HonoursTheSameFilterAsTheTotals()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-mgr-6", Role.Manager);
+        var token = await LoginAsync(client, "rep-mgr-6", SystemRoles.Manager);
         var employee = await SeedEmployeeAsync("rep-emp-6");
         var other = await SeedEmployeeAsync("rep-emp-7");
 
@@ -170,14 +171,14 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Export_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "rep-emp-8", Role.Employee);
+        var token = await LoginAsync(client, "rep-emp-8", SystemRoles.Employee);
 
         var response = await GetWithTokenAsync(client, "/api/v1/reports/export", token);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, role);
 
@@ -195,7 +196,7 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private async Task<User> SeedEmployeeAsync(string username)
     {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, Role.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", Password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

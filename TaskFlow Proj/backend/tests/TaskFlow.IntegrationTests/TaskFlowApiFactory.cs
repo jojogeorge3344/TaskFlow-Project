@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Enums;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.IntegrationTests;
@@ -17,6 +18,10 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _databasePath =
         Path.Combine(Path.GetTempPath(), $"taskflow-tests-{Guid.NewGuid():N}.db");
+
+    /// <summary>The storage root for this factory, so no test ever creates the real <c>C:\TaskFlow</c> folder.</summary>
+    public string StorageRootPath { get; } =
+        Path.Combine(Path.GetTempPath(), $"taskflow-root-tests-{Guid.NewGuid():N}");
 
     /// <summary>Attachment files for this factory's mail tests, removed on dispose.</summary>
     public string AttachmentsPath { get; } =
@@ -52,6 +57,7 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["Storage:Root"] = StorageRootPath,
                 ["Jwt:Issuer"] = "TaskFlow",
                 ["Jwt:Key"] = new string('k', 64),
                 ["Jwt:AccessTokenMinutes"] = "30",
@@ -71,7 +77,7 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
         string username,
         string email,
         string password,
-        Role role,
+        string role,
         bool isActive = true)
     {
         using var scope = Services.CreateScope();
@@ -91,7 +97,7 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
             FullName = $"{username} full name",
             Username = username,
             Email = email,
-            Role = role,
+            RoleId = RoleIdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -102,6 +108,14 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
         db.Users.Add(user);
         await db.SaveChangesAsync();
     }
+
+    private static int RoleIdFor(string roleName) => roleName switch
+    {
+        SystemRoles.Administrator => SystemRoles.AdministratorId,
+        SystemRoles.Manager => SystemRoles.ManagerId,
+        SystemRoles.Employee => SystemRoles.EmployeeId,
+        _ => throw new ArgumentOutOfRangeException(nameof(roleName), roleName, "Not a system role.")
+    };
 
     protected override void Dispose(bool disposing)
     {
@@ -123,6 +137,17 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
             try
             {
                 Directory.Delete(KeyRingPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        if (disposing && Directory.Exists(StorageRootPath))
+        {
+            try
+            {
+                Directory.Delete(StorageRootPath, recursive: true);
             }
             catch (IOException)
             {
