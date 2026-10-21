@@ -24,7 +24,7 @@ public class UserService : IUserService
     {
         var query = _dbContext.Users
             .AsNoTracking()
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .Where(u => !u.IsDeleted)
             .AsQueryable();
@@ -40,9 +40,9 @@ public class UserService : IUserService
                     u.Username.ToLower().Contains(search));
             }
 
-            if (filter.DepartmentId.HasValue)
+            if (filter.ProjectId.HasValue)
             {
-                query = query.Where(u => u.DepartmentId == filter.DepartmentId.Value);
+                query = query.Where(u => u.ProjectId == filter.ProjectId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(filter.Role))
@@ -71,13 +71,15 @@ public class UserService : IUserService
                 u.CreatedAt,
                 u.UpdatedAt,
                 u.LastLoginAt,
+                u.ProjectId,
+                u.Project != null ? u.Project.Name : null,
                 u.DepartmentId,
                 u.Department != null ? u.Department.Name : null,
                 u.ManagerId,
                 u.Manager != null ? u.Manager.FullName : null,
-                u.ManagerDepartments
-                    .OrderBy(link => link.Department.Name)
-                    .Select(link => new ManagerDepartmentDto(link.DepartmentId, link.Department.Name))
+                u.ManagerProjects
+                    .OrderBy(link => link.Project.Name)
+                    .Select(link => new ManagerProjectDto(link.ProjectId, link.Project.Name))
                     .ToList(),
                 u.Reports
                     .OrderBy(report => report.FullName)
@@ -92,7 +94,7 @@ public class UserService : IUserService
     {
         var user = await _dbContext.Users
             .AsNoTracking()
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .Where(u => u.Id == id && !u.IsDeleted)
             .Select(u => new UserDto(
@@ -107,13 +109,15 @@ public class UserService : IUserService
                 u.CreatedAt,
                 u.UpdatedAt,
                 u.LastLoginAt,
+                u.ProjectId,
+                u.Project != null ? u.Project.Name : null,
                 u.DepartmentId,
                 u.Department != null ? u.Department.Name : null,
                 u.ManagerId,
                 u.Manager != null ? u.Manager.FullName : null,
-                u.ManagerDepartments
-                    .OrderBy(link => link.Department.Name)
-                    .Select(link => new ManagerDepartmentDto(link.DepartmentId, link.Department.Name))
+                u.ManagerProjects
+                    .OrderBy(link => link.Project.Name)
+                    .Select(link => new ManagerProjectDto(link.ProjectId, link.Project.Name))
                     .ToList(),
                 u.Reports
                     .OrderBy(report => report.FullName)
@@ -149,13 +153,23 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email or username already exists.");
         }
 
-        if (request.DepartmentId.HasValue)
+        if (request.ProjectId.HasValue)
         {
-            var deptExists = await _dbContext.Departments
-                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
-            if (!deptExists)
+            var projectExists = await _dbContext.Projects
+                .AnyAsync(p => p.Id == request.ProjectId.Value && !p.IsDeleted, cancellationToken);
+            if (!projectExists)
             {
                 throw new InvalidOperationException("Project does not exist.");
+            }
+        }
+
+        if (request.DepartmentId.HasValue)
+        {
+            var departmentExists = await _dbContext.Departments
+                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
+            if (!departmentExists)
+            {
+                throw new InvalidOperationException("Department does not exist.");
             }
         }
 
@@ -170,6 +184,7 @@ public class UserService : IUserService
             RoleId = role.Id,
             Role = role,
             IsActive = request.IsActive,
+            ProjectId = request.ProjectId,
             DepartmentId = request.DepartmentId,
             SecurityStamp = NewSecurityStamp(),
             CreatedAt = DateTime.UtcNow,
@@ -180,17 +195,13 @@ public class UserService : IUserService
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var departmentName = request.DepartmentId.HasValue
-            ? (await _dbContext.Departments.Where(d => d.Id == request.DepartmentId.Value).Select(d => d.Name).FirstAsync(cancellationToken))
-            : null;
-
         return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
     public async Task<UserDto?> UpdateAsync(int id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -216,13 +227,23 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email or username already exists.");
         }
 
-        if (request.DepartmentId.HasValue)
+        if (request.ProjectId.HasValue)
         {
-            var deptExists = await _dbContext.Departments
-                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
-            if (!deptExists)
+            var projectExists = await _dbContext.Projects
+                .AnyAsync(p => p.Id == request.ProjectId.Value && !p.IsDeleted, cancellationToken);
+            if (!projectExists)
             {
                 throw new InvalidOperationException("Project does not exist.");
+            }
+        }
+
+        if (request.DepartmentId.HasValue)
+        {
+            var departmentExists = await _dbContext.Departments
+                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
+            if (!departmentExists)
+            {
+                throw new InvalidOperationException("Department does not exist.");
             }
         }
 
@@ -252,7 +273,7 @@ public class UserService : IUserService
 
         if (roleChanged && user.RoleId == SystemRoles.ManagerId)
         {
-            // Someone who is no longer a Manager oversees no departments and has no reports.
+            // Someone who is no longer a Manager oversees no projects and has no reports.
             await ClearManagerDutiesAsync(user.Id, now, cancellationToken);
         }
 
@@ -262,6 +283,7 @@ public class UserService : IUserService
         user.Email = email;
         user.RoleId = role.Id;
         user.Role = role;
+        user.ProjectId = request.ProjectId;
         user.DepartmentId = request.DepartmentId;
         user.UpdatedAt = now;
 
@@ -284,7 +306,7 @@ public class UserService : IUserService
     public async Task<UserDto?> UpdateStatusAsync(int id, UserStatusRequest request, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -313,7 +335,7 @@ public class UserService : IUserService
     public async Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -333,7 +355,7 @@ public class UserService : IUserService
         user.Email = email;
         user.UpdatedAt = DateTime.UtcNow;
 
-        // Role, department, username, employee code and status are deliberately untouched.
+        // Role, project, username, employee code and status are deliberately untouched.
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return (await GetByIdAsync(user.Id, cancellationToken))!;
@@ -342,7 +364,7 @@ public class UserService : IUserService
     public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Department)
+            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -376,16 +398,16 @@ public class UserService : IUserService
             return null;
         }
 
-        var departmentIds = request.ManagerDepartmentIds?.Distinct().ToList() ?? [];
-        if (departmentIds.Count > 0)
+        var projectIds = request.ManagerProjectIds?.Distinct().ToList() ?? [];
+        if (projectIds.Count > 0)
         {
             if (user.RoleId != SystemRoles.ManagerId)
             {
                 throw new InvalidOperationException("Only a Manager can be assigned projects.");
             }
 
-            var existing = await _dbContext.Departments.CountAsync(d => departmentIds.Contains(d.Id), cancellationToken);
-            if (existing != departmentIds.Count)
+            var existing = await _dbContext.Projects.CountAsync(p => projectIds.Contains(p.Id), cancellationToken);
+            if (existing != projectIds.Count)
             {
                 throw new InvalidOperationException("One or more projects do not exist.");
             }
@@ -417,11 +439,11 @@ public class UserService : IUserService
             }
         }
 
-        var links = await _dbContext.ManagerDepartments.Where(link => link.ManagerUserId == id).ToListAsync(cancellationToken);
-        _dbContext.ManagerDepartments.RemoveRange(links.Where(link => !departmentIds.Contains(link.DepartmentId)));
-        foreach (var departmentId in departmentIds.Where(departmentId => links.All(link => link.DepartmentId != departmentId)))
+        var links = await _dbContext.ManagerProjects.Where(link => link.ManagerUserId == id).ToListAsync(cancellationToken);
+        _dbContext.ManagerProjects.RemoveRange(links.Where(link => !projectIds.Contains(link.ProjectId)));
+        foreach (var projectId in projectIds.Where(projectId => links.All(link => link.ProjectId != projectId)))
         {
-            _dbContext.ManagerDepartments.Add(new ManagerDepartment { ManagerUserId = id, DepartmentId = departmentId });
+            _dbContext.ManagerProjects.Add(new ManagerProject { ManagerUserId = id, ProjectId = projectId });
         }
 
         user.ManagerId = request.ManagerId;
@@ -431,7 +453,7 @@ public class UserService : IUserService
         return await GetByIdAsync(id, cancellationToken);
     }
 
-    /// <summary>Clears the manager link of everyone who reports to this user and removes their department assignments.</summary>
+    /// <summary>Clears the manager link of everyone who reports to this user and removes their project and department oversight.</summary>
     private async System.Threading.Tasks.Task ClearManagerDutiesAsync(int managerUserId, DateTime now, CancellationToken cancellationToken)
     {
         var reports = await _dbContext.Users.Where(u => u.ManagerId == managerUserId).ToListAsync(cancellationToken);
@@ -441,8 +463,10 @@ public class UserService : IUserService
             report.UpdatedAt = now;
         }
 
-        _dbContext.ManagerDepartments.RemoveRange(
-            await _dbContext.ManagerDepartments.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
+        _dbContext.ManagerProjects.RemoveRange(
+            await _dbContext.ManagerProjects.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
+        _dbContext.DepartmentManagers.RemoveRange(
+            await _dbContext.DepartmentManagers.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
     }
 
     public async Task<bool> DeleteAsync(int id, int currentUserId, CancellationToken cancellationToken)
@@ -478,7 +502,7 @@ public class UserService : IUserService
 
         var now = DateTime.UtcNow;
 
-        // Their reports have no manager any more, and a deleted manager oversees no departments.
+        // Their reports have no manager any more, and a deleted manager oversees no projects.
         await ClearManagerDutiesAsync(id, now, cancellationToken);
 
         // The email and username stay on the row, so they remain reserved and history is never ambiguous.

@@ -25,7 +25,7 @@ describe('ReportService', () => {
         deadlineFrom: '2026-10-01T00:00:00.000Z',
         deadlineTo: '2026-10-31T23:59:59.999Z',
         assignedToUserId: 3,
-        departmentId: 7,
+        projectId: 7,
         status: 'Completed',
         priority: 'High'
       })
@@ -36,7 +36,7 @@ describe('ReportService', () => {
     expect(request.request.params.get('deadlineFrom')).toBe('2026-10-01T00:00:00.000Z');
     expect(request.request.params.get('deadlineTo')).toBe('2026-10-31T23:59:59.999Z');
     expect(request.request.params.get('assignedToUserId')).toBe('3');
-    expect(request.request.params.get('departmentId')).toBe('7');
+    expect(request.request.params.get('projectId')).toBe('7');
     expect(request.request.params.get('status')).toBe('Completed');
     expect(request.request.params.get('priority')).toBe('High');
     request.flush(summary);

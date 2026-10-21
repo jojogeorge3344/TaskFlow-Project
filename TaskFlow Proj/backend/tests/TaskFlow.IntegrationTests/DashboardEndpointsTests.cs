@@ -29,7 +29,7 @@ public class DashboardEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
         Assert.True(document.RootElement.TryGetProperty("totalEmployees", out _));
-        Assert.True(document.RootElement.TryGetProperty("totalDepartments", out _));
+        Assert.True(document.RootElement.TryGetProperty("totalProjects", out _));
         Assert.True(document.RootElement.TryGetProperty("pendingTasks", out _));
     }
 

@@ -23,7 +23,7 @@ describe('AdminDashboardComponent', () => {
   const stats: AdminDashboardStats = {
     totalEmployees: 4,
     activeEmployees: 3,
-    totalDepartments: 2,
+    totalProjects: 2,
     totalTasks: 9,
     pendingTasks: 5,
     completedTasks: 3,

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Infrastructure.Persistence;
-using Department = TaskFlow.Domain.Entities.Department;
+using Project = TaskFlow.Domain.Entities.Project;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using User = TaskFlow.Domain.Entities.User;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
@@ -85,18 +85,18 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task GetWorkload_DepartmentFilter_NarrowsTheResult()
+    public async Task GetWorkload_ProjectFilter_NarrowsTheResult()
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "wl-mgr-2", SystemRoles.Manager);
 
-        var engineering = await SeedDepartmentAsync("WL Engineering");
-        var operations = await SeedDepartmentAsync("WL Operations");
+        var engineering = await SeedProjectAsync("WL Engineering");
+        var operations = await SeedProjectAsync("WL Operations");
 
         var engineer = await SeedEmployeeAsync("wl-emp-eng", engineering.Id);
         var operatorUser = await SeedEmployeeAsync("wl-emp-ops", operations.Id);
 
-        var response = await GetWithTokenAsync(client, $"/api/v1/workload?departmentId={engineering.Id}", token);
+        var response = await GetWithTokenAsync(client, $"/api/v1/workload?projectId={engineering.Id}", token);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -125,7 +125,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("accessToken").GetString()!;
     }
 
-    private async Task<User> SeedEmployeeAsync(string username, int? departmentId = null)
+    private async Task<User> SeedEmployeeAsync(string username, int? projectId = null)
     {
         await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
 
@@ -133,30 +133,30 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await db.Users.SingleAsync(candidate => candidate.Username == username);
 
-        if (departmentId is not null)
+        if (projectId is not null)
         {
-            user.DepartmentId = departmentId;
+            user.ProjectId = projectId;
             await db.SaveChangesAsync();
         }
 
         return user;
     }
 
-    private async Task<Department> SeedDepartmentAsync(string name)
+    private async Task<Project> SeedProjectAsync(string name)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var existing = await db.Departments.SingleOrDefaultAsync(department => department.Name == name);
+        var existing = await db.Projects.SingleOrDefaultAsync(project => project.Name == name);
         if (existing is not null)
         {
             return existing;
         }
 
-        var department = new Department { Name = name, CreatedAt = DateTime.UtcNow };
-        db.Departments.Add(department);
+        var project = new Project { Name = name, CreatedAt = DateTime.UtcNow };
+        db.Projects.Add(project);
         await db.SaveChangesAsync();
-        return department;
+        return project;
     }
 
     private async Task SeedTaskAsync(int assignedToUserId, TaskStatus status, TaskPriority priority, DateTime deadline)

@@ -15,9 +15,9 @@ public class WorkloadServiceTests
     public async Task GetWorkloadAsync_ReturnsPerEmployeeCounts()
     {
         await using var harness = WorkloadReportHarness.Create(Now);
-        var engineering = harness.AddDepartment("Engineering");
+        var engineering = harness.AddProject("Engineering");
 
-        var alice = harness.AddUser("alice", departmentId: engineering.Id, fullName: "Alice Adams");
+        var alice = harness.AddUser("alice", projectId: engineering.Id, fullName: "Alice Adams");
         var bob = harness.AddUser("bob", fullName: "Bob Brown");
 
         harness.AddTask(alice.Id, Future, TaskStatus.ToDo, TaskPriority.High);        // active + high-priority
@@ -31,16 +31,16 @@ public class WorkloadServiceTests
         var byName = workload.ToDictionary(entry => entry.FullName);
 
         var aliceRow = byName["Alice Adams"];
-        Assert.Equal(engineering.Id, aliceRow.DepartmentId);
-        Assert.Equal("Engineering", aliceRow.DepartmentName);
+        Assert.Equal(engineering.Id, aliceRow.ProjectId);
+        Assert.Equal("Engineering", aliceRow.ProjectName);
         Assert.Equal(2, aliceRow.ActiveTasks);
         Assert.Equal(2, aliceRow.HighPriorityTasks);
         Assert.Equal(1, aliceRow.OverdueTasks);
         Assert.Equal(1, aliceRow.CompletedTasks);
 
         var bobRow = byName["Bob Brown"];
-        Assert.Null(bobRow.DepartmentId);
-        Assert.Null(bobRow.DepartmentName);
+        Assert.Null(bobRow.ProjectId);
+        Assert.Null(bobRow.ProjectName);
         Assert.Equal(1, bobRow.ActiveTasks);
         Assert.Equal(0, bobRow.HighPriorityTasks);
         Assert.Equal(0, bobRow.OverdueTasks);
@@ -64,14 +64,14 @@ public class WorkloadServiceTests
     }
 
     [Fact]
-    public async Task GetWorkloadAsync_DepartmentFilter_NarrowsToThatDepartment()
+    public async Task GetWorkloadAsync_ProjectFilter_NarrowsToThatProject()
     {
         await using var harness = WorkloadReportHarness.Create(Now);
-        var engineering = harness.AddDepartment("Engineering");
-        var operations = harness.AddDepartment("Operations");
+        var engineering = harness.AddProject("Engineering");
+        var operations = harness.AddProject("Operations");
 
-        var alice = harness.AddUser("alice", departmentId: engineering.Id, fullName: "Alice Adams");
-        var bob = harness.AddUser("bob", departmentId: operations.Id, fullName: "Bob Brown");
+        var alice = harness.AddUser("alice", projectId: engineering.Id, fullName: "Alice Adams");
+        var bob = harness.AddUser("bob", projectId: operations.Id, fullName: "Bob Brown");
         harness.AddTask(alice.Id, Future, TaskStatus.ToDo);
         harness.AddTask(bob.Id, Future, TaskStatus.ToDo);
 

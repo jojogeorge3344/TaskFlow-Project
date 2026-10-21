@@ -326,7 +326,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         username,
         email = $"{username}@taskflow.com",
         roleId,
-        departmentId = (int?)null,
+        projectId = (int?)null,
         password = (string?)null
     };
 
@@ -339,7 +339,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         password = Password,
         roleId,
         isActive = true,
-        departmentId = (int?)null
+        projectId = (int?)null
     };
 
     private async Task<int> AddRoleAsync(string name, params string[] permissionKeys)

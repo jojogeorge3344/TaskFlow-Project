@@ -191,21 +191,21 @@ public class UserDeletionTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task Delete_ClearsTheManagerLinksOfAManagersReportsAndTheirDepartments()
+    public async Task Delete_ClearsTheManagerLinksOfAManagersReportsAndTheirProjects()
     {
         var admin = AddUser("admin7", SystemRoles.AdministratorId);
         var manager = AddUser("mgr7", SystemRoles.ManagerId);
         var report = AddUser("rep7", managerId: manager.Id);
-        var department = new Department { Name = "Ops", CreatedAt = DateTime.UtcNow };
-        _db.Departments.Add(department);
+        var project = new Project { Name = "Ops", CreatedAt = DateTime.UtcNow };
+        _db.Projects.Add(project);
         _db.SaveChanges();
-        _db.ManagerDepartments.Add(new ManagerDepartment { ManagerUserId = manager.Id, DepartmentId = department.Id });
+        _db.ManagerProjects.Add(new ManagerProject { ManagerUserId = manager.Id, ProjectId = project.Id });
         _db.SaveChanges();
 
         await _service.DeleteAsync(manager.Id, admin.Id, default);
 
         Assert.Null((await ReloadAsync(report.Id)).ManagerId);
-        Assert.False(await _db.ManagerDepartments.AnyAsync(link => link.ManagerUserId == manager.Id));
+        Assert.False(await _db.ManagerProjects.AnyAsync(link => link.ManagerUserId == manager.Id));
     }
 
     [Fact]

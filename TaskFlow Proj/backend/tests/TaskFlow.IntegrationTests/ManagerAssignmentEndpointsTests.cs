@@ -27,27 +27,27 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task AnAdministratorAssignsDepartmentsToAManagerAndAnEmployeeToThem()
+    public async Task AnAdministratorAssignsProjectsToAManagerAndAnEmployeeToThem()
     {
         var client = _factory.CreateClient();
         var admin = await SignInAsync(client, "ma-admin-1", SystemRoles.Administrator);
         var manager = await SeedAsync("ma-mgr-1", SystemRoles.Manager);
         var employee = await SeedAsync("ma-emp-1");
-        var finance = await AddDepartmentAsync("MA Finance 1");
-        var ops = await AddDepartmentAsync("MA Operations 1");
+        var finance = await AddProjectAsync("MA Finance 1");
+        var ops = await AddProjectAsync("MA Operations 1");
 
         var forManager = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{manager.Id}/assignments", admin,
-            new { managerId = (int?)null, managerDepartmentIds = new[] { finance, ops } });
+            new { managerId = (int?)null, managerProjectIds = new[] { finance, ops } });
         var forEmployee = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = manager.Id, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
 
         Assert.Equal(HttpStatusCode.OK, forManager.StatusCode);
         Assert.Equal(HttpStatusCode.OK, forEmployee.StatusCode);
 
         using var managerView = await JsonAsync(client, $"/api/v1/users/{manager.Id}", admin);
-        var departments = managerView.RootElement.GetProperty("managerDepartments").EnumerateArray()
-            .Select(department => department.GetProperty("name").GetString()).Order().ToList();
-        Assert.Equal(["MA Finance 1", "MA Operations 1"], departments);
+        var projects = managerView.RootElement.GetProperty("managerProjects").EnumerateArray()
+            .Select(project => project.GetProperty("name").GetString()).Order().ToList();
+        Assert.Equal(["MA Finance 1", "MA Operations 1"], projects);
         var reports = managerView.RootElement.GetProperty("reports").EnumerateArray()
             .Select(report => report.GetProperty("id").GetInt32()).ToList();
         Assert.Equal([employee.Id], reports);
@@ -69,7 +69,7 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var manager = await SeedAsync("ma-mgr-2", SystemRoles.Manager);
         var employee = await SeedAsync("ma-emp-2");
         await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = manager.Id, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
         var employeeToken = await TokenAsync(client, "ma-emp-2");
 
         using var profile = await JsonAsync(client, "/api/v1/users/me", employeeToken);
@@ -88,7 +88,7 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var employee = await SeedAsync($"ma-target-emp-{role.ToLowerInvariant()}");
 
         var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", token,
-            new { managerId = manager.Id, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Null((await UserAsync(employee.Username)).ManagerId);
@@ -104,7 +104,7 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var employee = await SeedAsync("ma-target-emp-people");
 
         var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", token,
-            new { managerId = manager.Id, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Null((await UserAsync(employee.Username)).ManagerId);
@@ -117,19 +117,19 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var admin = await SignInAsync(client, "ma-admin-3", SystemRoles.Administrator);
         var employee = await SeedAsync("ma-emp-3");
         var otherEmployee = await SeedAsync("ma-emp-3b");
-        var department = await AddDepartmentAsync("MA Dept 3");
+        var project = await AddProjectAsync("MA Dept 3");
 
         var notAManager = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = otherEmployee.Id, managerDepartmentIds = Array.Empty<int>() });
-        var departmentsForEmployee = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = (int?)null, managerDepartmentIds = new[] { department } });
+            new { managerId = otherEmployee.Id, managerProjectIds = Array.Empty<int>() });
+        var projectsForEmployee = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
+            new { managerId = (int?)null, managerProjectIds = new[] { project } });
         var unknown = await SendAsync(client, HttpMethod.Put, "/api/v1/users/999999/assignments", admin,
-            new { managerId = (int?)null, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = (int?)null, managerProjectIds = Array.Empty<int>() });
 
         Assert.Equal(HttpStatusCode.BadRequest, notAManager.StatusCode);
         Assert.Contains("active Manager", await notAManager.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.BadRequest, departmentsForEmployee.StatusCode);
-        Assert.Contains("Only a Manager", await departmentsForEmployee.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, projectsForEmployee.StatusCode);
+        Assert.Contains("Only a Manager", await projectsForEmployee.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 
@@ -159,12 +159,12 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var before = await SnapshotAsync();
         await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{mine.Id}/assignments", admin,
-            new { managerId = manager.Id, managerDepartmentIds = Array.Empty<int>() });
+            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
         await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{theirs.Id}/assignments", admin,
-            new { managerId = otherManager.Id, managerDepartmentIds = Array.Empty<int>() });
-        var departmentId = await AddDepartmentAsync("MA Dept 4");
+            new { managerId = otherManager.Id, managerProjectIds = Array.Empty<int>() });
+        var projectId = await AddProjectAsync("MA Dept 4");
         await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{manager.Id}/assignments", admin,
-            new { managerId = (int?)null, managerDepartmentIds = new[] { departmentId } });
+            new { managerId = (int?)null, managerProjectIds = new[] { projectId } });
         var after = await SnapshotAsync();
 
         Assert.Equal(before, after);
@@ -189,14 +189,14 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return await db.Users.IgnoreQueryFilters().AsNoTracking().SingleAsync(user => user.Username == username);
     }
 
-    private async Task<int> AddDepartmentAsync(string name)
+    private async Task<int> AddProjectAsync(string name)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var department = new Department { Name = name, CreatedAt = DateTime.UtcNow };
-        db.Departments.Add(department);
+        var project = new Project { Name = name, CreatedAt = DateTime.UtcNow };
+        db.Projects.Add(project);
         await db.SaveChangesAsync();
-        return department.Id;
+        return project.Id;
     }
 
     private async Task AddTaskAsync(string title, int assignedTo, int createdBy)

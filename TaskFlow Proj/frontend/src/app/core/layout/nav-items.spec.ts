@@ -55,14 +55,15 @@ describe('buildNavigation', () => {
       expect(child(communication.children!, 'Mail').badge).toBe('mail');
     });
 
-    it('groups Employee Management and Project Management under TaskFlow Management', () => {
+    it('groups Employee Management, Project Management and Department Management under TaskFlow Management', () => {
       const taskflow = child(admin, 'TaskFlow Management');
       expect(taskflow.route).toBeUndefined();
       expect(taskflow.children!.map((item) => item.label)).toEqual([
         'Employee Management',
-        'Project Management'
+        'Project Management',
+        'Department Management'
       ]);
-      expect(taskflow.children!.map((item) => item.route)).toEqual(['/employees', '/departments']);
+      expect(taskflow.children!.map((item) => item.route)).toEqual(['/employees', '/projects', '/departments']);
     });
 
     it('keeps Dashboard, Reports and My Profile top-level and orders the sidebar', () => {
@@ -100,6 +101,13 @@ describe('buildNavigation', () => {
       expect(monitoring.children!.map((item) => item.route)).toEqual(['/tasks', '/workload', '/board']);
     });
 
+    it('shows the read-only Project Management screen and no Department Management', () => {
+      const taskflow = child(manager, 'TaskFlow Management');
+      expect(taskflow.route).toBeUndefined();
+      expect(taskflow.children!.map((item) => item.label)).toEqual(['Project Management']);
+      expect(taskflow.children!.map((item) => item.route)).toEqual(['/projects']);
+    });
+
     it('groups Mail and Notifications under Communication Management', () => {
       const communication = child(manager, 'Communication Management');
       expect(communication.children!.map((item) => item.label)).toEqual(['Mail', 'Notifications']);
@@ -116,6 +124,7 @@ describe('buildNavigation', () => {
       expect(manager.map((item) => item.label)).toEqual([
         'Dashboard',
         'TaskFlow Monitoring',
+        'TaskFlow Management',
         'Communication Management',
         'Reports',
         'Settings',
@@ -177,7 +186,7 @@ describe('buildNavigation', () => {
         Permissions.ReportsView,
         Permissions.WorkloadView,
         Permissions.SettingsReminders,
-        Permissions.DepartmentsManage
+        Permissions.ProjectsView
       ]);
 
       expect(nav.map((item) => item.label)).toEqual([

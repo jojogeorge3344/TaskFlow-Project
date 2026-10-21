@@ -1,4 +1,4 @@
-/* Two deadline dates, employee, department, status, priority and reset. */
+/* Two deadline dates, employee, project, status, priority and reset. */
 .report-toolbar {
   grid-template-columns: repeat(3, minmax(10rem, 1fr)) repeat(3, minmax(8rem, 1fr)) auto;
 }

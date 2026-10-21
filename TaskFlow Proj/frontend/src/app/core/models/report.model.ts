@@ -6,7 +6,7 @@ export interface ReportFilter {
   deadlineFrom?: string | null;
   deadlineTo?: string | null;
   assignedToUserId?: number | null;
-  departmentId?: number | null;
+  projectId?: number | null;
   status?: TaskStatus | null;
   priority?: TaskPriority | null;
 }

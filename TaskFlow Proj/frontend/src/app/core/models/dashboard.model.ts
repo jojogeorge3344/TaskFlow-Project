@@ -1,7 +1,7 @@
 export interface AdminDashboardStats {
   totalEmployees: number;
   activeEmployees: number;
-  totalDepartments: number;
+  totalProjects: number;
   totalTasks: number;
   pendingTasks: number;
   completedTasks: number;

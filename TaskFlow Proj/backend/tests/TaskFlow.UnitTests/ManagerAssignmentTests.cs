@@ -47,126 +47,126 @@ public class ManagerAssignmentTests : IAsyncDisposable
         return user;
     }
 
-    private Department AddDepartment(string name)
+    private Project AddProject(string name)
     {
-        var department = new Department { Name = name, CreatedAt = DateTime.UtcNow };
-        _db.Departments.Add(department);
+        var project = new Project { Name = name, CreatedAt = DateTime.UtcNow };
+        _db.Projects.Add(project);
         _db.SaveChanges();
-        return department;
+        return project;
     }
 
-    private Task<UserDto?> AssignAsync(int userId, int? managerId, params int[] departmentIds) =>
-        _service.UpdateManagerAssignmentsAsync(userId, new ManagerAssignmentRequest(managerId, departmentIds), default);
+    private Task<UserDto?> AssignAsync(int userId, int? managerId, params int[] projectIds) =>
+        _service.UpdateManagerAssignmentsAsync(userId, new ManagerAssignmentRequest(managerId, projectIds), default);
 
-    private Task<List<int>> DepartmentIdsAsync(int managerId) =>
-        _db.ManagerDepartments.Where(link => link.ManagerUserId == managerId).Select(link => link.DepartmentId).OrderBy(id => id).ToListAsync();
+    private Task<List<int>> ProjectIdsAsync(int managerId) =>
+        _db.ManagerProjects.Where(link => link.ManagerUserId == managerId).Select(link => link.ProjectId).OrderBy(id => id).ToListAsync();
 
-    // ------------------------------------------------------------------ departments
+    // ------------------------------------------------------------------ projects
 
     [Fact]
-    public async Task AManagerCanHaveSeveralDepartmentsAndTheyAreListedWithTheirNames()
+    public async Task AManagerCanHaveSeveralProjectsAndTheyAreListedWithTheirNames()
     {
         var manager = AddUser("mgr1", SystemRoles.ManagerId);
-        var finance = AddDepartment("Finance");
-        var ops = AddDepartment("Operations");
-        var hr = AddDepartment("HR");
+        var finance = AddProject("Finance");
+        var ops = AddProject("Operations");
+        var hr = AddProject("HR");
 
         var dto = await AssignAsync(manager.Id, null, finance.Id, ops.Id, hr.Id);
 
-        Assert.Equal(["Finance", "HR", "Operations"], dto!.ManagerDepartments!.Select(d => d.Name));
-        Assert.Equal(3, (await DepartmentIdsAsync(manager.Id)).Count);
+        Assert.Equal(["Finance", "HR", "Operations"], dto!.ManagerProjects!.Select(d => d.Name));
+        Assert.Equal(3, (await ProjectIdsAsync(manager.Id)).Count);
     }
 
     [Fact]
     public async Task SavingADifferentSetReplacesTheOldOneAndAnEmptySetRemovesAll()
     {
         var manager = AddUser("mgr2", SystemRoles.ManagerId);
-        var a = AddDepartment("A");
-        var b = AddDepartment("B");
-        var c = AddDepartment("C");
+        var a = AddProject("A");
+        var b = AddProject("B");
+        var c = AddProject("C");
         await AssignAsync(manager.Id, null, a.Id, b.Id);
 
         await AssignAsync(manager.Id, null, b.Id, c.Id);
-        Assert.Equal([b.Id, c.Id], await DepartmentIdsAsync(manager.Id));
+        Assert.Equal([b.Id, c.Id], await ProjectIdsAsync(manager.Id));
 
         await AssignAsync(manager.Id, null);
-        Assert.Empty(await DepartmentIdsAsync(manager.Id));
+        Assert.Empty(await ProjectIdsAsync(manager.Id));
     }
 
     [Fact]
-    public async Task ADepartmentCanHaveSeveralManagers()
+    public async Task AProjectCanHaveSeveralManagers()
     {
         var one = AddUser("mgr3a", SystemRoles.ManagerId);
         var two = AddUser("mgr3b", SystemRoles.ManagerId);
-        var shared = AddDepartment("Shared");
+        var shared = AddProject("Shared");
 
         await AssignAsync(one.Id, null, shared.Id);
         await AssignAsync(two.Id, null, shared.Id);
 
-        Assert.Equal(2, await _db.ManagerDepartments.CountAsync(link => link.DepartmentId == shared.Id));
+        Assert.Equal(2, await _db.ManagerProjects.CountAsync(link => link.ProjectId == shared.Id));
     }
 
     [Fact]
-    public async Task OnlyAManagerCanBeGivenDepartments()
+    public async Task OnlyAManagerCanBeGivenProjects()
     {
         var employee = AddUser("emp4");
         var admin = AddUser("adm4", SystemRoles.AdministratorId);
-        var department = AddDepartment("Dept 4");
+        var project = AddProject("Dept 4");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(employee.Id, null, department.Id));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(admin.Id, null, department.Id));
-        Assert.False(await _db.ManagerDepartments.AnyAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(employee.Id, null, project.Id));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(admin.Id, null, project.Id));
+        Assert.False(await _db.ManagerProjects.AnyAsync());
     }
 
     [Fact]
-    public async Task AnEmptyDepartmentSetIsFineForAnyone()
+    public async Task AnEmptyProjectSetIsFineForAnyone()
     {
         var employee = AddUser("emp5");
 
         var dto = await AssignAsync(employee.Id, null);
 
         Assert.NotNull(dto);
-        Assert.Empty(dto!.ManagerDepartments!);
+        Assert.Empty(dto!.ManagerProjects!);
     }
 
     [Fact]
-    public async Task AMissingDepartmentIsRejectedAndNothingIsSaved()
+    public async Task AMissingProjectIsRejectedAndNothingIsSaved()
     {
         var manager = AddUser("mgr6", SystemRoles.ManagerId);
-        var real = AddDepartment("Real");
+        var real = AddProject("Real");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(manager.Id, null, real.Id, 9999));
 
-        Assert.Empty(await DepartmentIdsAsync(manager.Id));
+        Assert.Empty(await ProjectIdsAsync(manager.Id));
     }
 
     [Fact]
-    public async Task ADeletedDepartmentDisappearsFromTheManagersDepartments()
+    public async Task ADeletedProjectDisappearsFromTheManagersProjects()
     {
         var manager = AddUser("mgr7", SystemRoles.ManagerId);
-        var keep = AddDepartment("Keep");
-        var drop = AddDepartment("Drop");
+        var keep = AddProject("Keep");
+        var drop = AddProject("Drop");
         await AssignAsync(manager.Id, null, keep.Id, drop.Id);
 
-        Assert.True(await new DepartmentService(_db).DeleteAsync(drop.Id, default));
+        Assert.True(await new ProjectService(_db).DeleteAsync(drop.Id, default));
 
         var dto = await _service.GetByIdAsync(manager.Id, default);
-        Assert.Equal(["Keep"], dto!.ManagerDepartments!.Select(d => d.Name));
-        Assert.Equal([keep.Id], await DepartmentIdsAsync(manager.Id));
+        Assert.Equal(["Keep"], dto!.ManagerProjects!.Select(d => d.Name));
+        Assert.Equal([keep.Id], await ProjectIdsAsync(manager.Id));
     }
 
     [Fact]
-    public async Task ChangingAManagersRoleRemovesTheirDepartmentsAndTheirReportsLoseTheManager()
+    public async Task ChangingAManagersRoleRemovesTheirProjectsAndTheirReportsLoseTheManager()
     {
         var manager = AddUser("mgr8", SystemRoles.ManagerId);
         var report = AddUser("rep8", managerId: manager.Id);
-        var department = AddDepartment("Dept 8");
-        await AssignAsync(manager.Id, null, department.Id);
+        var project = AddProject("Dept 8");
+        await AssignAsync(manager.Id, null, project.Id);
         var request = new UpdateUserRequest(null, manager.FullName, manager.Username, manager.Email, SystemRoles.EmployeeId, null);
 
         await _service.UpdateAsync(manager.Id, request, default);
 
-        Assert.Empty(await DepartmentIdsAsync(manager.Id));
+        Assert.Empty(await ProjectIdsAsync(manager.Id));
         Assert.Null((await _db.Users.AsNoTracking().SingleAsync(u => u.Id == report.Id)).ManagerId);
     }
 
@@ -175,13 +175,13 @@ public class ManagerAssignmentTests : IAsyncDisposable
     {
         var manager = AddUser("mgr9", SystemRoles.ManagerId);
         var report = AddUser("rep9", managerId: manager.Id);
-        var department = AddDepartment("Dept 9");
-        await AssignAsync(manager.Id, null, department.Id);
+        var project = AddProject("Dept 9");
+        await AssignAsync(manager.Id, null, project.Id);
         var request = new UpdateUserRequest(null, "Renamed", manager.Username, manager.Email, SystemRoles.ManagerId, null);
 
         await _service.UpdateAsync(manager.Id, request, default);
 
-        Assert.Equal([department.Id], await DepartmentIdsAsync(manager.Id));
+        Assert.Equal([project.Id], await ProjectIdsAsync(manager.Id));
         Assert.Equal(manager.Id, (await _db.Users.AsNoTracking().SingleAsync(u => u.Id == report.Id)).ManagerId);
     }
 

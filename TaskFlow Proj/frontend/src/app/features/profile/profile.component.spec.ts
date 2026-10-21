@@ -20,8 +20,8 @@ describe('ProfileComponent', () => {
     roleId: 3,
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z',
-    departmentId: 1,
-    departmentName: 'Engineering'
+    projectId: 1,
+    projectName: 'Engineering'
   };
 
   let getSpy: jasmine.Spy;
@@ -89,13 +89,13 @@ describe('ProfileComponent', () => {
     expect(el(fixture).querySelector('[data-field="readonly-Team"]')).toBeNull();
   });
 
-  it('shows a manager their departments and team', () => {
+  it('shows a manager their projects and team', () => {
     getSpy.and.returnValue(
       of({
         ...me,
         role: 'Manager',
         roleId: 2,
-        managerDepartments: [{ id: 1, name: 'Engineering' }],
+        managerProjects: [{ id: 1, name: 'Engineering' }],
         reports: [{ id: 9, fullName: 'Sara' }]
       })
     );

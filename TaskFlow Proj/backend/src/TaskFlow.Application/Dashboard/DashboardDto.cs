@@ -3,7 +3,7 @@ namespace TaskFlow.Application.Dashboard;
 public record AdminDashboardDto(
     int TotalEmployees,
     int ActiveEmployees,
-    int TotalDepartments,
+    int TotalProjects,
     int TotalTasks,
     int PendingTasks,
     int CompletedTasks,

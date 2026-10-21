@@ -130,20 +130,20 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task ADeletedEmployeeLeavesPickersDepartmentsAndWorkloadButHistoryKeepsTheirName()
+    public async Task ADeletedEmployeeLeavesPickersProjectsAndWorkloadButHistoryKeepsTheirName()
     {
         var client = _factory.CreateClient();
         var admin = await SignInAsync(client, "del-admin-5", SystemRoles.Administrator);
         var adminUser = await UserAsync("del-admin-5");
         var employee = await SeedAsync("del-emp-5");
-        var departmentId = await AddDepartmentAsync("Delete Dept 5", employee.Id);
+        var projectId = await AddProjectAsync("Delete Dept 5", employee.Id);
         var finished = await AddTaskAsync("Finished by leaver", employee.Id, adminUser.Id, TaskStatus.Completed);
         var created = await AddTaskAsync("Created by leaver", adminUser.Id, employee.Id, TaskStatus.Completed);
         await AddCommentAsync(created.Id, employee.Id, "My last word");
 
         Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(client, HttpMethod.Delete, $"/api/v1/users/{employee.Id}", admin)).StatusCode);
 
-        var members = await (await SendAsync(client, HttpMethod.Get, $"/api/v1/departments/{departmentId}/employees", admin)).Content.ReadAsStringAsync();
+        var members = await (await SendAsync(client, HttpMethod.Get, $"/api/v1/projects/{projectId}/employees", admin)).Content.ReadAsStringAsync();
         Assert.DoesNotContain("del-emp-5", members);
 
         var workload = await (await SendAsync(client, HttpMethod.Get, "/api/v1/workload", admin)).Content.ReadAsStringAsync();
@@ -174,18 +174,18 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task DeletingAManagerClearsTheirReportsAndDepartments()
+    public async Task DeletingAManagerClearsTheirReportsAndProjects()
     {
         var client = _factory.CreateClient();
         var admin = await SignInAsync(client, "del-admin-6", SystemRoles.Administrator);
         var manager = await SeedAsync("del-mgr-6", SystemRoles.Manager);
         var report = await SeedAsync("del-report-6");
-        var departmentId = await AddDepartmentAsync("Delete Dept 6", null);
+        var projectId = await AddProjectAsync("Delete Dept 6", null);
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             (await db.Users.SingleAsync(user => user.Id == report.Id)).ManagerId = manager.Id;
-            db.ManagerDepartments.Add(new ManagerDepartment { ManagerUserId = manager.Id, DepartmentId = departmentId });
+            db.ManagerProjects.Add(new ManagerProject { ManagerUserId = manager.Id, ProjectId = projectId });
             await db.SaveChangesAsync();
         }
 
@@ -194,7 +194,7 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var check = _factory.Services.CreateScope();
         var checkDb = check.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Null((await checkDb.Users.SingleAsync(user => user.Id == report.Id)).ManagerId);
-        Assert.False(await checkDb.ManagerDepartments.AnyAsync(link => link.ManagerUserId == manager.Id));
+        Assert.False(await checkDb.ManagerProjects.AnyAsync(link => link.ManagerUserId == manager.Id));
     }
 
     // ------------------------------------------------------------------ tasks
@@ -402,20 +402,20 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("accessToken").GetString()!;
     }
 
-    private async Task<int> AddDepartmentAsync(string name, int? memberId)
+    private async Task<int> AddProjectAsync(string name, int? memberId)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var department = new Department { Name = name, CreatedAt = DateTime.UtcNow };
-        db.Departments.Add(department);
+        var project = new Project { Name = name, CreatedAt = DateTime.UtcNow };
+        db.Projects.Add(project);
         await db.SaveChangesAsync();
         if (memberId is int id)
         {
-            (await db.Users.SingleAsync(user => user.Id == id)).DepartmentId = department.Id;
+            (await db.Users.SingleAsync(user => user.Id == id)).ProjectId = project.Id;
             await db.SaveChangesAsync();
         }
 
-        return department.Id;
+        return project.Id;
     }
 
     private async Task<TaskEntity> AddTaskAsync(string title, int assignedTo, int createdBy, TaskStatus status)

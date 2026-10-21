@@ -1,6 +1,7 @@
 export * from '../auth/auth.models';
 export * from './dashboard.model';
 export * from './department.model';
+export * from './project.model';
 export * from './notification.model';
 export * from './report.model';
 export * from './role.model';

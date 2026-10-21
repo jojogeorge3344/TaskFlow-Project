@@ -57,7 +57,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task WhenTheSenderCreatedTheTaskTheDepartmentsManagerIsUsed()
+    public async Task WhenTheSenderCreatedTheTaskTheProjectsManagerIsUsed()
     {
         await using var h = new AssistantActionHarness();
         var task = h.Tracking.AddTask(h.Asha.Id, h.Asha.Id, "My own task");
@@ -70,7 +70,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task WithoutATaskTheDepartmentManagerIsUsed()
+    public async Task WithoutATaskTheProjectManagerIsUsed()
     {
         await using var h = new AssistantActionHarness();
 
@@ -80,7 +80,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task SeveralManagersInTheDepartmentMeansTheUserIsAsked()
+    public async Task SeveralManagersInTheProjectMeansTheUserIsAsked()
     {
         await using var h = new AssistantActionHarness();
         var kiran = h.AddUser("kiran", SystemRoles.Manager, h.Engineering.Id);
@@ -100,24 +100,24 @@ public class AssistantActionToolsTests
     {
         await using var h = new AssistantActionHarness();
         var loner = h.AddUser("loner", SystemRoles.Employee);
-        var noManagers = h.AddUser("othersdept", SystemRoles.Employee, (await AddDepartmentAsync(h, "Support")).Id);
+        var noManagers = h.AddUser("othersdept", SystemRoles.Employee, (await AddProjectAsync(h, "Support")).Id);
 
-        var noDepartment = await Run(DraftTool(h), h, loner, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
-        var emptyDepartment = await Run(DraftTool(h), h, noManagers, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
+        var noProject = await Run(DraftTool(h), h, loner, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
+        var emptyProject = await Run(DraftTool(h), h, noManagers, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
 
-        Assert.Null(noDepartment.PendingActionId);
-        Assert.Contains("not in a project", noDepartment.ResultForModel);
-        Assert.Null(emptyDepartment.PendingActionId);
-        Assert.Contains("could not find a manager", emptyDepartment.ResultForModel);
-        Assert.Contains("Ask the user", emptyDepartment.ResultForModel);
+        Assert.Null(noProject.PendingActionId);
+        Assert.Contains("not in a project", noProject.ResultForModel);
+        Assert.Null(emptyProject.PendingActionId);
+        Assert.Contains("could not find a manager", emptyProject.ResultForModel);
+        Assert.Contains("Ask the user", emptyProject.ResultForModel);
     }
 
-    private static async Task<TaskFlow.Domain.Entities.Department> AddDepartmentAsync(AssistantActionHarness h, string name)
+    private static async Task<TaskFlow.Domain.Entities.Project> AddProjectAsync(AssistantActionHarness h, string name)
     {
-        var department = new TaskFlow.Domain.Entities.Department { Name = name, CreatedAt = DateTime.UtcNow };
-        h.Db.Departments.Add(department);
+        var project = new TaskFlow.Domain.Entities.Project { Name = name, CreatedAt = DateTime.UtcNow };
+        h.Db.Projects.Add(project);
         await h.Db.SaveChangesAsync();
-        return department;
+        return project;
     }
 
     [Fact]
@@ -220,13 +220,13 @@ public class AssistantActionToolsTests
         var caller = AssistantActionHarness.Caller(h.Asha);
 
         var outcome = await Run(ProfileTool(h), h, h.Asha,
-            """{"fullName":"Asha Nair","role":"Administrator","departmentId":99,"isActive":false,"userId":1}""");
+            """{"fullName":"Asha Nair","role":"Administrator","projectId":99,"isActive":false,"userId":1}""");
         await h.Actions.ConfirmAsync(caller, outcome.PendingActionId!.Value);
 
         var user = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Asha.Id);
         Assert.Equal("Asha Nair", user.FullName);
         Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
-        Assert.Equal(h.Engineering.Id, user.DepartmentId);
+        Assert.Equal(h.Engineering.Id, user.ProjectId);
         Assert.True(user.IsActive);
         Assert.Equal(h.Asha.Email, user.Email);
         using var schema = JsonDocument.Parse(ProfileTool(h).ParametersSchema);

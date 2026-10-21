@@ -6,6 +6,7 @@ import { ShellComponent } from './core/layout/shell.component';
 import { AdminDashboardComponent } from './features/dashboard/admin-dashboard.component';
 import { EmployeeDashboardComponent } from './features/dashboard/employee-dashboard.component';
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
+import { ProjectListComponent } from './features/projects/project-list.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
 import { MailComponent } from './features/mail/mail.component';
@@ -79,6 +80,7 @@ describe('app routes', () => {
       'admin',
       'manager',
       'me',
+      'projects',
       'departments',
       'employees',
       'workload',
@@ -117,9 +119,13 @@ describe('app routes', () => {
     expect(me.canActivate).toBeUndefined();
   });
 
-  it('protects the management screens with their manage permissions', () => {
-    const expected: Record<string, string> = { employees: Permissions.EmployeesManage, departments: Permissions.DepartmentsManage };
-    for (const path of ['employees', 'departments']) {
+  it('protects the management screens with their view or manage permission', () => {
+    const expected: Record<string, string> = {
+      employees: Permissions.EmployeesManage,
+      projects: Permissions.ProjectsView,
+      departments: Permissions.DepartmentsManage
+    };
+    for (const path of ['employees', 'projects', 'departments']) {
       const route = childRoute(path);
       expect(route.canActivate).toEqual([permissionGuard]);
       expect(route.data?.['permissions']).toEqual([expected[path]]);
@@ -131,6 +137,7 @@ describe('app routes', () => {
     expect(await load(childRoute('manager'))).toBe(ManagerDashboardComponent);
     expect(await load(childRoute('me'))).toBe(EmployeeDashboardComponent);
     expect(await load(childRoute('employees'))).toBe(EmployeeListComponent);
+    expect(await load(childRoute('projects'))).toBe(ProjectListComponent);
     expect(await load(childRoute('departments'))).toBe(DepartmentListComponent);
   });
 

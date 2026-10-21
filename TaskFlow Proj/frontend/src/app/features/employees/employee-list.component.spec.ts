@@ -6,17 +6,22 @@ import { ComponentFixture, TestBed, fakeAsync, flush, flushMicrotasks, tick } fr
 import { AuthService } from '../../core/auth/auth.service';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { DepartmentWithCount, User } from '../../core/models';
+import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { ProjectService } from '../../core/services/project.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeListComponent, SEARCH_DEBOUNCE_MS } from './employee-list.component';
 
 describe('EmployeeListComponent', () => {
-  const departments: DepartmentWithCount[] = [
+  const projects: ProjectWithCount[] = [
     { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 2 },
     { id: 3, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 1 }
+  ];
+
+  const departments: DepartmentWithCount[] = [
+    { id: 5, name: 'Human Resources', description: null, createdAt: '2026-09-01', managerCount: 0, employeeCount: 2 }
   ];
 
   function user(overrides: Partial<User>): User {
@@ -31,18 +36,19 @@ describe('EmployeeListComponent', () => {
       isActive: true,
       createdAt: '2026-09-05T00:00:00Z',
       lastLoginAt: null,
-      departmentId: 1,
-      departmentName: 'Engineering',
+      projectId: 1,
+      projectName: 'Engineering',
       ...overrides
     };
   }
 
   const employees: User[] = [
     user({ id: 1 }),
-    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', departmentId: null, departmentName: null })
+    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', projectId: null, projectName: null })
   ];
 
   let getAllSpy: jasmine.Spy;
+  let departmentsGetAllSpy: jasmine.Spy;
   let updateStatusSpy: jasmine.Spy;
   let deleteSpy: jasmine.Spy;
   const currentUser = signal<{ id: number; permissions: string[] } | null>(null);
@@ -54,7 +60,8 @@ describe('EmployeeListComponent', () => {
       providers: [
         provideRouter([]),
         { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy, delete: deleteSpy } },
-        { provide: DepartmentService, useValue: { getAll: () => of(departments) } },
+        { provide: ProjectService, useValue: { getAll: () => of(projects) } },
+        { provide: DepartmentService, useValue: { getAll: departmentsGetAllSpy } },
         { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
         { provide: RoleService, useValue: { list: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
@@ -80,6 +87,7 @@ describe('EmployeeListComponent', () => {
   beforeEach(() => {
     queryParams = {};
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(employees));
+    departmentsGetAllSpy = jasmine.createSpy('getAll').and.returnValue(of(departments));
     updateStatusSpy = jasmine.createSpy('updateStatus').and.returnValue(of(employees[0]));
     deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
     currentUser.set(null);
@@ -197,26 +205,26 @@ describe('EmployeeListComponent', () => {
     expect(getAllSpy).toHaveBeenCalledOnceWith({ isActive: false });
   });
 
-  it('pre-filters by the departmentId query parameter', () => {
-    queryParams = { departmentId: '3' };
+  it('pre-filters by the projectId query parameter', () => {
+    queryParams = { projectId: '3' };
     configure();
     const fixture = create();
 
-    expect(getAllSpy).toHaveBeenCalledWith({ departmentId: 3 });
-    const select = el(fixture).querySelector('#emp-filter-department') as HTMLSelectElement;
+    expect(getAllSpy).toHaveBeenCalledWith({ projectId: 3 });
+    const select = el(fixture).querySelector('#emp-filter-project') as HTMLSelectElement;
     expect(select.value).toBe('3');
   });
 
-  it('writes the department filter back to the URL', () => {
+  it('writes the project filter back to the URL', () => {
     configure();
     const fixture = create();
     const navigateSpy = TestBed.inject(Router).navigate as jasmine.Spy;
 
-    fixture.componentInstance.setDepartment('1');
+    fixture.componentInstance.setProject('1');
 
     expect(navigateSpy).toHaveBeenCalledWith(
       [],
-      jasmine.objectContaining({ queryParams: { departmentId: 1 }, replaceUrl: true })
+      jasmine.objectContaining({ queryParams: { projectId: 1 }, replaceUrl: true })
     );
   });
 
@@ -277,6 +285,21 @@ describe('EmployeeListComponent', () => {
 
     expect(el(fixture).querySelector('.tf-drawer h2')?.textContent).toContain('Employee details');
     expect(el(fixture).querySelector('.tf-drawer')?.textContent).toContain('EMP-001');
+  }));
+
+  it('loads the departments and offers them in the add form', fakeAsync(() => {
+    configure();
+    const fixture = create();
+
+    expect(departmentsGetAllSpy).toHaveBeenCalled();
+
+    (el(fixture).querySelector('.tf-page-header .tf-btn--primary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    flush();
+
+    const select = el(fixture).querySelector('#emp-department') as HTMLSelectElement;
+    const options = Array.from(select.options).map((option) => option.text.trim());
+    expect(options).toEqual(['Unassigned', 'Human Resources']);
   }));
 
   it('does not deactivate when the confirmation is cancelled', fakeAsync(() => {

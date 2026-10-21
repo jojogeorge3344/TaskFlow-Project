@@ -3,8 +3,8 @@
 export interface EmployeeWorkload {
   userId: number;
   fullName: string;
-  departmentId: number | null;
-  departmentName: string | null;
+  projectId: number | null;
+  projectName: string | null;
   activeTasks: number;
   highPriorityTasks: number;
   overdueTasks: number;

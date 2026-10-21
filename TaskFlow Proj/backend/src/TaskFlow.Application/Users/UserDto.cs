@@ -12,22 +12,24 @@ public record UserDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? LastLoginAt,
-    int? DepartmentId,
-    string? DepartmentName,
+    int? ProjectId,
+    string? ProjectName,
+    int? DepartmentId = null,
+    string? DepartmentName = null,
     // Manager assignments are recorded data only; they do not change what anyone can see.
     int? ManagerId = null,
     string? ManagerName = null,
-    // For a manager: the departments they are assigned to and the people who report to them.
-    IReadOnlyList<ManagerDepartmentDto>? ManagerDepartments = null,
+    // For a manager: the projects they oversee and the people who report to them.
+    IReadOnlyList<ManagerProjectDto>? ManagerProjects = null,
     IReadOnlyList<ManagerReportDto>? Reports = null);
 
-public record ManagerDepartmentDto(int Id, string Name);
+public record ManagerProjectDto(int Id, string Name);
 
 public record ManagerReportDto(int Id, string FullName);
 
-/// <summary>Replaces a user's manager and, for a manager, the departments they are assigned to. Both fields are
-/// explicit: a null manager clears it and an empty list removes every department.</summary>
-public record ManagerAssignmentRequest(int? ManagerId, IReadOnlyCollection<int>? ManagerDepartmentIds);
+/// <summary>Replaces a user's manager and, for a manager, the projects they oversee. Both fields are
+/// explicit: a null manager clears it and an empty list removes every project.</summary>
+public record ManagerAssignmentRequest(int? ManagerId, IReadOnlyCollection<int>? ManagerProjectIds);
 
 public record CreateUserRequest(
     string? EmployeeCode,
@@ -37,7 +39,8 @@ public record CreateUserRequest(
     string Password,
     int RoleId,
     bool IsActive,
-    int? DepartmentId);
+    int? ProjectId,
+    int? DepartmentId = null);
 
 public record UpdateUserRequest(
     string? EmployeeCode,
@@ -45,7 +48,8 @@ public record UpdateUserRequest(
     string Username,
     string Email,
     int RoleId,
-    int? DepartmentId,
+    int? ProjectId,
+    int? DepartmentId = null,
     // Optional new password; null or empty keeps the current one.
     string? Password = null);
 
@@ -53,6 +57,6 @@ public record UserStatusRequest(bool IsActive);
 
 public record UserListFilter(
     string? Search,
-    int? DepartmentId,
+    int? ProjectId,
     string? Role,
     bool? IsActive);

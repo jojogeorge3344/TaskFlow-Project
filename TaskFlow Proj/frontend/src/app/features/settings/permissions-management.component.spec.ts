@@ -15,6 +15,8 @@ const GROUPS: Record<string, string> = {
   [Permissions.DepartmentsManage]: 'Departments',
   [Permissions.EmployeesView]: 'Employees',
   [Permissions.EmployeesManage]: 'Employees',
+  [Permissions.ProjectsView]: 'Projects',
+  [Permissions.ProjectsManage]: 'Projects',
   [Permissions.TasksViewAll]: 'Tasks',
   [Permissions.TasksCreate]: 'Tasks',
   [Permissions.TasksUpdate]: 'Tasks',

@@ -3,7 +3,7 @@ import { Permissions } from '../core/auth/permissions';
 /** The permissions each system role holds, as the API seeds them. For specs only. */
 const MANAGER_PERMISSIONS: string[] = [
   Permissions.DashboardManager,
-  Permissions.DepartmentsView,
+  Permissions.ProjectsView,
   Permissions.EmployeesView,
   Permissions.TasksViewAll,
   Permissions.TasksCreate,

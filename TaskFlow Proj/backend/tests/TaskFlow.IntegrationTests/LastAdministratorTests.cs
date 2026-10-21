@@ -50,7 +50,7 @@ public class LastAdministratorTests : IClassFixture<TaskFlowApiFactory>
             username,
             email = $"{username}@taskflow.com",
             roleId,
-            departmentId = (int?)null,
+            projectId = (int?)null,
             password = (string?)null
         });
         return await client.SendAsync(request);

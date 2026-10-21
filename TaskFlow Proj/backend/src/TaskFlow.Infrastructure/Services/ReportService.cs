@@ -9,7 +9,7 @@ namespace TaskFlow.Infrastructure.Services;
 
 /// <summary>Filtered task report aggregation and CSV row projection (Screen 17). Organization-wide
 /// for a Manager/Administrator, matching the dashboards' scoping (see the change design, D3), with the
-/// shared status and overdue rules (D7). Department is the assignee's department.</summary>
+/// shared status and overdue rules (D7). Project is the assignee's project.</summary>
 public class ReportService : IReportService
 {
     /// <summary>Upper bound on exported rows, so an unfiltered export cannot exhaust memory or
@@ -62,9 +62,9 @@ public class ReportService : IReportService
                 task.TaskCode,
                 task.Title,
                 task.AssignedTo == null ? string.Empty : task.AssignedTo.FullName,
-                task.AssignedTo == null || task.AssignedTo.Department == null
+                task.AssignedTo == null || task.AssignedTo.Project == null
                     ? string.Empty
-                    : task.AssignedTo.Department.Name,
+                    : task.AssignedTo.Project.Name,
                 task.Priority,
                 task.Status,
                 task.StartDate,
@@ -96,9 +96,9 @@ public class ReportService : IReportService
             tasks = tasks.Where(task => task.AssignedToUserId == filter.AssignedToUserId);
         }
 
-        if (filter.DepartmentId is not null)
+        if (filter.ProjectId is not null)
         {
-            tasks = tasks.Where(task => task.AssignedTo != null && task.AssignedTo.DepartmentId == filter.DepartmentId);
+            tasks = tasks.Where(task => task.AssignedTo != null && task.AssignedTo.ProjectId == filter.ProjectId);
         }
 
         if (filter.Status is not null)

@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { IconComponent } from '../../core/layout/icon.component';
 import {
-  DepartmentWithCount,
+  ProjectWithCount,
   ReportFilter,
   ReportSummary,
   TASK_PRIORITIES,
@@ -11,7 +11,7 @@ import {
   TaskRecipient,
   TaskStatus
 } from '../../core/models';
-import { DepartmentService } from '../../core/services/department.service';
+import { ProjectService } from '../../core/services/project.service';
 import { ReportService } from '../../core/services/report.service';
 import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import { saveBlob } from '../../shared/ui/save-blob';
@@ -31,7 +31,7 @@ export const REPORT_FILE_NAME = 'taskflow-report.csv';
 })
 export class ReportComponent implements OnInit {
   private readonly reportService = inject(ReportService);
-  private readonly departmentService = inject(DepartmentService);
+  private readonly projectService = inject(ProjectService);
   private readonly taskService = inject(TaskService);
   private readonly toast = inject(ToastService);
 
@@ -40,7 +40,7 @@ export class ReportComponent implements OnInit {
 
   readonly summary = signal<ReportSummary | null>(null);
   readonly assignees = signal<TaskRecipient[]>([]);
-  readonly departments = signal<DepartmentWithCount[]>([]);
+  readonly projects = signal<ProjectWithCount[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly exporting = signal(false);
@@ -48,7 +48,7 @@ export class ReportComponent implements OnInit {
   readonly deadlineFrom = signal('');
   readonly deadlineTo = signal('');
   readonly assignedToUserId = signal<number | null>(null);
-  readonly departmentId = signal<number | null>(null);
+  readonly projectId = signal<number | null>(null);
   readonly status = signal<TaskStatus | ''>('');
   readonly priority = signal<TaskPriority | ''>('');
 
@@ -61,8 +61,8 @@ export class ReportComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.departmentService.getAll().subscribe({
-      next: (departments) => this.departments.set(departments)
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects)
     });
     this.taskService.getAssignees().subscribe({
       next: (assignees) => this.assignees.set(assignees)
@@ -102,8 +102,8 @@ export class ReportComponent implements OnInit {
     this.load();
   }
 
-  setDepartment(value: string): void {
-    this.departmentId.set(value ? Number(value) : null);
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
     this.load();
   }
 
@@ -121,7 +121,7 @@ export class ReportComponent implements OnInit {
     this.deadlineFrom.set('');
     this.deadlineTo.set('');
     this.assignedToUserId.set(null);
-    this.departmentId.set(null);
+    this.projectId.set(null);
     this.status.set('');
     this.priority.set('');
     this.load();
@@ -147,7 +147,7 @@ export class ReportComponent implements OnInit {
     if (this.deadlineFrom()) filter.deadlineFrom = startOfLocalDay(this.deadlineFrom());
     if (this.deadlineTo()) filter.deadlineTo = endOfLocalDay(this.deadlineTo());
     if (this.assignedToUserId() !== null) filter.assignedToUserId = this.assignedToUserId();
-    if (this.departmentId() !== null) filter.departmentId = this.departmentId();
+    if (this.projectId() !== null) filter.projectId = this.projectId();
     if (this.status()) filter.status = this.status() as TaskStatus;
     if (this.priority()) filter.priority = this.priority() as TaskPriority;
     return filter;

@@ -31,6 +31,11 @@ public class User
 
     public bool IsDeleted { get; set; }
 
+    public int? ProjectId { get; set; }
+
+    public Project? Project { get; set; }
+
+    /// <summary>The department this employee belongs to, if any. Set from the Department Management screen or the employee form.</summary>
     public int? DepartmentId { get; set; }
 
     public Department? Department { get; set; }
@@ -42,8 +47,11 @@ public class User
 
     public ICollection<User> Reports { get; set; } = new List<User>();
 
-    /// <summary>For a manager: the departments they are assigned to.</summary>
-    public ICollection<ManagerDepartment> ManagerDepartments { get; set; } = new List<ManagerDepartment>();
+    /// <summary>For a manager: the projects they oversee.</summary>
+    public ICollection<ManagerProject> ManagerProjects { get; set; } = new List<ManagerProject>();
+
+    /// <summary>For a manager: the departments they manage.</summary>
+    public ICollection<DepartmentManager> ManagedDepartments { get; set; } = new List<DepartmentManager>();
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

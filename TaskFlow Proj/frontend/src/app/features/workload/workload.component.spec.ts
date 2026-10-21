@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { DepartmentWithCount, EmployeeWorkload } from '../../core/models';
-import { DepartmentService } from '../../core/services/department.service';
+import { ProjectWithCount, EmployeeWorkload } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { WorkloadService } from '../../core/services/workload.service';
 import { WorkloadComponent } from './workload.component';
 
@@ -11,8 +11,8 @@ describe('WorkloadComponent', () => {
     return {
       userId: 1,
       fullName: 'Joe Thomas',
-      departmentId: 1,
-      departmentName: 'Engineering',
+      projectId: 1,
+      projectName: 'Engineering',
       activeTasks: 1,
       highPriorityTasks: 0,
       overdueTasks: 0,
@@ -21,7 +21,7 @@ describe('WorkloadComponent', () => {
     };
   }
 
-  const departments: DepartmentWithCount[] = [
+  const projects: ProjectWithCount[] = [
     { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2 },
     { id: 2, name: 'Sales', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 1 }
   ];
@@ -43,17 +43,17 @@ describe('WorkloadComponent', () => {
     getWorkloadSpy = jasmine.createSpy('getWorkload').and.returnValue(
       of([
         employee({ userId: 1, fullName: 'Joe Thomas', activeTasks: 1 }),
-        employee({ userId: 2, fullName: 'Maya Manager', departmentId: 2, departmentName: 'Sales', activeTasks: 1 }),
+        employee({ userId: 2, fullName: 'Maya Manager', projectId: 2, projectName: 'Sales', activeTasks: 1 }),
         employee({ userId: 3, fullName: 'Sam Overloaded', activeTasks: 4, overdueTasks: 1, highPriorityTasks: 2, completedTasks: 3 })
       ])
     );
-    getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(departments));
+    getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(projects));
 
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         { provide: WorkloadService, useValue: { getWorkload: getWorkloadSpy } },
-        { provide: DepartmentService, useValue: { getAll: getAllSpy } }
+        { provide: ProjectService, useValue: { getAll: getAllSpy } }
       ]
     });
   });
@@ -71,14 +71,14 @@ describe('WorkloadComponent', () => {
     expect(getWorkloadSpy).toHaveBeenCalledWith(null);
   });
 
-  it('filters the workload by department', () => {
+  it('filters the workload by project', () => {
     const fixture = create();
 
-    fixture.componentInstance.setDepartment('2');
+    fixture.componentInstance.setProject('2');
 
     expect(getWorkloadSpy).toHaveBeenCalledWith(2);
 
-    fixture.componentInstance.setDepartment('');
+    fixture.componentInstance.setProject('');
 
     expect(getWorkloadSpy).toHaveBeenCalledWith(null);
     expect(getAllSpy).toHaveBeenCalled();

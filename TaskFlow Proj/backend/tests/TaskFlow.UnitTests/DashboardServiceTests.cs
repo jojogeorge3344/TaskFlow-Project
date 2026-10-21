@@ -10,11 +10,11 @@ public class DashboardServiceTests
     private static readonly DateTime Today = new(2026, 6, 1);
 
     [Fact]
-    public async Task GetAdminStatsAsync_ReturnsEmployeeDepartmentAndTaskCounts()
+    public async Task GetAdminStatsAsync_ReturnsEmployeeProjectAndTaskCounts()
     {
         await using var harness = DashboardServiceHarness.Create(Now);
-        harness.AddDepartment("Engineering");
-        harness.AddDepartment("Operations");
+        harness.AddProject("Engineering");
+        harness.AddProject("Operations");
 
         var admin = harness.AddUser("admin", role: SystemRoles.Administrator);
         harness.AddUser("active-employee");
@@ -31,7 +31,7 @@ public class DashboardServiceTests
 
         Assert.Equal(3, stats.TotalEmployees);
         Assert.Equal(2, stats.ActiveEmployees);
-        Assert.Equal(2, stats.TotalDepartments);
+        Assert.Equal(2, stats.TotalProjects);
         Assert.Equal(5, stats.TotalTasks);
         Assert.Equal(3, stats.PendingTasks);
         Assert.Equal(1, stats.CompletedTasks);

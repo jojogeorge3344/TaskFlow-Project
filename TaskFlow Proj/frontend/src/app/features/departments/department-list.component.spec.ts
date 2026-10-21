@@ -1,16 +1,33 @@
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DepartmentWithCount } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { DepartmentListComponent } from './department-list.component';
+import { DepartmentMembersDialogComponent } from './department-members-dialog.component';
 
 describe('DepartmentListComponent', () => {
   const departments: DepartmentWithCount[] = [
-    { id: 1, name: 'Engineering', description: 'Builds the platform', createdAt: '2026-09-01', employeeCount: 12 },
-    { id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0 },
-    { id: 3, name: 'Operations', description: 'Handles financial reporting', createdAt: '2026-09-01', employeeCount: 4 }
+    {
+      id: 1,
+      name: 'Engineering',
+      description: 'Builds the platform',
+      createdAt: '2026-09-01',
+      managerCount: 2,
+      employeeCount: 12
+    },
+    { id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', managerCount: 0, employeeCount: 0 },
+    {
+      id: 3,
+      name: 'Operations',
+      description: 'Keeps the lights on',
+      createdAt: '2026-09-01',
+      managerCount: 1,
+      employeeCount: 0
+    }
   ];
 
   let getAllSpy: jasmine.Spy;
@@ -27,8 +44,8 @@ describe('DepartmentListComponent', () => {
   }
 
   function card(fixture: ComponentFixture<DepartmentListComponent>, name: string): HTMLElement {
-    return Array.from(el(fixture).querySelectorAll<HTMLElement>('article.dept')).find(
-      (node) => node.querySelector('.dept__name')?.textContent?.trim() === name
+    return Array.from(el(fixture).querySelectorAll<HTMLElement>('article.department')).find(
+      (node) => node.querySelector('.department__name')?.textContent?.trim() === name
     )!;
   }
 
@@ -38,7 +55,19 @@ describe('DepartmentListComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [DepartmentListComponent],
-      providers: [provideRouter([]), { provide: DepartmentService, useValue: { getAll: getAllSpy, delete: deleteSpy } }]
+      providers: [
+        provideRouter([]),
+        {
+          provide: DepartmentService,
+          useValue: {
+            getAll: getAllSpy,
+            remove: deleteSpy,
+            getMembers: () => of({ departmentId: 1, managers: [], employees: [] }),
+            replaceMembers: () => of({ departmentId: 1, managers: [], employees: [] })
+          }
+        },
+        { provide: UserService, useValue: { getAll: () => of([]) } }
+      ]
     }).compileComponents();
   });
 
@@ -46,27 +75,29 @@ describe('DepartmentListComponent', () => {
     document.querySelectorAll('dialog[open]').forEach((dialog) => (dialog as HTMLDialogElement).close());
   });
 
-  it('shows the header count and one card per department', () => {
+  it('shows the header count and one card per department with its member counts', () => {
     const fixture = create();
 
-    expect(el(fixture).querySelector('.tf-page-header p')?.textContent).toContain('3 projects');
-    expect(el(fixture).querySelectorAll('article.dept').length).toBe(3);
+    expect(el(fixture).querySelector('.tf-page-header p')?.textContent).toContain('3 departments');
+    expect(el(fixture).querySelectorAll('article.department').length).toBe(3);
+    expect(card(fixture, 'Engineering').textContent).toContain('2');
+    expect(card(fixture, 'Engineering').textContent).toContain('managers');
     expect(card(fixture, 'Engineering').textContent).toContain('12');
     expect(card(fixture, 'Engineering').textContent).toContain('employees');
-    expect(card(fixture, 'Finance').querySelector('.dept__desc--none')?.textContent).toContain('No description');
+    expect(card(fixture, 'Finance').querySelector('.department__desc--none')?.textContent).toContain('No description');
   });
 
-  it('filters by name or description, case-insensitively, without calling the server', () => {
+  it('filters by name, case-insensitively, without calling the server', () => {
     const fixture = create();
     getAllSpy.calls.reset();
 
-    const input = el(fixture).querySelector('#dept-search') as HTMLInputElement;
-    input.value = 'FIN';
+    const input = el(fixture).querySelector('#department-search') as HTMLInputElement;
+    input.value = 'fin';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    const names = Array.from(el(fixture).querySelectorAll('.dept__name')).map((node) => node.textContent?.trim());
-    expect(names).toEqual(['Finance', 'Operations']);
+    const names = Array.from(el(fixture).querySelectorAll('.department__name')).map((node) => node.textContent?.trim());
+    expect(names).toEqual(['Finance']);
     expect(getAllSpy).not.toHaveBeenCalled();
   });
 
@@ -75,24 +106,58 @@ describe('DepartmentListComponent', () => {
     fixture.componentInstance.query.set('zzz');
     fixture.detectChanges();
 
-    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No projects match');
+    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No departments match');
   });
 
-  it('links View employees to the filtered employee list', () => {
+  it('opens the form dialog for a new department from the header button', () => {
     const fixture = create();
-    const link = card(fixture, 'Operations').querySelector('a') as HTMLAnchorElement;
 
-    expect(link.getAttribute('href')).toBe('/employees?departmentId=3');
+    (el(fixture).querySelector('.tf-page-header button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = el(fixture).querySelector('app-department-form-dialog dialog') as HTMLDialogElement;
+    expect(dialog.open).toBeTrue();
+    expect(dialog.querySelector('h2')?.textContent).toContain('Add department');
   });
 
-  it('guards Delete for a department that still has employees', fakeAsync(() => {
+  it('opens the form dialog prefilled from a card edit button', () => {
+    const fixture = create();
+
+    (card(fixture, 'Finance').querySelector('[data-action="edit"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = el(fixture).querySelector('app-department-form-dialog dialog') as HTMLDialogElement;
+    expect(dialog.open).toBeTrue();
+    expect(dialog.querySelector('h2')?.textContent).toContain('Edit department');
+    expect((dialog.querySelector('#department-name') as HTMLInputElement).value).toBe('Finance');
+  });
+
+  it('opens the members dialog from a card and reloads the list when it saves', () => {
+    const fixture = create();
+
+    (card(fixture, 'Engineering').querySelector('[aria-label="Manage members of Engineering"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = el(fixture).querySelector('app-department-members-dialog dialog') as HTMLDialogElement;
+    expect(dialog.open).toBeTrue();
+    expect(dialog.textContent).toContain('Manage members');
+
+    getAllSpy.calls.reset();
+    const membersDialog = fixture.debugElement.query(By.directive(DepartmentMembersDialogComponent));
+    membersDialog.componentInstance.saved.emit({ departmentId: 1, managers: [], employees: [] });
+    fixture.detectChanges();
+
+    expect(getAllSpy).toHaveBeenCalled();
+  });
+
+  it('guards Delete for a department that still has members', fakeAsync(() => {
     const fixture = create();
     const button = card(fixture, 'Engineering').querySelector('[data-action="delete"]') as HTMLButtonElement;
 
     expect(button.getAttribute('aria-disabled')).toBe('true');
-    expect(button.title).toContain('Reassign its employees');
+    expect(button.title).toContain('Remove its managers and employees');
     const hint = el(fixture).querySelector(`#${button.getAttribute('aria-describedby')}`);
-    expect(hint?.textContent).toContain('Reassign its 12 employees before deleting');
+    expect(hint?.textContent).toContain('Remove its 2 managers and 12 employees before deleting');
 
     button.click();
     fixture.detectChanges();
@@ -101,6 +166,14 @@ describe('DepartmentListComponent', () => {
     expect((el(fixture).querySelector('tf-confirm-dialog dialog') as HTMLDialogElement).open).toBeFalse();
     expect(deleteSpy).not.toHaveBeenCalled();
   }));
+
+  it('guards Delete for a department that only still has managers', () => {
+    const fixture = create();
+    const button = card(fixture, 'Operations').querySelector('[data-action="delete"]') as HTMLButtonElement;
+
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.title).toContain('Remove its managers and employees');
+  });
 
   it('deletes an empty department after confirmation and shows a toast', fakeAsync(() => {
     const fixture = create();
@@ -135,19 +208,19 @@ describe('DepartmentListComponent', () => {
     getAllSpy.and.returnValue(of([]));
     const fixture = create();
 
-    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No projects yet');
+    expect(el(fixture).querySelector('.tf-empty')?.textContent).toContain('No departments yet');
   });
 
   it('shows an error with Retry when loading fails', () => {
     getAllSpy.and.returnValue(throwError(() => new Error('offline')));
     const fixture = create();
 
-    expect(el(fixture).querySelector('[role="alert"]')?.textContent).toContain('Could not load projects');
+    expect(el(fixture).querySelector('[role="alert"]')?.textContent).toContain('Could not load departments');
 
     getAllSpy.and.returnValue(of(departments));
     (el(fixture).querySelector('[role="alert"] button') as HTMLButtonElement).click();
     fixture.detectChanges();
 
-    expect(el(fixture).querySelectorAll('article.dept').length).toBe(3);
+    expect(el(fixture).querySelectorAll('article.department').length).toBe(3);
   });
 });

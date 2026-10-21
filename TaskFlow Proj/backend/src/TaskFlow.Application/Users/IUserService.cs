@@ -9,9 +9,9 @@ public interface IUserService
     Task<UserDto?> UpdateAsync(int id, UpdateUserRequest request, CancellationToken cancellationToken);
     Task<UserDto?> UpdateStatusAsync(int id, UserStatusRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Replaces a user's manager and, for a manager, their departments. Returns null when the user does not
-    /// exist. Throws <see cref="InvalidOperationException"/> for an invalid manager, a non-manager given departments,
-    /// or a department that does not exist. Administrator-only; the caller enforces that.</summary>
+    /// <summary>Replaces a user's manager and, for a manager, the projects they oversee. Returns null when the user
+    /// does not exist. Throws <see cref="InvalidOperationException"/> for an invalid manager, a non-manager given
+    /// projects, or a project that does not exist. Administrator-only; the caller enforces that.</summary>
     Task<UserDto?> UpdateManagerAssignmentsAsync(int id, ManagerAssignmentRequest request, CancellationToken cancellationToken);
 
     /// <summary>Soft-deletes a user and ends their sessions. Returns false when the user does not exist.

@@ -38,6 +38,13 @@ export const routes: Routes = [
           import('./features/dashboard/employee-dashboard.component').then((m) => m.EmployeeDashboardComponent)
       },
       {
+        path: 'projects',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.ProjectsView] },
+        loadComponent: () =>
+          import('./features/projects/project-list.component').then((m) => m.ProjectListComponent)
+      },
+      {
         path: 'departments',
         canActivate: [permissionGuard],
         data: { permissions: [Permissions.DepartmentsManage] },

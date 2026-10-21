@@ -12,8 +12,8 @@ public class Task
     public User? AssignedTo { get; set; }
     public int CreatedByUserId { get; set; }
     public User? CreatedBy { get; set; }
-    public int? DepartmentId { get; set; }
-    public Department? Department { get; set; }
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
     public TaskPriority Priority { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime Deadline { get; set; }

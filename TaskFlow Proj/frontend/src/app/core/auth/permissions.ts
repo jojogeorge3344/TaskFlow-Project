@@ -6,6 +6,8 @@ export const Permissions = {
   DepartmentsManage: 'departments.manage',
   EmployeesView: 'employees.view',
   EmployeesManage: 'employees.manage',
+  ProjectsView: 'projects.view',
+  ProjectsManage: 'projects.manage',
   TasksViewAll: 'tasks.view.all',
   TasksCreate: 'tasks.create',
   TasksUpdate: 'tasks.update',

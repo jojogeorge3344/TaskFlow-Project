@@ -221,6 +221,17 @@
   padding-left: 2.5rem;
 }
 
+/* Child labels ("Project Management", "Department Management") wrap instead of being
+   truncated, so the full module name stays readable at the default sidebar width. */
+.nav__item--child .nav__text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  padding-block: 0.25rem;
+}
+
 .nav__tip {
   display: none;
 }

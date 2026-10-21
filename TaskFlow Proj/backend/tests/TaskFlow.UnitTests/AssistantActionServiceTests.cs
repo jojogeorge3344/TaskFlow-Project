@@ -354,7 +354,7 @@ public class AssistantActionServiceTests
         Assert.Equal("Asha Nair", user.FullName);
         Assert.Equal("asha.nair@taskflow.com", user.Email);
         Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
-        Assert.Equal(h.Engineering.Id, user.DepartmentId);
+        Assert.Equal(h.Engineering.Id, user.ProjectId);
         Assert.True(user.IsActive);
     }
 
@@ -376,7 +376,7 @@ public class AssistantActionServiceTests
         Assert.Equal(before.FullName, after.FullName);
         Assert.Equal(before.Email, after.Email);
         Assert.Equal(before.Username, after.Username);
-        Assert.Equal(before.DepartmentId, after.DepartmentId);
+        Assert.Equal(before.ProjectId, after.ProjectId);
         Assert.Equal(before.IsActive, after.IsActive);
         Assert.Equal(before.PasswordHash, after.PasswordHash);
         Assert.NotEqual(before.SecurityStamp, after.SecurityStamp);

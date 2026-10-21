@@ -12,5 +12,7 @@ public class Department
 
     public bool IsDeleted { get; set; }
 
+    public ICollection<DepartmentManager> ManagerLinks { get; set; } = new List<DepartmentManager>();
+
     public ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -79,7 +79,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.Equal("self3", reloaded.Username);
         Assert.Equal(SystemRoles.EmployeeId, reloaded.RoleId);
-        Assert.Equal(user.DepartmentId, reloaded.DepartmentId);
+        Assert.Equal(user.ProjectId, reloaded.ProjectId);
         Assert.True(reloaded.IsActive);
     }
 

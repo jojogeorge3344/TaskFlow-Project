@@ -1,7 +1,14 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateDepartmentRequest, Department, DepartmentWithCount, UpdateDepartmentRequest, User } from '../models';
+import {
+  CreateDepartmentRequest,
+  Department,
+  DepartmentMembers,
+  DepartmentWithCount,
+  UpdateDepartmentMembersRequest,
+  UpdateDepartmentRequest
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class DepartmentService {
@@ -16,10 +23,6 @@ export class DepartmentService {
     return this.http.get<Department>(`${this.baseUrl}/${id}`);
   }
 
-  getEmployees(id: number): Observable<User[]> {
-    return this.http.get<User[]>(`${this.baseUrl}/${id}/employees`);
-  }
-
   create(request: CreateDepartmentRequest): Observable<Department> {
     return this.http.post<Department>(this.baseUrl, request);
   }
@@ -28,7 +31,16 @@ export class DepartmentService {
     return this.http.put<Department>(`${this.baseUrl}/${id}`, request);
   }
 
-  delete(id: number): Observable<void> {
+  remove(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  getMembers(id: number): Observable<DepartmentMembers> {
+    return this.http.get<DepartmentMembers>(`${this.baseUrl}/${id}/members`);
+  }
+
+  /** Replaces the department's managers and employees in one call. */
+  replaceMembers(id: number, request: UpdateDepartmentMembersRequest): Observable<DepartmentMembers> {
+    return this.http.put<DepartmentMembers>(`${this.baseUrl}/${id}/members`, request);
   }
 }

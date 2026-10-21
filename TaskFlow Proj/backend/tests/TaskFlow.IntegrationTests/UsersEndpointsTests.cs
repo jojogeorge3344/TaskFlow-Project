@@ -56,7 +56,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
             password = "Temp#12345",
             roleId = SystemRoles.ManagerId,
             isActive = true,
-            departmentId = (int?)null
+            projectId = (int?)null
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -222,7 +222,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
         username,
         email = $"{username}@taskflow.com",
         roleId,
-        departmentId = (int?)null,
+        projectId = (int?)null,
         password
     };
 

@@ -39,7 +39,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
     private string Name(string prefix) => $"{prefix}-{Interlocked.Increment(ref _counter)}-{Guid.NewGuid().ToString("N")[..6]}";
 
-    private async Task<(HttpClient Client, string Token, int Id, string Email)> SignInAsync(string prefix, string role, int? departmentId = null)
+    private async Task<(HttpClient Client, string Token, int Id, string Email)> SignInAsync(string prefix, string role, int? projectId = null)
     {
         var username = Name(prefix);
         var email = $"{username}@taskflow.com";
@@ -48,9 +48,9 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await db.Users.SingleAsync(u => u.Username == username);
-        if (departmentId is not null)
+        if (projectId is not null)
         {
-            user.DepartmentId = departmentId;
+            user.ProjectId = projectId;
             await db.SaveChangesAsync();
         }
 
@@ -76,14 +76,14 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task<int> CreateDepartmentAsync()
+    private async Task<int> CreateProjectAsync()
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var department = new Department { Name = Name("dept"), CreatedAt = DateTime.UtcNow };
-        db.Departments.Add(department);
+        var project = new Project { Name = Name("dept"), CreatedAt = DateTime.UtcNow };
+        db.Projects.Add(project);
         await db.SaveChangesAsync();
-        return department.Id;
+        return project.Id;
     }
 
     private async Task<T> DbAsync<T>(Func<AppDbContext, Task<T>> query)
@@ -308,10 +308,10 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task DraftingThenConfirmingSendsTheMailAsTheUserAndOnlyTheirConfirmDoes()
     {
         await ConfigureOllamaAsync();
-        var departmentId = await CreateDepartmentAsync();
-        var (managerClient, managerToken, managerId, managerEmail) = await SignInAsync("boss", SystemRoles.Manager, departmentId);
-        var (client, token, userId, _) = await SignInAsync("emp", SystemRoles.Employee, departmentId);
-        var (otherClient, otherToken, _, _) = await SignInAsync("snoop", SystemRoles.Employee, departmentId);
+        var projectId = await CreateProjectAsync();
+        var (managerClient, managerToken, managerId, managerEmail) = await SignInAsync("boss", SystemRoles.Manager, projectId);
+        var (client, token, userId, _) = await SignInAsync("emp", SystemRoles.Employee, projectId);
+        var (otherClient, otherToken, _, _) = await SignInAsync("snoop", SystemRoles.Employee, projectId);
         _factory.Providers[AiProviderKind.Ollama].Handler = (_, request) => AnswersToolResult(request)
             ? ChatModelResult.FromText("unused")
             : ToolCall("draft_mail", """{"recipient":"manager","subject":"Update on TF-102","body":"It is in review."}""");

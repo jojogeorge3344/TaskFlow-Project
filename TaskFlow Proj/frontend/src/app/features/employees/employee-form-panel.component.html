@@ -89,7 +89,16 @@
         }
       </div>
       <div class="tf-field">
-        <label for="emp-department">Project</label>
+        <label for="emp-project">Project</label>
+        <select id="emp-project" class="tf-select" formControlName="projectId">
+          <option [ngValue]="null">Unassigned</option>
+          @for (project of projects(); track project.id) {
+            <option [ngValue]="project.id">{{ project.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="tf-field">
+        <label for="emp-department">Department</label>
         <select id="emp-department" class="tf-select" formControlName="departmentId">
           <option [ngValue]="null">Unassigned</option>
           @for (department of departments(); track department.id) {
@@ -113,17 +122,17 @@
       </div>
 
       @if (isManagerRole()) {
-        <fieldset class="tf-field" data-field="manager-departments">
+        <fieldset class="tf-field" data-field="manager-projects">
           <legend>Projects this manager oversees</legend>
-          @for (department of departments(); track department.id) {
+          @for (project of projects(); track project.id) {
             <label class="tf-check">
               <input
                 type="checkbox"
-                [attr.data-department]="department.id"
-                [checked]="isDepartmentChosen(department.id)"
-                (change)="toggleDepartment(department.id, $any($event.target).checked)"
+                [attr.data-project]="project.id"
+                [checked]="isProjectChosen(project.id)"
+                (change)="toggleProject(project.id, $any($event.target).checked)"
               />
-              {{ department.name }}
+              {{ project.name }}
             </label>
           } @empty {
             <span class="tf-field__hint">There are no projects yet.</span>

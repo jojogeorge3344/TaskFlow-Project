@@ -91,7 +91,7 @@ public class AssistantUserResolver
 }
 
 /// <summary>"Who is my manager?" TaskFlow has no manager field, so the answer is the task's creator when that is a
-/// different active user, otherwise the single active Manager in the sender's department. With none, or several, the
+/// different active user, otherwise the single active Manager in the sender's project. With none, or several, the
 /// user is asked to choose.</summary>
 public class AssistantManagerResolver
 {
@@ -130,19 +130,19 @@ public class AssistantManagerResolver
             }
         }
 
-        var departmentId = await _dbContext.Users
+        var projectId = await _dbContext.Users
             .AsNoTracking()
             .Where(user => user.Id == caller.UserId)
-            .Select(user => user.DepartmentId)
+            .Select(user => user.ProjectId)
             .FirstOrDefaultAsync(cancellationToken);
-        if (departmentId is null)
+        if (projectId is null)
         {
             return new Result(null, [], "You are not in a project, so I cannot tell who your manager is.");
         }
 
         var managers = await _dbContext.Users
             .AsNoTracking()
-            .Where(user => user.DepartmentId == departmentId && user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId)
+            .Where(user => user.ProjectId == projectId && user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId)
             .OrderBy(user => user.FullName)
             .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
             .ToListAsync(cancellationToken);

@@ -8,13 +8,13 @@ export class UserService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/v1/users';
 
-  getAll(params?: { search?: string; departmentId?: number; role?: string; isActive?: boolean }): Observable<User[]> {
+  getAll(params?: { search?: string; projectId?: number; role?: string; isActive?: boolean }): Observable<User[]> {
     let httpParams = new HttpParams();
     if (params?.search) {
       httpParams = httpParams.set('search', params.search);
     }
-    if (params?.departmentId !== undefined && params?.departmentId !== null) {
-      httpParams = httpParams.set('departmentId', params.departmentId.toString());
+    if (params?.projectId !== undefined && params?.projectId !== null) {
+      httpParams = httpParams.set('projectId', params.projectId.toString());
     }
     if (params?.role) {
       httpParams = httpParams.set('role', params.role);
@@ -41,7 +41,7 @@ export class UserService {
     return this.http.patch<User>(`${this.baseUrl}/${id}/status`, request);
   }
 
-  /** Administrator only. Replaces the user's manager and, for a manager, their departments. */
+  /** Administrator only. Replaces the user's manager and, for a manager, their projects. */
   updateAssignments(id: number, request: ManagerAssignmentRequest): Observable<User> {
     return this.http.put<User>(`${this.baseUrl}/${id}/assignments`, request);
   }

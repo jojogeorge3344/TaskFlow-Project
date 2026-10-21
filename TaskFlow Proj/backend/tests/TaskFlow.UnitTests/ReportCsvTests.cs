@@ -51,13 +51,13 @@ public class ReportCsvTests
 
     private static ReportRowDto Row(
         string title,
-        string department = "",
+        string project = "",
         DateTime? completedAt = null) =>
         new(
             "TSK-0001",
             title,
             "Alice Adams",
-            department,
+            project,
             TaskPriority.High,
             TaskStatus.ToDo,
             new DateTime(2026, 6, 1),
