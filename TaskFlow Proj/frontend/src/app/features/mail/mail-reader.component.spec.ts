@@ -49,7 +49,7 @@ describe('MailReaderComponent', () => {
   });
 
   it('shows an address in the body as a clickable link', () => {
-    const url = `${window.location.origin}/employees?resetRequest=abc-123`;
+    const url = `${window.location.origin}/tasks/42`;
     { const m = message({ body: `Open this request: ${url}\nThanks` }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
 
     const fixture = create();
@@ -63,7 +63,7 @@ describe('MailReaderComponent', () => {
   });
 
   it('opens a link to this application inside the app, without reloading', () => {
-    const url = `${window.location.origin}/employees?resetRequest=abc-123`;
+    const url = `${window.location.origin}/tasks/42`;
     { const m = message({ body: url }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
     const fixture = create();
     const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
@@ -72,7 +72,7 @@ describe('MailReaderComponent', () => {
     (el(fixture).querySelector('[data-link]') as HTMLAnchorElement).dispatchEvent(event);
 
     expect(event.defaultPrevented).toBeTrue();
-    expect(navigate).toHaveBeenCalledWith('/employees?resetRequest=abc-123');
+    expect(navigate).toHaveBeenCalledWith('/tasks/42');
   });
 
   it('opens another site in a new tab and leaves the click alone', () => {

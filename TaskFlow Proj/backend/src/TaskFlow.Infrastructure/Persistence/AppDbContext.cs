@@ -28,8 +28,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
     public DbSet<TaskActivityLog> TaskActivityLogs => Set<TaskActivityLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
-    public DbSet<LoginPasswordResetNotice> LoginPasswordResetNotices => Set<LoginPasswordResetNotice>();
     public DbSet<ReminderHistory> ReminderHistory => Set<ReminderHistory>();
     public DbSet<ApplicationSetting> ApplicationSettings => Set<ApplicationSetting>();
     public DbSet<MailMessage> MailMessages => Set<MailMessage>();
@@ -515,51 +513,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(audit => audit.Kind).HasConversion<string>().HasMaxLength(32);
             entity.Property(audit => audit.Outcome).IsRequired().HasMaxLength(32);
             entity.HasIndex(audit => new { audit.UserId, audit.At });
-        });
-
-        modelBuilder.Entity<PasswordResetRequest>(entity =>
-        {
-            entity.HasKey(request => request.Id);
-            entity.Property(request => request.FailureReason).HasMaxLength(500);
-            entity.Property(request => request.Origin).HasConversion<string>().HasMaxLength(16);
-            entity.Property(request => request.Status).HasConversion<string>().HasMaxLength(16);
-
-            // The public reference: admin UI and audit use it, so internal ids never leave the system.
-            entity.HasIndex(request => request.ReferenceId).IsUnique();
-            entity.HasIndex(request => request.Status);
-            entity.HasIndex(request => new { request.UserId, request.CreatedAt });
-
-            entity
-                .HasOne(request => request.User)
-                .WithMany()
-                .HasForeignKey(request => request.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity
-                .HasOne(request => request.ProcessedByUser)
-                .WithMany()
-                .HasForeignKey(request => request.ProcessedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
-        });
-
-        modelBuilder.Entity<LoginPasswordResetNotice>(entity =>
-        {
-            entity.HasKey(notice => notice.Id);
-
-            // One notice per account, always bound to the latest completed reset event.
-            entity.HasIndex(notice => notice.UserId).IsUnique();
-
-            entity
-                .HasOne(notice => notice.User)
-                .WithMany()
-                .HasForeignKey(notice => notice.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity
-                .HasOne(notice => notice.PasswordResetRequest)
-                .WithMany()
-                .HasForeignKey(notice => notice.PasswordResetRequestId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

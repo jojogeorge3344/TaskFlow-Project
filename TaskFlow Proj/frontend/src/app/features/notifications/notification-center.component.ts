@@ -18,8 +18,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   Reassigned: 'Task reassigned',
   DeadlineReminder: 'Deadline reminder',
   Overdue: 'Overdue',
-  System: 'System',
-  PasswordReset: 'Password reset'
+  System: 'System'
 };
 
 type ReadState = '' | 'unread' | 'read';

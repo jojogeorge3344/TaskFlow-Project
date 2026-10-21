@@ -1,7 +1,7 @@
 ---
 title: Change your password
 roles: all
-keywords: password, change password, reset password, forgot password, new password, passwd, credentials, security
+keywords: password, change password, new password, passwd, credentials, security
 link: /profile
 ---
 You change your own password on **My Profile**. Please do not type your password into this chat.
@@ -12,4 +12,4 @@ You change your own password on **My Profile**. Please do not type your password
 
 Your other signed-in sessions end when the password changes, so you will need to sign in again on other devices.
 
-If you have forgotten your current password, ask your system administrator to reset it.
+If you have forgotten your current password, contact your system administrator.

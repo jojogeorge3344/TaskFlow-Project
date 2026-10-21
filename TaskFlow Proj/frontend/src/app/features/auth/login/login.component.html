@@ -1,23 +1,5 @@
 <section class="login">
   <form class="login__card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    @if (credentialNotice()) {
-      <div class="login__bell-wrap" data-notice="credential">
-        <button
-          type="button"
-          class="login__bell"
-          data-action="notice-bell"
-          aria-label="New password set. Open the password update screen"
-          (click)="openResetScreen()"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-          </svg>
-          <span class="login__badge" aria-hidden="true">1</span>
-        </button>
-      </div>
-    }
-
     <header class="login__header">
       <div class="login__logo" aria-hidden="true">TF</div>
       <h1 class="login__title">TaskFlow</h1>
@@ -28,19 +10,12 @@
       <p class="login__notice" role="status">{{ notice }}</p>
     }
 
-    @if (credentialNotice() && signInHint()) {
-      <p class="login__notice" role="status" data-notice="sign-in-hint">
-        A new password was set for this account. Type the password your administrator gave you above, then click the bell to choose your own.
-      </p>
-    }
-
     <label class="login__field">
       <span class="login__label">Email or username</span>
       <input
         type="text"
         formControlName="emailOrUsername"
         autocomplete="username"
-        (blur)="checkNotice()"
         [attr.aria-invalid]="form.controls.emailOrUsername.invalid && form.controls.emailOrUsername.touched"
       />
       @if (form.controls.emailOrUsername.touched && form.controls.emailOrUsername.hasError('required')) {
@@ -52,8 +27,7 @@
       <span class="login__label">Password</span>
       <span class="login__password">
         <input
-          #passwordInput
-        [type]="showPassword() ? 'text' : 'password'"
+          [type]="showPassword() ? 'text' : 'password'"
           formControlName="password"
           autocomplete="current-password"
         />
@@ -73,38 +47,5 @@
     <button type="submit" class="login__submit" [disabled]="submitting()">
       {{ submitting() ? 'Signing in…' : 'Sign in' }}
     </button>
-
-    <button type="button" class="login__forgot" data-action="forgot-password" (click)="openForgot()">
-      Forgot password?
-    </button>
   </form>
-
-  @if (forgotOpen()) {
-    <div class="login__backdrop" (click)="closeForgot()"></div>
-    <div class="login__dialog" role="dialog" aria-modal="true" aria-labelledby="forgot-title" data-dialog="forgot-password">
-      <form [formGroup]="forgotForm" (ngSubmit)="submitForgot()" novalidate>
-        <h2 id="forgot-title" class="login__dialog-title">Forgot password</h2>
-
-        @if (forgotConfirmation(); as confirmation) {
-          <p class="login__notice" role="status" data-status="forgot-confirmation">{{ confirmation }}</p>
-          <button type="button" class="login__submit" data-action="forgot-close" (click)="closeForgot()">Close</button>
-        } @else {
-          <p class="login__subtitle">Enter the email address or username of the account that needs a new password.</p>
-          <label class="login__field">
-            <span class="login__label">Email or username</span>
-            <input type="text" formControlName="identifier" data-field="forgot-identifier" autocomplete="username" />
-            @if (forgotForm.controls.identifier.touched && forgotForm.controls.identifier.hasError('required')) {
-              <span class="login__hint">Email or username is required.</span>
-            }
-          </label>
-          <div class="login__dialog-actions">
-            <button type="button" class="login__toggle" data-action="forgot-cancel" (click)="closeForgot()">Cancel</button>
-            <button type="submit" class="login__submit" data-action="forgot-submit" [disabled]="forgotSubmitting()">
-              {{ forgotSubmitting() ? 'Sending…' : 'Send request' }}
-            </button>
-          </div>
-        }
-      </form>
-    </div>
-  }
 </section>

@@ -8,11 +8,9 @@ import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons'
 import { EMAIL_SUFFIX, localPartOf, localPartValidator, toEmail } from '../../core/email-domain';
 import { IconComponent } from '../../core/layout/icon.component';
 import { User } from '../../core/models';
-import { PasswordResetService } from '../../core/services/password-reset.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.directive';
-import { PASSWORD_RESET_CONFIRMATION } from '../../shared/ui/password-reset-text';
 import { ToastService } from '../../shared/ui/toast.service';
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -39,7 +37,6 @@ type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
 })
 export class ProfileComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
-  private readonly passwordResetService = inject(PasswordResetService);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -56,10 +53,6 @@ export class ProfileComponent implements OnInit {
 
   readonly changingPassword = signal(false);
   readonly passwordError = signal<string | null>(null);
-
-  readonly forgotSubmitting = signal(false);
-  /** The generic confirmation after Forgot Password; the account is the signed-in user's own. */
-  readonly forgotConfirmation = signal<string | null>(null);
 
   readonly readonlyFields = computed(() => {
     const user = this.profile();
@@ -204,20 +197,6 @@ export class ProfileComponent implements OnInit {
           this.saveError.set(apiErrorMessage(err, 'Could not update your profile.'));
         }
       });
-  }
-
-  /** Forgot Password from the Profile Screen: raises a request for the signed-in account; no identifier is asked for. */
-  forgotPassword(): void {
-    if (this.forgotSubmitting()) {
-      return;
-    }
-
-    this.forgotSubmitting.set(true);
-    const done = () => {
-      this.forgotSubmitting.set(false);
-      this.forgotConfirmation.set(PASSWORD_RESET_CONFIRMATION);
-    };
-    this.passwordResetService.requestOwn().subscribe({ next: done, error: done });
   }
 
   changePassword(): void {

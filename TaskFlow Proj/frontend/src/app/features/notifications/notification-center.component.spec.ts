@@ -74,20 +74,6 @@ describe('NotificationCenterComponent', () => {
     expect(el().querySelector('[data-task-link]')).toBeNull();
   });
 
-  it('lists the Password reset type in the filter and applies it', () => {
-    initPage([item({})]);
-    const options = Array.from(el().querySelectorAll('#notification-filter-type option')).map((option) => ({
-      value: (option as HTMLOptionElement).value,
-      label: option.textContent?.trim()
-    }));
-    expect(options).toContain({ value: 'PasswordReset', label: 'Password reset' });
-
-    fixture.componentInstance.setType('PasswordReset');
-    const request = httpMock.expectOne((candidate) => candidate.url === '/api/v1/notifications');
-    expect(request.request.params.get('type')).toBe('PasswordReset');
-    request.flush(page([item({ type: 'PasswordReset', message: 'Password reset', taskId: null, taskCode: null })]));
-  });
-
   it('applies the type and read-state filters from page one', () => {
     initPage([item({})]);
     const component = fixture.componentInstance;

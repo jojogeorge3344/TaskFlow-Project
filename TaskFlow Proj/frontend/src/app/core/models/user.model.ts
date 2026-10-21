@@ -80,6 +80,6 @@ export interface UpdateOwnProfile {
 
 /** A self-service password change (Screen 19). Requires the current password. */
 export interface ChangePassword {
-  currentPassword?: string;
+  currentPassword: string;
   newPassword: string;
 }

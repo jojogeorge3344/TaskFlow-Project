@@ -68,8 +68,6 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
                 ["Mail:AttachmentsPath"] = AttachmentsPath,
-                // Every test client shares one address, so the sign-in rate limit is lifted here; one test sets it low.
-                ["RateLimiting:PasswordAttemptsPerMinute"] = "100000",
                 ["AiProviders:KeyRingPath"] = KeyRingPath
             });
         });

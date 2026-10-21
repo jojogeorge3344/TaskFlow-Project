@@ -6,9 +6,9 @@ describe('linkify', () => {
   });
 
   it('turns an http(s) address into a link part and keeps the surrounding text', () => {
-    expect(linkify('Open this request: http://localhost:4200/employees?resetRequest=abc-123\nThanks')).toEqual([
-      { text: 'Open this request: ' },
-      { url: 'http://localhost:4200/employees?resetRequest=abc-123' },
+    expect(linkify('Open this task: http://localhost:4200/tasks/42\nThanks')).toEqual([
+      { text: 'Open this task: ' },
+      { url: 'http://localhost:4200/tasks/42' },
       { text: '\nThanks' }
     ]);
   });
@@ -29,9 +29,7 @@ describe('linkify', () => {
 
 describe('sameOriginPath', () => {
   it('returns the in-app path for an address on this origin', () => {
-    expect(sameOriginPath('http://localhost:4200/employees?resetRequest=a#top', 'http://localhost:4200')).toBe(
-      '/employees?resetRequest=a#top'
-    );
+    expect(sameOriginPath('http://localhost:4200/tasks/42#top', 'http://localhost:4200')).toBe('/tasks/42#top');
   });
 
   it('returns null for another origin or an invalid address', () => {

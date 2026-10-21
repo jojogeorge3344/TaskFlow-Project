@@ -7,7 +7,6 @@ import { Subject, of, throwError } from 'rxjs';
 import { AuthUser } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { DepartmentWithCount, User } from '../../core/models';
-import { PasswordResetService } from '../../core/services/password-reset.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -540,13 +539,7 @@ describe('EmployeeFormPanelComponent', () => {
 
 describe('EmployeeDetailsPanelComponent manager details', () => {
   async function render(employee: User): Promise<HTMLElement> {
-    await TestBed.configureTestingModule({
-      imports: [EmployeeDetailsPanelComponent],
-      providers: [
-        { provide: PasswordResetService, useValue: { list: () => of([]) } },
-        { provide: AuthService, useValue: { hasPermission: () => false } }
-      ]
-    }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
     fixture.componentRef.setInput('employee', employee);
     fixture.detectChanges();
@@ -594,13 +587,7 @@ describe('EmployeeDetailsPanelComponent manager details', () => {
 
 describe('EmployeeDetailsPanelComponent', () => {
   it('shows read-only details and emits edit', async () => {
-    await TestBed.configureTestingModule({
-      imports: [EmployeeDetailsPanelComponent],
-      providers: [
-        { provide: PasswordResetService, useValue: { list: () => of([]) } },
-        { provide: AuthService, useValue: { hasPermission: () => false } }
-      ]
-    }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
     fixture.componentRef.setInput('employee', existing);
     fixture.detectChanges();
@@ -619,13 +606,7 @@ describe('EmployeeDetailsPanelComponent', () => {
   });
 
   it('shows the department name', async () => {
-    await TestBed.configureTestingModule({
-      imports: [EmployeeDetailsPanelComponent],
-      providers: [
-        { provide: PasswordResetService, useValue: { list: () => of([]) } },
-        { provide: AuthService, useValue: { hasPermission: () => false } }
-      ]
-    }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
     fixture.componentRef.setInput('employee', { ...existing, departmentId: 5, departmentName: 'Human Resources' });
     fixture.detectChanges();
@@ -634,13 +615,7 @@ describe('EmployeeDetailsPanelComponent', () => {
   });
 
   it('says Unassigned when the employee has no department', async () => {
-    await TestBed.configureTestingModule({
-      imports: [EmployeeDetailsPanelComponent],
-      providers: [
-        { provide: PasswordResetService, useValue: { list: () => of([]) } },
-        { provide: AuthService, useValue: { hasPermission: () => false } }
-      ]
-    }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
     fixture.componentRef.setInput('employee', existing);
     fixture.detectChanges();

@@ -41,38 +41,6 @@ builder.Services.AddDbContext<AppDbContext>((provider, options) =>
         StorageRoot.Resolve(provider.GetRequiredService<IOptions<StorageOptions>>().Value.Root))));
 
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
-builder.Services.AddScoped<TaskFlow.Application.Mail.ISystemMailWriter, TaskFlow.Infrastructure.Mail.SystemMailWriter>();
-builder.Services.AddScoped<TaskFlow.Application.PasswordReset.IPasswordResetService, TaskFlow.Infrastructure.Services.PasswordResetService>();
-builder.Services.Configure<TaskFlow.Infrastructure.Services.PasswordResetOptions>(
-    builder.Configuration.GetSection(TaskFlow.Infrastructure.Services.PasswordResetOptions.SectionName));
-builder.Services.AddSingleton<TaskFlow.Application.PasswordReset.IPasswordResetLinkTokens, TaskFlow.Infrastructure.Services.PasswordResetLinkTokens>();
-
-// The unauthenticated endpoints that check a password (sign-in and the Login Screen password update) are limited per
-// client address so a temporary password cannot be guessed by trial (design D14). The limit is read per request, so
-// configuration added later (such as by the integration tests) decides it.
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy(PasswordAttemptsPolicy, httpContext =>
-        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-            {
-                PermitLimit = httpContext.RequestServices.GetRequiredService<IConfiguration>()
-                    .GetValue("RateLimiting:PasswordAttemptsPerMinute", 10),
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0
-            }));
-    options.OnRejected = (context, _) =>
-    {
-        if (context.Lease.TryGetMetadata(System.Threading.RateLimiting.MetadataName.RetryAfter, out var retryAfter))
-        {
-            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        return ValueTask.CompletedTask;
-    };
-});
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -290,11 +258,8 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 
 app.UseCors(CorsPolicies.SpaClient);
-app.UseRateLimiter();
 
 app.UseAuthentication();
-// Before authorization so the forced-change answer wins over any permission refusal (design D7).
-app.UseMiddleware<TaskFlow.Api.Authentication.PasswordChangeRequiredMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
@@ -303,9 +268,6 @@ app.Run();
 
 public partial class Program
 {
-    /// <summary>The rate-limit policy of the unauthenticated password-checking endpoints.</summary>
-    public const string PasswordAttemptsPolicy = "password-attempts";
-
     private static void ConfigureAiClient(IServiceProvider services, HttpClient client) =>
         client.Timeout = TimeSpan.FromSeconds(
             services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.TimeoutSeconds);

@@ -296,34 +296,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("DepartmentManagers");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.LoginPasswordResetNotice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("ClearedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("PasswordResetRequestId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PasswordResetRequestId");
-
-                    b.HasIndex("UserId")
-                        .IsUnique();
-
-                    b.ToTable("LoginPasswordResetNotices");
-                });
-
             modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
                 {
                     b.Property<int>("Id")
@@ -553,64 +525,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasIndex("UserId", "IsRead");
 
                     b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("AdminNotifiedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Origin")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("ProcessedByUserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("ReferenceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("TemporaryPasswordIssued")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UserNotifiedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProcessedByUserId");
-
-                    b.HasIndex("ReferenceId")
-                        .IsUnique();
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("UserId", "CreatedAt");
-
-                    b.ToTable("PasswordResetRequests");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
@@ -1004,9 +918,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<int?>("ManagerId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("MustChangePassword")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1099,25 +1010,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Manager");
-                });
-
-            modelBuilder.Entity("TaskFlow.Domain.Entities.LoginPasswordResetNotice", b =>
-                {
-                    b.HasOne("TaskFlow.Domain.Entities.PasswordResetRequest", "PasswordResetRequest")
-                        .WithMany()
-                        .HasForeignKey("PasswordResetRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PasswordResetRequest");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
@@ -1240,24 +1132,6 @@ namespace TaskFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetRequest", b =>
-                {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "ProcessedByUser")
-                        .WithMany()
-                        .HasForeignKey("ProcessedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ProcessedByUser");
 
                     b.Navigation("User");
                 });

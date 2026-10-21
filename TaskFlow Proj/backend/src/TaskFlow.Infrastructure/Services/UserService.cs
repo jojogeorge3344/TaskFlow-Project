@@ -11,10 +11,6 @@ public class UserService : IUserService
 {
     private const int MinPasswordLength = 6;
 
-    /// <summary>The upper bound the request validators enforce, mirrored here so an administrator-supplied
-    /// password can never be stored in a state the sign-in form would reject.</summary>
-    private const int MaxPasswordLength = 128;
-
     private readonly AppDbContext _dbContext;
     private readonly IPasswordHasher<User> _passwordHasher;
 
@@ -377,23 +373,14 @@ public class UserService : IUserService
             return null;
         }
 
-        // A user who just signed in with an administrator-issued password has already proved it, so the
-        // mandatory change screen does not ask for it again (design D11). Anyone else must supply it, and a
-        // flagged user who does supply one still has it checked.
-        var currentPasswordSupplied = !string.IsNullOrEmpty(request.CurrentPassword);
-        if (!user.MustChangePassword || currentPasswordSupplied)
+        var verification = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword!);
+        if (verification != PasswordVerificationResult.Success)
         {
-            var verification = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword ?? string.Empty);
-            if (verification != PasswordVerificationResult.Success)
-            {
-                throw new InvalidOperationException("Current password is incorrect.");
-            }
+            throw new InvalidOperationException("Current password is incorrect.");
         }
 
         var now = DateTime.UtcNow;
         user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword!);
-        // Choosing a password of their own ends the temporary-password obligation (design D6).
-        user.MustChangePassword = false;
         user.UpdatedAt = now;
 
         // The password change ends every session, including this one; the client signs in again.
@@ -401,49 +388,6 @@ public class UserService : IUserService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return (await GetByIdAsync(user.Id, cancellationToken))!;
-    }
-
-    public async Task<bool> SetPasswordAsync(int userId, string newPassword, int actingAdminId, CancellationToken cancellationToken = default)
-    {
-        var user = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken);
-        if (user is null)
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(newPassword))
-        {
-            throw new InvalidOperationException("Password cannot be blank.");
-        }
-
-        if (newPassword.Length < MinPasswordLength)
-        {
-            throw new InvalidOperationException($"Password must be at least {MinPasswordLength} characters.");
-        }
-
-        if (newPassword.Length > MaxPasswordLength)
-        {
-            throw new InvalidOperationException($"Password must be at most {MaxPasswordLength} characters.");
-        }
-
-        // The acting administrator is validated here as well as at the endpoint: the authorization
-        // behind a password change must be a real, active account at the moment it happens.
-        var actingAdministratorActive = await _dbContext.Users
-            .AnyAsync(u => u.Id == actingAdminId && u.IsActive, cancellationToken);
-        if (!actingAdministratorActive)
-        {
-            throw new InvalidOperationException("The acting administrator is not an active account.");
-        }
-
-        var now = DateTime.UtcNow;
-        user.PasswordHash = _passwordHasher.HashPassword(user, newPassword);
-        user.UpdatedAt = now;
-
-        // Whatever sessions exist belong to the old password, so they all end here.
-        await EndSessionsAsync(user, now, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return true;
     }
 
     public async Task<UserDto?> UpdateManagerAssignmentsAsync(int id, ManagerAssignmentRequest request, CancellationToken cancellationToken)

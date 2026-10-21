@@ -5,7 +5,6 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
 import { User } from '../../core/models';
-import { PasswordResetService } from '../../core/services/password-reset.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ProfileComponent } from './profile.component';
@@ -28,7 +27,6 @@ describe('ProfileComponent', () => {
   let getSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
   let changePasswordSpy: jasmine.Spy;
-  let requestOwnSpy: jasmine.Spy;
   let toast: jasmine.SpyObj<ToastService>;
   let authService: jasmine.SpyObj<AuthService>;
   let router: Router;
@@ -37,7 +35,6 @@ describe('ProfileComponent', () => {
     getSpy = jasmine.createSpy('get').and.returnValue(of(me));
     updateSpy = jasmine.createSpy('update');
     changePasswordSpy = jasmine.createSpy('changePassword');
-    requestOwnSpy = jasmine.createSpy('requestOwn').and.returnValue(of({ message: 'server text' }));
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['clearSession', 'applyProfile']);
   });
@@ -48,7 +45,6 @@ describe('ProfileComponent', () => {
       providers: [
         { provide: ProfileService, useValue: { get: getSpy, update: updateSpy, changePassword: changePasswordSpy } },
         { provide: AuthService, useValue: authService },
-        { provide: PasswordResetService, useValue: { requestOwn: requestOwnSpy } },
         { provide: ToastService, useValue: toast },
         provideRouter([])
       ]

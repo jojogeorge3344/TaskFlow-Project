@@ -154,8 +154,7 @@ TaskFlow Proj/
 
 Entities: `users`, `departments`, `tasks`, `task_comments`, `task_recipients`,
 `notifications`, `reminder_history`, `email_delivery_logs`, `task_activity_logs`,
-`application_settings`, `refresh_tokens`, `password_reset_requests`,
-`login_password_reset_notices`.
+`application_settings`, `refresh_tokens`.
 
 Enumerations:
 
@@ -169,8 +168,6 @@ Enumerations:
 | `ReminderStatus` | Pending, Sent, Failed, Skipped |
 | `EmailStatus` | Sent, Failed |
 | `ActivityAction` | Created, Assigned, Reassigned, StatusChanged, DeadlineChanged, PriorityChanged, Completed, CommentAdded, Updated, Deleted |
-| `PasswordResetOrigin` | LoginScreen, ProfileScreen |
-| `PasswordResetStatus` | Pending, Completed, Failed |
 
 Rules that shape the data:
 - All timestamps stored in **UTC**; a single configured timezone (`Application.Timezone`)
@@ -179,11 +176,6 @@ Rules that shape the data:
 - Reminder dedup key: `(TaskId, RecipientUserId, ReminderType, ScheduledFor)` — unique.
 - History-bearing entities are soft-deleted (`IsDeleted`); deactivation (`IsActive=false`)
   is separate and blocks login.
-- **Password recovery:** `users.MustChangePassword` is set when an administrator sets a password for a
-  reset request and is cleared by the user's own password change; the administrator chooses the password
-  and passes it on outside the app (no password is ever mailed or notified); `login_password_reset_notices`
-  keeps one row per account (`UserId` unique) until the next successful sign-in or a password update from
-  the Login Screen; it has no time limit.
 
 Full tables, indexes, and the ER diagram are in TDD §7.
 

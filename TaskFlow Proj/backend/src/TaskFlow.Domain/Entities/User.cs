@@ -29,10 +29,6 @@ public class User
 
     public DateTime? LastLoginAt { get; set; }
 
-    /// <summary>True while the user signed in with a temporary password from a reset request and must
-    /// change it before using the rest of the application.</summary>
-    public bool MustChangePassword { get; set; }
-
     public bool IsDeleted { get; set; }
 
     public int? ProjectId { get; set; }

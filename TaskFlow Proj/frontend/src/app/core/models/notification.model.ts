@@ -1,18 +1,11 @@
-export type NotificationType =
-  | 'TaskAssigned'
-  | 'Reassigned'
-  | 'DeadlineReminder'
-  | 'Overdue'
-  | 'System'
-  | 'PasswordReset';
+export type NotificationType = 'TaskAssigned' | 'Reassigned' | 'DeadlineReminder' | 'Overdue' | 'System';
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
   'TaskAssigned',
   'Reassigned',
   'DeadlineReminder',
   'Overdue',
-  'System',
-  'PasswordReset'
+  'System'
 ];
 
 /** A row in the Notification Center (Screen 12). `taskId`/`taskCode` are null when the related
