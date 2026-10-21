@@ -15,12 +15,12 @@
 
   <div class="tf-card tf-toolbar workload-toolbar">
     <div class="tf-field">
-      <label for="workload-department">Project</label>
-      <select id="workload-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
-        <option value="" [selected]="departmentId() === null">All projects</option>
-        @for (department of departments(); track department.id) {
-          <option [value]="department.id" [selected]="department.id === departmentId()">
-            {{ department.name }}
+      <label for="workload-project">Project</label>
+      <select id="workload-project" class="tf-select" (change)="setProject($any($event.target).value)">
+        <option value="" [selected]="projectId() === null">All projects</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id" [selected]="project.id === projectId()">
+            {{ project.name }}
           </option>
         }
       </select>
@@ -39,7 +39,7 @@
     <button
       type="button"
       class="tf-btn tf-btn--ghost"
-      [disabled]="departmentId() === null && employeeId() === null"
+      [disabled]="projectId() === null && employeeId() === null"
       (click)="reset()"
     >
       <tf-icon name="reset" />
@@ -85,7 +85,7 @@
                     <span class="tf-badge workload-badge--high" data-high-load>High load</span>
                   }
                 </td>
-                <td>{{ row.departmentName ?? '—' }}</td>
+                <td>{{ row.projectName ?? '—' }}</td>
                 <td class="num">{{ row.activeTasks }}</td>
                 <td class="num">{{ row.highPriorityTasks }}</td>
                 <td class="num" [class.workload-cell--overdue]="row.overdueTasks > 0">{{ row.overdueTasks }}</td>

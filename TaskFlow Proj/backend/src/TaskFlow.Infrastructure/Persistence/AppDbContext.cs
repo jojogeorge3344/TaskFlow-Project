@@ -19,8 +19,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ManagerProject> ManagerProjects => Set<ManagerProject>();
     public DbSet<Department> Departments => Set<Department>();
-    public DbSet<ManagerDepartment> ManagerDepartments => Set<ManagerDepartment>();
+    public DbSet<DepartmentManager> DepartmentManagers => Set<DepartmentManager>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
@@ -65,6 +67,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasQueryFilter(user => !user.IsDeleted);
 
             entity
+                .HasOne(user => user.Project)
+                .WithMany(project => project.Users)
+                .HasForeignKey(user => user.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
                 .HasOne(user => user.Department)
                 .WithMany(department => department.Users)
                 .HasForeignKey(user => user.DepartmentId)
@@ -77,19 +85,49 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<ManagerDepartment>(entity =>
+        modelBuilder.Entity<ManagerProject>(entity =>
+        {
+            entity.HasKey(link => new { link.ManagerUserId, link.ProjectId });
+
+            entity
+                .HasOne(link => link.Manager)
+                .WithMany(manager => manager.ManagerProjects)
+                .HasForeignKey(link => link.ManagerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Project)
+                .WithMany()
+                .HasForeignKey(link => link.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.ProjectId);
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(department => department.Id);
+            entity.Property(department => department.Name).IsRequired().HasMaxLength(200);
+            entity.Property(department => department.Description).HasMaxLength(500);
+
+            entity.HasIndex(department => department.Name).IsUnique();
+
+            entity.HasQueryFilter(department => !department.IsDeleted);
+        });
+
+        modelBuilder.Entity<DepartmentManager>(entity =>
         {
             entity.HasKey(link => new { link.ManagerUserId, link.DepartmentId });
 
             entity
                 .HasOne(link => link.Manager)
-                .WithMany(manager => manager.ManagerDepartments)
+                .WithMany(manager => manager.ManagedDepartments)
                 .HasForeignKey(link => link.ManagerUserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity
                 .HasOne(link => link.Department)
-                .WithMany()
+                .WithMany(department => department.ManagerLinks)
                 .HasForeignKey(link => link.DepartmentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -131,15 +169,15 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Department>(entity =>
+        modelBuilder.Entity<Project>(entity =>
         {
-            entity.HasKey(department => department.Id);
-            entity.Property(department => department.Name).IsRequired().HasMaxLength(200);
-            entity.Property(department => department.Description).HasMaxLength(500);
+            entity.HasKey(project => project.Id);
+            entity.Property(project => project.Name).IsRequired().HasMaxLength(200);
+            entity.Property(project => project.Description).HasMaxLength(500);
 
-            entity.HasIndex(department => department.Name).IsUnique();
+            entity.HasIndex(project => project.Name).IsUnique();
 
-            entity.HasQueryFilter(department => !department.IsDeleted);
+            entity.HasQueryFilter(project => !project.IsDeleted);
         });
 
         modelBuilder.Entity<Domain.Entities.Task>(entity =>
@@ -166,9 +204,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity
-                .HasOne(task => task.Department)
+                .HasOne(task => task.Project)
                 .WithMany()
-                .HasForeignKey(task => task.DepartmentId)
+                .HasForeignKey(task => task.ProjectId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

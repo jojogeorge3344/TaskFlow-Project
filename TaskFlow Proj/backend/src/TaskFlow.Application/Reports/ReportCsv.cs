@@ -36,7 +36,7 @@ public static class ReportCsv
                 Escape(row.TaskCode),
                 Escape(row.Title),
                 Escape(row.Assignee),
-                Escape(row.Department),
+                Escape(row.Project),
                 Escape(row.Priority.ToString()),
                 Escape(row.Status.ToString()),
                 Escape(FormatDate(row.StartDate)),

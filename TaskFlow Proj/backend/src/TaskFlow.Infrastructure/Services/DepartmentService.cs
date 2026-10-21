@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Departments;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 
 namespace TaskFlow.Infrastructure.Services;
@@ -14,40 +15,28 @@ public class DepartmentService : IDepartmentService
         _dbContext = dbContext;
     }
 
-    public async Task<IReadOnlyCollection<DepartmentWithCountDto>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<DepartmentWithCountsDto>> GetAllAsync(CancellationToken cancellationToken)
     {
         var departments = await _dbContext.Departments
             .AsNoTracking()
-            .Select(d => new DepartmentWithCountDto(
+            .Select(d => new DepartmentWithCountsDto(
                 d.Id,
                 d.Name,
                 d.Description,
                 d.CreatedAt,
+                _dbContext.DepartmentManagers.Count(link => link.DepartmentId == d.Id),
                 _dbContext.Users.Count(u => u.DepartmentId == d.Id && !u.IsDeleted)))
             .ToListAsync(cancellationToken);
-
         return departments;
     }
 
     public async Task<DepartmentDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var department = await _dbContext.Departments
+        return await _dbContext.Departments
             .AsNoTracking()
             .Where(d => d.Id == id)
             .Select(d => new DepartmentDto(d.Id, d.Name, d.Description, d.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
-
-        return department;
-    }
-
-    public async Task<IReadOnlyCollection<User>> GetEmployeesAsync(int departmentId, CancellationToken cancellationToken)
-    {
-        var employees = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => u.DepartmentId == departmentId && !u.IsDeleted)
-            .ToListAsync(cancellationToken);
-
-        return employees;
     }
 
     public async Task<DepartmentDto> CreateAsync(CreateDepartmentRequest request, CancellationToken cancellationToken)
@@ -55,10 +44,9 @@ public class DepartmentService : IDepartmentService
         var name = request.Name.Trim();
         var exists = await _dbContext.Departments
             .AnyAsync(d => d.Name.ToLower() == name.ToLower() && !d.IsDeleted, cancellationToken);
-
         if (exists)
         {
-            throw new InvalidOperationException("Project name already exists.");
+            throw new InvalidOperationException("Department name already exists.");
         }
 
         var department = new Department
@@ -78,7 +66,6 @@ public class DepartmentService : IDepartmentService
     {
         var department = await _dbContext.Departments
             .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, cancellationToken);
-
         if (department is null)
         {
             return null;
@@ -87,14 +74,14 @@ public class DepartmentService : IDepartmentService
         var name = request.Name.Trim();
         var exists = await _dbContext.Departments
             .AnyAsync(d => d.Id != id && d.Name.ToLower() == name.ToLower() && !d.IsDeleted, cancellationToken);
-
         if (exists)
         {
-            throw new InvalidOperationException("Project name already exists.");
+            throw new InvalidOperationException("Department name already exists.");
         }
 
         department.Name = name;
         department.Description = request.Description?.Trim();
+
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new DepartmentDto(department.Id, department.Name, department.Description, department.CreatedAt);
@@ -104,27 +91,127 @@ public class DepartmentService : IDepartmentService
     {
         var department = await _dbContext.Departments
             .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, cancellationToken);
-
         if (department is null)
         {
             return false;
         }
 
+        var hasManagers = await _dbContext.DepartmentManagers
+            .AnyAsync(link => link.DepartmentId == id, cancellationToken);
         var hasEmployees = await _dbContext.Users
             .AnyAsync(u => u.DepartmentId == id && !u.IsDeleted, cancellationToken);
-
-        if (hasEmployees)
+        if (hasManagers || hasEmployees)
         {
-            throw new InvalidOperationException("Project cannot be deleted because it has associated employees.");
+            throw new InvalidOperationException("Department cannot be deleted because it still has members. Remove them first.");
         }
 
         // The department is only flagged, so the manager links to it would not cascade away on their own.
-        _dbContext.ManagerDepartments.RemoveRange(
-            await _dbContext.ManagerDepartments.Where(link => link.DepartmentId == id).ToListAsync(cancellationToken));
+        _dbContext.DepartmentManagers.RemoveRange(
+            await _dbContext.DepartmentManagers.Where(link => link.DepartmentId == id).ToListAsync(cancellationToken));
 
         department.IsDeleted = true;
         await _dbContext.SaveChangesAsync(cancellationToken);
-
         return true;
+    }
+
+    public async Task<DepartmentMembersDto?> GetMembersAsync(int departmentId, CancellationToken cancellationToken)
+    {
+        var departmentExists = await _dbContext.Departments
+            .AnyAsync(d => d.Id == departmentId && !d.IsDeleted, cancellationToken);
+        if (!departmentExists)
+        {
+            return null;
+        }
+
+        var managers = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => _dbContext.DepartmentManagers.Any(link => link.DepartmentId == departmentId && link.ManagerUserId == u.Id))
+            .OrderBy(u => u.FullName)
+            .Select(u => new MemberRefDto(u.Id, u.FullName, u.Username, u.Email, u.IsActive))
+            .ToListAsync(cancellationToken);
+
+        var employees = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.DepartmentId == departmentId)
+            .OrderBy(u => u.FullName)
+            .Select(u => new MemberRefDto(u.Id, u.FullName, u.Username, u.Email, u.IsActive))
+            .ToListAsync(cancellationToken);
+
+        return new DepartmentMembersDto(departmentId, managers, employees);
+    }
+
+    public async Task<DepartmentMembersDto?> ReplaceMembersAsync(int departmentId, UpdateDepartmentMembersRequest request, CancellationToken cancellationToken)
+    {
+        var department = await _dbContext.Departments
+            .FirstOrDefaultAsync(d => d.Id == departmentId && !d.IsDeleted, cancellationToken);
+        if (department is null)
+        {
+            return null;
+        }
+
+        var managerIds = request.ManagerIds.Distinct().ToList();
+        var employeeIds = request.EmployeeIds.Distinct().ToList();
+
+        // Every manager must be an active Manager; every employee an active, non-deleted user.
+        // One bad id rejects the whole request and leaves membership unchanged.
+        var managerById = await _dbContext.Users
+            .Where(u => managerIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+        foreach (var managerId in managerIds)
+        {
+            if (!managerById.TryGetValue(managerId, out var user)
+                || !user.IsActive
+                || user.RoleId != SystemRoles.ManagerId)
+            {
+                throw new InvalidOperationException($"User {managerId} is not an active manager.");
+            }
+        }
+
+        var employeeById = await _dbContext.Users
+            .Where(u => employeeIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+        foreach (var employeeId in employeeIds)
+        {
+            if (!employeeById.TryGetValue(employeeId, out var user) || !user.IsActive)
+            {
+                throw new InvalidOperationException($"User {employeeId} is not an active user.");
+            }
+        }
+
+        var existingLinks = await _dbContext.DepartmentManagers
+            .Where(link => link.DepartmentId == departmentId)
+            .ToListAsync(cancellationToken);
+        _dbContext.DepartmentManagers.RemoveRange(
+            existingLinks.Where(link => !managerIds.Contains(link.ManagerUserId)));
+        foreach (var managerId in managerIds.Where(id => existingLinks.All(link => link.ManagerUserId != id)))
+        {
+            _dbContext.DepartmentManagers.Add(new DepartmentManager { DepartmentId = departmentId, ManagerUserId = managerId });
+        }
+
+        // Employees live on User.DepartmentId: add the new ones, clear the ones removed.
+        var previousEmployeeIds = await _dbContext.Users
+            .Where(u => u.DepartmentId == departmentId)
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var employeeId in employeeIds.Where(id => !previousEmployeeIds.Contains(id)))
+        {
+            var employee = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == employeeId, cancellationToken);
+            if (employee is not null)
+            {
+                employee.DepartmentId = departmentId;
+            }
+        }
+        foreach (var employeeId in previousEmployeeIds.Where(id => !employeeIds.Contains(id)))
+        {
+            var employee = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == employeeId, cancellationToken);
+            if (employee is not null)
+            {
+                employee.DepartmentId = null;
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return await GetMembersAsync(departmentId, cancellationToken);
     }
 }

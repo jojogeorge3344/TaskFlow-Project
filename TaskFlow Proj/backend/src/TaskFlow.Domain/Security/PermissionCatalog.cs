@@ -17,8 +17,10 @@ public sealed record PermissionDefinition(
 /// permission                     endpoints it guards                                   Mgr  Emp
 /// dashboard.admin                GET dashboard/admin                                    -    -
 /// dashboard.manager              GET dashboard/manager                                  x    -
-/// departments.view               GET departments, departments/{id}, .../employees       x    -
-/// departments.manage             POST/PUT/DELETE departments                            -    -
+/// projects.view                  GET projects, projects/{id}, .../employees             x    -
+/// projects.manage                POST/PUT/DELETE projects                               -    -
+/// departments.view               GET departments, departments/{id}, .../members         x    -
+/// departments.manage             POST/PUT/DELETE departments, PUT .../members           -    -
 /// employees.view                 GET users                                              x    -
 /// employees.manage               POST/PUT users, PATCH users/{id}/status                -    -
 /// tasks.view.all                 organization-wide task visibility (row scope)          x    -
@@ -43,8 +45,11 @@ public static class PermissionCatalog
         new(PermissionKeys.DashboardAdmin, "Administrator dashboard", "Open the organization-wide administrator dashboard.", "Dashboards", false, false),
         new(PermissionKeys.DashboardManager, "Manager dashboard", "Open the manager dashboard for the team.", "Dashboards", true, false),
 
-        new(PermissionKeys.DepartmentsView, "View projects", "See projects and the employees in them.", "Projects", true, false),
-        new(PermissionKeys.DepartmentsManage, "Manage projects", "Create, rename and delete projects.", "Projects", false, false),
+        new(PermissionKeys.ProjectsView, "View projects", "See projects and the employees in them.", "Projects", true, false),
+        new(PermissionKeys.ProjectsManage, "Manage projects", "Create, rename and delete projects.", "Projects", false, false),
+
+        new(PermissionKeys.DepartmentsView, "View departments", "See departments and the managers and employees in them.", "Departments", true, false),
+        new(PermissionKeys.DepartmentsManage, "Manage departments", "Create, rename and delete departments and manage their members.", "Departments", false, false),
 
         new(PermissionKeys.EmployeesView, "View employees", "See the employee list and employee details.", "Employees", true, false),
         new(PermissionKeys.EmployeesManage, "Manage employees", "Create and edit employees, activate or deactivate them and change their role.", "Employees", false, false),

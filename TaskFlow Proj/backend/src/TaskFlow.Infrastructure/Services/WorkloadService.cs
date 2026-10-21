@@ -24,7 +24,7 @@ public class WorkloadService : IWorkloadService
     }
 
     public async Task<IReadOnlyCollection<EmployeeWorkloadDto>> GetWorkloadAsync(
-        int? departmentId,
+        int? projectId,
         CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
@@ -32,9 +32,9 @@ public class WorkloadService : IWorkloadService
         var usersQuery = _dbContext.Users.Where(user =>
             user.IsActive
             && !user.Role.Permissions.Any(grant => grant.Permission.Key == PermissionKeys.TasksViewAll));
-        if (departmentId is not null)
+        if (projectId is not null)
         {
-            usersQuery = usersQuery.Where(user => user.DepartmentId == departmentId);
+            usersQuery = usersQuery.Where(user => user.ProjectId == projectId);
         }
 
         var users = await usersQuery
@@ -44,8 +44,8 @@ public class WorkloadService : IWorkloadService
             {
                 user.Id,
                 user.FullName,
-                user.DepartmentId,
-                DepartmentName = user.Department == null ? null : user.Department.Name
+                user.ProjectId,
+                ProjectName = user.Project == null ? null : user.Project.Name
             })
             .ToListAsync(cancellationToken);
 
@@ -79,8 +79,8 @@ public class WorkloadService : IWorkloadService
                 return new EmployeeWorkloadDto(
                     user.Id,
                     user.FullName,
-                    user.DepartmentId,
-                    user.DepartmentName,
+                    user.ProjectId,
+                    user.ProjectName,
                     count?.Active ?? 0,
                     count?.HighPriority ?? 0,
                     count?.Overdue ?? 0,

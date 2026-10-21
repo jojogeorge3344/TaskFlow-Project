@@ -147,6 +147,7 @@ describe('ShellComponent', () => {
       'Board',
       'Employee Management',
       'Project Management',
+      'Department Management',
       'Mail',
       'Notifications',
       'Reports',
@@ -187,7 +188,7 @@ describe('ShellComponent', () => {
       );
     };
     expect(childrenOf(0)).toEqual(['Task Management', 'Employee Workload', 'Board']);
-    expect(childrenOf(1)).toEqual(['Employee Management', 'Project Management']);
+    expect(childrenOf(1)).toEqual(['Employee Management', 'Project Management', 'Department Management']);
     expect(childrenOf(2)).toEqual(['Mail', 'Notifications']);
     expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'TFA Settings', 'Role Configuration']);
   });
@@ -215,7 +216,7 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('#nav-group-settings')).toBeNull();
   });
 
-  it('wraps long parent labels instead of truncating them', () => {
+  it('wraps long parent and child labels instead of truncating them', () => {
     mockViewport(true);
     asUser('Administrator');
     const fixture = createComponent();
@@ -229,7 +230,9 @@ describe('ShellComponent', () => {
 
     expandParent(fixture, 'TaskFlow Monitoring');
     const childLabel = el(fixture).querySelector('.nav__item--child .nav__text')!;
-    expect(getComputedStyle(childLabel).whiteSpace).toBe('nowrap');
+    const childStyle = getComputedStyle(childLabel);
+    expect(childStyle.whiteSpace).toBe('normal');
+    expect(childStyle.textOverflow).toBe('clip');
   });
 
   it('collapses a parent group even while a child route is active', async () => {

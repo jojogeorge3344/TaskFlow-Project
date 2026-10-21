@@ -141,19 +141,19 @@ public class ReportServiceTests
     }
 
     [Fact]
-    public async Task GetSummaryAsync_DepartmentFilter_UsesTheAssigneeDepartment()
+    public async Task GetSummaryAsync_ProjectFilter_UsesTheAssigneeProject()
     {
         await using var harness = WorkloadReportHarness.Create(Now);
-        var engineering = harness.AddDepartment("Engineering");
-        var operations = harness.AddDepartment("Operations");
+        var engineering = harness.AddProject("Engineering");
+        var operations = harness.AddProject("Operations");
 
-        var alice = harness.AddUser("alice", departmentId: engineering.Id);
-        var bob = harness.AddUser("bob", departmentId: operations.Id);
+        var alice = harness.AddUser("alice", projectId: engineering.Id);
+        var bob = harness.AddUser("bob", projectId: operations.Id);
         harness.AddTask(alice.Id, Future, TaskStatus.ToDo);
         harness.AddTask(bob.Id, Future, TaskStatus.ToDo);
 
         var summary = await harness.Reports.GetSummaryAsync(
-            new ReportFilter(DepartmentId: engineering.Id),
+            new ReportFilter(ProjectId: engineering.Id),
             CancellationToken.None);
 
         Assert.Equal(1, summary.TotalTasks);
@@ -182,18 +182,18 @@ public class ReportServiceTests
     }
 
     [Fact]
-    public async Task GetRowsAsync_ProjectsAssigneeAndDepartment()
+    public async Task GetRowsAsync_ProjectsAssigneeAndProject()
     {
         await using var harness = WorkloadReportHarness.Create(Now);
-        var engineering = harness.AddDepartment("Engineering");
-        var alice = harness.AddUser("alice", departmentId: engineering.Id, fullName: "Alice Adams");
+        var engineering = harness.AddProject("Engineering");
+        var alice = harness.AddUser("alice", projectId: engineering.Id, fullName: "Alice Adams");
         harness.AddTask(alice.Id, Future, TaskStatus.Completed, TaskPriority.Critical);
 
         var rows = await harness.Reports.GetRowsAsync(new ReportFilter(), CancellationToken.None);
 
         var only = Assert.Single(rows);
         Assert.Equal("Alice Adams", only.Assignee);
-        Assert.Equal("Engineering", only.Department);
+        Assert.Equal("Engineering", only.Project);
         Assert.Equal(TaskPriority.Critical, only.Priority);
         Assert.Equal(TaskStatus.Completed, only.Status);
     }

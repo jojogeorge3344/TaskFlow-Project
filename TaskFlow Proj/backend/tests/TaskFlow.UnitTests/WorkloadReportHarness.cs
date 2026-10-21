@@ -64,25 +64,25 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             clock);
     }
 
-    public Department AddDepartment(string name)
+    public Project AddProject(string name)
     {
-        var department = new Department
+        var project = new Project
         {
             Name = name,
             CreatedAt = Clock.UtcNow.UtcDateTime
         };
 
-        Db.Departments.Add(department);
+        Db.Projects.Add(project);
         Db.SaveChanges();
 
-        return department;
+        return project;
     }
 
     public User AddUser(
         string username,
         bool isActive = true,
         string role = SystemRoles.Employee,
-        int? departmentId = null,
+        int? projectId = null,
         string? fullName = null)
     {
         var user = new User
@@ -93,7 +93,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             PasswordHash = "hash",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
-            DepartmentId = departmentId,
+            ProjectId = projectId,
             CreatedAt = Clock.UtcNow.UtcDateTime,
             UpdatedAt = Clock.UtcNow.UtcDateTime
         };

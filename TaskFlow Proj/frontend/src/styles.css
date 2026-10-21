@@ -1035,7 +1035,7 @@ textarea {
   user-select: none;
 }
 
-/* A group of checkboxes inside a form field, such as the departments a manager oversees. */
+/* A group of checkboxes inside a form field, such as the projects a manager oversees. */
 fieldset.tf-field {
   min-width: 0;
   margin: 0;

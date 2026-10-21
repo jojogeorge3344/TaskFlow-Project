@@ -67,25 +67,25 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
         return new DashboardServiceHarness(connection, db, service, clock);
     }
 
-    public Department AddDepartment(string name)
+    public Project AddProject(string name)
     {
-        var department = new Department
+        var project = new Project
         {
             Name = name,
             CreatedAt = Clock.UtcNow.UtcDateTime
         };
 
-        Db.Departments.Add(department);
+        Db.Projects.Add(project);
         Db.SaveChanges();
 
-        return department;
+        return project;
     }
 
     public User AddUser(
         string username,
         bool isActive = true,
         string role = SystemRoles.Employee,
-        int? departmentId = null)
+        int? projectId = null)
     {
         var user = new User
         {
@@ -95,7 +95,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
             PasswordHash = "hash",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
-            DepartmentId = departmentId,
+            ProjectId = projectId,
             CreatedAt = Clock.UtcNow.UtcDateTime,
             UpdatedAt = Clock.UtcNow.UtcDateTime
         };
@@ -111,7 +111,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
         DateTime deadline,
         TaskStatus status,
         int? createdByUserId = null,
-        int? departmentId = null,
+        int? projectId = null,
         bool isDeleted = false)
     {
         var task = new TaskEntity
@@ -120,7 +120,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
             Title = "Task",
             AssignedToUserId = assignedToUserId,
             CreatedByUserId = createdByUserId ?? assignedToUserId,
-            DepartmentId = departmentId,
+            ProjectId = projectId,
             Priority = TaskPriority.Medium,
             StartDate = Clock.UtcNow.UtcDateTime,
             Deadline = deadline,

@@ -19,13 +19,13 @@ public class WorkloadController : ControllerBase
         _workloadService = workloadService;
     }
 
-    /// <summary>Per-employee task load, optionally narrowed to one department.</summary>
+    /// <summary>Per-employee task load, optionally narrowed to one project.</summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<EmployeeWorkloadDto>>> Get(
-        [FromQuery] int? departmentId,
+        [FromQuery] int? projectId,
         CancellationToken cancellationToken)
     {
-        var workload = await _workloadService.GetWorkloadAsync(departmentId, cancellationToken);
+        var workload = await _workloadService.GetWorkloadAsync(projectId, cancellationToken);
         return Ok(workload);
     }
 }

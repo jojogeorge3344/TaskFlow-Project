@@ -2,8 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { IconComponent } from '../../core/layout/icon.component';
-import { DepartmentWithCount, EmployeeWorkload, WorkloadSummary } from '../../core/models';
-import { DepartmentService } from '../../core/services/department.service';
+import { ProjectWithCount, EmployeeWorkload, WorkloadSummary } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { WorkloadService } from '../../core/services/workload.service';
 
 /** Employee Workload (Screen 16): how task load is distributed across employees, Manager/Administrator only. */
@@ -16,13 +16,13 @@ import { WorkloadService } from '../../core/services/workload.service';
 })
 export class WorkloadComponent implements OnInit {
   private readonly workloadService = inject(WorkloadService);
-  private readonly departmentService = inject(DepartmentService);
+  private readonly projectService = inject(ProjectService);
 
   readonly rows = signal<EmployeeWorkload[]>([]);
-  readonly departments = signal<DepartmentWithCount[]>([]);
+  readonly projects = signal<ProjectWithCount[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
-  readonly departmentId = signal<number | null>(null);
+  readonly projectId = signal<number | null>(null);
   readonly employeeId = signal<number | null>(null);
 
   /** Rows narrowed by the in-page employee filter; the summary and bars follow the same subset. */
@@ -43,8 +43,8 @@ export class WorkloadComponent implements OnInit {
   readonly maxActive = computed(() => Math.max(1, ...this.filteredRows().map((row) => row.activeTasks)));
 
   ngOnInit(): void {
-    this.departmentService.getAll().subscribe({
-      next: (departments) => this.departments.set(departments)
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects)
     });
     this.load();
   }
@@ -54,7 +54,7 @@ export class WorkloadComponent implements OnInit {
     this.error.set(null);
 
     this.workloadService
-      .getWorkload(this.departmentId())
+      .getWorkload(this.projectId())
       .pipe(catchError(() => of(null)))
       .subscribe((rows) => {
         if (rows === null) {
@@ -66,8 +66,8 @@ export class WorkloadComponent implements OnInit {
       });
   }
 
-  setDepartment(value: string): void {
-    this.departmentId.set(value ? Number(value) : null);
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
     this.employeeId.set(null);
     this.load();
   }
@@ -77,7 +77,7 @@ export class WorkloadComponent implements OnInit {
   }
 
   reset(): void {
-    this.departmentId.set(null);
+    this.projectId.set(null);
     this.employeeId.set(null);
     this.load();
   }

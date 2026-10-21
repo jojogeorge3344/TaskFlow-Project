@@ -9,10 +9,10 @@ export class WorkloadService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/v1/workload';
 
-  getWorkload(departmentId: number | null = null): Observable<EmployeeWorkload[]> {
+  getWorkload(projectId: number | null = null): Observable<EmployeeWorkload[]> {
     let params = new HttpParams();
-    if (departmentId !== null) {
-      params = params.set('departmentId', String(departmentId));
+    if (projectId !== null) {
+      params = params.set('projectId', String(projectId));
     }
     return this.http.get<EmployeeWorkload[]>(this.baseUrl, { params });
   }

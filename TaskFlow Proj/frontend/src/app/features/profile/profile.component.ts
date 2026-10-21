@@ -27,7 +27,7 @@ type ProfileField = 'fullName' | 'email';
 type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
 
 /** User Profile (Screen 19). Every signed-in user views and maintains their own account here.
- * Role, department, username, employee code and status are read-only by design. */
+ * Role, project, username, employee code and status are read-only by design. */
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -61,11 +61,11 @@ export class ProfileComponent implements OnInit {
           { label: 'Username', value: user.username },
           { label: 'Employee code', value: user.employeeCode || '—' },
           { label: 'Role', value: user.role },
-          { label: 'Project', value: user.departmentName || '—' },
+          { label: 'Project', value: user.projectName || '—' },
           { label: 'Manager', value: user.managerName || '—' },
           ...(user.role === 'Manager'
             ? [
-                { label: 'Managed projects', value: (user.managerDepartments ?? []).map((d) => d.name).join(', ') || '—' },
+                { label: 'Managed projects', value: (user.managerProjects ?? []).map((d) => d.name).join(', ') || '—' },
                 { label: 'Team', value: (user.reports ?? []).map((r) => r.fullName).join(', ') || '—' }
               ]
             : []),

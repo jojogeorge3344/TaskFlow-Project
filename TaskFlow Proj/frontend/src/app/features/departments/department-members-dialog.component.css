@@ -1,0 +1,8 @@
+.department-members__name {
+  overflow-wrap: anywhere;
+}
+
+.department-members__username {
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+}

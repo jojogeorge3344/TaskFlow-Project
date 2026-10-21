@@ -7,7 +7,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
 import { EMAIL_SUFFIX, localPartOf, localPartValidator, toEmail } from '../../core/email-domain';
 import { Permissions } from '../../core/auth/permissions';
-import { AccessRole, CreateUserRequest, DepartmentWithCount, SYSTEM_ROLE_IDS, UpdateUserRequest, User } from '../../core/models';
+import { AccessRole, CreateUserRequest, DepartmentWithCount, ProjectWithCount, SYSTEM_ROLE_IDS, UpdateUserRequest, User } from '../../core/models';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -44,6 +44,7 @@ export class EmployeeFormPanelComponent implements OnInit {
 
   /** The employee to edit, or null to add a new one. */
   readonly employee = input<User | null>(null);
+  readonly projects = input<ProjectWithCount[]>([]);
   readonly departments = input<DepartmentWithCount[]>([]);
   readonly saved = output<User>();
   readonly cancelled = output<void>();
@@ -53,7 +54,7 @@ export class EmployeeFormPanelComponent implements OnInit {
     this.authService.currentUser();
     return this.authService.hasPermission(Permissions.RolesManage);
   });
-  /** Choosing a manager and a manager's departments is Administrator-only; roles.manage is held only by Administrators. */
+  /** Choosing a manager and a manager's projects is Administrator-only; roles.manage is held only by Administrators. */
   readonly canAssign = computed(() => {
     this.authService.currentUser();
     return this.authService.hasPermission(Permissions.RolesManage);
@@ -91,9 +92,10 @@ export class EmployeeFormPanelComponent implements OnInit {
     // Holds only the part before the fixed domain; the suffix is shown beside the input and added on save.
     email: new FormControl('', { nonNullable: true, validators: [requiredText, localPartValidator] }),
     roleId: new FormControl<number>(SYSTEM_ROLE_IDS.Employee, { nonNullable: true }),
+    projectId: new FormControl<number | null>(null),
     departmentId: new FormControl<number | null>(null),
     managerId: new FormControl<number | null>(null),
-    managerDepartmentIds: new FormControl<number[]>([], { nonNullable: true }),
+    managerProjectIds: new FormControl<number[]>([], { nonNullable: true }),
     password: new FormControl('', { nonNullable: true }),
     isActive: new FormControl(true, { nonNullable: true })
   });
@@ -113,9 +115,10 @@ export class EmployeeFormPanelComponent implements OnInit {
         username: employee.username,
         email: localPartOf(employee.email),
         roleId: employee.roleId,
+        projectId: employee.projectId ?? null,
         departmentId: employee.departmentId ?? null,
         managerId: employee.managerId ?? null,
-        managerDepartmentIds: (employee.managerDepartments ?? []).map((department) => department.id)
+        managerProjectIds: (employee.managerProjects ?? []).map((project) => project.id)
       });
       this.selectedRoleId.set(employee.roleId);
       // Initial status only exists when adding; a new password is optional when editing.
@@ -162,30 +165,30 @@ export class EmployeeFormPanelComponent implements OnInit {
     });
   }
 
-  isDepartmentChosen(departmentId: number): boolean {
-    return this.form.controls.managerDepartmentIds.value.includes(departmentId);
+  isProjectChosen(projectId: number): boolean {
+    return this.form.controls.managerProjectIds.value.includes(projectId);
   }
 
-  toggleDepartment(departmentId: number, chosen: boolean): void {
-    const control = this.form.controls.managerDepartmentIds;
-    const current = control.value.filter((id) => id !== departmentId);
-    control.setValue(chosen ? [...current, departmentId] : current);
+  toggleProject(projectId: number, chosen: boolean): void {
+    const control = this.form.controls.managerProjectIds;
+    const current = control.value.filter((id) => id !== projectId);
+    control.setValue(chosen ? [...current, projectId] : current);
   }
 
-  /** Saves the manager and departments after the user itself is saved, but only when the Administrator changed them. */
+  /** Saves the manager and projects after the user itself is saved, but only when the Administrator changed them. */
   private saveAssignments(user: User, employee: User | null): Observable<{ user: User; assignmentError: string | null }> {
     const value = this.form.getRawValue();
     const managerId = value.managerId;
-    const departmentIds = this.isManagerRole() ? [...value.managerDepartmentIds].sort((a, b) => a - b) : [];
-    const before = employee?.managerDepartments?.map((department) => department.id).sort((a, b) => a - b) ?? [];
+    const projectIds = this.isManagerRole() ? [...value.managerProjectIds].sort((a, b) => a - b) : [];
+    const before = employee?.managerProjects?.map((project) => project.id).sort((a, b) => a - b) ?? [];
     const changed =
-      managerId !== (employee?.managerId ?? null) || departmentIds.join(',') !== before.join(',');
+      managerId !== (employee?.managerId ?? null) || projectIds.join(',') !== before.join(',');
 
     if (!this.canAssign() || !changed) {
       return of({ user, assignmentError: null });
     }
 
-    return this.userService.updateAssignments(user.id, { managerId, managerDepartmentIds: departmentIds }).pipe(
+    return this.userService.updateAssignments(user.id, { managerId, managerProjectIds: projectIds }).pipe(
       map((assigned) => ({ user: assigned, assignmentError: null as string | null })),
       catchError((err) =>
         of({ user, assignmentError: apiErrorMessage(err, 'The manager assignments could not be saved.') })
@@ -213,6 +216,7 @@ export class EmployeeFormPanelComponent implements OnInit {
       username: value.username.trim(),
       email: toEmail(value.email),
       roleId: value.roleId,
+      projectId: value.projectId,
       departmentId: value.departmentId
     };
 

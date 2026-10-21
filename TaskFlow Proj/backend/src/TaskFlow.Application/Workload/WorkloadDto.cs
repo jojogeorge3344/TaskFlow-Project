@@ -5,8 +5,8 @@ namespace TaskFlow.Application.Workload;
 public record EmployeeWorkloadDto(
     int UserId,
     string FullName,
-    int? DepartmentId,
-    string? DepartmentName,
+    int? ProjectId,
+    string? ProjectName,
     int ActiveTasks,
     int HighPriorityTasks,
     int OverdueTasks,

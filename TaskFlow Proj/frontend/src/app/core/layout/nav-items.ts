@@ -48,8 +48,11 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
   if (has(Permissions.EmployeesManage)) {
     management.push({ label: 'Employee Management', icon: 'users', route: '/employees' });
   }
+  if (has(Permissions.ProjectsView)) {
+    management.push({ label: 'Project Management', icon: 'building', route: '/projects' });
+  }
   if (has(Permissions.DepartmentsManage)) {
-    management.push({ label: 'Project Management', icon: 'building', route: '/departments' });
+    management.push({ label: 'Department Management', icon: 'building', route: '/departments' });
   }
   if (management.length > 0) {
     items.push({ label: 'TaskFlow Management', icon: 'tasks', children: management });

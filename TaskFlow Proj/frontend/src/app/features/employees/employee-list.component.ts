@@ -5,9 +5,10 @@ import { Observable, Subject, catchError, debounceTime, filter, map, of, switchM
 import { IconComponent } from '../../core/layout/icon.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
-import { DepartmentWithCount, User } from '../../core/models';
-import { RoleService } from '../../core/services/role.service';
+import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { RoleService } from '../../core/services/role.service';
+import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
@@ -35,6 +36,7 @@ export class EmployeeListComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly authService = inject(AuthService);
   private readonly roleService = inject(RoleService);
+  private readonly projectService = inject(ProjectService);
   private readonly departmentService = inject(DepartmentService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -50,6 +52,7 @@ export class EmployeeListComponent implements OnInit {
   readonly initials = initials;
 
   readonly employees = signal<User[]>([]);
+  readonly projects = signal<ProjectWithCount[]>([]);
   readonly departments = signal<DepartmentWithCount[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -64,12 +67,12 @@ export class EmployeeListComponent implements OnInit {
   /** What is typed in the search box; `search` is the debounced value that is applied. */
   readonly searchText = signal('');
   readonly search = signal('');
-  readonly departmentId = signal<number | null>(null);
+  readonly projectId = signal<number | null>(null);
   readonly role = signal<string>('');
   readonly status = signal<StatusFilter>('');
 
   readonly hasFilters = computed(
-    () => this.search() !== '' || this.departmentId() !== null || this.role() !== '' || this.status() !== ''
+    () => this.search() !== '' || this.projectId() !== null || this.role() !== '' || this.status() !== ''
   );
 
   readonly countLabel = computed(() => {
@@ -92,9 +95,9 @@ export class EmployeeListComponent implements OnInit {
   });
 
   constructor() {
-    const departmentId = Number(this.route.snapshot.queryParamMap.get('departmentId'));
-    if (Number.isInteger(departmentId) && departmentId > 0) {
-      this.departmentId.set(departmentId);
+    const projectId = Number(this.route.snapshot.queryParamMap.get('projectId'));
+    if (Number.isInteger(projectId) && projectId > 0) {
+      this.projectId.set(projectId);
     }
 
     this.searchInput$
@@ -127,6 +130,9 @@ export class EmployeeListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects)
+    });
     this.departmentService.getAll().subscribe({
       next: (departments) => this.departments.set(departments)
     });
@@ -148,8 +154,8 @@ export class EmployeeListComponent implements OnInit {
     this.searchInput$.next(value);
   }
 
-  setDepartment(value: string): void {
-    this.departmentId.set(value ? Number(value) : null);
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
     this.syncUrl();
     this.load();
   }
@@ -167,7 +173,7 @@ export class EmployeeListComponent implements OnInit {
   resetFilters(): void {
     this.searchText.set('');
     this.search.set('');
-    this.departmentId.set(null);
+    this.projectId.set(null);
     this.role.set('');
     this.status.set('');
     this.syncUrl();
@@ -257,9 +263,9 @@ export class EmployeeListComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    const params: { search?: string; departmentId?: number; role?: string; isActive?: boolean } = {};
+    const params: { search?: string; projectId?: number; role?: string; isActive?: boolean } = {};
     if (this.search()) params.search = this.search();
-    if (this.departmentId() !== null) params.departmentId = this.departmentId()!;
+    if (this.projectId() !== null) params.projectId = this.projectId()!;
     if (this.role()) params.role = this.role();
     if (this.status()) params.isActive = this.status() === 'active';
 
@@ -269,7 +275,7 @@ export class EmployeeListComponent implements OnInit {
   private syncUrl(): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { departmentId: this.departmentId() },
+      queryParams: { projectId: this.projectId() },
       queryParamsHandling: 'merge',
       replaceUrl: true
     });

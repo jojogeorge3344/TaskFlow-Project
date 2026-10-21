@@ -59,12 +59,12 @@
       </select>
     </div>
     <div class="tf-field">
-      <label for="report-filter-department">Project</label>
-      <select id="report-filter-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
-        <option value="" [selected]="departmentId() === null">All projects</option>
-        @for (department of departments(); track department.id) {
-          <option [value]="department.id" [selected]="department.id === departmentId()">
-            {{ department.name }}
+      <label for="report-filter-project">Project</label>
+      <select id="report-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+        <option value="" [selected]="projectId() === null">All projects</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id" [selected]="project.id === projectId()">
+            {{ project.name }}
           </option>
         }
       </select>

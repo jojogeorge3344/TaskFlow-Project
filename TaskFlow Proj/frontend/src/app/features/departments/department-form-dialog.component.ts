@@ -16,10 +16,10 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
   standalone: true,
   imports: [ReactiveFormsModule, IconComponent],
   template: `
-    <dialog #dialog class="tf-modal" aria-labelledby="dept-dialog-title" (cancel)="onCancelEvent($event)">
+    <dialog #dialog class="tf-modal" aria-labelledby="department-dialog-title" (cancel)="onCancelEvent($event)">
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <header class="tf-modal__head">
-          <h2 id="dept-dialog-title">{{ editing() ? 'Edit project' : 'Add project' }}</h2>
+          <h2 id="department-dialog-title">{{ editing() ? 'Edit department' : 'Add department' }}</h2>
           <button type="button" class="tf-btn tf-btn--icon" aria-label="Close dialog" (click)="close()">
             <tf-icon name="x" />
           </button>
@@ -30,31 +30,31 @@ function requiredText(control: AbstractControl<string>): ValidationErrors | null
             <div class="tf-alert" role="alert">{{ serverError() }}</div>
           }
           <div class="tf-field">
-            <label for="dept-name">Name <span class="tf-field__required" aria-hidden="true">*</span></label>
+            <label for="department-name">Name <span class="tf-field__required" aria-hidden="true">*</span></label>
             <input
               #nameInput
-              id="dept-name"
+              id="department-name"
               class="tf-input"
               formControlName="name"
               autocomplete="off"
               [class.is-invalid]="showNameError()"
               [attr.aria-invalid]="showNameError()"
-              aria-describedby="dept-name-error"
+              aria-describedby="department-name-error"
             />
             @if (showNameError()) {
-              <span id="dept-name-error" class="tf-field__error">Name is required.</span>
+              <span id="department-name-error" class="tf-field__error">Name is required.</span>
             }
           </div>
           <div class="tf-field">
-            <label for="dept-description">Description</label>
-            <textarea id="dept-description" class="tf-textarea" formControlName="description"></textarea>
+            <label for="department-description">Description</label>
+            <textarea id="department-description" class="tf-textarea" formControlName="description"></textarea>
           </div>
         </div>
 
         <footer class="tf-modal__foot">
           <button type="button" class="tf-btn tf-btn--ghost" (click)="close()">Cancel</button>
           <button type="submit" class="tf-btn tf-btn--primary" [disabled]="saving()">
-            {{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Add project' }}
+            {{ saving() ? 'Saving…' : editing() ? 'Save changes' : 'Add department' }}
           </button>
         </footer>
       </form>
@@ -134,7 +134,9 @@ export class DepartmentFormDialogComponent {
       },
       error: (err) => {
         this.saving.set(false);
-        this.serverError.set(apiErrorMessage(err, department ? 'Could not update the project.' : 'Could not add the project.'));
+        this.serverError.set(
+          apiErrorMessage(err, department ? 'Could not update the department.' : 'Could not add the department.')
+        );
       }
     });
   }

@@ -28,7 +28,7 @@ public class DashboardService : IDashboardService
 
         var totalEmployees = await _dbContext.Users.CountAsync(cancellationToken);
         var activeEmployees = await _dbContext.Users.CountAsync(user => user.IsActive, cancellationToken);
-        var totalDepartments = await _dbContext.Departments.CountAsync(cancellationToken);
+        var totalProjects = await _dbContext.Projects.CountAsync(cancellationToken);
 
         var tasks = ActiveTasks();
 
@@ -42,7 +42,7 @@ public class DashboardService : IDashboardService
         return new AdminDashboardDto(
             totalEmployees,
             activeEmployees,
-            totalDepartments,
+            totalProjects,
             totalTasks,
             pendingTasks,
             completedTasks,

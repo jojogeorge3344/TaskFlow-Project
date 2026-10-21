@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { DepartmentWithCount, ReportSummary, TaskRecipient } from '../../core/models';
-import { DepartmentService } from '../../core/services/department.service';
+import { ProjectWithCount, ReportSummary, TaskRecipient } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { ReportService } from '../../core/services/report.service';
 import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -11,7 +11,7 @@ import { ReportComponent } from './report.component';
 describe('ReportComponent', () => {
   const summary: ReportSummary = { totalTasks: 10, pendingTasks: 4, completedTasks: 5, overdueTasks: 1 };
 
-  const departments: DepartmentWithCount[] = [
+  const projects: ProjectWithCount[] = [
     { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2 }
   ];
   const assignees: TaskRecipient[] = [{ userId: 3, fullName: 'Joe Thomas' }];
@@ -42,7 +42,7 @@ describe('ReportComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ReportService, useValue: { getSummary: getSummarySpy, exportCsv: exportSpy } },
-        { provide: DepartmentService, useValue: { getAll: () => of(departments) } },
+        { provide: ProjectService, useValue: { getAll: () => of(projects) } },
         { provide: TaskService, useValue: { getAssignees: () => of(assignees) } },
         { provide: ToastService, useValue: { error: toastErrorSpy } }
       ]
@@ -67,7 +67,7 @@ describe('ReportComponent', () => {
     fixture.componentInstance.setDeadlineFrom('2026-10-01');
     fixture.componentInstance.setDeadlineTo('2026-10-31');
     fixture.componentInstance.setAssignee('3');
-    fixture.componentInstance.setDepartment('1');
+    fixture.componentInstance.setProject('1');
     fixture.componentInstance.setStatus('Completed');
     fixture.componentInstance.setPriority('High');
 
@@ -75,7 +75,7 @@ describe('ReportComponent', () => {
       deadlineFrom: startOfLocalDay('2026-10-01'),
       deadlineTo: endOfLocalDay('2026-10-31'),
       assignedToUserId: 3,
-      departmentId: 1,
+      projectId: 1,
       status: 'Completed',
       priority: 'High'
     });

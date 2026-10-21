@@ -28,8 +28,8 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
         Tracking = TaskTrackingServiceHarness.Create();
         Clock = new FixedTimeProvider(new DateTime(2026, 10, 19, 9, 0, 0));
 
-        Engineering = new Department { Name = "Engineering", CreatedAt = DateTime.UtcNow };
-        Db.Departments.Add(Engineering);
+        Engineering = new Project { Name = "Engineering", CreatedAt = DateTime.UtcNow };
+        Db.Projects.Add(Engineering);
         Db.SaveChanges();
 
         Admin = AddUser("admin", SystemRoles.Administrator);
@@ -42,16 +42,16 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
     public AppDbContext Db => Tracking.Db;
     public FixedTimeProvider Clock { get; }
     public RolePolicyAuthorizer Authorizer { get; } = new();
-    public Department Engineering { get; }
+    public Project Engineering { get; }
     public User Admin { get; }
     public User Ravi { get; }
     public User Asha { get; }
     public User Priya { get; }
 
-    public User AddUser(string username, string role, int? departmentId = null, bool isActive = true)
+    public User AddUser(string username, string role, int? projectId = null, bool isActive = true)
     {
         var user = Tracking.AddUser(username, role, isActive);
-        user.DepartmentId = departmentId;
+        user.ProjectId = projectId;
         Db.SaveChanges();
         return user;
     }

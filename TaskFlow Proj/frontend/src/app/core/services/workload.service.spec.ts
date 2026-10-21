@@ -12,8 +12,8 @@ describe('WorkloadService', () => {
     {
       userId: 3,
       fullName: 'Joe Thomas',
-      departmentId: 2,
-      departmentName: 'Engineering',
+      projectId: 2,
+      projectName: 'Engineering',
       activeTasks: 4,
       highPriorityTasks: 2,
       overdueTasks: 1,
@@ -29,23 +29,23 @@ describe('WorkloadService', () => {
 
   afterEach(() => http.verify());
 
-  it('reads the workload without a department filter', () => {
+  it('reads the workload without a project filter', () => {
     let received: EmployeeWorkload[] | undefined;
     service.getWorkload().subscribe((rows) => (received = rows));
 
     const request = http.expectOne((req) => req.url === '/api/v1/workload');
     expect(request.request.method).toBe('GET');
-    expect(request.request.params.has('departmentId')).toBeFalse();
-    request.flush([{ userId: 3, fullName: 'Joe Thomas', departmentId: null, departmentName: null, activeTasks: 2, highPriorityTasks: 1, overdueTasks: 0, completedTasks: 4 }]);
+    expect(request.request.params.has('projectId')).toBeFalse();
+    request.flush([{ userId: 3, fullName: 'Joe Thomas', projectId: null, projectName: null, activeTasks: 2, highPriorityTasks: 1, overdueTasks: 0, completedTasks: 4 }]);
 
     expect(received?.length).toBe(1);
   });
 
-  it('narrows the workload to a department', () => {
+  it('narrows the workload to a project', () => {
     service.getWorkload(7).subscribe();
 
     const request = http.expectOne((req) => req.url === '/api/v1/workload');
-    expect(request.request.params.get('departmentId')).toBe('7');
+    expect(request.request.params.get('projectId')).toBe('7');
     request.flush([]);
   });
 

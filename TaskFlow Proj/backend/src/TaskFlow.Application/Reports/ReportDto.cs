@@ -9,7 +9,7 @@ public record ReportFilter(
     DateTime? DeadlineFrom = null,
     DateTime? DeadlineTo = null,
     int? AssignedToUserId = null,
-    int? DepartmentId = null,
+    int? ProjectId = null,
     TaskStatus? Status = null,
     TaskPriority? Priority = null);
 
@@ -20,12 +20,12 @@ public record ReportSummaryDto(
     int CompletedTasks,
     int OverdueTasks);
 
-/// <summary>One exported task row. Department is the assignee's department, matching the report filter.</summary>
+/// <summary>One exported task row. Project is the assignee's project, matching the report filter.</summary>
 public record ReportRowDto(
     string TaskCode,
     string Title,
     string Assignee,
-    string Department,
+    string Project,
     TaskPriority Priority,
     TaskStatus Status,
     DateTime StartDate,

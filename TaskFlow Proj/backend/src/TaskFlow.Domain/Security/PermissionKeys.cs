@@ -6,6 +6,9 @@ public static class PermissionKeys
     public const string DashboardAdmin = "dashboard.admin";
     public const string DashboardManager = "dashboard.manager";
 
+    public const string ProjectsView = "projects.view";
+    public const string ProjectsManage = "projects.manage";
+
     public const string DepartmentsView = "departments.view";
     public const string DepartmentsManage = "departments.manage";
 

@@ -42,7 +42,7 @@ public class UsersController : ControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
-    /// <summary>Updates the caller's own full name and email. Role, department, username, employee
+    /// <summary>Updates the caller's own full name and email. Role, project, username, employee
     /// code and account status are not part of this contract and cannot change here.</summary>
     [HttpPut("me")]
     [Authorize]
@@ -104,12 +104,12 @@ public class UsersController : ControllerBase
     [RequirePermission(PermissionKeys.EmployeesView)]
     public async Task<ActionResult<IReadOnlyCollection<UserDto>>> GetAll(
         [FromQuery] string? search,
-        [FromQuery] int? departmentId,
+        [FromQuery] int? projectId,
         [FromQuery] string? role,
         [FromQuery] bool? isActive,
         CancellationToken cancellationToken)
     {
-        var filter = new UserListFilter(search, departmentId, role, isActive);
+        var filter = new UserListFilter(search, projectId, role, isActive);
         var users = await _userService.GetAllAsync(filter, cancellationToken);
         return Ok(users);
     }
@@ -207,7 +207,7 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>Choosing departments for a manager and a manager for an employee is Administrator-only.</summary>
+    /// <summary>Choosing projects for a manager and a manager for an employee is Administrator-only.</summary>
     [HttpPut("{id}/assignments")]
     [RequirePermission(PermissionKeys.RolesManage)]
     public async Task<ActionResult<UserDto>> UpdateAssignments(int id, [FromBody] ManagerAssignmentRequest request, CancellationToken cancellationToken)

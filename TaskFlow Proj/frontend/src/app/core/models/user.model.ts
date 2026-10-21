@@ -14,18 +14,21 @@ export interface User {
   createdAt: string;
   updatedAt?: string | null;
   lastLoginAt?: string | null;
+  projectId?: number | null;
+  projectName?: string | null;
+  /** The department the user belongs to. */
   departmentId?: number | null;
   departmentName?: string | null;
   /** Who this user reports to. Recorded data only; it does not change what anyone can see. */
   managerId?: number | null;
   managerName?: string | null;
-  /** For a manager: the departments they are assigned to. */
-  managerDepartments?: ManagerDepartmentRef[];
+  /** For a manager: the projects they are assigned to. */
+  managerProjects?: ManagerProjectDto[];
   /** For a manager: the people who report to them. */
   reports?: ManagerReportRef[];
 }
 
-export interface ManagerDepartmentRef {
+export interface ManagerProjectDto {
   id: number;
   name: string;
 }
@@ -35,10 +38,10 @@ export interface ManagerReportRef {
   fullName: string;
 }
 
-/** Replaces a user's manager and, for a manager, their departments. Administrator only. */
+/** Replaces a user's manager and, for a manager, their projects. Administrator only. */
 export interface ManagerAssignmentRequest {
   managerId: number | null;
-  managerDepartmentIds: number[];
+  managerProjectIds: number[];
 }
 
 export interface CreateUserRequest {
@@ -49,6 +52,7 @@ export interface CreateUserRequest {
   password: string;
   roleId: number;
   isActive: boolean;
+  projectId?: number | null;
   departmentId?: number | null;
 }
 
@@ -58,6 +62,7 @@ export interface UpdateUserRequest {
   username: string;
   email: string;
   roleId: number;
+  projectId?: number | null;
   departmentId?: number | null;
   /** New password; omit or leave empty to keep the current one. Changing it (or the username) ends the user's sessions. */
   password?: string | null;
