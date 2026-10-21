@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskFlow Employee Dashboard Mockup</title>
+<style>
+:root{color-scheme:light;--primary:#2563eb;--soft:#eff6ff;--sidebar:#0f172a;--bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;
+--completed:#15803d;--progress:#2563eb;--pending:#94a3b8;--overdue:#dc2626;--high:#dc2626;--med:#d97706;--low:#64748b;--font:'Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 var(--font);color:var(--text);background:var(--bg)}
+.side{position:fixed;inset:0 auto 0 0;width:15rem;background:var(--sidebar);color:#cbd5e1;padding:1rem .75rem}
+.side b{display:block;color:#fff;font-size:1.1rem;padding:.25rem .5rem 1rem}.side a{display:block;padding:.55rem .75rem;border-radius:.4rem;color:inherit;text-decoration:none;margin-bottom:.15rem}
+.side a.on{background:var(--primary);color:#fff}
+main{margin-left:15rem;padding:1.25rem 1.5rem 3rem;max-width:80rem}
+h1{font-size:1.4rem;margin:0}.sub{color:var(--muted);margin:.1rem 0 1rem}
+.bar1{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:.6rem .8rem}
+.chips{display:flex;gap:.3rem}.chip{border:1px solid var(--border);background:#fff;border-radius:99px;padding:.25rem .75rem;cursor:pointer;font:inherit}.chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.sp{flex:1}.btn{border:1px solid var(--border);background:#fff;border-radius:.4rem;padding:.35rem .8rem;cursor:pointer;font:inherit}
+.grid{display:grid;gap:1rem;margin-top:1rem}.cards{grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:.9rem 1rem}
+.kpi small{color:var(--muted);display:block}.kpi strong{font-size:1.7rem;line-height:1.2}.kpi.bad strong{color:var(--overdue)}.kpi.good strong{color:var(--completed)}
+.two{grid-template-columns:repeat(auto-fit,minmax(22rem,1fr))}.card h2{font-size:1rem;margin:0 0 .15rem}.card p.h{margin:0 0 .75rem;color:var(--muted);font-size:.8rem}
+.dot{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.3rem;vertical-align:-1px}.c-co{background:var(--completed)}.c-ip{background:var(--progress)}.c-pe{background:var(--pending)}.c-ov{background:var(--overdue)}
+.donutwrap{display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap}
+.donut{width:9rem;height:9rem;border-radius:50%;position:relative;cursor:pointer}.donut::after{content:attr(data-center);position:absolute;inset:1.9rem;background:#fff;border-radius:50%;display:grid;place-items:center;text-align:center;font-weight:700;line-height:1.1;white-space:pre}
+.list{list-style:none;margin:0;padding:0;font-size:.85rem}.list li{display:flex;justify-content:space-between;gap:1rem;padding:.2rem 0;cursor:pointer}.list li:hover{background:var(--soft)}
+.prog{height:.6rem;background:#e2e8f0;border-radius:99px;overflow:hidden}.prog>div{height:100%;background:var(--completed)}
+.big{height:1rem}.proj{margin:.7rem 0}.proj .t{display:flex;justify-content:space-between;gap:.5rem;font-size:.85rem}.proj small{color:var(--muted)}
+.dl{list-style:none;margin:0;padding:0;font-size:.85rem}.dl li{display:flex;justify-content:space-between;gap:.8rem;padding:.5rem 0;border-bottom:1px solid var(--border);cursor:pointer}.dl li:hover{background:var(--soft)}
+.badge{font-size:.7rem;padding:.05rem .5rem;border-radius:99px;background:#fee2e2;color:#991b1b;white-space:nowrap}.badge.o{background:#fef3c7;color:#92400e}.badge.b{background:#dbeafe;color:#1e40af}
+.dept{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.4rem}.dept div small{display:block;color:var(--muted)}.dept div strong{font-size:1.3rem}
+svg text{font:11px var(--font);fill:#64748b}.note{font-size:.75rem;color:var(--muted);margin-top:.5rem}
+#drill{position:fixed;right:1rem;bottom:1rem;background:#0f172a;color:#fff;padding:.7rem 1rem;border-radius:.5rem;max-width:22rem;display:none;box-shadow:0 8px 24px #0004}
+.state{display:flex;gap:.5rem;margin:1rem 0 0;font-size:.8rem;color:var(--muted);align-items:center}
+@media(max-width:800px){.side{display:none}main{margin-left:0;padding:1rem}}
+</style>
+</head>
+<body>
+<nav class="side"><b>TaskFlow</b><a class="on" href="#">My dashboard</a><a href="#">My tasks</a><a href="#">Mail</a><a href="#">Notifications</a><a href="#">Profile</a></nav>
+<main>
+<h1>Welcome back, Anu</h1><p class="sub">Your tasks, projects and progress &middot; <span id="rangeLabel">Last 30 days</span></p>
+<section class="bar1"><span>Period</span><div class="chips" id="presets"><button class="chip">Last 7 days</button><button class="chip on">Last 30 days</button><button class="chip">This month</button></div><span class="sp"></span><span class="note" style="margin:0">Only your own data is shown.</span></section>
+<div class="state"><span>States:</span><button class="btn" onclick="demo('loading')">Loading</button><button class="btn" onclick="demo('empty')">Empty</button><button class="btn" onclick="demo('error')">Error</button><button class="btn" onclick="demo('ok')">Data</button></div>
+
+<section class="grid cards">
+  <div class="card kpi"><small>My tasks</small><strong>12</strong></div>
+  <div class="card kpi good"><small>Completed</small><strong>5</strong></div>
+  <div class="card kpi"><small>In progress</small><strong>3</strong></div>
+  <div class="card kpi"><small>Pending</small><strong>2</strong></div>
+  <div class="card kpi bad"><small>Overdue</small><strong>2</strong></div>
+  <div class="card kpi good"><small>Completion</small><strong>42%</strong></div>
+</section>
+<div id="msg" class="card" style="display:none;margin-top:1rem"></div>
+
+<div id="body">
+<section class="grid two">
+  <article class="card"><h2>Overall task summary</h2><p class="h">Completed versus outstanding</p>
+    <div class="prog big"><div style="width:42%"></div></div><p style="margin:.4rem 0 0"><b>5</b> completed &middot; <b>7</b> outstanding &middot; 42%</p>
+    <div class="donutwrap" style="margin-top:1rem">
+      <div class="donut" data-center="12&#10;tasks" style="background:conic-gradient(var(--completed) 0 41.7%,var(--progress) 41.7% 66.7%,var(--pending) 66.7% 83.3%,var(--overdue) 83.3% 100%)" role="img" aria-label="My status donut"></div>
+      <ul class="list"><li onclick="drill('My completed tasks (5)')"><span><i class="dot c-co"></i>Completed</span><b>5</b></li><li onclick="drill('My in-progress tasks (3)')"><span><i class="dot c-ip"></i>In progress</span><b>3</b></li><li onclick="drill('My pending tasks (2)')"><span><i class="dot c-pe"></i>Pending</span><b>2</b></li><li onclick="drill('My overdue tasks (2)')"><span><i class="dot c-ov"></i>Overdue</span><b>2</b></li></ul>
+    </div>
+    <p class="note" style="margin-top:.8rem">Priority: <span class="badge">High 3</span> <span class="badge o">Medium 6</span> <span class="badge b">Low 3</span></p></article>
+  <article class="card"><h2>Upcoming deadlines &amp; overdue</h2><p class="h">Next 7 days, soonest first</p>
+    <ul class="dl">
+      <li onclick="drill('Task TF-301')"><span><b>TF-301</b> Update API docs<br><small>Apollo &middot; High</small></span><span class="badge">3 days overdue</span></li>
+      <li onclick="drill('Task TF-288')"><span><b>TF-288</b> Fix login redirect<br><small>Beacon &middot; Medium</small></span><span class="badge">1 day overdue</span></li>
+      <li onclick="drill('Task TF-312')"><span><b>TF-312</b> Review test plan<br><small>Apollo &middot; Medium</small></span><span class="badge o">Due today</span></li>
+      <li onclick="drill('Task TF-320')"><span><b>TF-320</b> Sprint demo prep<br><small>Cirrus &middot; Low</small></span><span class="badge b">In 4 days</span></li>
+    </ul></article>
+</section>
+
+<section class="grid two">
+  <article class="card"><h2>Personal performance</h2><p class="h">Created vs completed per day &middot; 7 completed in this period</p>
+    <svg viewBox="0 0 480 170" width="100%" role="img" aria-label="Personal trend">
+      <g stroke="#e2e8f0"><line x1="30" y1="20" x2="470" y2="20"/><line x1="30" y1="65" x2="470" y2="65"/><line x1="30" y1="110" x2="470" y2="110"/></g>
+      <text x="6" y="24">3</text><text x="6" y="69">2</text><text x="6" y="114">1</text>
+      <polyline fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="5 3" points="30,110 100,65 170,110 240,65 310,110 380,65 470,110"/>
+      <polyline fill="none" stroke="#15803d" stroke-width="2.5" points="30,110 100,110 170,65 240,110 310,20 380,65 470,20"/>
+      <g fill="#15803d" style="cursor:pointer" onclick="drill('Completed on 21 Oct (3)')"><circle cx="470" cy="20" r="5"><title>21 Oct: 3 completed</title></circle></g>
+      <text x="30" y="152">21 Sep</text><text x="215" y="152">06 Oct</text><text x="430" y="152">21 Oct</text></svg>
+    <p class="note"><span class="dot" style="background:#15803d"></span>Completed &nbsp; <span class="dot" style="background:#64748b"></span>Created</p></article>
+  <article class="card"><h2>My projects</h2><p class="h">Progress of your own tasks in each project</p><div id="proj"></div></article>
+</section>
+
+<section class="grid">
+  <article class="card"><h2>Department overview &mdash; Engineering</h2><p class="h">Aggregate numbers only. No colleague names or tasks are shown.</p>
+    <div class="dept"><div><small>Tasks</small><strong>120</strong></div><div><small>Completed</small><strong>72</strong></div><div><small>In progress</small><strong>34</strong></div><div><small>Pending</small><strong>9</strong></div><div><small>Overdue</small><strong>5</strong></div><div style="min-width:12rem;flex:1"><small>Department completion &middot; 60%</small><div class="prog big" style="margin-top:.5rem"><div style="width:60%"></div></div></div></div>
+    <p class="note">Departments with fewer than 3 members show only the total task count.</p></article>
+</section>
+</div>
+</main>
+<div id="drill" role="status"></div>
+<script>
+proj.innerHTML=[['Apollo',60,'5 tasks &middot; next open deadline 24 Oct'],['Beacon',33,'3 tasks &middot; next open deadline 22 Oct'],['Cirrus',33,'3 tasks &middot; next open deadline 25 Oct'],['No project',100,'1 task &middot; done']].map(p=>`<div class="proj"><div class="t"><b>${p[0]}</b><span>${p[1]}%</span></div><div class="prog" onclick="drill('My tasks in ${p[0]}')" style="cursor:pointer"><div style="width:${p[1]}%"></div></div><small>${p[2]}</small></div>`).join('');
+function drill(t){const d=document.getElementById('drill');d.style.display='block';d.innerHTML='<b>Drill-down</b><br>Opens My tasks filtered to: '+t;clearTimeout(window.tm);window.tm=setTimeout(()=>d.style.display='none',3500)}
+document.querySelectorAll('#presets .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#presets .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');rangeLabel.textContent=c.textContent});
+function demo(s){const m=document.getElementById('msg'),b=document.getElementById('body');m.style.display=s=='ok'?'none':'block';b.style.opacity=s=='ok'?1:.25;
+ m.innerHTML={loading:'Loading your dashboard&hellip;',empty:'<b>You have no tasks yet.</b> New assignments will appear here.',error:'<b>Could not load your dashboard.</b> <button class="btn" onclick="demo(\'ok\')">Retry</button>',ok:''}[s]}
+</script>
+</body>
+</html>
