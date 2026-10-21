@@ -16,6 +16,13 @@
     </button>
   </header>
 
+  @if (linkMessage(); as message) {
+    <div class="tf-alert" role="alert" data-error="reset-link">
+      <tf-icon name="alert" />
+      <span>{{ message }}</span>
+    </div>
+  }
+
   <div class="tf-card tf-toolbar" role="search" aria-label="Filter employees">
     <div class="tf-field">
       <label for="emp-search">Search</label>
@@ -211,6 +218,7 @@
     @case ('details') {
       <app-employee-details-panel
         [employee]="$any(panel()).employee"
+        [focusRequest]="focusRequest()"
         (edit)="openEdit($any(panel()).employee)"
         (closed)="closePanel()"
       />

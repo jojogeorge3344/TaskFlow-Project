@@ -53,11 +53,37 @@ public class AuthService : IAuthService
         user.LastLoginAt = now;
         user.UpdatedAt = now;
 
+        // A successful sign-in - and only that - clears the account's Login Screen notice (design D2).
+        var notice = await _db.LoginPasswordResetNotices
+            .FirstOrDefaultAsync(existing => existing.UserId == user.Id && existing.ClearedAt == null, cancellationToken);
+        if (notice is not null)
+        {
+            notice.ClearedAt = now;
+        }
+
         var tokens = IssueTokens(user, now);
 
         await _db.SaveChangesAsync(cancellationToken);
 
         return AuthResult.Success(tokens, await ToDtoAsync(user, cancellationToken));
+    }
+
+    public async Task<bool> HasPasswordResetNoticeAsync(string? identifier, CancellationToken cancellationToken = default)
+    {
+        var trimmed = (identifier ?? string.Empty).Trim();
+        if (trimmed.Length == 0)
+        {
+            return false;
+        }
+
+        // The notice has no time limit: it is there until a sign-in or a password update clears it (design D12).
+        return await _db.LoginPasswordResetNotices
+            .AsNoTracking()
+            .AnyAsync(
+                candidate => candidate.ClearedAt == null
+                    && candidate.User!.IsActive
+                    && (candidate.User.Username == trimmed || candidate.User.Email == trimmed),
+                cancellationToken);
     }
 
     public async Task<AuthResult> RefreshAsync(string? refreshToken, CancellationToken cancellationToken = default)

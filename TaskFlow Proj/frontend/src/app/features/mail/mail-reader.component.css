@@ -171,3 +171,8 @@
     flex-wrap: wrap;
   }
 }
+
+.message__link {
+  color: var(--tf-primary, #2563eb);
+  text-decoration: underline;
+}

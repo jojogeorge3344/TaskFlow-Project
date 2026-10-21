@@ -164,6 +164,15 @@
           }
         </div>
 
+        <div class="tf-field">
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="forgot-password" [disabled]="forgotSubmitting()" (click)="forgotPassword()">
+            Forgot your password?
+          </button>
+          @if (forgotConfirmation(); as confirmation) {
+            <span class="tf-field__hint" role="status" data-status="forgot-confirmation">{{ confirmation }}</span>
+          }
+        </div>
+
         <div class="tf-form-actions">
           <button type="submit" class="tf-btn tf-btn--primary" data-action="change-password" [disabled]="changingPassword()">
             {{ changingPassword() ? 'Changing…' : 'Change password' }}

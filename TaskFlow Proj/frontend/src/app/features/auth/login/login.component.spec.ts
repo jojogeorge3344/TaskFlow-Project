@@ -12,6 +12,7 @@ describe('LoginComponent', () => {
   let navigateSpy: jasmine.Spy;
 
   beforeEach(async () => {
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]

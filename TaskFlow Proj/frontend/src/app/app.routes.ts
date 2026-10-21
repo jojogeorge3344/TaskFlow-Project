@@ -13,6 +13,27 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent)
   },
   {
+    // The encrypted per-user login address: resolves the token, shows the email and checks for a reset notice.
+    path: 'login/:token',
+    loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent)
+  },
+  {
+    // The password update screen the Login Screen bell opens. Public by design: the temporary password the
+    // administrator issued proves who the user is. The account arrives in router state, never in the address.
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent)
+  },
+  {
+    // Reached with a valid token while the API demands a password change; outside the shell on purpose.
+    path: 'force-password-change',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/auth/force-password-change/force-password-change.component').then(
+        (m) => m.ForcePasswordChangeComponent
+      )
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./core/layout/shell.component').then((m) => m.ShellComponent),

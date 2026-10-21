@@ -103,7 +103,14 @@
             </div>
             <time class="message__date">{{ fullDate(message.sentAt) }}</time>
           </header>
-          <div class="message__body">{{ message.body }}</div>
+          <div class="message__body">@for (part of linkify(message.body); track $index) {@if (part.url) {<a
+                class="message__link"
+                [href]="part.url"
+                [attr.target]="isInApp(part.url) ? null : '_blank'"
+                rel="noopener noreferrer"
+                data-link
+                (click)="openLink($event, part.url)"
+              >{{ part.url }}</a>} @else {<ng-container>{{ part.text }}</ng-container>}}</div>
           @if (message.attachments.length) {
             <ul class="message__files" aria-label="Attachments">
               @for (file of message.attachments; track file.id) {

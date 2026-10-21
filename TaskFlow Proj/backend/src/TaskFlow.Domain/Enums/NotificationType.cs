@@ -6,5 +6,8 @@ public enum NotificationType
     Reassigned,
     DeadlineReminder,
     Overdue,
-    System
+    System,
+
+    /// <summary>An administrator processed a password recovery request for this account.</summary>
+    PasswordReset
 }

@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Authentication;
+using TaskFlow.Application.PasswordReset;
 using TaskFlow.Application.Users;
+using TaskFlow.Domain.Enums;
 
 namespace TaskFlow.Api.Controllers;
 
@@ -16,15 +18,18 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly IValidator<ChangePasswordRequest> _passwordValidator;
+    private readonly IPasswordResetService _passwordResetService;
 
     public UsersController(
         IUserService userService,
         IValidator<UpdateOwnProfileRequest> profileValidator,
-        IValidator<ChangePasswordRequest> passwordValidator)
+        IValidator<ChangePasswordRequest> passwordValidator,
+        IPasswordResetService passwordResetService)
     {
         _userService = userService;
         _profileValidator = profileValidator;
         _passwordValidator = passwordValidator;
+        _passwordResetService = passwordResetService;
     }
 
     /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
@@ -70,6 +75,27 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>Forgot Password on the Profile Screen (Screen 19). The account is the caller's own,
+    /// taken from the token and never from input, so nobody can raise a recovery request for somebody
+    /// else here; the confirmation is the same generic text the Login Screen shows.</summary>
+    [HttpPost("me/password-reset-request")]
+    [Authorize]
+    public async Task<IActionResult> RequestOwnPasswordReset(CancellationToken cancellationToken)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        await _passwordResetService.CreateRequestAsync(
+            sessionUserId: currentUserId,
+            identifier: null,
+            origin: PasswordResetOrigin.ProfileScreen,
+            cancellationToken);
+
+        return Ok(new { message = PasswordResetTexts.Confirmation });
+    }
+
     /// <summary>Changes the caller's own password after verifying the current one. Every session of
     /// the user is ended, so the client must sign in again with the new password.</summary>
     [HttpPost("me/password")]
@@ -77,9 +103,16 @@ public class UsersController : ControllerBase
     public async Task<ActionResult> ChangeOwnPassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         var validation = await _passwordValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
+
+        // The mandatory change screen after a temporary password asks only for New and Confirm Password (design D11),
+        // so a flagged caller is not held to the current-password rule; the service still checks one if supplied.
+        var mustChange = User.FindFirstValue(AuthClaims.MustChangePassword) == "true";
+        var errors = validation.Errors
+            .Where(error => !mustChange || error.PropertyName != nameof(ChangePasswordRequest.CurrentPassword))
+            .ToList();
+        if (errors.Count > 0)
         {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+            return ValidationProblem(new ValidationProblemDetails(new FluentValidation.Results.ValidationResult(errors).ToDictionary()));
         }
 
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))

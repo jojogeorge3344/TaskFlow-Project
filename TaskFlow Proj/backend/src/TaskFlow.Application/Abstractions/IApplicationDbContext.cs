@@ -13,5 +13,7 @@ public interface IApplicationDbContext
 
     DbSet<RolePermission> RolePermissions { get; }
 
+    DbSet<LoginPasswordResetNotice> LoginPasswordResetNotices { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

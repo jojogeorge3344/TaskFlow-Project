@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
 import { User } from '../../core/models';
+import { PasswordResetService } from '../../core/services/password-reset.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ProfileComponent } from './profile.component';
@@ -27,6 +28,7 @@ describe('ProfileComponent', () => {
   let getSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
   let changePasswordSpy: jasmine.Spy;
+  let requestOwnSpy: jasmine.Spy;
   let toast: jasmine.SpyObj<ToastService>;
   let authService: jasmine.SpyObj<AuthService>;
   let router: Router;
@@ -35,6 +37,7 @@ describe('ProfileComponent', () => {
     getSpy = jasmine.createSpy('get').and.returnValue(of(me));
     updateSpy = jasmine.createSpy('update');
     changePasswordSpy = jasmine.createSpy('changePassword');
+    requestOwnSpy = jasmine.createSpy('requestOwn').and.returnValue(of({ message: 'server text' }));
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['clearSession', 'applyProfile']);
   });
@@ -45,6 +48,7 @@ describe('ProfileComponent', () => {
       providers: [
         { provide: ProfileService, useValue: { get: getSpy, update: updateSpy, changePassword: changePasswordSpy } },
         { provide: AuthService, useValue: authService },
+        { provide: PasswordResetService, useValue: { requestOwn: requestOwnSpy } },
         { provide: ToastService, useValue: toast },
         provideRouter([])
       ]
@@ -160,6 +164,38 @@ describe('ProfileComponent', () => {
 
     submit(fixture, 'save');
     expect(updateSpy).toHaveBeenCalledOnceWith(jasmine.objectContaining({ email: 'joanna@taskflow.com' }));
+  });
+
+  it('shows no password errors until the user types or submits', () => {
+    const fixture = create();
+
+    expect(el(fixture).querySelectorAll('[data-error="currentPassword"], [data-error="newPassword"], [data-error="confirmPassword"]').length).toBe(0);
+  });
+
+  it('shows only the confirmation mismatch while the confirmation is being typed wrong', () => {
+    const fixture = create();
+    const group = fixture.componentInstance.passwordForm;
+
+    group.controls.currentPassword.setValue('P@ssw0rd!');
+    group.controls.newPassword.setValue('N3wP@ss!');
+    group.controls.confirmPassword.setValue('different');
+    group.controls.confirmPassword.markAsDirty();
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('[data-error="confirmPassword"]')?.textContent).toContain('do not match');
+    expect(el(fixture).querySelector('[data-error="currentPassword"]')).toBeNull();
+    expect(el(fixture).querySelector('[data-error="newPassword"]')).toBeNull();
+  });
+
+  it('shows every problem at once when an invalid form is submitted', () => {
+    const fixture = create();
+
+    submit(fixture, 'change-password');
+
+    expect(changePasswordSpy).not.toHaveBeenCalled();
+    expect(el(fixture).querySelector('[data-error="currentPassword"]')?.textContent).toContain('Required');
+    expect(el(fixture).querySelector('[data-error="newPassword"]')?.textContent).toContain('Required');
+    expect(el(fixture).querySelector('[data-error="confirmPassword"]')?.textContent).toContain('Required');
   });
 
   it('requires matching password confirmation', () => {

@@ -9,6 +9,7 @@ import { of, throwError } from 'rxjs';
 import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
 import { ProjectService } from '../../core/services/project.service';
+import { PasswordResetService } from '../../core/services/password-reset.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -64,6 +65,7 @@ describe('EmployeeListComponent', () => {
         { provide: DepartmentService, useValue: { getAll: departmentsGetAllSpy } },
         { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
         { provide: RoleService, useValue: { list: () => of([]) } },
+        { provide: PasswordResetService, useValue: { list: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
       ]
     });

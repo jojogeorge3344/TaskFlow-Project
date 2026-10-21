@@ -35,6 +35,7 @@ public static class SessionValidation
             {
                 candidate.SecurityStamp,
                 candidate.IsActive,
+                candidate.MustChangePassword,
                 RoleName = candidate.Role.Name,
                 PermissionKeys = candidate.Role.Permissions.Select(grant => grant.Permission.Key).ToList()
             })
@@ -51,6 +52,16 @@ public static class SessionValidation
             foreach (var stale in identity.FindAll(identity.RoleClaimType).Concat(identity.FindAll(AuthClaims.Permission)).ToList())
             {
                 identity.RemoveClaim(stale);
+            }
+
+            foreach (var stale in identity.FindAll(AuthClaims.MustChangePassword).ToList())
+            {
+                identity.RemoveClaim(stale);
+            }
+
+            if (user.MustChangePassword)
+            {
+                identity.AddClaim(new Claim(AuthClaims.MustChangePassword, "true"));
             }
 
             identity.AddClaim(new Claim(identity.RoleClaimType, user.RoleName));

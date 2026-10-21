@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { MailService } from '../../core/services/mail.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -46,6 +46,55 @@ describe('MailReaderComponent', () => {
     expect(messages[0].textContent).toContain('Original question');
     expect(el(fixture).querySelector('[data-attachment="5"]')?.textContent).toContain('plan.pdf');
     expect(el(fixture).querySelector('[data-attachment="5"]')?.textContent).toContain('2 KB');
+  });
+
+  it('shows an address in the body as a clickable link', () => {
+    const url = `${window.location.origin}/employees?resetRequest=abc-123`;
+    { const m = message({ body: `Open this request: ${url}\nThanks` }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
+
+    const fixture = create();
+
+    const link = el(fixture).querySelector('[data-link]') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe(url);
+    expect(link.textContent).toBe(url);
+    expect(link.getAttribute('target')).toBeNull();
+    expect(el(fixture).querySelector('.message__body')?.textContent).toContain('Open this request:');
+    expect(el(fixture).querySelector('.message__body')?.textContent).toContain('Thanks');
+  });
+
+  it('opens a link to this application inside the app, without reloading', () => {
+    const url = `${window.location.origin}/employees?resetRequest=abc-123`;
+    { const m = message({ body: url }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
+    const fixture = create();
+    const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
+
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    (el(fixture).querySelector('[data-link]') as HTMLAnchorElement).dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBeTrue();
+    expect(navigate).toHaveBeenCalledWith('/employees?resetRequest=abc-123');
+  });
+
+  it('opens another site in a new tab and leaves the click alone', () => {
+    { const m = message({ body: 'See https://example.test/page please' }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
+    const fixture = create();
+    const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
+
+    const link = el(fixture).querySelector('[data-link]') as HTMLAnchorElement;
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+    link.addEventListener('click', (event) => event.preventDefault());
+    link.click();
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not turn markup in a body into HTML', () => {
+    { const m = message({ body: '<img src=x onerror=alert(1)> http://x.test/a' }); mail.open.and.returnValue(of(detail({ message: m, thread: [m] }))); }
+    const fixture = create();
+
+    expect(el(fixture).querySelector('.message__body img')).toBeNull();
+    expect(el(fixture).querySelector('.message__body')?.textContent).toContain('<img src=x');
   });
 
   it('offers reply, reply all and forward for a person\'s mail', () => {

@@ -285,6 +285,8 @@ erDiagram
     TASKS ||--o{ TASK_ACTIVITY_LOGS : records
     USERS ||--o{ TASK_ACTIVITY_LOGS : "actor"
     USERS ||--o{ REFRESH_TOKENS : owns
+    USERS ||--o{ PASSWORD_RESET_REQUESTS : "requests (forgot password)"
+    PASSWORD_RESET_REQUESTS ||--o{ LOGIN_PASSWORD_RESET_NOTICES : "latest event"
 ```
 
 ### 7.2 Tables
@@ -305,6 +307,7 @@ erDiagram
 | UpdatedAt | DATETIME | UTC |
 | LastLoginAt | DATETIME | nullable |
 | IsDeleted | INTEGER | bool, default false |
+| MustChangePassword | INTEGER | bool, default false (administrator-issued password: must change at next sign-in) |
 
 #### `departments`
 | Column | Type | Constraints |
@@ -441,6 +444,33 @@ Seeded keys: `Application.Name`, `Application.Timezone`, `Task.DefaultPriority`,
 | RevokedAt | DATETIME | nullable |
 | CreatedAt | DATETIME | UTC |
 
+#### `password_reset_requests`
+Admin-assisted password recovery (Requirement 18). No password material is ever stored here.
+| Column | Type | Constraints |
+|---|---|---|
+| Id | INTEGER | PK |
+| ReferenceId | TEXT/GUID | unique, public reference for UI/audit |
+| UserId | INTEGER | FK → users (requester), cascade |
+| Origin | TEXT | enum: LoginScreen/ProfileScreen |
+| Status | TEXT | enum: Pending/Completed/Failed |
+| CreatedAt | DATETIME | UTC |
+| CompletedAt | DATETIME | nullable |
+| ProcessedByUserId | INTEGER | FK → users (admin), nullable, SET NULL |
+| FailureReason | TEXT | nullable, max 500 |
+| AdminNotifiedAt | DATETIME | nullable |
+| UserNotifiedAt | DATETIME | nullable |
+| TemporaryPasswordIssued | INTEGER | bool, true once an administrator-issued password was set |
+
+#### `login_password_reset_notices`
+Login Screen credential notice for one account (any request origin); stays until the next successful sign-in or a password update from the Login Screen (no time limit).
+| Column | Type | Constraints |
+|---|---|---|
+| Id | INTEGER | PK |
+| UserId | INTEGER | FK → users, **unique (one notice per account, latest reset event)** |
+| PasswordResetRequestId | INTEGER | FK → password_reset_requests |
+| CreatedAt | DATETIME | UTC |
+| ClearedAt | DATETIME | nullable (set on next successful sign-in) |
+
 ### 7.3 Enumerations
 - `Role`: Administrator, Manager, Employee
 - `TaskPriority`: Low, Medium, High, Critical
@@ -450,13 +480,17 @@ Seeded keys: `Application.Name`, `Application.Timezone`, `Task.DefaultPriority`,
 - `ReminderStatus`: Pending, Sent, Failed, Skipped
 - `EmailStatus`: Sent, Failed
 - `ActivityAction`: Created, Assigned, Reassigned, StatusChanged, DeadlineChanged, PriorityChanged, Completed, CommentAdded, Updated, Deleted
+- `PasswordResetOrigin`: LoginScreen, ProfileScreen
+- `PasswordResetStatus`: Pending, Completed, Failed
 
 ### 7.4 Indexes & constraints
 - Unique: `users.Email`, `users.Username`, `departments.Name`, `tasks.TaskCode`,
   `task_recipients(TaskId,UserId)`, `reminder_history(TaskId,RecipientUserId,ReminderType,ScheduledFor)`,
-  `notifications.DedupKey`, `application_settings.Key`.
+  `notifications.DedupKey`, `application_settings.Key`,
+  `password_reset_requests.ReferenceId`, `login_password_reset_notices.UserId`.
 - Indexes for filters/queries: `tasks(AssignedToUserId, Status, Deadline)`,
-  `tasks(Status, Deadline)`, `notifications(UserId, IsRead)`, `task_activity_logs(TaskId, CreatedAt)`.
+  `tasks(Status, Deadline)`, `notifications(UserId, IsRead)`, `task_activity_logs(TaskId, CreatedAt)`,
+  `password_reset_requests(Status)`, `password_reset_requests(UserId, CreatedAt)`.
 - FKs with `ON DELETE RESTRICT` (delete blocked when dependent history exists) — BR-18.
 - Use EF Core global query filter `IsDeleted == false` for soft-deleted entities.
 

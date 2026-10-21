@@ -159,7 +159,15 @@ public class PermissionAuthorizationTests : IClassFixture<TaskFlowApiFactory>
 
         Assert.True(checkedActions > 30, "Expected to check the whole API surface.");
         Assert.Equal(
-            ["AuthController.Login", "AuthController.Logout", "AuthController.Refresh"],
+            [
+                "AuthController.CompletePasswordReset",
+                "AuthController.CreatePasswordResetRequest",
+                "AuthController.GetPasswordResetNotice",
+                "AuthController.Login",
+                "AuthController.Logout",
+                "AuthController.Refresh",
+                "AuthController.ResolvePasswordResetLink"
+            ],
             anonymousActions.Order().ToList());
     }
 

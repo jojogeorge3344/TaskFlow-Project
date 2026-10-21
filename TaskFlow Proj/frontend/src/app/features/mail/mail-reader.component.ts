@@ -1,9 +1,10 @@
 import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
 import { MailAttachment, MailComposeMode, MailItemDetail, MailMessage } from '../../core/models';
 import { MailService } from '../../core/services/mail.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { linkify, sameOriginPath } from '../../shared/ui/linkify';
 import { ToastService } from '../../shared/ui/toast.service';
 import { displayName, formatSize, fullDate, saveBlob } from './mail-format';
 
@@ -18,6 +19,7 @@ import { displayName, formatSize, fullDate, saveBlob } from './mail-format';
 export class MailReaderComponent {
   private readonly mailService = inject(MailService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
 
   readonly itemId = input.required<number>();
 
@@ -35,6 +37,24 @@ export class MailReaderComponent {
   readonly formatSize = formatSize;
   readonly fullDate = fullDate;
   readonly displayName = displayName;
+  readonly linkify = linkify;
+
+  /** Whether a link points at this application, so it can open in the same tab. */
+  isInApp(url: string): boolean {
+    return sameOriginPath(url, window.location.origin) !== null;
+  }
+
+  /** A plain click on a link to this application navigates inside the app (no reload, the session stays);
+   * anything else - other sites, or a modified click such as ctrl-click - keeps the browser's own behaviour. */
+  openLink(event: MouseEvent, url: string): void {
+    const path = sameOriginPath(url, window.location.origin);
+    if (path === null || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    void this.router.navigateByUrl(path);
+  }
 
   constructor() {
     effect(() => {

@@ -7,6 +7,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { PasswordResetService } from '../../core/services/password-reset.service';
 import { RoleService } from '../../core/services/role.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
@@ -38,6 +39,7 @@ export class EmployeeListComponent implements OnInit {
   private readonly roleService = inject(RoleService);
   private readonly projectService = inject(ProjectService);
   private readonly departmentService = inject(DepartmentService);
+  private readonly passwordResetService = inject(PasswordResetService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
@@ -57,6 +59,13 @@ export class EmployeeListComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly busyId = signal<number | null>(null);
+
+  /** The password reset request named by the administrator mail's link (`?resetRequest=`), if any. */
+  private readonly resetRequestRef = this.route.snapshot.queryParamMap?.get('resetRequest') ?? null;
+  /** The request the Details panel should highlight and focus. */
+  readonly focusRequest = signal<string | null>(null);
+  /** Why a mail link could not open its request (unknown reference, request lookup failed). */
+  readonly linkMessage = signal<string | null>(null);
 
   /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
   readonly canDelete = computed(() => {
@@ -142,7 +151,34 @@ export class EmployeeListComponent implements OnInit {
         next: (roles) => this.roles.set(roles.map((role) => role.name))
       });
     }
+    if (this.resetRequestRef && this.authService.hasPermission(Permissions.EmployeesManage)) {
+      this.openRequestFromLink(this.resetRequestRef);
+    }
     this.load();
+  }
+
+  /** Opens the requesting employee's Details panel for a request reference taken from the mail link. Opening
+   * a link only reads; it never changes a request. */
+  private openRequestFromLink(reference: string): void {
+    this.passwordResetService.list().subscribe({
+      next: (requests) => {
+        const request = requests.find((candidate) => candidate.referenceId.toLowerCase() === reference.toLowerCase());
+        if (!request) {
+          this.linkMessage.set('No password reset request matches that link.');
+          return;
+        }
+
+        this.userService.getById(request.userId).subscribe({
+          next: (employee) => {
+            this.focusRequest.set(request.referenceId);
+            this.openDetails(employee);
+          },
+          error: (err: unknown) =>
+            this.linkMessage.set(apiErrorMessage(err, 'Could not open the employee for that request.'))
+        });
+      },
+      error: (err: unknown) => this.linkMessage.set(apiErrorMessage(err, 'Could not load that password reset request.'))
+    });
   }
 
   load(): void {
@@ -194,6 +230,7 @@ export class EmployeeListComponent implements OnInit {
 
   closePanel(): void {
     this.panel.set(null);
+    this.focusRequest.set(null);
   }
 
   onSaved(): void {
