@@ -24,7 +24,8 @@ public class DepartmentService : IDepartmentService
                 d.Name,
                 d.Description,
                 d.CreatedAt,
-                _dbContext.DepartmentManagers.Count(link => link.DepartmentId == d.Id),
+                _dbContext.DepartmentManagers.Count(link => link.DepartmentId == d.Id
+                    && _dbContext.Users.Any(u => u.Id == link.ManagerUserId)),
                 _dbContext.Users.Count(u => u.DepartmentId == d.Id && !u.IsDeleted)))
             .ToListAsync(cancellationToken);
         return departments;
@@ -96,8 +97,9 @@ public class DepartmentService : IDepartmentService
             return false;
         }
 
+        // Users has a soft-delete filter, so a link left behind by a deleted manager does not count as a member.
         var hasManagers = await _dbContext.DepartmentManagers
-            .AnyAsync(link => link.DepartmentId == id, cancellationToken);
+            .AnyAsync(link => link.DepartmentId == id && _dbContext.Users.Any(u => u.Id == link.ManagerUserId), cancellationToken);
         var hasEmployees = await _dbContext.Users
             .AnyAsync(u => u.DepartmentId == id && !u.IsDeleted, cancellationToken);
         if (hasManagers || hasEmployees)
@@ -189,25 +191,17 @@ public class DepartmentService : IDepartmentService
         }
 
         // Employees live on User.DepartmentId: add the new ones, clear the ones removed.
-        var previousEmployeeIds = await _dbContext.Users
+        var previousEmployees = await _dbContext.Users
             .Where(u => u.DepartmentId == departmentId)
-            .Select(u => u.Id)
             .ToListAsync(cancellationToken);
-        foreach (var employeeId in employeeIds.Where(id => !previousEmployeeIds.Contains(id)))
+        foreach (var employee in previousEmployees.Where(u => !employeeIds.Contains(u.Id)))
         {
-            var employee = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == employeeId, cancellationToken);
-            if (employee is not null)
-            {
-                employee.DepartmentId = departmentId;
-            }
+            employee.DepartmentId = null;
         }
-        foreach (var employeeId in previousEmployeeIds.Where(id => !employeeIds.Contains(id)))
+        // employeeById already holds every requested user, so the added ones need no further query.
+        foreach (var employee in employeeById.Values)
         {
-            var employee = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == employeeId, cancellationToken);
-            if (employee is not null)
-            {
-                employee.DepartmentId = null;
-            }
+            employee.DepartmentId = departmentId;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);

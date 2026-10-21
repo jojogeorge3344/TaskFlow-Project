@@ -453,7 +453,7 @@ public class UserService : IUserService
         return await GetByIdAsync(id, cancellationToken);
     }
 
-    /// <summary>Clears the manager link of everyone who reports to this user and removes their project oversight.</summary>
+    /// <summary>Clears the manager link of everyone who reports to this user and removes their project and department oversight.</summary>
     private async System.Threading.Tasks.Task ClearManagerDutiesAsync(int managerUserId, DateTime now, CancellationToken cancellationToken)
     {
         var reports = await _dbContext.Users.Where(u => u.ManagerId == managerUserId).ToListAsync(cancellationToken);
@@ -465,6 +465,8 @@ public class UserService : IUserService
 
         _dbContext.ManagerProjects.RemoveRange(
             await _dbContext.ManagerProjects.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
+        _dbContext.DepartmentManagers.RemoveRange(
+            await _dbContext.DepartmentManagers.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
     }
 
     public async Task<bool> DeleteAsync(int id, int currentUserId, CancellationToken cancellationToken)

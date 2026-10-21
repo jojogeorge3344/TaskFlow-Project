@@ -298,6 +298,92 @@ public class DepartmentsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(created.RootElement.GetProperty("name").GetString(), unchanged.RootElement.GetProperty("name").GetString());
     }
 
+    [Fact]
+    public async Task DeletingAManagerRemovesTheirDepartmentLinkSoTheDepartmentCanBeDeleted()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "dept-test-admin-mgrdel", SystemRoles.Administrator);
+        var manager = await SeedAsync("dept-test-mgr-mgrdel", SystemRoles.Manager);
+        using var created = await CreateAsync(client, admin, UniqueName("Manager Deleted"));
+        var id = created.RootElement.GetProperty("id").GetInt32();
+        await SendAsync(client, HttpMethod.Put, $"{Base}/{id}/members", admin,
+            new { managerIds = new[] { manager.Id }, employeeIds = Array.Empty<int>() });
+
+        var removed = await SendAsync(client, HttpMethod.Delete, $"/api/v1/users/{manager.Id}", admin);
+        Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+
+        Assert.False(await DbAsync(db => db.DepartmentManagers.AnyAsync(link => link.ManagerUserId == manager.Id)));
+        using var list = await JsonAsync(client, Base, admin);
+        var listed = list.RootElement.EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == id);
+        Assert.Equal(0, listed.GetProperty("managerCount").GetInt32());
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(client, HttpMethod.Delete, $"{Base}/{id}", admin)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ALinkLeftByAnAlreadyDeletedManagerIsNeitherCountedNorBlocksDeletion()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "dept-test-admin-stale", SystemRoles.Administrator);
+        var manager = await SeedAsync("dept-test-mgr-stale", SystemRoles.Manager);
+        using var created = await CreateAsync(client, admin, UniqueName("Stale Link"));
+        var id = created.RootElement.GetProperty("id").GetInt32();
+        await SendAsync(client, HttpMethod.Put, $"{Base}/{id}/members", admin,
+            new { managerIds = new[] { manager.Id }, employeeIds = Array.Empty<int>() });
+
+        // Rows written before managers' department links were cleaned up on delete: the user is gone, the link is not.
+        await DbAsync(async db =>
+        {
+            await db.Database.ExecuteSqlRawAsync("UPDATE \"Users\" SET \"IsDeleted\" = 1 WHERE \"Id\" = {0}", manager.Id);
+            return true;
+        });
+
+        using var list = await JsonAsync(client, Base, admin);
+        var listed = list.RootElement.EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == id);
+        Assert.Equal(0, listed.GetProperty("managerCount").GetInt32());
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(client, HttpMethod.Delete, $"{Base}/{id}", admin)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ADeletedDepartmentsNameCanBeUsedAgain()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "dept-test-admin-reuse", SystemRoles.Administrator);
+        var name = UniqueName("Reused");
+        using var first = await CreateAsync(client, admin, name);
+        var firstId = first.RootElement.GetProperty("id").GetInt32();
+        Assert.Equal(HttpStatusCode.NoContent, (await SendAsync(client, HttpMethod.Delete, $"{Base}/{firstId}", admin)).StatusCode);
+
+        var again = await SendAsync(client, HttpMethod.Post, Base, admin, new { name, description = (string?)null });
+
+        Assert.Equal(HttpStatusCode.Created, again.StatusCode);
+        using var secondBody = await JsonAsync(again);
+        Assert.NotEqual(firstId, secondBody.RootElement.GetProperty("id").GetInt32());
+    }
+
+    [Fact]
+    public async Task OneReplaceCanAddAndRemoveEmployeesAtOnce()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "dept-test-admin-swap", SystemRoles.Administrator);
+        var stays = await SeedAsync("dept-test-emp-swap-stays");
+        var leaves = await SeedAsync("dept-test-emp-swap-leaves");
+        var joins = await SeedAsync("dept-test-emp-swap-joins");
+        using var created = await CreateAsync(client, admin, UniqueName("Swap"));
+        var id = created.RootElement.GetProperty("id").GetInt32();
+        await SendAsync(client, HttpMethod.Put, $"{Base}/{id}/members", admin,
+            new { managerIds = Array.Empty<int>(), employeeIds = new[] { stays.Id, leaves.Id } });
+
+        var swapped = await SendAsync(client, HttpMethod.Put, $"{Base}/{id}/members", admin,
+            new { managerIds = Array.Empty<int>(), employeeIds = new[] { stays.Id, joins.Id } });
+
+        Assert.Equal(HttpStatusCode.OK, swapped.StatusCode);
+        using var body = await JsonAsync(swapped);
+        Assert.Equal(
+            new[] { stays.Id, joins.Id }.Order(),
+            body.RootElement.GetProperty("employees").EnumerateArray().Select(m => m.GetProperty("id").GetInt32()).Order());
+        Assert.Null((await UserAsync("dept-test-emp-swap-leaves")).DepartmentId);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static string UniqueName(string label) => $"Dpt {label} {Guid.NewGuid():N}";

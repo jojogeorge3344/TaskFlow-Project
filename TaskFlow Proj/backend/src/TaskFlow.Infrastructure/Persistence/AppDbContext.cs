@@ -110,7 +110,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(department => department.Name).IsRequired().HasMaxLength(200);
             entity.Property(department => department.Description).HasMaxLength(500);
 
-            entity.HasIndex(department => department.Name).IsUnique();
+            // A soft-deleted department keeps its name, so only live rows compete for it.
+            entity.HasIndex(department => department.Name).IsUnique().HasFilter("\"IsDeleted\" = 0");
 
             entity.HasQueryFilter(department => !department.IsDeleted);
         });
@@ -175,7 +176,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(project => project.Name).IsRequired().HasMaxLength(200);
             entity.Property(project => project.Description).HasMaxLength(500);
 
-            entity.HasIndex(project => project.Name).IsUnique();
+            // A soft-deleted project keeps its name, so only live rows compete for it.
+            entity.HasIndex(project => project.Name).IsUnique().HasFilter("\"IsDeleted\" = 0");
 
             entity.HasQueryFilter(project => !project.IsDeleted);
         });
