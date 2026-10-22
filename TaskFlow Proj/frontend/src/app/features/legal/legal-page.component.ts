@@ -69,8 +69,9 @@ export class LegalPageComponent {
   readonly backLink = computed(() => {
     const user = this.auth.currentUser();
     if (user) {
-      const role = typeof user.role === 'string' ? user.role : (user.role as any)?.name;
-      return { path: dashboardRouteFor(role), label: 'Back to the application' };
+      // user.role is UserRole (string); pass it straight to dashboardRouteFor,
+      // which defaults unknown roles to /me.
+      return { path: dashboardRouteFor(user.role), label: 'Back to the application' };
     }
     return { path: '/login', label: 'Back to sign in' };
   });

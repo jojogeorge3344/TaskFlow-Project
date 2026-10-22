@@ -1,6 +1,6 @@
 <footer class="legal-footer" [class.legal-footer--dark]="variant() === 'dark'">
   <div class="legal-footer__inner">
-    <p class="legal-footer__line">{{ ownershipLine }} · {{ applicationName }} — Intelligent Task Allocation &amp; Tracking System.</p>
+    <p class="legal-footer__line">{{ ownershipLine }} · {{ applicationName }} — {{ applicationTitle }}.</p>
     <nav class="legal-footer__nav" aria-label="Legal documents">
       <ul class="legal-footer__list">
         @for (link of links; track link.id) {

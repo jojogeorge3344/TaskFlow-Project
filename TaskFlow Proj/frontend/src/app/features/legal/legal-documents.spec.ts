@@ -27,21 +27,20 @@ describe('legal documents registry', () => {
     }
   });
 
-  it('fails when a document is stripped of a section', () => {
+  it('rejects a document stripped of all sections', () => {
     const copy: LegalDocument = {
       ...LEGAL_DOCUMENTS[0],
       sections: []
     };
     expect(copy.sections.length).toBe(0);
-    // A document with no sections would fail the shape asserted above.
+    // The registry invariant requires at least one section per document;
+    // a document with no sections must be treated as invalid.
     expect(() => {
-      for (const section of copy.sections) {
-        if (!section.heading || section.blocks.length === 0) {
-          throw new Error('invalid');
-        }
+      if (copy.sections.length === 0) {
+        throw new Error('invalid: document must have at least one section');
       }
-    }).not.toThrow();
-    // The assertion that every document has at least one section must hold for the real registry.
+    }).toThrow('invalid: document must have at least one section');
+    // The real registry still satisfies the invariant.
     expect(LEGAL_DOCUMENTS.every((doc) => doc.sections.length > 0)).toBeTrue();
   });
 
