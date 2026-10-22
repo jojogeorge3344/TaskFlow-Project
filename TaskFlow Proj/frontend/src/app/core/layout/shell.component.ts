@@ -12,6 +12,7 @@ import { IconComponent } from './icon.component';
 import { TfaPanelComponent } from './tfa-panel.component';
 import { LayoutService } from './layout.service';
 import { NavItem, buildNavigation } from './nav-items';
+import { LegalFooterComponent } from '../../features/legal/legal-footer.component';
 
 export const SESSION_CHECK_INTERVAL_MS = 60_000;
 
@@ -19,7 +20,7 @@ export const SESSION_CHECK_INTERVAL_MS = 60_000;
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, TfaPanelComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, ToastHostComponent, TfaPanelComponent, LegalFooterComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css'
 })

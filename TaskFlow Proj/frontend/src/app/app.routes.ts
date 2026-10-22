@@ -13,6 +13,31 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent)
   },
   {
+    path: 'legal/copyright',
+    loadComponent: () => import('./features/legal/legal-page.component').then((m) => m.LegalPageComponent),
+    data: { documentId: 'copyright' }
+  },
+  {
+    path: 'legal/terms',
+    loadComponent: () => import('./features/legal/legal-page.component').then((m) => m.LegalPageComponent),
+    data: { documentId: 'terms' }
+  },
+  {
+    path: 'legal/privacy',
+    loadComponent: () => import('./features/legal/legal-page.component').then((m) => m.LegalPageComponent),
+    data: { documentId: 'privacy' }
+  },
+  {
+    path: 'legal/disclaimer',
+    loadComponent: () => import('./features/legal/legal-page.component').then((m) => m.LegalPageComponent),
+    data: { documentId: 'disclaimer' }
+  },
+  {
+    path: 'legal/licenses',
+    loadComponent: () => import('./features/legal/legal-page.component').then((m) => m.LegalPageComponent),
+    data: { documentId: 'licenses' }
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./core/layout/shell.component').then((m) => m.ShellComponent),

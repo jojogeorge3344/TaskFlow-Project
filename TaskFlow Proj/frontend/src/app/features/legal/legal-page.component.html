@@ -1,0 +1,85 @@
+<div class="legal">
+  <header class="legal__header">
+    <div class="legal__brand">
+      <span class="legal__mark">TF</span>
+      <span class="legal__brand-name">{{ applicationName }} — {{ applicationTitle }}</span>
+    </div>
+    <a class="legal__back" [routerLink]="backLink().path">{{ backLink().label }}</a>
+  </header>
+
+  @if (resolvedDocument(); as doc) {
+    <main class="legal__main">
+      <header class="legal__doc-header">
+        <h1 class="legal__title">{{ doc.title }}</h1>
+        <p class="legal__summary">{{ doc.summary }}</p>
+        <p class="legal__meta">Last updated: {{ doc.updated }} · {{ ownershipLine }}</p>
+      </header>
+
+      <nav class="legal__toc" aria-label="Table of contents">
+        <h2 class="legal__toc-title">Contents</h2>
+        <ol class="legal__toc-list">
+          @for (section of doc.sections; track trackSection($index, section)) {
+            <li class="legal__toc-item">
+              <a class="legal__toc-link" [href]="'#' + section.id">{{ section.heading }}</a>
+            </li>
+          }
+        </ol>
+      </nav>
+
+      <article class="legal__article">
+        @for (section of doc.sections; track trackSection($index, section)) {
+          <section class="legal__section" [id]="section.id">
+            <h2 class="legal__section-heading">{{ section.heading }}</h2>
+            @for (block of section.blocks; track trackBlock($index, block)) {
+              @if (block.kind === 'paragraph') {
+                <p class="legal__paragraph">{{ block.text }}</p>
+              } @else if (block.kind === 'note') {
+                <aside class="legal__note">{{ block.text }}</aside>
+              } @else if (block.kind === 'list') {
+                <ul class="legal__list">
+                  @for (item of block.items; track trackItem($index)) {
+                    <li class="legal__list-item">{{ item }}</li>
+                  }
+                </ul>
+              } @else if (block.kind === 'table') {
+                <div class="legal__table-wrap">
+                  <table class="legal__table">
+                    <caption class="legal__table-caption">{{ block.caption }}</caption>
+                    <thead>
+                      <tr>
+                        @for (h of block.head; track trackItem($index)) {
+                          <th class="legal__table-head">{{ h }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of block.rows; track trackItem($index)) {
+                        <tr>
+                          @for (cell of row; track trackItem($index)) {
+                            <td class="legal__table-cell">{{ cell }}</td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            }
+          </section>
+        }
+      </article>
+
+      <footer class="legal__footer">
+        <p class="legal__footer-line">{{ ownershipLine }}</p>
+      </footer>
+    </main>
+  } @else {
+    <main class="legal__main legal__main--fallback">
+      <header class="legal__doc-header">
+        <h1 class="legal__title">Legal document not found</h1>
+        <p class="legal__summary">The document you requested is not available.</p>
+      </header>
+      <p class="legal__paragraph">Choose one of the documents from the footer, or <a [routerLink]="backLink().path">{{ backLink().label.toLowerCase() }}</a>.</p>
+    </main>
+  }
+</div>
