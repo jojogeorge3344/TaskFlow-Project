@@ -1,0 +1,19 @@
+<footer class="legal-footer" [class.legal-footer--dark]="variant() === 'dark'">
+  <div class="legal-footer__inner">
+    <p class="legal-footer__line">{{ ownershipLine }} · {{ applicationName }} — Intelligent Task Allocation &amp; Tracking System.</p>
+    <nav class="legal-footer__nav" aria-label="Legal documents">
+      <ul class="legal-footer__list">
+        @for (link of links; track link.id) {
+          <li class="legal-footer__item">
+            <a
+              class="legal-footer__link"
+              [routerLink]="link.path"
+              [attr.aria-current]="isActive(link.id) ? 'page' : null"
+              >{{ link.label }}</a
+            >
+          </li>
+        }
+      </ul>
+    </nav>
+  </div>
+</footer>

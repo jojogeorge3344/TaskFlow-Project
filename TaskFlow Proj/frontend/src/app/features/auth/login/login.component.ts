@@ -5,10 +5,11 @@ import { LOGIN_REASON_MESSAGES } from '../../../core/auth/login-reasons';
 import { readRememberedIdentifier, rememberIdentifier } from '../../../core/auth/remembered-identifier';
 import { dashboardRouteFor } from '../../../core/auth/role-routes';
 import { AuthService } from '../../../core/auth/auth.service';
+import { LegalFooterComponent } from '../../legal/legal-footer.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LegalFooterComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
