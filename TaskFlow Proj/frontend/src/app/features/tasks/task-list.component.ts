@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
+import { DrillDownFilter, parseDrillDown } from '../../core/analytics/drill-down';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
@@ -98,6 +99,7 @@ export class TaskListComponent implements OnInit {
   readonly deadlineFrom = signal('');
   readonly deadlineTo = signal('');
   readonly page = signal(1);
+  readonly drill = signal<DrillDownFilter | null>(null);
 
   readonly hasFilters = computed(
     () =>
@@ -106,7 +108,8 @@ export class TaskListComponent implements OnInit {
       this.status() !== '' ||
       this.priority() !== '' ||
       this.deadlineFrom() !== '' ||
-      this.deadlineTo() !== ''
+      this.deadlineTo() !== '' ||
+      this.drill() !== null
   );
 
   readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
@@ -126,6 +129,15 @@ export class TaskListComponent implements OnInit {
     const assignedToUserId = Number(this.route.snapshot.queryParamMap.get('assignedToUserId'));
     if (Number.isInteger(assignedToUserId) && assignedToUserId > 0) {
       this.assignedToUserId.set(assignedToUserId);
+    }
+
+    const drill = parseDrillDown(this.route.snapshot.queryParamMap);
+    if (drill) {
+      const { priority, ...request } = drill.request;
+      if (priority) {
+        this.priority.set(priority);
+      }
+      this.drill.set({ request, summary: drill.summary });
     }
 
     this.searchInput$
@@ -238,6 +250,12 @@ export class TaskListComponent implements OnInit {
     this.priority.set('');
     this.deadlineFrom.set('');
     this.deadlineTo.set('');
+    this.drill.set(null);
+    this.reloadFromFirstPage();
+  }
+
+  clearDrill(): void {
+    this.drill.set(null);
     this.reloadFromFirstPage();
   }
 
@@ -278,6 +296,10 @@ export class TaskListComponent implements OnInit {
     // Date inputs are local calendar days, matching how deadlines are shown in the table.
     if (this.deadlineFrom()) request.deadlineFrom = startOfLocalDay(this.deadlineFrom());
     if (this.deadlineTo()) request.deadlineTo = endOfLocalDay(this.deadlineTo());
+
+    Object.assign(request, this.drill()?.request);
+
+    Object.assign(request, this.drill()?.request);
 
     return this.taskService.list(request).pipe(catchError(() => of(null)));
   }

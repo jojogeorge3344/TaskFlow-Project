@@ -1,13 +1,3 @@
-export interface AdminDashboardStats {
-  totalEmployees: number;
-  activeEmployees: number;
-  totalProjects: number;
-  totalTasks: number;
-  pendingTasks: number;
-  completedTasks: number;
-  overdueTasks: number;
-}
-
 export interface ManagerDashboardStats {
   totalTasks: number;
   pendingTasks: number;

@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
 using TaskFlow.Domain.Security;
+using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Infrastructure.Persistence;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
@@ -133,6 +135,8 @@ public class TaskService : ITaskService
                 || EF.Functions.Like(task.TaskCode, $"%{term}%", @"\"));
         }
 
+        query = await ApplyAnalyticsFiltersAsync(query, filter, cancellationToken);
+
         var total = await query.CountAsync(cancellationToken);
 
         var now = Now;
@@ -150,6 +154,56 @@ public class TaskService : ITaskService
         var items = tasks.Select(task => ToListItem(task, now, timeZone)).ToList();
         return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
     }
+
+    /// <summary>The dashboard drill-down filters. They reuse the analytics rules, so a list opened from a chart
+    /// segment holds exactly the tasks the segment counted.</summary>
+    private async Task<IQueryable<TaskEntity>> ApplyAnalyticsFiltersAsync(
+        IQueryable<TaskEntity> query,
+        TaskListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var now = Now;
+
+        if (filter.Bucket is TaskBucketFilter bucket)
+        {
+            query = bucket == TaskBucketFilter.All
+                ? query.Where(TaskBucketRules.IsCounted())
+                : query.Where(TaskBucketRules.InBucket(ToBucket(bucket), now));
+        }
+
+        if (filter.DeadlineBucket is DeadlineBucket deadlineBucket)
+        {
+            var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
+            query = query.Where(DeadlineBucketRules.InBucket(deadlineBucket, DeadlineBucketRules.BoundsFor(now, timeZone)));
+        }
+
+        if (filter.From is not null || filter.To is not null)
+        {
+            if (filter.From is DateOnly start && filter.To is DateOnly end && start > end)
+            {
+                throw new AnalyticsFilterException("The end date cannot be before the start date.");
+            }
+
+            var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
+            var fromUtc = filter.From is DateOnly from
+                ? ReminderCalculator.LocalMidnightUtc(from, timeZone)
+                : DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+            var toUtc = filter.To is DateOnly to
+                ? ReminderCalculator.LocalMidnightUtc(to.AddDays(1), timeZone)
+                : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+            query = query.ApplyDateRange(filter.Basis, fromUtc, toUtc);
+        }
+
+        return query.ApplyEntityFilters(_dbContext, filter.DepartmentId, filter.ProjectId, filter.EmployeeId, filter.ManagerId);
+    }
+
+    private static TaskBucket ToBucket(TaskBucketFilter bucket) => bucket switch
+    {
+        TaskBucketFilter.Pending => TaskBucket.Pending,
+        TaskBucketFilter.InProgress => TaskBucket.InProgress,
+        TaskBucketFilter.Completed => TaskBucket.Completed,
+        _ => TaskBucket.Overdue
+    };
 
     public async Task<IReadOnlyCollection<TaskRecipientDto>> GetAssigneesAsync(
         int currentUserId,

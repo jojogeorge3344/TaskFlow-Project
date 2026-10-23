@@ -1,3 +1,5 @@
+import { AnalyticsBasis, DrillBucket, DrillDeadlineBucket } from './analytics.model';
+
 export type TaskStatus = 'ToDo' | 'InProgress' | 'InQA' | 'Blocked' | 'Completed' | 'Cancelled';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TaskStage = 'Upcoming' | 'DueToday' | 'Overdue' | 'Completed';
@@ -125,6 +127,15 @@ export interface TaskListFilter {
   search?: string | null;
   page?: number;
   pageSize?: number;
+  bucket?: DrillBucket | null;
+  deadlineBucket?: DrillDeadlineBucket | null;
+  departmentId?: number | null;
+  projectId?: number | null;
+  employeeId?: number | null;
+  managerId?: number | null;
+  from?: string | null;
+  to?: string | null;
+  basis?: AnalyticsBasis | null;
 }
 
 export interface CreateTaskRequest {
