@@ -8,6 +8,8 @@ namespace TaskFlow.Infrastructure.Analytics;
 
 internal sealed record KeyCount(int Key, int Count);
 
+internal sealed record QuarterHourCount(DateTime Start, int Count);
+
 /// <summary>Bucket counting shared by the Admin and Manager analytics so both use one definition of every bucket.</summary>
 internal static class AnalyticsCounting
 {
@@ -65,6 +67,23 @@ internal static class AnalyticsCounting
             total.InProgress + part.InProgress,
             total.Completed + part.Completed,
             total.Overdue + part.Overdue));
+
+    /// <summary>Counts instants per quarter hour so a caller can bucket them into local days in any timezone.</summary>
+    public static async Task<List<QuarterHourCount>> QuarterHourCountsAsync(
+        IQueryable<DateTime> instants,
+        CancellationToken cancellationToken)
+    {
+        var rows = await instants
+            .GroupBy(instant => new { instant.Year, instant.Month, instant.Day, instant.Hour, Quarter = instant.Minute / 15 })
+            .Select(group => new { group.Key.Year, group.Key.Month, group.Key.Day, group.Key.Hour, group.Key.Quarter, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new QuarterHourCount(
+                new DateTime(row.Year, row.Month, row.Day, row.Hour, row.Quarter * 15, 0, DateTimeKind.Utc),
+                row.Count))
+            .ToList();
+    }
 
     public static async Task<IReadOnlyList<PriorityCountDto>> ByPriorityAsync(
         IQueryable<TaskEntity> tasks,

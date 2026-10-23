@@ -16,11 +16,12 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
 {
     private readonly DashboardServiceHarness _inner;
 
-    private AnalyticsHarness(DashboardServiceHarness inner, AdminDashboardScope scope, AdminAnalyticsService service, TaskService tasks, ManagerDashboardScope managerScope, ManagerAnalyticsService managerService)
+    private AnalyticsHarness(DashboardServiceHarness inner, AdminDashboardScope scope, AdminAnalyticsService service, TaskService tasks, ManagerDashboardScope managerScope, ManagerAnalyticsService managerService, EmployeeAnalyticsService employeeService)
     {
         _inner = inner;
         ManagerScope = managerScope;
         ManagerService = managerService;
+        EmployeeService = employeeService;
         Tasks = tasks;
         Scope = scope;
         Service = service;
@@ -35,6 +36,8 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
     public ManagerDashboardScope ManagerScope { get; }
 
     public ManagerAnalyticsService ManagerService { get; }
+
+    public EmployeeAnalyticsService EmployeeService { get; }
 
     public AdminAnalyticsService Service { get; }
 
@@ -66,7 +69,8 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             new AdminAnalyticsService(inner.Db, scope, appClock),
             tasks,
             managerScope,
-            new ManagerAnalyticsService(inner.Db, managerScope, appClock));
+            new ManagerAnalyticsService(inner.Db, managerScope, appClock),
+            new EmployeeAnalyticsService(inner.Db, new EmployeeDashboardScope(inner.Db), appClock));
     }
 
     public Project AddProject(string name) => _inner.AddProject(name);

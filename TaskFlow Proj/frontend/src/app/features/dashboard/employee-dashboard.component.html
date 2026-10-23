@@ -1,65 +1,167 @@
-<section class="dashboard">
+<section class="dashboard analytics">
   <header class="dashboard__header">
     <h1 class="dashboard__title">Employee Dashboard</h1>
     <p class="dashboard__welcome">
       Welcome back@if (user(); as currentUser) {, {{ currentUser.fullName }}}
     </p>
+    <p class="dashboard__subtitle">Your tasks, projects and progress &middot; {{ periodLabel() }}</p>
   </header>
 
-  @if (loading()) {
-    <p class="dashboard__status">Loading dashboard&hellip;</p>
-  } @else if (error()) {
-    <div class="dashboard__error">
-      <span>{{ error() }}</span>
-      <button type="button" (click)="load()">Retry</button>
-    </div>
-  } @else {
-    @if (stats(); as data) {
-    <div class="stat-grid">
-      <article class="stat-card">
-        <span class="stat-card__label">Assigned Tasks</span>
-        <span class="stat-card__value">{{ data.assignedTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Pending Tasks</span>
-        <span class="stat-card__value">{{ data.pendingTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Due Today</span>
-        <span class="stat-card__value">{{ data.tasksDueToday }}</span>
-      </article>
-      <article class="stat-card stat-card--overdue">
-        <span class="stat-card__label">Overdue Tasks</span>
-        <span class="stat-card__value">{{ data.overdueTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">In Progress</span>
-        <span class="stat-card__value">{{ data.inProgressTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Completed Tasks</span>
-        <span class="stat-card__value">{{ data.completedTasks }}</span>
-      </article>
-    </div>
-
-    <section class="dashboard__section">
-      <h2 class="dashboard__section-title">Progress summary</h2>
-      <div class="progress" role="progressbar" [attr.aria-valuenow]="completionRate()" aria-valuemin="0" aria-valuemax="100">
-        <div class="progress__bar" [style.width.%]="completionRate()"></div>
-      </div>
-      <div class="progress__legend">
-        <span>{{ data.completedTasks }} of {{ data.assignedTasks }} tasks completed</span>
-        <span>{{ completionRate() }}%</span>
-      </div>
-    </section>
-
-    <section class="dashboard__section">
-      <h2 class="dashboard__section-title">My tasks</h2>
-      <p class="empty-state">
-        No individual task details are available yet. The task list API is not implemented, so only the
-        aggregate counts above are shown. Task details will appear here once task management is available.
-      </p>
-    </section>
+  <div class="period" role="group" aria-label="Period">
+    <span>Period</span>
+    @for (item of periods; track item.key) {
+      <button type="button" class="period__chip" [attr.aria-pressed]="period() === item.key" (click)="setPeriod(item.key)">
+        {{ item.label }}
+      </button>
     }
+    <span class="period__note">Only your own data is shown.</span>
+  </div>
+
+  @if (error()) {
+    <div class="dashboard__error analytics-state" role="alert">
+      <span>{{ error() }}</span>
+      <button type="button" data-action="retry" (click)="retry()">Retry</button>
+    </div>
   }
+
+  @if (hasNoTasks()) {
+    <div class="tf-card analytics-state" role="status" data-empty>
+      <span><strong>You have no tasks yet.</strong> New assignments will appear here.</span>
+    </div>
+  }
+
+  @let summary = data()?.summary;
+  @let status = data()?.tasksByStatus;
+  <div class="analytics-cards" aria-label="Summary">
+    <tf-kpi-card label="My tasks" [value]="summary?.totalTasks ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Completed" [value]="status?.completed ?? 0" tone="good" [loading]="loading()" />
+    <tf-kpi-card label="In progress" [value]="status?.inProgress ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Pending" [value]="status?.pending ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Overdue" [value]="status?.overdue ?? 0" tone="bad" [loading]="loading()" />
+    <tf-kpi-card label="Completion" [value]="(summary?.completionPercent ?? 0) + '%'" tone="good" [loading]="loading()" />
+  </div>
+
+  <div class="analytics-grid">
+    <article class="analytics-card" aria-labelledby="emp-summary-title" data-section="summary">
+      <h2 id="emp-summary-title">Overall task summary</h2>
+      <p class="analytics-card__hint">Completed versus outstanding &middot; click a slice to see those tasks</p>
+      @if (!loading()) {
+        <div
+          class="summary-bar"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="summary?.completionPercent ?? 0"
+        >
+          <span [style.width.%]="summary?.completionPercent ?? 0"></span>
+        </div>
+        <p data-summary-text>
+          <b>{{ summary?.completed ?? 0 }}</b> completed &middot; <b>{{ summary?.outstanding ?? 0 }}</b> outstanding &middot;
+          {{ summary?.completionPercent ?? 0 }}%
+        </p>
+      }
+      <tf-donut-chart
+        [slices]="statusSlices()"
+        [loading]="loading()"
+        ariaLabel="My tasks by status"
+        emptyText="You have no tasks yet."
+        (sliceClick)="openTasks({ bucket: $any($event.key) })"
+      />
+      <hr class="analytics-card__divider" />
+      <tf-donut-chart
+        [slices]="prioritySlices()"
+        [loading]="loading()"
+        ariaLabel="My tasks by priority"
+        centerLabel="by priority"
+        emptyText="You have no tasks yet."
+        (sliceClick)="openTasks({ priority: $any($event.key), bucket: 'All' })"
+      />
+    </article>
+
+    <article class="analytics-card" aria-labelledby="emp-deadlines-title" data-section="deadlines">
+      <h2 id="emp-deadlines-title">Upcoming deadlines &amp; overdue</h2>
+      <p class="analytics-card__hint">Open tasks due in the next 7 days or already late, soonest first</p>
+      @if (loading()) {
+        <div class="tf-skeleton deadline-skeleton" role="status" aria-label="Loading deadlines"></div>
+      } @else if ((data()?.upcomingDeadlines ?? []).length === 0) {
+        <p class="analytics-card__empty" data-deadlines-empty>Nothing is due in the next 7 days.</p>
+      } @else {
+        <ul class="dl">
+          @for (row of data()?.upcomingDeadlines ?? []; track row.taskId) {
+            <li>
+              <a class="dl__row" [routerLink]="['/tasks', row.taskId]">
+                <span>
+                  <b>{{ row.taskCode }}</b> {{ row.title }}<br />
+                  <small class="dl__meta">{{ row.priority }} &middot; {{ row.deadline | date: 'dd MMM, HH:mm' }}</small>
+                </span>
+                <span class="badge" [class.badge--overdue]="row.isOverdue" [class.badge--today]="!row.isOverdue && row.daysRemaining <= 0">
+                  {{ deadlineLabel(row) }}
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </article>
+  </div>
+
+  <div class="analytics-grid">
+    <article class="analytics-card" aria-labelledby="emp-trend-title" data-section="trend">
+      <h2 id="emp-trend-title">Personal performance</h2>
+      <p class="analytics-card__hint">
+        Created vs completed per day &middot; <b data-completed-in-period>{{ data()?.completedInPeriod ?? 0 }}</b> completed in this
+        period
+      </p>
+      <tf-line-chart
+        [labels]="trendLabels()"
+        [series]="trendSeries()"
+        [loading]="loading()"
+        ariaLabel="My tasks created and completed over time"
+        emptyText="You created or completed no tasks in this period."
+        (pointClick)="onTrendPoint($event)"
+      />
+    </article>
+
+    <article class="analytics-card" aria-labelledby="emp-projects-title" data-section="projects">
+      <h2 id="emp-projects-title">My projects</h2>
+      <p class="analytics-card__hint">Progress of your own tasks in each project</p>
+      <tf-progress-list
+        [items]="projectItems()"
+        [loading]="loading()"
+        emptyText="You have no projects yet."
+        (itemClick)="openTasks({ projectId: $any($event.key), bucket: 'All' })"
+      />
+    </article>
+  </div>
+
+  <article class="analytics-card" aria-labelledby="emp-dept-title" data-section="department">
+    <h2 id="emp-dept-title">Department overview@if (data()?.department; as department) { &mdash; {{ department.name }}}</h2>
+    <p class="analytics-card__hint">Aggregate numbers only. No colleague names or tasks are shown.</p>
+    @if (loading()) {
+      <div class="tf-skeleton deadline-skeleton" role="status" aria-label="Loading department"></div>
+    } @else if (data()) {
+      @if (data()?.department; as department) {
+        @if (department.limited || !department.tasks) {
+          <p data-dept-limited>
+            <strong>{{ department.totalTasks }}</strong> tasks in your department. Departments with fewer than 3 members show only the
+            total.
+          </p>
+        } @else {
+          <div class="dept" data-dept-stats>
+            <div><small>Tasks</small><strong>{{ department.tasks.total }}</strong></div>
+            <div><small>Completed</small><strong>{{ department.tasks.completed }}</strong></div>
+            <div><small>In progress</small><strong>{{ department.tasks.inProgress }}</strong></div>
+            <div><small>Pending</small><strong>{{ department.tasks.pending }}</strong></div>
+            <div><small>Overdue</small><strong>{{ department.tasks.overdue }}</strong></div>
+            <div class="dept__completion">
+              <small>Department completion &middot; {{ department.tasks.completionPercent }}%</small>
+              <div class="summary-bar"><span [style.width.%]="department.tasks.completionPercent"></span></div>
+            </div>
+          </div>
+        }
+      } @else {
+        <p class="analytics-card__empty" data-no-department>No department assigned</p>
+      }
+    }
+  </article>
 </section>

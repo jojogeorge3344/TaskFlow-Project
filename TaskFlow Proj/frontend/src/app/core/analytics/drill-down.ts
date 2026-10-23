@@ -54,6 +54,29 @@ export function drillDownQuery(filter: AnalyticsFilterState, target: DrillTarget
   return params;
 }
 
+/** Task-list query for an Employee chart click. The employee is always the caller, so the list holds exactly the
+ * assigned-or-shared tasks the dashboard counted; the server scopes the list to the caller again whatever is in the URL. */
+export function employeeDrillQuery(userId: number, target: DrillTarget): Record<string, string> {
+  const params: Record<string, string> = { employeeId: String(userId) };
+
+  if (target.projectId !== undefined) params['projectId'] = String(target.projectId ?? NO_GROUP_ID);
+  if (target.range) {
+    params['from'] = target.range.from;
+    params['to'] = target.range.to;
+    params['basis'] = target.range.basis;
+  }
+
+  if (target.deadlineBucket) {
+    params['deadlineBucket'] = target.deadlineBucket;
+  } else {
+    params['bucket'] = target.bucket ?? 'All';
+  }
+
+  if (target.priority) params['priority'] = target.priority;
+
+  return params;
+}
+
 export interface DrillDownFilter {
   request: TaskListFilter;
   summary: string;

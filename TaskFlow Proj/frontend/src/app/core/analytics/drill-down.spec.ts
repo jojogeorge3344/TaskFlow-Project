@@ -1,7 +1,7 @@
 import { convertToParamMap } from '@angular/router';
 import { AnalyticsFilterState } from '../models';
 import { defaultFilter } from './analytics-filter';
-import { drillDownQuery, parseDrillDown } from './drill-down';
+import { drillDownQuery, employeeDrillQuery, parseDrillDown } from './drill-down';
 
 describe('drill-down mapping', () => {
   const filter: AnalyticsFilterState = { ...defaultFilter('2026-10-21'), departmentId: 2 };
@@ -66,5 +66,20 @@ describe('drill-down mapping', () => {
   it('returns null when there is nothing usable', () => {
     expect(parseDrillDown(convertToParamMap({}))).toBeNull();
     expect(parseDrillDown(convertToParamMap({ bucket: 'bad', departmentId: '-1', from: '2026-01-01' }))).toBeNull();
+  });
+
+  describe('employeeDrillQuery', () => {
+    it('always names the caller as the employee and adds no date range by default', () => {
+      expect(employeeDrillQuery(3, { bucket: 'Overdue' })).toEqual({ employeeId: '3', bucket: 'Overdue' });
+    });
+
+    it('maps a project, priority, deadline row and day range', () => {
+      expect(employeeDrillQuery(3, { projectId: 7, bucket: 'All' })).toEqual({ employeeId: '3', projectId: '7', bucket: 'All' });
+      expect(employeeDrillQuery(3, { priority: 'High', bucket: 'All' })['priority']).toBe('High');
+      expect(employeeDrillQuery(3, { deadlineBucket: 'Next7Days' })['deadlineBucket']).toBe('Next7Days');
+      expect(
+        employeeDrillQuery(3, { bucket: 'All', range: { from: '2026-10-21', to: '2026-10-21', basis: 'Completed' } })
+      ).toEqual({ employeeId: '3', from: '2026-10-21', to: '2026-10-21', basis: 'Completed', bucket: 'All' });
+    });
   });
 });

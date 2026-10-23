@@ -186,3 +186,62 @@ export interface TeamFilterOptions {
   employees: AnalyticsOption[];
   projects: AnalyticsOption[];
 }
+
+export type EmployeePeriod = '7d' | '30d' | 'month';
+
+export const EMPLOYEE_PERIODS: readonly { key: EmployeePeriod; label: string }[] = [
+  { key: '7d', label: 'Last 7 days' },
+  { key: '30d', label: 'Last 30 days' },
+  { key: 'month', label: 'This month' }
+];
+
+/** Aggregate department figures. There is no per-person field. `tasks` is null when the department is too small to
+ * show a breakdown (`limited`), in which case only `totalTasks` is given. */
+export interface EmployeeDepartment {
+  name: string;
+  limited: boolean;
+  totalTasks: number;
+  tasks: BucketCounts | null;
+}
+
+export interface EmployeeSummary {
+  totalTasks: number;
+  completionPercent: number;
+  completed: number;
+  outstanding: number;
+}
+
+export interface EmployeeDeadline {
+  taskId: number;
+  taskCode: string;
+  title: string;
+  priority: string;
+  deadline: string;
+  daysRemaining: number;
+  isOverdue: boolean;
+  daysOverdue: number;
+}
+
+export interface EmployeeProject {
+  projectId: number;
+  name: string;
+  totalTasks: number;
+  completedTasks: number;
+  progressPercent: number;
+  latestDeadline: string | null;
+}
+
+/** The signed-in employee's own analytics. The server derives the subject from the session. */
+export interface EmployeeOwnAnalytics {
+  period: 'Last7Days' | 'Last30Days' | 'ThisMonth';
+  from: string;
+  to: string;
+  department: EmployeeDepartment | null;
+  summary: EmployeeSummary;
+  tasksByStatus: BucketCounts;
+  tasksByPriority: PriorityCount[];
+  upcomingDeadlines: EmployeeDeadline[];
+  projects: EmployeeProject[];
+  trend: TrendPoint[];
+  completedInPeriod: number;
+}
