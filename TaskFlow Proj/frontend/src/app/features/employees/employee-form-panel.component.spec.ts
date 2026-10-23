@@ -6,7 +6,9 @@ import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { AuthUser } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { DepartmentWithCount, User } from '../../core/models';
+import { DepartmentWithCount, Position, User } from '../../core/models';
+import { PositionService } from '../../core/services/position.service';
+import { withProject } from '../../testing/users';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -24,9 +26,15 @@ const existing: User = {
   isActive: true,
   createdAt: '2026-09-05T00:00:00Z',
   lastLoginAt: null,
-  projectId: 1,
-  projectName: 'Engineering'
+  ...withProject(1, 'Engineering'),
+  departments: [],
+  managers: []
 };
+
+const positions: Position[] = [
+  { id: 1, name: 'Member' },
+  { id: 3, name: 'QA' }
+];
 
 const manager: User = {
   ...existing,
@@ -48,7 +56,6 @@ const departments: DepartmentWithCount[] = [
 describe('EmployeeFormPanelComponent', () => {
   let createSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
-  let assignSpy: jasmine.Spy;
   let getAllSpy: jasmine.Spy;
   let errorToastSpy: jasmine.Spy;
   let toastSpy: jasmine.Spy;
@@ -60,7 +67,8 @@ describe('EmployeeFormPanelComponent', () => {
     const fixture = TestBed.createComponent(EmployeeFormPanelComponent);
     fixture.componentRef.setInput('employee', employee);
     fixture.componentRef.setInput('projects', [
-      { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 1 }
+      { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 1 },
+      { id: 2, name: 'Sales', description: null, createdAt: '2026-09-01', employeeCount: 0 }
     ]);
     fixture.componentRef.setInput('departments', departments);
     fixture.detectChanges();
@@ -85,7 +93,6 @@ describe('EmployeeFormPanelComponent', () => {
   beforeEach(async () => {
     createSpy = jasmine.createSpy('create');
     updateSpy = jasmine.createSpy('update');
-    assignSpy = jasmine.createSpy('updateAssignments');
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of([manager]));
 
     currentUser.set({ id: 1, fullName: 'Admin', username: 'admin', email: 'admin@taskflow.com', role: 'Administrator', employeeCode: null, permissions: systemPermissions('Administrator') });
@@ -95,7 +102,8 @@ describe('EmployeeFormPanelComponent', () => {
       imports: [EmployeeFormPanelComponent],
       providers: [
         provideRouter([]),
-        { provide: UserService, useValue: { create: createSpy, update: updateSpy, getAll: getAllSpy, updateAssignments: assignSpy } },
+        { provide: UserService, useValue: { create: createSpy, update: updateSpy, getAll: getAllSpy } },
+        { provide: PositionService, useValue: { getAll: () => of(positions), getOrCreate: jasmine.createSpy('getOrCreate') } },
         { provide: AuthService, useValue: fakeAuthService(currentUser.asReadonly(), { clearSession: clearSessionSpy }) },
         {
           provide: RoleService,
@@ -128,36 +136,17 @@ describe('EmployeeFormPanelComponent', () => {
     expect(toastSpy).toHaveBeenCalledWith('Rahul M updated');
   });
 
-  it('sends a new password and warns that the employee must sign in again', () => {
+  it('has no password or status field when editing and sends no password', () => {
     const fixture = create(existing);
     updateSpy.and.returnValue(of(existing));
 
-    type(fixture, 'emp-password', 'NewPass#1');
+    expect(el(fixture).querySelector('#emp-password')).toBeNull();
+    expect(el(fixture).querySelector('#emp-status')).toBeNull();
+    expect(el(fixture).querySelector('#emp-sec-security')).toBeNull();
     submit(fixture);
 
-    expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ password: 'NewPass#1' }));
-    expect(toastSpy).toHaveBeenCalledWith('Rahul Menon updated. They must sign in again.');
-    expect(clearSessionSpy).not.toHaveBeenCalled();
-  });
-
-  it('rejects a new password shorter than 6 characters when editing', () => {
-    const fixture = create(existing);
-
-    type(fixture, 'emp-password', '123');
-    submit(fixture);
-
-    expect(el(fixture).querySelector('#emp-password-error')?.textContent).toContain('Use at least 6 characters.');
-    expect(updateSpy).not.toHaveBeenCalled();
-  });
-
-  it('rejects a new password that is only spaces', () => {
-    const fixture = create(existing);
-
-    type(fixture, 'emp-password', '      ');
-    submit(fixture);
-
-    expect(el(fixture).querySelector('#emp-password-error')?.textContent).toContain('Password cannot be only spaces.');
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ password: null }));
+    expect(toastSpy).toHaveBeenCalledWith('Rahul Menon updated');
   });
 
   it('signs the admin out at once when they change their own role', () => {
@@ -197,15 +186,12 @@ describe('EmployeeFormPanelComponent', () => {
     expect(el(fixture).querySelector('#emp-status')).toBeTruthy();
   });
 
-  it('pre-fills the employee, offers an optional new password, and hides status when editing', () => {
+  it('pre-fills the employee and warns that a username or role change signs them out', () => {
     const fixture = create(existing);
 
     expect((el(fixture).querySelector('#emp-name') as HTMLInputElement).value).toBe('Rahul Menon');
     expect((el(fixture).querySelector('#emp-code') as HTMLInputElement).value).toBe('EMP-022');
-    expect(el(fixture).querySelector('label[for="emp-password"]')?.textContent).toContain('New password');
-    expect((el(fixture).querySelector('#emp-password') as HTMLInputElement).value).toBe('');
-    expect(el(fixture).querySelector('#emp-password-hint')?.textContent).toContain('signs this employee out');
-    expect(el(fixture).querySelector('#emp-status')).toBeNull();
+    expect(el(fixture).querySelector('#emp-signout-notice')?.textContent).toContain('signs this employee out');
   });
 
   it('shows inline required and email errors on submit without saving', () => {
@@ -229,24 +215,25 @@ describe('EmployeeFormPanelComponent', () => {
     expect((el(fixture).querySelector('#emp-email') as HTMLInputElement).value).toBe('rahul.menon');
   });
 
-  describe('department assignment', () => {
-    function select(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: string, value: string): void {
-      const field = el(fixture).querySelector(`#${id}`) as HTMLSelectElement;
-      field.value = Array.from(field.options).find((option) => option.text.trim() === value)!.value;
-      field.dispatchEvent(new Event('change'));
+  describe('department membership', () => {
+    function box(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: number): HTMLInputElement {
+      return el(fixture).querySelector(`[data-department="${id}"]`) as HTMLInputElement;
+    }
+
+    function tick(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: number, checked: boolean): void {
+      box(fixture, id).checked = checked;
+      box(fixture, id).dispatchEvent(new Event('change'));
       fixture.detectChanges();
     }
 
-    it('offers the departments with an explicit unassigned choice', () => {
+    it('offers every department as a checkbox so a person can be in several', () => {
       const fixture = create(null);
 
-      const selectField = el(fixture).querySelector('#emp-department') as HTMLSelectElement;
-      const options = Array.from(selectField.options).map((option) => option.text.trim());
-
-      expect(options).toEqual(['Unassigned', 'Human Resources', 'Finance']);
+      expect(el(fixture).querySelectorAll('[data-department]').length).toBe(2);
+      expect(el(fixture).querySelector('#emp-department')).toBeNull();
     });
 
-    it('includes the chosen department in the create payload', () => {
+    it('includes every ticked department in the create payload', () => {
       const fixture = create(null);
       createSpy.and.returnValue(of({ ...existing, id: 41, fullName: 'Nia New' }));
 
@@ -254,161 +241,237 @@ describe('EmployeeFormPanelComponent', () => {
       type(fixture, 'emp-username', 'nia.n');
       type(fixture, 'emp-email', 'nia');
       type(fixture, 'emp-password', 'Temp#1234');
-      select(fixture, 'emp-department', 'Human Resources');
+      tick(fixture, 5, true);
+      tick(fixture, 6, true);
       submit(fixture);
 
-      expect(createSpy).toHaveBeenCalledWith(jasmine.objectContaining({ departmentId: 5 }));
+      expect(createSpy).toHaveBeenCalledWith(jasmine.objectContaining({ departmentIds: [5, 6] }));
     });
 
-    it('includes the chosen department in the update payload', () => {
-      const fixture = create(existing);
-      updateSpy.and.returnValue(of({ ...existing, departmentId: 6 }));
-
-      select(fixture, 'emp-department', 'Finance');
-      submit(fixture);
-
-      expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ departmentId: 6 }));
-    });
-
-    it('shows the department of the loaded user as selected', () => {
-      const fixture = create({ ...existing, departmentId: 6, departmentName: 'Finance' });
-
-      const selectField = el(fixture).querySelector('#emp-department') as HTMLSelectElement;
-      expect(selectField.selectedOptions[0].text.trim()).toBe('Finance');
-    });
-
-    it('sends null when the department is cleared', () => {
-      const fixture = create({ ...existing, departmentId: 5, departmentName: 'Human Resources' });
+    it('shows the departments of the loaded user read-only and keeps them when saving', () => {
+      const fixture = create({ ...existing, departments: [{ id: 6, name: 'Finance' }] });
       updateSpy.and.returnValue(of(existing));
 
-      select(fixture, 'emp-department', 'Unassigned');
+      const view = el(fixture).querySelector('[data-view="departments"]') as HTMLElement;
+      expect(view.textContent).toContain('Finance');
+      expect(view.textContent).not.toContain('Department management');
+      expect(el(fixture).querySelectorAll('[data-department]').length).toBe(0);
       submit(fixture);
 
-      expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ departmentId: null }));
+      expect(updateSpy).toHaveBeenCalledWith(7, jasmine.objectContaining({ departmentIds: [6] }));
+    });
+
+    it('says so when the loaded user is in no department', () => {
+      const fixture = create(existing);
+
+      expect(el(fixture).querySelector('[data-view="departments"]')?.textContent).toContain('Not in any department');
+    });
+
+    it('shows the derived managers read-only and offers no manager field', () => {
+      const fixture = create({ ...existing, managers: [{ id: 20, fullName: 'Anupama Nair' }] });
+
+      expect(el(fixture).querySelector('[data-list="managers"]')?.textContent).toContain('Anupama Nair');
+      expect(el(fixture).querySelector('#emp-manager')).toBeNull();
     });
   });
 
-  describe('manager assignments', () => {
-    function select(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: string, value: string): void {
-      const field = el(fixture).querySelector(`#${id}`) as HTMLSelectElement;
-      field.value = Array.from(field.options).find((option) => option.text.trim() === value)!.value;
-      field.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
-    }
-
-    function projectBox(fixture: ComponentFixture<EmployeeFormPanelComponent>, id: number): HTMLInputElement | null {
-      return el(fixture).querySelector(`[data-project="${id}"]`);
-    }
-
-    it('offers the active managers but not the employee being edited', () => {
-      getAllSpy.and.returnValue(of([manager, { ...manager, id: 7, fullName: 'Rahul Menon' }]));
-      const fixture = create(existing);
-
-      const options = Array.from((el(fixture).querySelector('#emp-manager') as HTMLSelectElement).options).map((o) => o.text.trim());
-
-      expect(getAllSpy).toHaveBeenCalledWith({ role: 'Manager', isActive: true });
-      expect(options).toEqual(['No manager', 'Anupama Nair']);
-    });
-
-    it('keeps an inactive current manager in the list, marked inactive, so the select is not blank', () => {
-      const fixture = create({ ...existing, managerId: 55, managerName: 'Old Boss' });
-      fixture.detectChanges();
-
-      const select = el(fixture).querySelector('#emp-manager') as HTMLSelectElement;
-      const options = Array.from(select.options).map((option) => option.text.trim());
-
-      expect(options).toEqual(['No manager', 'Anupama Nair', 'Old Boss (inactive)']);
-      expect(select.selectedOptions[0].text.trim()).toBe('Old Boss (inactive)');
-    });
-
-    it('is not offered to someone who can manage employees but is not an Administrator', () => {
-      currentUser.set({ id: 2, fullName: 'People', username: 'people', email: 'people@taskflow.com', role: 'People', employeeCode: null, permissions: ['employees.manage'] });
-      const fixture = create(existing);
-
-      expect(el(fixture).querySelector('#emp-manager')).toBeNull();
-      expect(getAllSpy).not.toHaveBeenCalled();
-    });
-
-    it('shows the project choices only while the Manager role is chosen', () => {
-      const fixture = create(null);
-      expect(projectBox(fixture, 1)).toBeNull();
-
-      select(fixture, 'emp-role', 'Manager');
-
-      expect(projectBox(fixture, 1)).not.toBeNull();
-      select(fixture, 'emp-role', 'Employee');
-      expect(projectBox(fixture, 1)).toBeNull();
-    });
-
-    it('assigns the chosen manager to a new employee once they are created', () => {
-      const fixture = create(null);
-      createSpy.and.returnValue(of({ ...existing, id: 31, fullName: 'Nia New' }));
-      assignSpy.and.returnValue(of({ ...existing, id: 31, fullName: 'Nia New', managerId: 20, managerName: 'Anupama Nair' }));
-      const savedSpy = jasmine.createSpy('saved');
-      fixture.componentInstance.saved.subscribe(savedSpy);
-
+  describe('project allocations', () => {
+    function fill(fixture: ComponentFixture<EmployeeFormPanelComponent>): void {
       type(fixture, 'emp-name', 'Nia New');
       type(fixture, 'emp-username', 'nia.n');
       type(fixture, 'emp-email', 'nia');
       type(fixture, 'emp-password', 'Temp#1234');
-      select(fixture, 'emp-manager', 'Anupama Nair');
-      submit(fixture);
+    }
 
-      expect(assignSpy).toHaveBeenCalledOnceWith(31, { managerId: 20, managerProjectIds: [] });
-      expect(savedSpy).toHaveBeenCalledWith(jasmine.objectContaining({ managerName: 'Anupama Nair' }));
-    });
+    function summary(fixture: ComponentFixture<EmployeeFormPanelComponent>): string {
+      return (el(fixture).querySelector('[data-allocation-summary]')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    }
 
-    it('assigns the ticked projects to a manager', () => {
-      const fixture = create({ ...manager, id: 21, managerProjects: [] });
-      updateSpy.and.returnValue(of({ ...manager, id: 21 }));
-      assignSpy.and.returnValue(of({ ...manager, id: 21, managerProjects: [{ id: 1, name: 'Engineering' }] }));
+    function addRow(fixture: ComponentFixture<EmployeeFormPanelComponent>): void {
+      (el(fixture).querySelector('[data-action="add-project"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    }
 
-      const box = projectBox(fixture, 1)!;
-      box.checked = true;
-      box.dispatchEvent(new Event('change'));
-      submit(fixture);
+    function setPercent(fixture: ComponentFixture<EmployeeFormPanelComponent>, row: number, value: string): void {
+      const input = el(fixture).querySelector(`[data-row="${row}"] .allocation-row__percent`) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
 
-      expect(assignSpy).toHaveBeenCalledOnceWith(21, { managerId: null, managerProjectIds: [1] });
-    });
+    function saveButton(fixture: ComponentFixture<EmployeeFormPanelComponent>): HTMLButtonElement {
+      return el(fixture).querySelector('button[type="submit"]') as HTMLButtonElement;
+    }
 
-    it('does not call the assignments endpoint when nothing about them changed', () => {
-      const fixture = create({ ...existing, managerId: 20, managerName: 'Anupama Nair' });
-      updateSpy.and.returnValue(of(existing));
-
-      type(fixture, 'emp-name', 'Rahul M');
-      submit(fixture);
-
-      expect(updateSpy).toHaveBeenCalled();
-      expect(assignSpy).not.toHaveBeenCalled();
-    });
-
-    it('sends no projects for someone who is not a manager', () => {
-      const fixture = create({ ...existing, managerId: 20 });
-      updateSpy.and.returnValue(of(existing));
-      assignSpy.and.returnValue(of(existing));
-
-      select(fixture, 'emp-manager', 'No manager');
-      submit(fixture);
-
-      expect(assignSpy).toHaveBeenCalledOnceWith(7, { managerId: null, managerProjectIds: [] });
-    });
-
-    it('still reports the employee as saved when only the assignments are rejected', () => {
+    it('starts with nothing allocated when adding', () => {
       const fixture = create(null);
-      createSpy.and.returnValue(of({ ...existing, id: 32, fullName: 'Omar Odd' }));
-      assignSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'The manager must be an active Manager.' } })));
-      const savedSpy = jasmine.createSpy('saved');
-      fixture.componentInstance.saved.subscribe(savedSpy);
 
-      type(fixture, 'emp-name', 'Omar Odd');
-      type(fixture, 'emp-username', 'omar.o');
-      type(fixture, 'emp-email', 'omar');
-      type(fixture, 'emp-password', 'Temp#1234');
-      select(fixture, 'emp-manager', 'Anupama Nair');
+      expect(el(fixture).querySelectorAll('[data-row]').length).toBe(0);
+      expect(summary(fixture)).toBe('0% allocated, 100% remaining');
+    });
+
+    it('starts a new row on a free project with the remaining percentage and the Member position', () => {
+      const fixture = create(null);
+
+      addRow(fixture);
+
+      expect(el(fixture).querySelectorAll('[data-row]').length).toBe(1);
+      expect(summary(fixture)).toBe('100% allocated, 0% remaining');
+      const first = el(fixture).querySelector('[data-row="0"] select') as HTMLSelectElement;
+      expect(first.selectedOptions[0].text.trim()).toBe('Engineering');
+      expect((el(fixture).querySelector('[data-row="0"] app-position-combobox input') as HTMLInputElement).value).toBe('Member');
+    });
+
+    it('flags a total above 100, disables Save and sends nothing', () => {
+      const fixture = create(null);
+      fill(fixture);
+      addRow(fixture);
+      addRow(fixture);
+
+      setPercent(fixture, 1, '50');
+
+      expect(summary(fixture)).toBe('150% allocated, 0% remaining');
+      expect(el(fixture).querySelector('[data-allocation-summary]')?.classList).toContain('is-over');
+      expect(el(fixture).querySelector('[data-allocation-error]')?.textContent).toContain('at most 100%');
+      expect(saveButton(fixture).disabled).toBeTrue();
+      saveButton(fixture).click();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('accepts exactly 100 and sends every row with its position and percentage', () => {
+      const fixture = create(null);
+      createSpy.and.returnValue(of({ ...existing, id: 41 }));
+      fill(fixture);
+      addRow(fixture);
+      setPercent(fixture, 0, '70');
+      addRow(fixture);
+
       submit(fixture);
 
-      expect(errorToastSpy).toHaveBeenCalledWith('Omar Odd was saved, but The manager must be an active Manager.');
-      expect(savedSpy).toHaveBeenCalled();
+      expect(saveButton(fixture).disabled).toBeFalse();
+      expect(createSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          projectAllocations: [
+            { projectId: 1, positionId: 1, percent: 70 },
+            { projectId: 2, positionId: 1, percent: 30 }
+          ]
+        })
+      );
+    });
+
+    it('refuses a percentage that is not a whole number from 1 to 100', () => {
+      const fixture = create(null);
+      fill(fixture);
+      addRow(fixture);
+
+      setPercent(fixture, 0, '0');
+      submit(fixture);
+      expect(el(fixture).querySelector('[data-allocation-error]')?.textContent).toContain('whole percentage from 1 to 100');
+
+      setPercent(fixture, 0, '12.5');
+      submit(fixture);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('removes a row and frees its percentage', () => {
+      const fixture = create(null);
+      addRow(fixture);
+
+      (el(fixture).querySelector('[data-row="0"] button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(el(fixture).querySelectorAll('[data-row]').length).toBe(0);
+      expect(summary(fixture)).toBe('0% allocated, 100% remaining');
+    });
+
+    it('hides a project already used by another row', () => {
+      const fixture = create(null);
+      addRow(fixture);
+      addRow(fixture);
+
+      const first = el(fixture).querySelector('[data-row="0"] select') as HTMLSelectElement;
+      expect(Array.from(first.options).map((o) => o.text.trim())).toEqual(['Choose a project', 'Engineering']);
+    });
+
+    describe('when editing', () => {
+      const seventy = {
+        ...existing,
+        projectAllocations: [{ projectId: 1, projectName: 'Engineering', positionId: 3, positionName: 'QA', percent: 70 }],
+        totalAllocatedPercent: 70,
+        remainingPercent: 30
+      };
+
+      it('shows the projects as a read-only list pointing to Project management', () => {
+        const fixture = create(seventy);
+
+        const view = el(fixture).querySelector('[data-view="project-allocations"]') as HTMLElement;
+        expect(view.textContent).toContain('Engineering');
+        expect(view.textContent).toContain('QA');
+        expect(view.textContent).toContain('70%');
+        expect(view.textContent).toContain('Project management');
+        expect(summary(fixture)).toBe('70% allocated, 30% remaining');
+        expect(el(fixture).querySelector('[data-action="add-project"]')).toBeNull();
+        expect(el(fixture).querySelectorAll('[data-row]').length).toBe(0);
+      });
+
+      it('keeps the existing projects unchanged when saving', () => {
+        const fixture = create(seventy);
+        updateSpy.and.returnValue(of(seventy));
+
+        submit(fixture);
+
+        expect(updateSpy).toHaveBeenCalledWith(
+          7,
+          jasmine.objectContaining({ projectAllocations: [{ projectId: 1, positionId: 3, percent: 70 }] })
+        );
+      });
+
+      it('still saves a person whose recorded projects already exceed 100%', () => {
+        const over = {
+          ...seventy,
+          projectAllocations: [
+            seventy.projectAllocations[0],
+            { projectId: 2, projectName: 'Sales', positionId: 1, positionName: 'Member', percent: 60 }
+          ]
+        };
+        const fixture = create(over);
+        updateSpy.and.returnValue(of(seventy));
+
+        submit(fixture);
+
+        expect(updateSpy).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('manager projects', () => {
+    const managing = { ...manager, id: 21, managerProjects: [{ id: 1, name: 'Engineering' }, { id: 2, name: 'Sales' }] };
+
+    it('lists the projects a manager manages as read-only, with no checkboxes', () => {
+      const fixture = create(managing);
+
+      const view = el(fixture).querySelector('[data-view="manager-projects"]') as HTMLElement;
+      expect(view.textContent).toContain('Engineering');
+      expect(view.textContent).toContain('Sales');
+      expect(el(fixture).querySelectorAll('[data-project]').length).toBe(0);
+      expect(el(fixture).querySelector('[data-field="manager-projects"]')).toBeNull();
+    });
+
+    it('shows nothing for an employee, for a manager without projects, or when adding', () => {
+      expect(el(create({ ...existing, managerProjects: [{ id: 1, name: 'Engineering' }] })).querySelector('[data-view="manager-projects"]')).toBeNull();
+      expect(el(create({ ...manager, managerProjects: [] })).querySelector('[data-view="manager-projects"]')).toBeNull();
+      expect(el(create(null)).querySelector('[data-view="manager-projects"]')).toBeNull();
+    });
+
+    it('saves an edited manager through the normal update only', () => {
+      const fixture = create(managing);
+      updateSpy.and.returnValue(of(managing));
+
+      type(fixture, 'emp-name', 'Anupama N');
+      submit(fixture);
+
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+      expect(toastSpy).toHaveBeenCalledWith('Anupama Nair updated');
     });
   });
 
@@ -527,6 +590,130 @@ describe('EmployeeFormPanelComponent', () => {
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
+  describe('refreshed layout', () => {
+    it('shows the identity header of the employee being edited', () => {
+      const fixture = create({ ...existing, updatedAt: '2026-10-21T08:00:00Z' });
+      fixture.detectChanges();
+
+      const header = el(fixture).querySelector('[data-role="identity"]') as HTMLElement;
+      expect(header.textContent).toContain('RM');
+      expect(header.textContent).toContain('Rahul Menon');
+      expect(header.textContent).toContain('rahul.menon@taskflow.com');
+      expect(header.textContent).toContain('Employee');
+      expect(header.textContent).toContain('Active');
+      expect(header.textContent).toContain('EMP-022');
+      expect(el(fixture).querySelector('[data-role="updated-at"]')?.textContent).toContain('Last updated');
+    });
+
+    it('shows a neutral header and no last-updated line when adding', () => {
+      const fixture = create(null);
+
+      const header = el(fixture).querySelector('[data-role="identity"]') as HTMLElement;
+      expect(header.textContent).toContain('New employee');
+      expect(header.textContent).not.toContain('EMP-');
+      expect(el(fixture).querySelector('[data-role="updated-at"]')).toBeNull();
+    });
+
+    const titles = (fixture: ComponentFixture<EmployeeFormPanelComponent>) =>
+      Array.from(el(fixture).querySelectorAll('.tf-section__title')).map((node) => node.textContent?.trim());
+
+    it('groups the fields into four titled sections when adding', () => {
+      expect(titles(create(null))).toEqual(['Personal details', 'Role and team', 'Project allocation', 'Sign-in and security']);
+    });
+
+    it('leaves out the sign-in section when editing', () => {
+      expect(titles(create(existing))).toEqual(['Personal details', 'Role and team', 'Project allocation']);
+    });
+
+    it('toggles a department pill from the keyboard-reachable checkbox', () => {
+      const fixture = create(null);
+      const pill = el(fixture).querySelector('[data-department="5"]') as HTMLInputElement;
+
+      pill.click();
+      fixture.detectChanges();
+      expect(pill.checked).toBeTrue();
+      expect(pill.closest('.tf-option')).toBeTruthy();
+
+      pill.click();
+      fixture.detectChanges();
+      expect(pill.checked).toBeFalse();
+    });
+
+    it('draws one bar segment per project when viewing and none when empty', () => {
+      const fixture = create({
+        ...existing,
+        projectAllocations: [
+          { projectId: 1, projectName: 'Engineering', positionId: 3, positionName: 'QA', percent: 60 },
+          { projectId: 2, projectName: 'Sales', positionId: 1, positionName: 'Member', percent: 40 }
+        ],
+        totalAllocatedPercent: 100,
+        remainingPercent: 0
+      });
+
+      const widths = Array.from(el(fixture).querySelectorAll('.tf-alloc-bar > i')).map((segment) => (segment as HTMLElement).style.width);
+      expect(widths).toEqual(['60%', '40%']);
+      expect(el(create({ ...existing, projectAllocations: [], totalAllocatedPercent: 0, remainingPercent: 100 })).querySelectorAll('.tf-alloc-bar > i').length).toBe(0);
+    });
+
+    it('turns the bar red when an added allocation goes over capacity', () => {
+      const fixture = create(null);
+      const percent = (row: number, value: string) => {
+        const input = el(fixture).querySelector(`[data-row="${row}"] .allocation-row__percent`) as HTMLInputElement;
+        input.value = value;
+        input.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+      };
+      const add = () => {
+        (el(fixture).querySelector('[data-action="add-project"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+      };
+      add();
+      percent(0, '60');
+      add();
+      const bar = el(fixture).querySelector('.tf-alloc-bar') as HTMLElement;
+      expect(bar.classList).not.toContain('is-over');
+
+      percent(1, '60');
+
+      expect(bar.classList).toContain('is-over');
+      expect((el(fixture).querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBeTrue();
+    });
+
+    it('reveals and hides the typed password when adding', () => {
+      const fixture = create(null);
+      const input = el(fixture).querySelector('#emp-password') as HTMLInputElement;
+      const toggle = el(fixture).querySelector('[data-action="toggle-password"]') as HTMLButtonElement;
+
+      expect(input.type).toBe('password');
+      expect(toggle.textContent?.trim()).toBe('Show');
+
+      toggle.click();
+      fixture.detectChanges();
+      expect(input.type).toBe('text');
+      expect(toggle.textContent?.trim()).toBe('Hide');
+    });
+
+    it('rates password strength without changing the validation rules', () => {
+      const fixture = create(null);
+      const lit = () => el(fixture).querySelectorAll('[data-role="password-strength"] i.is-on').length;
+
+      type(fixture, 'emp-password', 'abc');
+      fixture.detectChanges();
+      expect(lit()).toBe(0);
+      expect(fixture.componentInstance.form.controls.password.hasError('minlength')).toBeTrue();
+
+      type(fixture, 'emp-password', 'Abcdef1!');
+      fixture.detectChanges();
+      expect(lit()).toBe(4);
+      expect(fixture.componentInstance.form.controls.password.valid).toBeTrue();
+    });
+
+    it('shows the sign-out warning only when editing', () => {
+      expect(el(create(existing)).querySelector('.tf-notice')?.textContent).toContain('signs this employee out');
+      expect(el(create(null)).querySelector('.tf-notice')).toBeNull();
+    });
+  });
+
   it('disables Save while saving', () => {
     const fixture = create(existing);
     updateSpy.and.returnValue(new Subject<User>());
@@ -546,10 +733,10 @@ describe('EmployeeDetailsPanelComponent manager details', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows an employee their manager and nothing about projects or a team', async () => {
-    const element = await render({ ...existing, managerId: 20, managerName: 'Anupama Nair' });
+  it('shows an employee their managers and nothing about projects or a team', async () => {
+    const element = await render({ ...existing, managers: [{ id: 20, fullName: 'Anupama Nair' }, { id: 21, fullName: 'Ravi Rao' }] });
 
-    expect(element.querySelector('[data-field="manager"]')?.textContent?.trim()).toBe('Anupama Nair');
+    expect(element.querySelector('[data-field="managers"]')?.textContent?.trim()).toBe('Anupama Nair, Ravi Rao');
     expect(element.querySelector('[data-field="managed-projects"]')).toBeNull();
     expect(element.querySelector('[data-field="team"]')).toBeNull();
   });
@@ -557,7 +744,25 @@ describe('EmployeeDetailsPanelComponent manager details', () => {
   it('says there is no manager when none is assigned', async () => {
     const element = await render(existing);
 
-    expect(element.querySelector('[data-field="manager"]')?.textContent?.trim()).toBe('None');
+    expect(element.querySelector('[data-field="managers"]')?.textContent?.trim()).toBe('None');
+  });
+
+  it('lists every project with its percentage and position, the total and the departments', async () => {
+    const element = await render({
+      ...existing,
+      projectAllocations: [
+        { projectId: 1, projectName: 'Apollo', positionId: 3, positionName: 'QA', percent: 60 },
+        { projectId: 2, projectName: 'Zephyr', positionId: 4, positionName: 'Developer', percent: 40 }
+      ],
+      totalAllocatedPercent: 100,
+      remainingPercent: 0,
+      departments: [{ id: 5, name: 'Human Resources' }, { id: 6, name: 'Finance' }]
+    });
+
+    expect(element.querySelector('[data-field="projects"]')?.textContent?.trim()).toBe(
+      'Apollo 60% (QA), Zephyr 40% (Developer) · 100% allocated'
+    );
+    expect(element.querySelector('[data-field="departments"]')?.textContent?.trim()).toBe('Human Resources, Finance');
   });
 
   it('shows a manager the projects they oversee and the people who report to them', async () => {
@@ -608,10 +813,10 @@ describe('EmployeeDetailsPanelComponent', () => {
   it('shows the department name', async () => {
     await TestBed.configureTestingModule({ imports: [EmployeeDetailsPanelComponent] }).compileComponents();
     const fixture = TestBed.createComponent(EmployeeDetailsPanelComponent);
-    fixture.componentRef.setInput('employee', { ...existing, departmentId: 5, departmentName: 'Human Resources' });
+    fixture.componentRef.setInput('employee', { ...existing, departments: [{ id: 5, name: 'Human Resources' }] });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-field="department"]')?.textContent?.trim()).toBe('Human Resources');
+    expect(fixture.nativeElement.querySelector('[data-field="departments"]')?.textContent?.trim()).toBe('Human Resources');
   });
 
   it('says Unassigned when the employee has no department', async () => {
@@ -620,6 +825,6 @@ describe('EmployeeDetailsPanelComponent', () => {
     fixture.componentRef.setInput('employee', existing);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-field="department"]')?.textContent?.trim()).toBe('Unassigned');
+    expect(fixture.nativeElement.querySelector('[data-field="departments"]')?.textContent?.trim()).toBe('Unassigned');
   });
 });

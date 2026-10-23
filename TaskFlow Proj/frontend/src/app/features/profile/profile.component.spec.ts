@@ -1,13 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
 import { User } from '../../core/models';
 import { ProfileService } from '../../core/services/profile.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ProfileComponent } from './profile.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('ProfileComponent', () => {
   const me: User = {
@@ -20,21 +20,19 @@ describe('ProfileComponent', () => {
     roleId: 3,
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z',
-    projectId: 1,
-    projectName: 'Engineering'
+    ...withProject(1, 'Engineering'),
+    departments: [],
+    managers: []
   };
 
   let getSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
-  let changePasswordSpy: jasmine.Spy;
   let toast: jasmine.SpyObj<ToastService>;
   let authService: jasmine.SpyObj<AuthService>;
-  let router: Router;
 
   beforeEach(() => {
     getSpy = jasmine.createSpy('get').and.returnValue(of(me));
     updateSpy = jasmine.createSpy('update');
-    changePasswordSpy = jasmine.createSpy('changePassword');
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['clearSession', 'applyProfile']);
   });
@@ -43,7 +41,7 @@ describe('ProfileComponent', () => {
     TestBed.configureTestingModule({
       imports: [ProfileComponent],
       providers: [
-        { provide: ProfileService, useValue: { get: getSpy, update: updateSpy, changePassword: changePasswordSpy } },
+        { provide: ProfileService, useValue: { get: getSpy, update: updateSpy } },
         { provide: AuthService, useValue: authService },
         { provide: ToastService, useValue: toast },
         provideRouter([])
@@ -51,7 +49,6 @@ describe('ProfileComponent', () => {
     });
     const fixture = TestBed.createComponent(ProfileComponent);
     fixture.detectChanges();
-    router = TestBed.inject(Router);
     return fixture;
   }
 
@@ -61,6 +58,10 @@ describe('ProfileComponent', () => {
 
   function input(fixture: ComponentFixture<ProfileComponent>, field: string): HTMLInputElement {
     return el(fixture).querySelector(`[data-field="${field}"]`) as HTMLInputElement;
+  }
+
+  function bullets(fixture: ComponentFixture<ProfileComponent>, label: string): string[] {
+    return Array.from(el(fixture).querySelectorAll(`[data-field="readonly-${label}"] li`)).map((item) => item.textContent!.trim());
   }
 
   function submit(fixture: ComponentFixture<ProfileComponent>, action: string): void {
@@ -77,16 +78,69 @@ describe('ProfileComponent', () => {
     expect(el(fixture).querySelector('[data-email-suffix]')?.textContent?.trim()).toBe('@taskflow.com');
     expect(el(fixture).querySelector('[data-field="readonly-Username"]')?.textContent?.trim()).toBe('jojo');
     expect(el(fixture).querySelector('[data-field="readonly-Role"]')?.textContent?.trim()).toBe('Employee');
-    expect(el(fixture).querySelector('[data-field="readonly-Project"]')?.textContent?.trim()).toBe('Engineering');
+    const projects = el(fixture).querySelector('[data-field="readonly-Projects"]')!;
+    expect(projects.querySelector('ul')).toBeNull();
+    expect(projects.textContent).toContain('Engineering 100% (Member)');
+    expect(projects.querySelector('.profile-readonly__note')?.textContent?.trim()).toBe('100% allocated');
     expect(el(fixture).querySelector('[data-field="readonly-Account status"]')?.textContent?.trim()).toBe('Active');
   });
 
-  it('shows the employee their own manager', () => {
-    getSpy.and.returnValue(of({ ...me, managerId: 20, managerName: 'Anupama Nair' }));
+  it('shows the employee their projects with percentages, their departments and their managers', () => {
+    getSpy.and.returnValue(
+      of({
+        ...me,
+        projectAllocations: [
+          { projectId: 1, projectName: 'Apollo', positionId: 3, positionName: 'QA', percent: 60 },
+          { projectId: 2, projectName: 'Zephyr', positionId: 4, positionName: 'Developer', percent: 30 }
+        ],
+        totalAllocatedPercent: 90,
+        remainingPercent: 10,
+        departments: [{ id: 5, name: 'Finance' }, { id: 6, name: 'Human Resources' }],
+        managers: [{ id: 20, fullName: 'Anupama Nair' }, { id: 21, fullName: 'Ravi Rao' }]
+      })
+    );
     const fixture = create();
 
-    expect(el(fixture).querySelector('[data-field="readonly-Manager"]')?.textContent?.trim()).toBe('Anupama Nair');
+    expect(bullets(fixture, 'Projects')).toEqual(['Apollo 60% (QA)', 'Zephyr 30% (Developer)']);
+    expect(el(fixture).querySelector('[data-field="readonly-Projects"] .profile-readonly__note')?.textContent?.trim()).toBe('90% allocated');
+    expect(bullets(fixture, 'Departments')).toEqual(['Finance', 'Human Resources']);
+    expect(bullets(fixture, 'Managers')).toEqual(['Anupama Nair', 'Ravi Rao']);
     expect(el(fixture).querySelector('[data-field="readonly-Team"]')).toBeNull();
+  });
+
+  it('never shows several values as one comma-separated line', () => {
+    getSpy.and.returnValue(
+      of({ ...me, departments: [{ id: 5, name: 'Finance' }, { id: 6, name: 'Human Resources' }, { id: 7, name: 'Legal' }] })
+    );
+    const fixture = create();
+
+    expect(bullets(fixture, 'Departments').length).toBe(3);
+    expect(el(fixture).querySelector('[data-field="readonly-Departments"]')?.textContent).not.toContain(',');
+  });
+
+  it('shows a single value as plain text and no value as a dash', () => {
+    getSpy.and.returnValue(of({ ...me, departments: [{ id: 5, name: 'Finance' }], managers: [] }));
+    const fixture = create();
+
+    expect(el(fixture).querySelector('[data-field="readonly-Departments"] ul')).toBeNull();
+    expect(el(fixture).querySelector('[data-field="readonly-Departments"]')?.textContent?.trim()).toBe('Finance');
+    expect(el(fixture).querySelector('[data-field="readonly-Managers"]')?.textContent?.trim()).toBe('—');
+  });
+
+  it('lists a manager\'s several managed projects and team members as bullets', () => {
+    getSpy.and.returnValue(
+      of({
+        ...me,
+        role: 'Manager',
+        roleId: 2,
+        managerProjects: [{ id: 1, name: 'Engineering' }, { id: 2, name: 'Atlas' }],
+        reports: [{ id: 9, fullName: 'Sara' }, { id: 10, fullName: 'Tom' }, { id: 11, fullName: 'Uma' }]
+      })
+    );
+    const fixture = create();
+
+    expect(bullets(fixture, 'Managed projects')).toEqual(['Engineering', 'Atlas']);
+    expect(bullets(fixture, 'Team')).toEqual(['Sara', 'Tom', 'Uma']);
   });
 
   it('shows a manager their projects and team', () => {
@@ -101,7 +155,7 @@ describe('ProfileComponent', () => {
     );
     const fixture = create();
 
-    expect(el(fixture).querySelector('[data-field="readonly-Manager"]')?.textContent?.trim()).toBe('—');
+    expect(el(fixture).querySelector('[data-field="readonly-Managers"]')?.textContent?.trim()).toBe('—');
     expect(el(fixture).querySelector('[data-field="readonly-Managed projects"]')?.textContent?.trim()).toBe('Engineering');
     expect(el(fixture).querySelector('[data-field="readonly-Team"]')?.textContent?.trim()).toBe('Sara');
   });
@@ -160,92 +214,6 @@ describe('ProfileComponent', () => {
 
     submit(fixture, 'save');
     expect(updateSpy).toHaveBeenCalledOnceWith(jasmine.objectContaining({ email: 'joanna@taskflow.com' }));
-  });
-
-  it('shows no password errors until the user types or submits', () => {
-    const fixture = create();
-
-    expect(el(fixture).querySelectorAll('[data-error="currentPassword"], [data-error="newPassword"], [data-error="confirmPassword"]').length).toBe(0);
-  });
-
-  it('shows only the confirmation mismatch while the confirmation is being typed wrong', () => {
-    const fixture = create();
-    const group = fixture.componentInstance.passwordForm;
-
-    group.controls.currentPassword.setValue('P@ssw0rd!');
-    group.controls.newPassword.setValue('N3wP@ss!');
-    group.controls.confirmPassword.setValue('different');
-    group.controls.confirmPassword.markAsDirty();
-    fixture.detectChanges();
-
-    expect(el(fixture).querySelector('[data-error="confirmPassword"]')?.textContent).toContain('do not match');
-    expect(el(fixture).querySelector('[data-error="currentPassword"]')).toBeNull();
-    expect(el(fixture).querySelector('[data-error="newPassword"]')).toBeNull();
-  });
-
-  it('shows every problem at once when an invalid form is submitted', () => {
-    const fixture = create();
-
-    submit(fixture, 'change-password');
-
-    expect(changePasswordSpy).not.toHaveBeenCalled();
-    expect(el(fixture).querySelector('[data-error="currentPassword"]')?.textContent).toContain('Required');
-    expect(el(fixture).querySelector('[data-error="newPassword"]')?.textContent).toContain('Required');
-    expect(el(fixture).querySelector('[data-error="confirmPassword"]')?.textContent).toContain('Required');
-  });
-
-  it('requires matching password confirmation', () => {
-    const fixture = create();
-
-    fixture.componentInstance.passwordForm.setValue({
-      currentPassword: 'P@ssw0rd!',
-      newPassword: 'N3wP@ss!',
-      confirmPassword: 'different',
-      mfaCode: ''
-    });
-    fixture.detectChanges();
-    submit(fixture, 'change-password');
-
-    expect(changePasswordSpy).not.toHaveBeenCalled();
-    expect(el(fixture).querySelector('[data-error="confirmPassword"]')?.textContent).toContain('do not match');
-  });
-
-  it('changes the password and signs the user out', () => {
-    changePasswordSpy.and.returnValue(of(undefined));
-    const fixture = create();
-    const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
-
-    fixture.componentInstance.passwordForm.setValue({
-      currentPassword: 'P@ssw0rd!',
-      newPassword: 'N3wP@ss!',
-      confirmPassword: 'N3wP@ss!',
-      mfaCode: ''
-    });
-    submit(fixture, 'change-password');
-
-    expect(changePasswordSpy).toHaveBeenCalledOnceWith({ currentPassword: 'P@ssw0rd!', newPassword: 'N3wP@ss!', mfaCode: undefined });
-    expect(authService.clearSession).toHaveBeenCalled();
-    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
-      queryParams: { reason: LOGIN_REASON_CREDENTIALS_CHANGED }
-    });
-  });
-
-  it('shows a wrong current password error without signing out', () => {
-    changePasswordSpy.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'Current password is incorrect.' } }))
-    );
-    const fixture = create();
-
-    fixture.componentInstance.passwordForm.setValue({
-      currentPassword: 'wrong',
-      newPassword: 'N3wP@ss!',
-      confirmPassword: 'N3wP@ss!',
-      mfaCode: ''
-    });
-    submit(fixture, 'change-password');
-
-    expect(el(fixture).querySelector('.tf-alert')?.textContent).toContain('Current password is incorrect.');
-    expect(authService.clearSession).not.toHaveBeenCalled();
   });
 
   it('shows a retryable error when loading fails', () => {

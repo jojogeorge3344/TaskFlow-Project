@@ -32,7 +32,7 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await _mfa.SeedAndLoginAsync(client, "step-nocode");
         await _mfa.EnrolAsync(client, token);
 
-        var response = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword });
+        var response = await Change(client, token, new { newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("authenticator", await ErrorOf(response));
@@ -48,65 +48,9 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var (secret, _) = await _mfa.EnrolAsync(client, token);
         var wrong = _mfa.NextCode(secret) == "000000" ? "111111" : "000000";
 
-        var response = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = wrong });
+        var response = await Change(client, token, new { newPassword = NewPassword, mfaCode = wrong });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task A_wrong_current_password_does_not_spend_the_code()
-    {
-        var client = _mfa.Factory.CreateClient();
-        var token = await _mfa.SeedAndLoginAsync(client, "step-typo");
-        var (secret, _) = await _mfa.EnrolAsync(client, token);
-        var code = _mfa.NextCode(secret);
-
-        var typo = await Change(client, token, new { currentPassword = "wrong", newPassword = NewPassword, mfaCode = code });
-        var retry = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = code });
-
-        Assert.Equal(HttpStatusCode.BadRequest, typo.StatusCode);
-        Assert.Contains("Current password", await ErrorOf(typo));
-        Assert.Equal(HttpStatusCode.NoContent, retry.StatusCode);
-    }
-
-    [Fact]
-    public async Task Guessing_the_current_password_with_only_an_access_token_is_throttled()
-    {
-        var client = _mfa.Factory.CreateClient();
-        var token = await _mfa.SeedAndLoginAsync(client, "step-pw-guess");
-        var (secret, _) = await _mfa.EnrolAsync(client, token);
-
-        for (var i = 0; i < 5; i++)
-        {
-            var guess = await Change(client, token, new { currentPassword = "wrong-" + i, newPassword = NewPassword });
-            Assert.Equal(HttpStatusCode.BadRequest, guess.StatusCode);
-        }
-
-        // Even the right password and code are refused until the window passes.
-        var blocked = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = _mfa.NextCode(secret) });
-
-        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
-    }
-
-    [Fact]
-    public async Task A_correct_current_password_clears_the_guess_budget()
-    {
-        var client = _mfa.Factory.CreateClient();
-        var token = await _mfa.SeedAndLoginAsync(client, "step-pw-reset");
-        var (secret, _) = await _mfa.EnrolAsync(client, token);
-
-        for (var i = 0; i < 4; i++)
-        {
-            await Change(client, token, new { currentPassword = "wrong-" + i, newPassword = NewPassword });
-        }
-
-        // A right password with a wrong code still proves the password, so the budget starts over.
-        var wrongCode = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = "000000" });
-        var again = await Change(client, token, new { currentPassword = "wrong-again", newPassword = NewPassword });
-
-        Assert.Equal(HttpStatusCode.BadRequest, wrongCode.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
-        Assert.Contains("Current password", await ErrorOf(again));
     }
 
     [Fact]
@@ -134,7 +78,7 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await _mfa.SeedAndLoginAsync(client, "step-ok");
         var (secret, _) = await _mfa.EnrolAsync(client, token);
 
-        var response = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = _mfa.NextCode(secret) });
+        var response = await Change(client, token, new { newPassword = NewPassword, mfaCode = _mfa.NextCode(secret) });
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var old = await MfaTestHarness.SendAsync(client, HttpMethod.Get, "/api/v1/users/me", token);
@@ -148,7 +92,7 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await _mfa.SeedAndLoginAsync(client, "step-replay");
         var (secret, _) = await _mfa.EnrolAsync(client, token);
         var code = _mfa.NextCode(secret);
-        var first = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = code });
+        var first = await Change(client, token, new { newPassword = NewPassword, mfaCode = code });
         Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
 
         var relogin = await _mfa.Factory.CreateClient().PostAsync("/api/v1/auth/login",
@@ -172,7 +116,7 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var first = await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/mfa/check", token, new { code });
         var second = await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/mfa/check", token, new { code });
         var bad = await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/mfa/check", token, new { code = code == "000000" ? "111111" : "000000" });
-        var change = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = code });
+        var change = await Change(client, token, new { newPassword = NewPassword, mfaCode = code });
 
         Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);

@@ -45,7 +45,9 @@ describe('TaskService', () => {
           estimatedHours: 6,
           status: 'InProgress',
           stage: 'Upcoming',
-          isOverdue: false
+          isOverdue: false,
+          projectId: 4,
+          projectName: 'Apollo'
         }
       ],
       total: 1,
@@ -87,6 +89,7 @@ describe('TaskService', () => {
     const body: CreateTaskRequest = {
       title: 'Plan launch',
       description: null,
+      projectId: 5,
       assignedToUserId: 3,
       priority: 'Medium',
       startDate: '2026-10-14T00:00:00.000Z',
@@ -150,7 +153,12 @@ describe('TaskService', () => {
       stage: 'Upcoming',
       recipients: [],
       createdAt: '2026-10-01T08:00:00Z',
-      updatedAt: '2026-10-01T08:00:00Z'
+      updatedAt: '2026-10-01T08:00:00Z',
+      projectId: 4,
+      projectName: 'Apollo',
+      firstReminderDays: 2,
+      secondReminderDays: 1,
+      overdueReminderFrequency: 'Daily'
     };
     let result: TaskDetails | undefined;
 

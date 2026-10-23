@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using TaskFlow.Domain.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,7 @@ public class MailController : ControllerBase
 
     /// <summary>One page of a folder, optionally filtered by a search term.</summary>
     [HttpGet]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailRead)]
     public async Task<ActionResult<PagedResult<MailListItemDto>>> List(
         [FromQuery] MailView folder = MailView.Inbox,
         [FromQuery] string? search = null,
@@ -47,6 +49,7 @@ public class MailController : ControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailRead)]
     public async Task<ActionResult<MailSummaryDto>> Summary(CancellationToken cancellationToken)
     {
         return await WithCaller(callerId => _mailService.GetSummaryAsync(callerId, cancellationToken));
@@ -54,6 +57,7 @@ public class MailController : ControllerBase
 
     /// <summary>Unread Inbox mails, for the menu badge.</summary>
     [HttpGet("unread-count")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailRead)]
     public async Task<ActionResult<MailUnreadCountDto>> UnreadCount(CancellationToken cancellationToken)
     {
         return await WithCaller(async callerId => new MailUnreadCountDto(await _mailService.GetUnreadCountAsync(callerId, cancellationToken)));
@@ -61,6 +65,7 @@ public class MailController : ControllerBase
 
     /// <summary>Opens a mail with its conversation and marks it read.</summary>
     [HttpGet("items/{itemId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailRead)]
     public async Task<ActionResult<MailItemDetailDto>> Open(int itemId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -73,6 +78,7 @@ public class MailController : ControllerBase
     }
 
     [HttpPatch("items/{itemId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailOrganize)]
     public async Task<IActionResult> UpdateFlags(int itemId, [FromBody] UpdateMailFlagsRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -84,6 +90,7 @@ public class MailController : ControllerBase
     }
 
     [HttpPost("items/{itemId:int}/trash")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailOrganize)]
     public async Task<IActionResult> Trash(int itemId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -95,6 +102,7 @@ public class MailController : ControllerBase
     }
 
     [HttpPost("items/{itemId:int}/restore")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailOrganize)]
     public async Task<IActionResult> Restore(int itemId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -107,6 +115,7 @@ public class MailController : ControllerBase
 
     /// <summary>Deletes a mail forever from Trash, or discards a draft.</summary>
     [HttpDelete("items/{itemId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailOrganize)]
     public async Task<IActionResult> DeleteForever(int itemId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -126,6 +135,7 @@ public class MailController : ControllerBase
 
     /// <summary>Prefilled recipients, subject and quoted text for a reply, reply all or forward.</summary>
     [HttpGet("items/{itemId:int}/compose")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<MailComposeDto>> Compose(int itemId, [FromQuery] MailComposeMode mode, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -146,6 +156,7 @@ public class MailController : ControllerBase
 
     /// <summary>Sends a new mail, a reply or forward, or a saved draft to TaskFlow users.</summary>
     [HttpPost("send")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<MailItemDetailDto>> Send([FromBody] SendMailRequest request, CancellationToken cancellationToken)
     {
         var validation = await _sendValidator.ValidateAsync(request, cancellationToken);
@@ -171,12 +182,14 @@ public class MailController : ControllerBase
     }
 
     [HttpPost("drafts")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<MailItemDetailDto>> CreateDraft([FromBody] SaveDraftRequest request, CancellationToken cancellationToken)
     {
         return await SaveDraft(request, (callerId, body) => _mailService.CreateDraftAsync(callerId, body, cancellationToken), cancellationToken);
     }
 
     [HttpPut("drafts/{messageId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<MailItemDetailDto>> UpdateDraft(int messageId, [FromBody] SaveDraftRequest request, CancellationToken cancellationToken)
     {
         return await SaveDraft(request, (callerId, body) => _mailService.UpdateDraftAsync(callerId, messageId, body, cancellationToken), cancellationToken);
@@ -184,6 +197,7 @@ public class MailController : ControllerBase
 
     /// <summary>Active TaskFlow users matching a name or email, for the recipient picker.</summary>
     [HttpGet("contacts")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<IReadOnlyList<MailContactDto>>> Contacts([FromQuery] string? search, CancellationToken cancellationToken)
     {
         return Ok(await _mailService.GetContactsAsync(search, cancellationToken));
@@ -191,6 +205,7 @@ public class MailController : ControllerBase
 
     /// <summary>Uploads one file to attach to a mail or draft.</summary>
     [HttpPost("attachments")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailAttachments)]
     [RequestSizeLimit(UploadRequestLimit)]
     [RequestFormLimits(MultipartBodyLengthLimit = UploadRequestLimit)]
     public async Task<ActionResult<MailAttachmentDto>> Upload(IFormFile? file, CancellationToken cancellationToken)
@@ -219,6 +234,7 @@ public class MailController : ControllerBase
 
     /// <summary>Downloads an attachment as a file; never rendered inline.</summary>
     [HttpGet("attachments/{attachmentId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailAttachments)]
     public async Task<IActionResult> Download(int attachmentId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))
@@ -238,6 +254,7 @@ public class MailController : ControllerBase
 
     /// <summary>Removes an upload that is not on a mail or draft.</summary>
     [HttpDelete("attachments/{attachmentId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailAttachments)]
     public async Task<IActionResult> DeleteAttachment(int attachmentId, CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var callerId))

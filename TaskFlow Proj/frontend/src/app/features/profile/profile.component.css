@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--tf-space-5);
-  max-width: 75rem;
+  max-width: 90rem;
   margin: 0 auto;
 }
 
@@ -89,48 +89,10 @@
   background: #fca5a5;
 }
 
-/* ---------- Tabs (small screens) ---------- */
-.profile-tabs {
-  display: none;
-  gap: var(--tf-space-1);
-  padding: var(--tf-space-1);
-  border-radius: var(--tf-radius-md);
-  background: var(--tf-surface);
-  border: 1px solid var(--tf-border);
-  box-shadow: var(--tf-shadow-sm);
-}
-
-.profile-tab {
-  flex: 1;
-  min-height: 2.5rem;
-  padding: 0 var(--tf-space-3);
-  border: 0;
-  border-radius: var(--tf-radius-sm);
-  background: transparent;
-  color: var(--tf-text-secondary);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.profile-tab:hover {
-  background: var(--tf-surface-alt);
-}
-
-.profile-tab[aria-selected='true'] {
-  background: var(--tf-primary);
-  color: #ffffff;
-}
-
-.profile-tab:focus-visible {
-  outline: none;
-  box-shadow: var(--tf-focus-ring);
-}
-
 /* ---------- Layout ---------- */
 .profile-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: var(--tf-space-5);
   align-items: start;
 }
@@ -140,11 +102,6 @@
   flex-direction: column;
   gap: var(--tf-space-5);
   min-width: 0;
-}
-
-/* The hidden attribute drives the tabs on small screens; on wide screens both columns always show. */
-.profile-col[hidden] {
-  display: flex;
 }
 
 /* ---------- Notices ---------- */
@@ -204,96 +161,21 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- Password field ---------- */
-.profile-pw {
-  position: relative;
+.profile-list {
+  margin: 0;
+  padding-left: 1.125rem;
+  list-style: disc;
   display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
-.profile-pw .tf-input {
-  padding-right: 4.5rem;
-}
-
-.profile-pw__toggle {
-  position: absolute;
-  top: 50%;
-  right: 0.375rem;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 0;
-  border-radius: var(--tf-radius-sm);
-  background: transparent;
-  color: var(--tf-primary);
-  cursor: pointer;
-}
-
-.profile-pw__toggle .tf-icon {
-  width: 1.125rem;
-  height: 1.125rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.profile-pw__toggle:hover {
-  background: var(--tf-primary-soft);
-}
-
-.profile-pw__toggle:focus-visible {
-  outline: none;
-  box-shadow: var(--tf-focus-ring);
-}
-
-/* ---------- Strength meter ---------- */
-.profile-strength {
-  display: flex;
-  align-items: center;
-  gap: var(--tf-space-3);
-}
-
-.profile-strength__bars {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.25rem;
-}
-
-.profile-strength__bars span {
-  height: 0.3125rem;
-  border-radius: 999px;
-  background: var(--tf-border);
-  transition: background-color 0.2s ease;
-}
-
-.profile-strength[data-level='1'] .profile-strength__bars span:nth-child(-n + 1) {
-  background: var(--tf-danger);
-}
-
-.profile-strength[data-level='2'] .profile-strength__bars span:nth-child(-n + 2) {
-  background: #f59e0b;
-}
-
-.profile-strength[data-level='3'] .profile-strength__bars span:nth-child(-n + 3) {
-  background: #84cc16;
-}
-
-.profile-strength[data-level='4'] .profile-strength__bars span:nth-child(-n + 4) {
-  background: var(--tf-success);
-}
-
-.profile-strength__label {
-  min-width: 3.5rem;
+.profile-readonly__note {
+  display: block;
+  margin-top: 0.25rem;
   font-size: 0.75rem;
-  font-weight: 600;
-  text-align: right;
-  color: var(--tf-text-secondary);
+  font-weight: 500;
+  color: var(--tf-muted);
 }
 
 /* ---------- Help block ---------- */
@@ -324,13 +206,19 @@
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .profile-tabs {
-    display: flex;
+/* The personal fields pair up wherever there is room for two columns. */
+@media (min-width: 40rem) {
+  .profile-card--personal .pcard__body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-4) var(--tf-space-5);
+    align-items: start;
   }
 
-  .profile-col[hidden] {
-    display: none;
+  .profile-card--personal .tf-field--wide {
+    grid-column: 1 / -1;
   }
 }
 
@@ -363,12 +251,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .profile-strength__bars span {
-    transition: none;
-  }
-}
-
 .profile-help .tf-btn {
   width: 100%;
   height: auto;
@@ -378,68 +260,4 @@
   padding-bottom: var(--tf-space-2);
   white-space: normal;
   text-align: center;
-}
-
-/* ---------- Unlock to show passwords ---------- */
-.profile-unlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--tf-space-3);
-  padding: var(--tf-space-4);
-  border: 1px solid var(--tf-primary);
-  border-radius: var(--tf-radius-md);
-  background: var(--tf-primary-soft);
-}
-
-.profile-unlock__head {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--tf-space-3);
-  color: var(--tf-primary);
-}
-
-.profile-unlock__head strong {
-  color: var(--tf-text);
-}
-
-.profile-unlock__head p {
-  margin: 0.125rem 0 0;
-  font-size: 0.875rem;
-  color: var(--tf-text-secondary);
-}
-
-.profile-unlock__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--tf-space-2);
-}
-
-.profile-unlock__row .tf-input {
-  flex: 1 1 9rem;
-  max-width: 12rem;
-  text-align: center;
-  letter-spacing: 0.3em;
-  font-variant-numeric: tabular-nums;
-}
-
-.profile-unlock__note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--tf-space-2);
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--tf-success);
-}
-
-@media (max-width: 40rem) {
-  .profile-unlock__row .tf-input {
-    max-width: none;
-    flex-basis: 100%;
-  }
-
-  .profile-unlock__row .tf-btn {
-    flex: 1;
-  }
 }

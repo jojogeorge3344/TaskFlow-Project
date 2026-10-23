@@ -16,6 +16,8 @@ export interface TaskCard {
   deadline: string;
   status: TaskStatus;
   isOverdue: boolean;
+  projectId?: number | null;
+  projectName?: string | null;
 }
 
 export interface TaskRecipient {
@@ -41,6 +43,12 @@ export interface TaskDetails {
   recipients: TaskRecipient[];
   createdAt: string;
   updatedAt: string;
+  /** null for legacy tasks created before projects were required. */
+  projectId: number | null;
+  projectName: string | null;
+  firstReminderDays: number;
+  secondReminderDays: number;
+  overdueReminderFrequency: ReminderFrequency;
 }
 
 export interface TaskComment {
@@ -109,6 +117,8 @@ export interface TaskListItem {
   status: TaskStatus;
   stage: TaskStage;
   isOverdue: boolean;
+  projectId: number | null;
+  projectName: string | null;
 }
 
 export interface PagedResult<T> {
@@ -142,6 +152,8 @@ export interface CreateTaskRequest {
   title: string;
   description: string | null;
   assignedToUserId: number;
+  /** The project the task belongs to. Required. */
+  projectId: number;
   priority: TaskPriority;
   startDate: string;
   deadline: string;

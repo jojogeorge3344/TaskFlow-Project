@@ -223,8 +223,7 @@ public class EmployeeAnalyticsServiceTests
         await using var harness = AnalyticsHarness.Create(Now);
         var me = harness.AddUser("me");
         var project = harness.AddProject("Member only");
-        me.ProjectId = project.Id;
-        harness.Db.SaveChanges();
+        TestMemberships.Allocate(harness.Db, me, project.Id);
 
         var row = Assert.Single((await GetAsync(harness, me)).Projects);
 

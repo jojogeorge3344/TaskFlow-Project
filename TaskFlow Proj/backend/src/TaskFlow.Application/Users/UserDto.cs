@@ -12,13 +12,11 @@ public record UserDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? LastLoginAt,
-    int? ProjectId,
-    string? ProjectName,
-    int? DepartmentId = null,
-    string? DepartmentName = null,
-    // Manager assignments are recorded data only; they do not change what anyone can see.
-    int? ManagerId = null,
-    string? ManagerName = null,
+    // The projects this user is assigned to, each with a percentage and a position.
+    IReadOnlyList<ProjectAllocationDto> ProjectAllocations,
+    // The departments this user belongs to, and the managers of those departments (derived, never stored on the user).
+    IReadOnlyList<UserDepartmentDto> Departments,
+    IReadOnlyList<UserManagerDto> Managers,
     // For a manager: the projects they oversee and the people who report to them.
     IReadOnlyList<ManagerProjectDto>? ManagerProjects = null,
     IReadOnlyList<ManagerReportDto>? Reports = null,
@@ -26,15 +24,26 @@ public record UserDto(
     bool MfaEnabled = false,
     int BackupCodesRemaining = 0,
     // Contact number in international format; null when none has been given.
-    string? MobileNumber = null);
+    string? MobileNumber = null)
+{
+    /// <summary>Sum of the percentages across all projects; never above 100.</summary>
+    public int TotalAllocatedPercent => ProjectAllocations.Sum(allocation => allocation.Percent);
+
+    public int RemainingPercent => 100 - TotalAllocatedPercent;
+}
+
+public record ProjectAllocationDto(int ProjectId, string ProjectName, int PositionId, string PositionName, int Percent);
+
+public record UserDepartmentDto(int Id, string Name);
+
+public record UserManagerDto(int Id, string FullName);
+
+/// <summary>One project row from a form: the project, the position held there and the whole percentage (1 to 100).</summary>
+public record ProjectAllocationInput(int ProjectId, int PositionId, int Percent);
 
 public record ManagerProjectDto(int Id, string Name);
 
 public record ManagerReportDto(int Id, string FullName);
-
-/// <summary>Replaces a user's manager and, for a manager, the projects they oversee. Both fields are
-/// explicit: a null manager clears it and an empty list removes every project.</summary>
-public record ManagerAssignmentRequest(int? ManagerId, IReadOnlyCollection<int>? ManagerProjectIds);
 
 public record CreateUserRequest(
     string? EmployeeCode,
@@ -44,8 +53,8 @@ public record CreateUserRequest(
     string Password,
     int RoleId,
     bool IsActive,
-    int? ProjectId,
-    int? DepartmentId = null);
+    IReadOnlyList<ProjectAllocationInput>? ProjectAllocations = null,
+    IReadOnlyList<int>? DepartmentIds = null);
 
 public record UpdateUserRequest(
     string? EmployeeCode,
@@ -53,15 +62,17 @@ public record UpdateUserRequest(
     string Username,
     string Email,
     int RoleId,
-    int? ProjectId,
-    int? DepartmentId = null,
+    IReadOnlyList<ProjectAllocationInput>? ProjectAllocations = null,
+    IReadOnlyList<int>? DepartmentIds = null,
     // Optional new password; null or empty keeps the current one.
     string? Password = null);
 
 public record UserStatusRequest(bool IsActive);
 
+/// <summary>ProjectId and DepartmentId match anyone with that project or department among their memberships.</summary>
 public record UserListFilter(
     string? Search,
     int? ProjectId,
     string? Role,
-    bool? IsActive);
+    bool? IsActive,
+    int? DepartmentId = null);

@@ -1,12 +1,13 @@
 import { Routes } from '@angular/router';
 import { authGuard, mfaSetupGuard, permissionGuard } from './core/auth/auth.guard';
-import { Permissions } from './core/auth/permissions';
+import { DepartmentScreenPermissions, EmployeeScreenPermissions, Permissions } from './core/auth/permissions';
 import { routes } from './app.routes';
 import { ShellComponent } from './core/layout/shell.component';
 import { AdminDashboardComponent } from './features/dashboard/admin-dashboard.component';
 import { EmployeeDashboardComponent } from './features/dashboard/employee-dashboard.component';
 import { ManagerDashboardComponent } from './features/dashboard/manager-dashboard.component';
 import { ProjectListComponent } from './features/projects/project-list.component';
+import { ProjectDetailComponent } from './features/projects/project-detail.component';
 import { DepartmentListComponent } from './features/departments/department-list.component';
 import { EmployeeListComponent } from './features/employees/employee-list.component';
 import { MailComponent } from './features/mail/mail.component';
@@ -81,6 +82,7 @@ describe('app routes', () => {
       'manager',
       'me',
       'projects',
+      'projects/:id',
       'departments',
       'employees',
       'workload',
@@ -92,6 +94,7 @@ describe('app routes', () => {
       'settings/tfa',
       'settings/permissions',
       'profile',
+      'profile/change-password',
       'board',
       'tasks',
       'tasks/new',
@@ -102,16 +105,16 @@ describe('app routes', () => {
     ]);
   });
 
-  it('protects the administrator dashboard with dashboard.admin', () => {
+  it('protects the administrator dashboard with dashboard.view.organization', () => {
     const admin = childRoute('admin');
     expect(admin.canActivate).toEqual([permissionGuard]);
-    expect(admin.data?.['permissions']).toEqual([Permissions.DashboardAdmin]);
+    expect(admin.data?.['permissions']).toEqual([Permissions.DashboardViewOrganization]);
   });
 
-  it('protects the manager dashboard with dashboard.manager', () => {
+  it('protects the manager dashboard with dashboard.view.team', () => {
     const manager = childRoute('manager');
     expect(manager.canActivate).toEqual([permissionGuard]);
-    expect(manager.data?.['permissions']).toEqual([Permissions.DashboardManager]);
+    expect(manager.data?.['permissions']).toEqual([Permissions.DashboardViewTeam]);
   });
 
   it('opens the personal dashboard at /me to every signed-in user, custom roles included', () => {
@@ -120,15 +123,16 @@ describe('app routes', () => {
   });
 
   it('protects the management screens with their view or manage permission', () => {
-    const expected: Record<string, string> = {
-      employees: Permissions.EmployeesManage,
-      projects: Permissions.ProjectsView,
-      departments: Permissions.DepartmentsManage
+    const expected: Record<string, string[]> = {
+      employees: EmployeeScreenPermissions,
+      projects: [Permissions.ProjectsView],
+      'projects/:id': [Permissions.ProjectsView],
+      departments: DepartmentScreenPermissions
     };
-    for (const path of ['employees', 'projects', 'departments']) {
+    for (const path of ['employees', 'projects', 'projects/:id', 'departments']) {
       const route = childRoute(path);
       expect(route.canActivate).toEqual([permissionGuard]);
-      expect(route.data?.['permissions']).toEqual([expected[path]]);
+      expect(route.data?.['permissions']).toEqual(expected[path]);
     }
   });
 
@@ -138,12 +142,14 @@ describe('app routes', () => {
     expect(await load(childRoute('me'))).toBe(EmployeeDashboardComponent);
     expect(await load(childRoute('employees'))).toBe(EmployeeListComponent);
     expect(await load(childRoute('projects'))).toBe(ProjectListComponent);
+    expect(await load(childRoute('projects/:id'))).toBe(ProjectDetailComponent);
     expect(await load(childRoute('departments'))).toBe(DepartmentListComponent);
   });
 
-  it('registers the notification center for every authenticated role', async () => {
+  it('protects the notification center with notifications.view', async () => {
     const notifications = childRoute('notifications');
-    expect(notifications.canActivate).toBeUndefined();
+    expect(notifications.canActivate).toEqual([permissionGuard]);
+    expect(notifications.data?.['permissions']).toEqual([Permissions.NotificationsView]);
     expect(await load(notifications)).toBe(NotificationCenterComponent);
   });
 
@@ -165,10 +171,10 @@ describe('app routes', () => {
     expect(await load(settings)).toBe(ReminderSettingsComponent);
   });
 
-  it('protects TFA Settings with settings.ai.manage, which only the Administrator role holds', async () => {
+  it('protects TFA Settings with settings.ai.view', async () => {
     const route = childRoute('settings/tfa');
     expect(route.canActivate).toEqual([permissionGuard]);
-    expect(route.data?.['permissions']).toEqual([Permissions.SettingsAi]);
+    expect(route.data?.['permissions']).toEqual([Permissions.SettingsAiView]);
     expect(await load(route)).toBe(TfaSettingsComponent);
   });
 
@@ -179,9 +185,10 @@ describe('app routes', () => {
     expect(await load(route)).toBe(PermissionsManagementComponent);
   });
 
-  it('registers Mail for every signed-in user', async () => {
+  it('protects Mail with mail.read', async () => {
     const mail = childRoute('mail');
-    expect(mail.canActivate).toBeUndefined();
+    expect(mail.canActivate).toEqual([permissionGuard]);
+    expect(mail.data?.['permissions']).toEqual([Permissions.MailRead]);
     expect(await load(mail)).toBe(MailComponent);
   });
 

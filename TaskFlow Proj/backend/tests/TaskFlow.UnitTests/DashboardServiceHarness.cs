@@ -95,13 +95,13 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
             PasswordHash = "hash",
             RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
-            ProjectId = projectId,
             CreatedAt = Clock.UtcNow.UtcDateTime,
             UpdatedAt = Clock.UtcNow.UtcDateTime
         };
 
         Db.Users.Add(user);
         Db.SaveChanges();
+        TestMemberships.Allocate(Db, user, projectId);
 
         return user;
     }

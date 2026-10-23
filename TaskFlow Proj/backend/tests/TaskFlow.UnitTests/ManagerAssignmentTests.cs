@@ -24,7 +24,7 @@ public class ManagerAssignmentTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher);
+        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
     }
 
     private User AddUser(string username, int roleId = SystemRoles.EmployeeId, bool active = true, int? managerId = null)
@@ -36,7 +36,6 @@ public class ManagerAssignmentTests : IAsyncDisposable
             Email = $"{username}@taskflow.com",
             RoleId = roleId,
             IsActive = active,
-            ManagerId = managerId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             SecurityStamp = "stamp-1"
@@ -44,7 +43,26 @@ public class ManagerAssignmentTests : IAsyncDisposable
         user.PasswordHash = _hasher.HashPassword(user, "P@ssw0rd!");
         _db.Users.Add(user);
         _db.SaveChanges();
+        if (managerId is int manager)
+        {
+            TestMemberships.ReportTo(_db, user, manager);
+        }
+
         return user;
+    }
+
+    private Department AddDepartment(string name, params User[] managers)
+    {
+        var department = new Department { Name = name, CreatedAt = DateTime.UtcNow };
+        _db.Departments.Add(department);
+        _db.SaveChanges();
+        foreach (var manager in managers)
+        {
+            _db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = manager.Id, DepartmentId = department.Id });
+        }
+
+        _db.SaveChanges();
+        return department;
     }
 
     private Project AddProject(string name)
@@ -55,8 +73,18 @@ public class ManagerAssignmentTests : IAsyncDisposable
         return project;
     }
 
-    private Task<UserDto?> AssignAsync(int userId, int? managerId, params int[] projectIds) =>
-        _service.UpdateManagerAssignmentsAsync(userId, new ManagerAssignmentRequest(managerId, projectIds), default);
+    /// <summary>Sets the projects a manager oversees directly. The projects normally come from the flags on a project's team.</summary>
+    private async Task<UserDto?> AssignAsync(int userId, params int[] projectIds)
+    {
+        _db.ManagerProjects.RemoveRange(_db.ManagerProjects.Where(link => link.ManagerUserId == userId));
+        foreach (var projectId in projectIds)
+        {
+            _db.ManagerProjects.Add(new ManagerProject { ManagerUserId = userId, ProjectId = projectId });
+        }
+
+        await _db.SaveChangesAsync();
+        return await _service.GetByIdAsync(userId, default);
+    }
 
     private Task<List<int>> ProjectIdsAsync(int managerId) =>
         _db.ManagerProjects.Where(link => link.ManagerUserId == managerId).Select(link => link.ProjectId).OrderBy(id => id).ToListAsync();
@@ -71,73 +99,10 @@ public class ManagerAssignmentTests : IAsyncDisposable
         var ops = AddProject("Operations");
         var hr = AddProject("HR");
 
-        var dto = await AssignAsync(manager.Id, null, finance.Id, ops.Id, hr.Id);
+        var dto = await AssignAsync(manager.Id, finance.Id, ops.Id, hr.Id);
 
         Assert.Equal(["Finance", "HR", "Operations"], dto!.ManagerProjects!.Select(d => d.Name));
         Assert.Equal(3, (await ProjectIdsAsync(manager.Id)).Count);
-    }
-
-    [Fact]
-    public async Task SavingADifferentSetReplacesTheOldOneAndAnEmptySetRemovesAll()
-    {
-        var manager = AddUser("mgr2", SystemRoles.ManagerId);
-        var a = AddProject("A");
-        var b = AddProject("B");
-        var c = AddProject("C");
-        await AssignAsync(manager.Id, null, a.Id, b.Id);
-
-        await AssignAsync(manager.Id, null, b.Id, c.Id);
-        Assert.Equal([b.Id, c.Id], await ProjectIdsAsync(manager.Id));
-
-        await AssignAsync(manager.Id, null);
-        Assert.Empty(await ProjectIdsAsync(manager.Id));
-    }
-
-    [Fact]
-    public async Task AProjectCanHaveSeveralManagers()
-    {
-        var one = AddUser("mgr3a", SystemRoles.ManagerId);
-        var two = AddUser("mgr3b", SystemRoles.ManagerId);
-        var shared = AddProject("Shared");
-
-        await AssignAsync(one.Id, null, shared.Id);
-        await AssignAsync(two.Id, null, shared.Id);
-
-        Assert.Equal(2, await _db.ManagerProjects.CountAsync(link => link.ProjectId == shared.Id));
-    }
-
-    [Fact]
-    public async Task OnlyAManagerCanBeGivenProjects()
-    {
-        var employee = AddUser("emp4");
-        var admin = AddUser("adm4", SystemRoles.AdministratorId);
-        var project = AddProject("Dept 4");
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(employee.Id, null, project.Id));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(admin.Id, null, project.Id));
-        Assert.False(await _db.ManagerProjects.AnyAsync());
-    }
-
-    [Fact]
-    public async Task AnEmptyProjectSetIsFineForAnyone()
-    {
-        var employee = AddUser("emp5");
-
-        var dto = await AssignAsync(employee.Id, null);
-
-        Assert.NotNull(dto);
-        Assert.Empty(dto!.ManagerProjects!);
-    }
-
-    [Fact]
-    public async Task AMissingProjectIsRejectedAndNothingIsSaved()
-    {
-        var manager = AddUser("mgr6", SystemRoles.ManagerId);
-        var real = AddProject("Real");
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(manager.Id, null, real.Id, 9999));
-
-        Assert.Empty(await ProjectIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -146,9 +111,9 @@ public class ManagerAssignmentTests : IAsyncDisposable
         var manager = AddUser("mgr7", SystemRoles.ManagerId);
         var keep = AddProject("Keep");
         var drop = AddProject("Drop");
-        await AssignAsync(manager.Id, null, keep.Id, drop.Id);
+        await AssignAsync(manager.Id, keep.Id, drop.Id);
 
-        Assert.True(await new ProjectService(_db).DeleteAsync(drop.Id, default));
+        Assert.True(await new ProjectService(_db, new UserAllocationService(_db)).DeleteAsync(drop.Id, default));
 
         var dto = await _service.GetByIdAsync(manager.Id, default);
         Assert.Equal(["Keep"], dto!.ManagerProjects!.Select(d => d.Name));
@@ -161,13 +126,14 @@ public class ManagerAssignmentTests : IAsyncDisposable
         var manager = AddUser("mgr8", SystemRoles.ManagerId);
         var report = AddUser("rep8", managerId: manager.Id);
         var project = AddProject("Dept 8");
-        await AssignAsync(manager.Id, null, project.Id);
-        var request = new UpdateUserRequest(null, manager.FullName, manager.Username, manager.Email, SystemRoles.EmployeeId, null);
+        await AssignAsync(manager.Id, project.Id);
+        Assert.Equal([manager.Id], (await _service.GetByIdAsync(report.Id, default))!.Managers.Select(m => m.Id));
+        var request = new UpdateUserRequest(null, manager.FullName, manager.Username, manager.Email, SystemRoles.EmployeeId);
 
         await _service.UpdateAsync(manager.Id, request, default);
 
         Assert.Empty(await ProjectIdsAsync(manager.Id));
-        Assert.Null((await _db.Users.AsNoTracking().SingleAsync(u => u.Id == report.Id)).ManagerId);
+        Assert.Empty((await _service.GetByIdAsync(report.Id, default))!.Managers);
     }
 
     [Fact]
@@ -176,85 +142,77 @@ public class ManagerAssignmentTests : IAsyncDisposable
         var manager = AddUser("mgr9", SystemRoles.ManagerId);
         var report = AddUser("rep9", managerId: manager.Id);
         var project = AddProject("Dept 9");
-        await AssignAsync(manager.Id, null, project.Id);
-        var request = new UpdateUserRequest(null, "Renamed", manager.Username, manager.Email, SystemRoles.ManagerId, null);
+        await AssignAsync(manager.Id, project.Id);
+        var request = new UpdateUserRequest(null, "Renamed", manager.Username, manager.Email, SystemRoles.ManagerId);
 
         await _service.UpdateAsync(manager.Id, request, default);
 
         Assert.Equal([project.Id], await ProjectIdsAsync(manager.Id));
-        Assert.Equal(manager.Id, (await _db.Users.AsNoTracking().SingleAsync(u => u.Id == report.Id)).ManagerId);
+        Assert.Equal([manager.Id], (await _service.GetByIdAsync(report.Id, default))!.Managers.Select(m => m.Id));
     }
 
-    // ------------------------------------------------------------------ employees
+    // ------------------------------------------------------------------ derived managers
 
     [Fact]
-    public async Task AnEmployeeCanBeAssignedReassignedAndClearedWithTheManagersNameShown()
+    public async Task AUsersManagersAreTheManagersOfTheirDepartments()
     {
         var first = AddUser("mgr10a", SystemRoles.ManagerId);
         var second = AddUser("mgr10b", SystemRoles.ManagerId);
+        var outsider = AddUser("mgr10c", SystemRoles.ManagerId);
         var employee = AddUser("emp10");
+        var finance = AddDepartment("Finance 10", first);
+        var ops = AddDepartment("Ops 10", second);
+        AddDepartment("Elsewhere 10", outsider);
+        TestMemberships.JoinDepartment(_db, employee, finance.Id);
+        TestMemberships.JoinDepartment(_db, employee, ops.Id);
 
-        var assigned = await AssignAsync(employee.Id, first.Id);
-        Assert.Equal(first.Id, assigned!.ManagerId);
-        Assert.Equal("mgr10a full name", assigned.ManagerName);
+        var dto = await _service.GetByIdAsync(employee.Id, default);
 
-        var moved = await AssignAsync(employee.Id, second.Id);
-        Assert.Equal(second.Id, moved!.ManagerId);
-
-        var cleared = await AssignAsync(employee.Id, null);
-        Assert.Null(cleared!.ManagerId);
-        Assert.Null(cleared.ManagerName);
+        Assert.Equal(["mgr10a full name", "mgr10b full name"], dto!.Managers.Select(m => m.FullName));
     }
 
     [Fact]
-    public async Task AManagerHasAnyNumberOfEmployeesAndTheyAreListedOnTheManager()
+    public async Task AManagerOfTwoOfTheUsersDepartmentsIsListedOnce()
     {
         var manager = AddUser("mgr11", SystemRoles.ManagerId);
-        var one = AddUser("emp11a");
-        var two = AddUser("emp11b");
-        var three = AddUser("emp11c");
+        var employee = AddUser("emp11");
+        TestMemberships.JoinDepartment(_db, employee, AddDepartment("A 11", manager).Id);
+        TestMemberships.JoinDepartment(_db, employee, AddDepartment("B 11", manager).Id);
 
-        foreach (var employee in new[] { one, two, three })
-        {
-            await AssignAsync(employee.Id, manager.Id);
-        }
+        var dto = await _service.GetByIdAsync(employee.Id, default);
+
+        Assert.Equal([manager.Id], dto!.Managers.Select(m => m.Id));
+    }
+
+    [Fact]
+    public async Task AUserWithNoDepartmentOrAnUnmanagedDepartmentHasNoManagersAndNobodyManagesThemself()
+    {
+        var manager = AddUser("mgr12", SystemRoles.ManagerId);
+        var loner = AddUser("emp12");
+        var unmanaged = AddUser("emp12b");
+        TestMemberships.JoinDepartment(_db, unmanaged, AddDepartment("Nobody 12").Id);
+        TestMemberships.JoinDepartment(_db, manager, AddDepartment("Self 12", manager).Id);
+
+        Assert.Empty((await _service.GetByIdAsync(loner.Id, default))!.Managers);
+        Assert.Empty((await _service.GetByIdAsync(unmanaged.Id, default))!.Managers);
+        Assert.Empty((await _service.GetByIdAsync(manager.Id, default))!.Managers);
+    }
+
+    [Fact]
+    public async Task AManagersReportsAreThePeopleInTheDepartmentsTheyManage()
+    {
+        var manager = AddUser("mgr13", SystemRoles.ManagerId);
+        var one = AddUser("emp13a");
+        var two = AddUser("emp13b");
+        var other = AddUser("emp13c");
+        var team = AddDepartment("Team 13", manager);
+        TestMemberships.JoinDepartment(_db, one, team.Id);
+        TestMemberships.JoinDepartment(_db, two, team.Id);
+        TestMemberships.JoinDepartment(_db, other, AddDepartment("Other 13").Id);
 
         var dto = await _service.GetByIdAsync(manager.Id, default);
-        Assert.Equal(["emp11a full name", "emp11b full name", "emp11c full name"], dto!.Reports!.Select(r => r.FullName));
-    }
 
-    [Fact]
-    public async Task TheManagerMustBeAnActiveManager()
-    {
-        var employee = AddUser("emp12");
-        var otherEmployee = AddUser("emp12b");
-        var admin = AddUser("adm12", SystemRoles.AdministratorId);
-        var inactive = AddUser("mgr12-off", SystemRoles.ManagerId, active: false);
-        var gone = AddUser("mgr12-gone", SystemRoles.ManagerId);
-        _db.Users.Single(u => u.Id == gone.Id).IsDeleted = true;
-        _db.SaveChanges();
-
-        foreach (var target in new[] { otherEmployee.Id, admin.Id, inactive.Id, gone.Id, 9999 })
-        {
-            await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(employee.Id, target));
-        }
-
-        Assert.Null((await _db.Users.AsNoTracking().SingleAsync(u => u.Id == employee.Id)).ManagerId);
-    }
-
-    [Fact]
-    public async Task NobodyIsTheirOwnManagerAndManagersCannotManageEachOtherInACircle()
-    {
-        var one = AddUser("mgr13a", SystemRoles.ManagerId);
-        var two = AddUser("mgr13b", SystemRoles.ManagerId);
-        var three = AddUser("mgr13c", SystemRoles.ManagerId);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(one.Id, one.Id));
-
-        await AssignAsync(two.Id, one.Id);
-        await AssignAsync(three.Id, two.Id);
-        var loop = await Assert.ThrowsAsync<InvalidOperationException>(() => AssignAsync(one.Id, three.Id));
-        Assert.Contains("each other", loop.Message);
+        Assert.Equal(["emp13a full name", "emp13b full name"], dto!.Reports!.Select(r => r.FullName));
     }
 
     [Fact]
@@ -264,8 +222,8 @@ public class ManagerAssignmentTests : IAsyncDisposable
         _db.Users.Single(u => u.Id == gone.Id).IsDeleted = true;
         _db.SaveChanges();
 
-        Assert.Null(await AssignAsync(9999, null));
-        Assert.Null(await AssignAsync(gone.Id, null));
+        Assert.Null(await AssignAsync(9999));
+        Assert.Null(await AssignAsync(gone.Id));
     }
 
     public async ValueTask DisposeAsync()

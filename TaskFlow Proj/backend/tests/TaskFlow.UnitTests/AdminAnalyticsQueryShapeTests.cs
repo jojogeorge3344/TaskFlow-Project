@@ -82,6 +82,13 @@ public class AdminAnalyticsQueryShapeTests
 
         db.SaveChanges();
         var managerIds = db.Users.Where(user => user.RoleId == SystemRoles.ManagerId && user.Username.StartsWith(tag)).Select(user => user.Id).ToList();
+        // A manager's team is the people in the departments they manage, so each manager manages the department they sit in.
+        foreach (var link in db.UserDepartments.Where(m => managerIds.Contains(m.UserId)).Select(m => new { m.UserId, m.DepartmentId }).ToList())
+        {
+            db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = link.UserId, DepartmentId = link.DepartmentId });
+        }
+
+        db.SaveChanges();
 
         for (var index = 1; index <= users; index++)
         {
@@ -131,8 +138,7 @@ public class AdminAnalyticsQueryShapeTests
         PasswordHash = "hash",
         SecurityStamp = "stamp",
         RoleId = roleId,
-        DepartmentId = departmentId,
-        ManagerId = managerId,
+        DepartmentMemberships = { new UserDepartment { DepartmentId = departmentId } },
         CreatedAt = now,
         UpdatedAt = now
     };

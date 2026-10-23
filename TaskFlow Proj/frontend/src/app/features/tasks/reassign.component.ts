@@ -110,7 +110,7 @@ export class TaskReassignComponent implements OnInit {
             next: () => {
               this.submitting.set(false);
               this.toast.success('Task reassigned');
-              this.router.navigate(['/tasks', task.id]);
+              this.router.navigate(['/tasks', task.id], { queryParamsHandling: 'preserve' });
             },
             error: (err: unknown) => {
               this.submitting.set(false);
@@ -121,6 +121,6 @@ export class TaskReassignComponent implements OnInit {
   }
 
   cancel(): void {
-    this.router.navigate(['/tasks', this.taskId]);
+    this.router.navigate(['/tasks', this.taskId], { queryParamsHandling: 'preserve' });
   }
 }

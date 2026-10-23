@@ -4,10 +4,12 @@
       <h1>Department Management</h1>
       <p>{{ loading() && departments().length === 0 ? 'Loading departments…' : countLabel() }}</p>
     </div>
-    <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
-      <tf-icon name="plus" />
-      Add department
-    </button>
+    @if (canCreate()) {
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+        <tf-icon name="plus" />
+        Add department
+      </button>
+    }
   </header>
 
   <div class="department-tools" role="search">
@@ -85,16 +87,20 @@
           </div>
 
           <div class="department__foot">
-            <button
-              type="button"
-              class="tf-btn tf-btn--link"
-              [attr.aria-label]="'Manage members of ' + department.name"
-              (click)="openMembers(department)"
-            >
-              Manage members
-              <tf-icon name="arrow" />
-            </button>
             <div class="department__actions">
+              @if (canMembers()) {
+              <button
+                type="button"
+                class="tf-btn tf-btn--icon department__members-btn"
+                data-action="members"
+                [attr.aria-label]="'Manage members of ' + department.name"
+                title="Manage members"
+                (click)="openMembers(department)"
+              >
+                <tf-icon name="users" />
+              </button>
+              }
+              @if (canEdit()) {
               <button
                 type="button"
                 class="tf-btn tf-btn--icon"
@@ -105,6 +111,8 @@
               >
                 <tf-icon name="edit" />
               </button>
+              }
+              @if (canDelete()) {
               <button
                 type="button"
                 class="tf-btn tf-btn--icon tf-btn--danger"
@@ -118,7 +126,8 @@
               >
                 <tf-icon name="trash" />
               </button>
-              @if (hasMembers(department)) {
+              }
+              @if (canDelete() && hasMembers(department)) {
                 <span class="tf-sr-only" [id]="'department-delete-hint-' + department.id">
                   Remove its {{ department.managerCount }} {{ managerLabel(department.managerCount) }} and
                   {{ department.employeeCount }} {{ employeeLabel(department.employeeCount) }} before deleting.

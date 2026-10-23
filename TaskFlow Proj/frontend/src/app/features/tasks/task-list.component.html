@@ -51,6 +51,17 @@
         </select>
       </div>
     }
+    @if (projects().length > 0) {
+      <div class="tf-field">
+        <label for="task-filter-project">Project</label>
+        <select id="task-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+          <option value="" [selected]="projectId() === null">All projects</option>
+          @for (project of projects(); track project.id) {
+            <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
+          }
+        </select>
+      </div>
+    }
     <div class="tf-field">
       <label for="task-filter-status">Status</label>
       <select id="task-filter-status" class="tf-select" (change)="setStatus($any($event.target).value)">
@@ -137,6 +148,7 @@
             <tr>
               <th scope="col">Code</th>
               <th scope="col">Title</th>
+              <th scope="col">Project</th>
               <th scope="col">Assignee</th>
               <th scope="col">Creator</th>
               <th scope="col">Priority</th>
@@ -144,7 +156,7 @@
               <th scope="col">Deadline</th>
               <th scope="col">Est. hours</th>
               <th scope="col">Status</th>
-              @if (canDelete()) {
+              @if (canCreate() || canDelete()) {
                 <th scope="col"><span class="tf-sr-only">Actions</span></th>
               }
             </tr>
@@ -153,10 +165,10 @@
             @if (loading()) {
               @for (row of [1, 2, 3, 4, 5]; track row) {
                 <tr class="skeleton-row" aria-hidden="true">
-                  @for (cell of [5, 12, 8, 8, 4, 5, 5, 3, 5]; track $index) {
+                  @for (cell of [5, 12, 7, 8, 8, 4, 5, 5, 3, 5]; track $index) {
                     <td><span class="tf-skeleton" [style.width.rem]="cell"></span></td>
                   }
-                  @if (canDelete()) {
+                  @if (canCreate() || canDelete()) {
                     <td></td>
                   }
                 </tr>
@@ -166,8 +178,9 @@
                 <tr class="task-row" [class.task-row--overdue]="task.isOverdue">
                   <td data-label="Code" class="cell-code">{{ task.taskCode }}</td>
                   <td data-label="Title" class="cell-title">
-                    <a [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
+                    <a [routerLink]="['/tasks', task.id]" [queryParams]="{ returnUrl: '/tasks' }">{{ task.title }}</a>
                   </td>
+                  <td data-label="Project" data-project>{{ task.projectName || '—' }}</td>
                   <td data-label="Assignee">{{ task.assignedToName }}</td>
                   <td data-label="Creator">{{ task.createdByName }}</td>
                   <td data-label="Priority"><span [class]="priorityClass(task.priority)">{{ task.priority }}</span></td>
@@ -180,8 +193,21 @@
                   </td>
                   <td data-label="Est. hours">{{ task.estimatedHours }}</td>
                   <td data-label="Status">{{ statusLabels[task.status] }}</td>
-                  @if (canDelete()) {
+                  @if (canCreate() || canDelete()) {
                     <td class="cell-actions">
+                      @if (canCreate()) {
+                        <a
+                          class="tf-btn tf-btn--icon"
+                          data-action="copy"
+                          routerLink="/tasks/new"
+                          [queryParams]="{ copyFrom: task.id }"
+                          [attr.aria-label]="'Copy ' + task.taskCode"
+                          title="Copy task"
+                        >
+                          <tf-icon name="copy" />
+                        </a>
+                      }
+                      @if (canDelete()) {
                       <button
                         type="button"
                         class="tf-btn tf-btn--icon tf-btn--danger"
@@ -193,6 +219,7 @@
                       >
                         <tf-icon name="trash" />
                       </button>
+                      }
                     </td>
                   }
                 </tr>

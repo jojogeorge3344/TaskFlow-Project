@@ -38,7 +38,8 @@ public class RoleService : IRoleService
             .ToListAsync(cancellationToken);
 
         return roles
-            .Select(role => new RoleDto(role.Id, role.Name, role.IsSystem, role.UserCount, role.Keys.Order().ToList()))
+            .Select(role => new RoleDto(
+                role.Id, role.Name, role.IsSystem, role.UserCount, EffectivePermissions.Visible(EffectivePermissions.Expand(role.Keys))))
             .ToList();
     }
 
@@ -48,14 +49,26 @@ public class RoleService : IRoleService
 
     public async Task<IReadOnlyList<PermissionDto>> GetPermissionsAsync(CancellationToken cancellationToken)
     {
-        var permissions = await _db.Permissions.AsNoTracking().ToListAsync(cancellationToken);
-        var order = PermissionCatalog.All.Select((definition, index) => (definition.Key, index)).ToDictionary(entry => entry.Key, entry => entry.index);
+        var ids = await _db.Permissions.AsNoTracking().ToDictionaryAsync(permission => permission.Key, permission => permission.Id, cancellationToken);
 
-        return permissions
-            .OrderBy(permission => order.GetValueOrDefault(permission.Key, int.MaxValue))
-            .ThenBy(permission => permission.Key)
-            .Select(permission => new PermissionDto(
-                permission.Id, permission.Key, permission.Name, permission.Description, permission.Group, permission.IsAssignable))
+        // The hierarchy lives in the catalogue; the database supplies the ids roles are granted by. Superseded keys that
+        // only survive as old grants are not part of the catalogue and are not listed.
+        return PermissionCatalog.All
+            .Select(definition => new PermissionDto(
+                ids.GetValueOrDefault(definition.Key),
+                definition.Key,
+                definition.Name,
+                definition.Description,
+                definition.Group,
+                definition.IsAssignable,
+                definition.Module,
+                definition.Screen,
+                definition.Section,
+                definition.Action,
+                definition.Requires,
+                definition.ScopeGroup,
+                definition.ScopeRank,
+                definition.AlwaysGranted))
             .ToList();
     }
 
@@ -164,7 +177,14 @@ public class RoleService : IRoleService
 
     private async Task<List<Permission>> ResolvePermissionsAsync(IReadOnlyList<string>? keys, CancellationToken cancellationToken)
     {
-        var wanted = (keys ?? []).Where(key => !string.IsNullOrWhiteSpace(key)).Select(key => key.Trim()).Distinct().ToList();
+        var requested = (keys ?? []).Where(key => !string.IsNullOrWhiteSpace(key)).Select(key => key.Trim()).Distinct().ToList();
+
+        // An old broad key means the finer permissions that replaced it. Always-on features are never stored.
+        var wanted = requested
+            .SelectMany(key => EffectivePermissions.LegacyChildren.TryGetValue(key, out var children) ? children : [key])
+            .Distinct()
+            .Where(key => !PermissionCatalog.All.Any(definition => definition.Key == key && definition.AlwaysGranted))
+            .ToList();
         var found = await _db.Permissions.Where(permission => wanted.Contains(permission.Key)).ToListAsync(cancellationToken);
 
         var unknown = wanted.Except(found.Select(permission => permission.Key)).ToList();
@@ -173,7 +193,22 @@ public class RoleService : IRoleService
             throw new RoleException(RoleFailure.Invalid, $"Unknown permission: {string.Join(", ", unknown)}.");
         }
 
-        var notAssignable = found.Where(permission => !permission.IsAssignable).Select(permission => permission.Name).ToList();
+        var effective = EffectivePermissions.Expand(wanted);
+        foreach (var permission in found)
+        {
+            var requires = PermissionCatalog.All.First(definition => definition.Key == permission.Key).Requires;
+            if (requires is not null && !effective.Contains(requires))
+            {
+                var needed = PermissionCatalog.All.First(definition => definition.Key == requires).Name;
+                throw new RoleException(RoleFailure.Invalid, $"\"{permission.Name}\" also needs \"{needed}\".");
+            }
+        }
+
+        // The catalogue decides, not the stored row: rows of the permission table can never be updated.
+        var notAssignable = found
+            .Where(permission => !PermissionCatalog.All.First(definition => definition.Key == permission.Key).IsAssignable)
+            .Select(permission => permission.Name)
+            .ToList();
         if (notAssignable.Count > 0)
         {
             throw new RoleException(

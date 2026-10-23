@@ -69,10 +69,12 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
 
     private async Task<EmployeeDepartmentDto?> DepartmentAsync(int userId, DateTime now, CancellationToken cancellationToken)
     {
-        var departmentId = await _dbContext.Users
-            .Where(user => user.Id == userId)
-            .Select(user => user.DepartmentId)
-            .SingleOrDefaultAsync(cancellationToken);
+        // A person may belong to several departments; the card shows the first by name.
+        var departmentId = await _dbContext.UserDepartments
+            .Where(membership => membership.UserId == userId)
+            .OrderBy(membership => membership.Department.Name)
+            .Select(membership => (int?)membership.DepartmentId)
+            .FirstOrDefaultAsync(cancellationToken);
         if (departmentId is null)
         {
             return null;
@@ -87,7 +89,8 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
             return null;
         }
 
-        var members = _dbContext.Users.Where(user => user.DepartmentId == departmentId && user.IsActive);
+        var members = _dbContext.Users.Where(user =>
+            user.IsActive && user.DepartmentMemberships.Any(membership => membership.DepartmentId == departmentId));
         var tasks = _dbContext.Tasks.AsNoTracking()
             .Where(TaskBucketRules.IsCounted())
             .Where(task => members.Any(member => member.Id == task.AssignedToUserId));
@@ -154,15 +157,12 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
             })
             .ToListAsync(cancellationToken);
 
-        var membership = await _dbContext.Users
-            .Where(user => user.Id == userId)
-            .Select(user => user.ProjectId)
-            .SingleOrDefaultAsync(cancellationToken);
+        var memberships = await _dbContext.UserProjectAllocations
+            .Where(allocation => allocation.UserId == userId)
+            .Select(allocation => allocation.ProjectId)
+            .ToListAsync(cancellationToken);
         var ids = perProject.Select(row => row.ProjectId).ToList();
-        if (membership is int memberOf && !ids.Contains(memberOf))
-        {
-            ids.Add(memberOf);
-        }
+        ids.AddRange(memberships.Where(memberOf => !ids.Contains(memberOf)));
 
         var projects = await _dbContext.Projects
             .Where(project => ids.Contains(project.Id))

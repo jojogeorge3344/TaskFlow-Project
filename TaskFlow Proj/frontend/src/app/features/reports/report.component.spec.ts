@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { ProjectWithCount, ReportSummary, TaskRecipient } from '../../core/models';
@@ -12,7 +14,7 @@ describe('ReportComponent', () => {
   const summary: ReportSummary = { totalTasks: 10, pendingTasks: 4, completedTasks: 5, overdueTasks: 1 };
 
   const projects: ProjectWithCount[] = [
-    { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2 }
+    { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2, managers: [] }
   ];
   const assignees: TaskRecipient[] = [{ userId: 3, fullName: 'Joe Thomas' }];
 
@@ -41,6 +43,7 @@ describe('ReportComponent', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Manager') })) },
         { provide: ReportService, useValue: { getSummary: getSummarySpy, exportCsv: exportSpy } },
         { provide: ProjectService, useValue: { getAll: () => of(projects) } },
         { provide: TaskService, useValue: { getAssignees: () => of(assignees) } },

@@ -9,6 +9,12 @@
   background: #0f172a;
 }
 
+/* Keep the card and footer above the fixed animated background. */
+.login > *:not(app-login-background) {
+  position: relative;
+  z-index: 1;
+}
+
 .login__card {
   width: 100%;
   max-width: 22rem;
@@ -17,7 +23,8 @@
   gap: 1rem;
   padding: 2rem;
   border-radius: 1rem;
-  background: #ffffff;
+  border: 1px solid #c7d6ee;
+  background: #e8eff9;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
 }
 
@@ -63,9 +70,11 @@
 
 .login__field input {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.625rem 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #b6c6e0;
   border-radius: 0.5rem;
+  background: #ffffff;
   font-size: 0.9375rem;
 }
 
@@ -75,18 +84,38 @@
 }
 
 .login__password {
-  display: flex;
-  gap: 0.5rem;
+  position: relative;
+  display: block;
+}
+
+.login__password input {
+  padding-right: 2.75rem;
 }
 
 .login__toggle {
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-  padding: 0 0.75rem;
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
-  font-size: 0.8125rem;
-  color: #334155;
+}
+
+.login__toggle:hover {
+  color: #0f172a;
+}
+
+.login__toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
 }
 
 .login__hint {

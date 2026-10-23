@@ -1,4 +1,6 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
+import { Component, DestroyRef, OnInit, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
@@ -22,6 +24,12 @@ export const MAIL_NARROW_QUERY = '(max-width: 767.98px)';
   styleUrl: './mail.component.css'
 })
 export class MailComponent implements OnInit {
+  private readonly permissionAuth = inject(AuthService);
+  readonly canCompose = computed(() => {
+    this.permissionAuth.currentUser();
+    return this.permissionAuth.hasPermission(Permissions.MailCompose);
+  });
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly mailService = inject(MailService);

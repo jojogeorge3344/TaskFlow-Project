@@ -46,10 +46,16 @@ public class TaskService : ITaskService
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
     /// <summary>Whether the named role holds the permission, read from the database so changes apply immediately.</summary>
-    private Task<bool> HasPermissionAsync(string roleName, string permissionKey, CancellationToken cancellationToken) =>
-        _dbContext.RolePermissions
+    private async Task<bool> HasPermissionAsync(string roleName, string permissionKey, CancellationToken cancellationToken)
+    {
+        var held = await _dbContext.RolePermissions
             .AsNoTracking()
-            .AnyAsync(grant => grant.Role.Name == roleName && grant.Permission.Key == permissionKey, cancellationToken);
+            .Where(grant => grant.Role.Name == roleName)
+            .Select(grant => grant.Permission.Key)
+            .ToListAsync(cancellationToken);
+
+        return EffectivePermissions.Expand(held).Contains(permissionKey);
+    }
 
     private Task<bool> CanViewAllAsync(string roleName, CancellationToken cancellationToken) =>
         HasPermissionAsync(roleName, PermissionKeys.TasksViewAll, cancellationToken);
@@ -85,6 +91,7 @@ public class TaskService : ITaskService
         var tasks = await scoped
             .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
+            .Include(task => task.Project)
             .OrderBy(task => task.Deadline)
             .ToListAsync(cancellationToken);
 
@@ -155,6 +162,7 @@ public class TaskService : ITaskService
             .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
+            .Include(task => task.Project)
             .OrderBy(task => task.Deadline)
             .ThenBy(task => task.Id)
             .Skip((page - 1) * pageSize)
@@ -173,8 +181,8 @@ public class TaskService : ITaskService
 
     /// <summary>Holds the manager dashboard but not the administrator one, so the dashboard is limited to a team.</summary>
     private async Task<bool> IsManagerScopedAsync(string roleName, CancellationToken cancellationToken) =>
-        await HasPermissionAsync(roleName, PermissionKeys.DashboardManager, cancellationToken)
-        && !await HasPermissionAsync(roleName, PermissionKeys.DashboardAdmin, cancellationToken);
+        await HasPermissionAsync(roleName, PermissionKeys.DashboardViewTeam, cancellationToken)
+        && !await HasPermissionAsync(roleName, PermissionKeys.DashboardViewOrganization, cancellationToken);
 
     /// <summary>The dashboard drill-down filters. They reuse the analytics rules, so a list opened from a chart
     /// segment holds exactly the tasks the segment counted.</summary>
@@ -330,6 +338,11 @@ public class TaskService : ITaskService
             throw new InvalidOperationException("The assigned employee does not exist or is not active.");
         }
 
+        if (!await _dbContext.Projects.AnyAsync(project => project.Id == request.ProjectId && !project.IsDeleted, cancellationToken))
+        {
+            throw new InvalidOperationException("The selected project does not exist.");
+        }
+
         var additionalRecipientIds = request.AdditionalRecipientUserIds?.Distinct().ToList() ?? [];
         if (additionalRecipientIds.Count > 0)
         {
@@ -367,6 +380,7 @@ public class TaskService : ITaskService
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             AssignedToUserId = assignee.Id,
             CreatedByUserId = currentUserId,
+            ProjectId = request.ProjectId,
             Priority = request.Priority,
             StartDate = request.StartDate,
             Deadline = request.Deadline,
@@ -749,6 +763,7 @@ public class TaskService : ITaskService
             .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
+            .Include(task => task.Project)
             .FirstOrDefaultAsync(task => task.Id == taskId && !task.IsDeleted, cancellationToken);
 
     private async Task<IReadOnlyCollection<TaskRecipientDto>> LoadRecipientsAsync(
@@ -794,6 +809,11 @@ public class TaskService : ITaskService
             throw new InvalidOperationException("An assigned employee is required.");
         }
 
+        if (request.ProjectId <= 0)
+        {
+            throw new InvalidOperationException("A project is required.");
+        }
+
         if (request.Deadline <= request.StartDate)
         {
             throw new InvalidOperationException("Deadline must be after the start date.");
@@ -826,7 +846,12 @@ public class TaskService : ITaskService
             stage,
             recipients,
             task.CreatedAt,
-            task.UpdatedAt);
+            task.UpdatedAt,
+            task.ProjectId,
+            task.Project?.Name,
+            task.FirstReminderDays,
+            task.SecondReminderDays,
+            task.OverdueReminderFrequency);
     }
 
     private TaskCardDto ToCard(TaskEntity task, DateTime utcNow)
@@ -844,7 +869,9 @@ public class TaskService : ITaskService
             task.Priority,
             task.Deadline,
             task.Status,
-            isOverdue);
+            isOverdue,
+            task.ProjectId,
+            task.Project?.Name);
     }
 
     private TaskListItemDto ToListItem(TaskEntity task, DateTime utcNow, TimeZoneInfo timeZone)
@@ -865,6 +892,8 @@ public class TaskService : ITaskService
             task.EstimatedHours,
             task.Status,
             stage.ToString(),
-            stage == TaskStage.Overdue);
+            stage == TaskStage.Overdue,
+            task.ProjectId,
+            task.Project?.Name);
     }
 }

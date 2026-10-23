@@ -9,6 +9,7 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskReassignComponent } from './reassign.component';
 import { TaskService } from './task.service';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('TaskReassignComponent', () => {
   const task: TaskDetails = {
@@ -28,13 +29,18 @@ describe('TaskReassignComponent', () => {
     stage: 'Upcoming',
     recipients: [],
     createdAt: '2026-10-01T08:00:00Z',
-    updatedAt: '2026-10-01T08:00:00Z'
+    updatedAt: '2026-10-01T08:00:00Z',
+    projectId: 4,
+    projectName: 'Apollo',
+    firstReminderDays: 2,
+    secondReminderDays: 1,
+    overdueReminderFrequency: 'Daily'
   };
 
   const employees: User[] = [
-    { id: 3, fullName: 'Joe', username: 'joe', email: 'joe@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
-    { id: 9, fullName: 'Sara Dev', username: 'sara', email: 'sara@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01' },
-    { id: 11, fullName: 'Old Ten', username: 'old', email: 'old@taskflow.com', role: 'Employee', roleId: 3, isActive: false, createdAt: '2026-09-01' }
+    { id: 3, fullName: 'Joe', username: 'joe', email: 'joe@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01', ...NO_ALLOCATIONS },
+    { id: 9, fullName: 'Sara Dev', username: 'sara', email: 'sara@taskflow.com', role: 'Employee', roleId: 3, isActive: true, createdAt: '2026-09-01', ...NO_ALLOCATIONS },
+    { id: 11, fullName: 'Old Ten', username: 'old', email: 'old@taskflow.com', role: 'Employee', roleId: 3, isActive: false, createdAt: '2026-09-01', ...NO_ALLOCATIONS }
   ];
 
   let fixture: ComponentFixture<TaskReassignComponent>;
@@ -100,7 +106,7 @@ describe('TaskReassignComponent', () => {
 
     expect(dialog.open).toHaveBeenCalled();
     expect(reassignSpy).toHaveBeenCalledWith(7, { newAssigneeUserId: 9, reason: 'Handing over' });
-    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 7]);
+    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 7], { queryParamsHandling: 'preserve' });
     expect(toast.success).toHaveBeenCalled();
   });
 
@@ -139,6 +145,6 @@ describe('TaskReassignComponent', () => {
     await component.cancel();
 
     expect(openSpy).not.toHaveBeenCalled();
-    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 7]);
+    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 7], { queryParamsHandling: 'preserve' });
   });
 });

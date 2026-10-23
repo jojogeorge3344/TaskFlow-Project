@@ -202,7 +202,16 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var manager = await db.Users.SingleAsync(user => user.Username == managerUsername);
         var member = await db.Users.SingleAsync(user => user.Username == memberUsername);
-        member.ManagerId = manager.Id;
+        var teamName = $"Team of {managerUsername}";
+        var team = await db.Departments.FirstOrDefaultAsync(d => d.Name == teamName);
+        if (team is null)
+        {
+            team = new TaskFlow.Domain.Entities.Department { Name = teamName, CreatedAt = DateTime.UtcNow };
+            db.Departments.Add(team);
+            await db.SaveChangesAsync();
+            db.DepartmentManagers.Add(new TaskFlow.Domain.Entities.DepartmentManager { ManagerUserId = manager.Id, DepartmentId = team.Id });
+            db.UserDepartments.Add(new TaskFlow.Domain.Entities.UserDepartment { UserId = member.Id, DepartmentId = team.Id });
+        }
 
         var existing = await db.Tasks.CountAsync(task => task.AssignedToUserId == member.Id && task.Title == "Team seeded");
         var now = DateTime.UtcNow;

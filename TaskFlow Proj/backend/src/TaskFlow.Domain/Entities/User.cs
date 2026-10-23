@@ -48,21 +48,13 @@ public class User
 
     public bool IsDeleted { get; set; }
 
-    public int? ProjectId { get; set; }
 
-    public Project? Project { get; set; }
 
-    /// <summary>The department this employee belongs to, if any. Set from the Department Management screen or the employee form.</summary>
-    public int? DepartmentId { get; set; }
+    /// <summary>The projects this user is assigned to, each with a percentage and a position.</summary>
+    public ICollection<UserProjectAllocation> ProjectAllocations { get; set; } = new List<UserProjectAllocation>();
 
-    public Department? Department { get; set; }
-
-    /// <summary>The manager this user reports to, if any. Recorded data only.</summary>
-    public int? ManagerId { get; set; }
-
-    public User? Manager { get; set; }
-
-    public ICollection<User> Reports { get; set; } = new List<User>();
+    /// <summary>The departments this user belongs to.</summary>
+    public ICollection<UserDepartment> DepartmentMemberships { get; set; } = new List<UserDepartment>();
 
     /// <summary>For a manager: the projects they oversee.</summary>
     public ICollection<ManagerProject> ManagerProjects { get; set; } = new List<ManagerProject>();

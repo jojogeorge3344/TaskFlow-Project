@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using TaskFlow.Domain.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Application.Notifications;
@@ -22,6 +23,7 @@ public class NotificationsController : ControllerBase
 
     /// <summary>A page of the caller's notifications, newest first, optionally filtered by type or read state.</summary>
     [HttpGet]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.NotificationsView)]
     public async Task<ActionResult<PagedResult<NotificationDto>>> List(
         [FromQuery] NotificationFilter filter,
         CancellationToken cancellationToken)
@@ -37,6 +39,7 @@ public class NotificationsController : ControllerBase
 
     /// <summary>How many of the caller's notifications are still unread, for the header badge.</summary>
     [HttpGet("unread-count")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.NotificationsView)]
     public async Task<ActionResult<UnreadCountDto>> GetUnreadCount(CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUser(out var userId))
@@ -50,6 +53,7 @@ public class NotificationsController : ControllerBase
 
     /// <summary>Marks one of the caller's notifications read; 404 when no owned row matches.</summary>
     [HttpPost("{id:int}/read")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.NotificationsManage)]
     public async Task<IActionResult> MarkRead(int id, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUser(out var userId))
@@ -63,6 +67,7 @@ public class NotificationsController : ControllerBase
 
     /// <summary>Marks every one of the caller's notifications read.</summary>
     [HttpPost("read-all")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.NotificationsManage)]
     public async Task<IActionResult> MarkAllRead(CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUser(out var userId))

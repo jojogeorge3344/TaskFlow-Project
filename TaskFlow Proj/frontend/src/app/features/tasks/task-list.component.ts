@@ -7,11 +7,13 @@ import { Permissions } from '../../core/auth/permissions';
 import { DrillDownFilter, parseDrillDown } from '../../core/analytics/drill-down';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ProjectService } from '../../core/services/project.service';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { endOfLocalDay, startOfLocalDay } from '../../shared/ui/local-day';
 import {
   PagedResult,
+  ProjectWithCount,
   TASK_PRIORITIES,
   TASK_STATUSES,
   TaskListFilter,
@@ -53,6 +55,7 @@ const STAGE_LABELS: Partial<Record<TaskStage, string>> = {
 })
 export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
+  private readonly projectService = inject(ProjectService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
@@ -76,10 +79,10 @@ export class TaskListComponent implements OnInit {
     return this.auth.hasPermission(Permissions.TasksCreate);
   });
 
-  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  /** Deleting a task needs its own permission. */
   readonly canDelete = computed(() => {
     this.auth.currentUser();
-    return this.auth.hasPermission(Permissions.RolesManage);
+    return this.auth.hasPermission(Permissions.TasksDelete);
   });
 
   readonly deletingId = signal<number | null>(null);
@@ -87,6 +90,8 @@ export class TaskListComponent implements OnInit {
   readonly tasks = signal<TaskListItem[]>([]);
   readonly total = signal(0);
   readonly assignees = signal<TaskRecipient[]>([]);
+  /** Projects for the filter; stays empty (and the filter hidden) if they cannot be loaded. */
+  readonly projects = signal<ProjectWithCount[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
@@ -94,6 +99,7 @@ export class TaskListComponent implements OnInit {
   readonly searchText = signal('');
   readonly search = signal('');
   readonly assignedToUserId = signal<number | null>(null);
+  readonly projectId = signal<number | null>(null);
   readonly status = signal<TaskStatus | ''>('');
   readonly priority = signal<TaskPriority | ''>('');
   readonly deadlineFrom = signal('');
@@ -105,6 +111,7 @@ export class TaskListComponent implements OnInit {
     () =>
       this.search() !== '' ||
       this.assignedToUserId() !== null ||
+      this.projectId() !== null ||
       this.status() !== '' ||
       this.priority() !== '' ||
       this.deadlineFrom() !== '' ||
@@ -176,6 +183,10 @@ export class TaskListComponent implements OnInit {
         next: (assignees) => this.assignees.set(assignees)
       });
     }
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects),
+      error: () => this.projects.set([])
+    });
     this.load();
   }
 
@@ -222,6 +233,11 @@ export class TaskListComponent implements OnInit {
     this.reloadFromFirstPage();
   }
 
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
+    this.reloadFromFirstPage();
+  }
+
   setStatus(value: string): void {
     this.status.set(value as TaskStatus | '');
     this.reloadFromFirstPage();
@@ -246,6 +262,7 @@ export class TaskListComponent implements OnInit {
     this.searchText.set('');
     this.search.set('');
     this.assignedToUserId.set(null);
+    this.projectId.set(null);
     this.status.set('');
     this.priority.set('');
     this.deadlineFrom.set('');
@@ -291,6 +308,7 @@ export class TaskListComponent implements OnInit {
     const request: TaskListFilter = { page: this.page(), pageSize: PAGE_SIZE };
     if (this.search()) request.search = this.search();
     if (this.assignedToUserId() !== null) request.assignedToUserId = this.assignedToUserId();
+    if (this.projectId() !== null) request.projectId = this.projectId();
     if (this.status()) request.status = this.status() as TaskStatus;
     if (this.priority()) request.priority = this.priority() as TaskPriority;
     // Date inputs are local calendar days, matching how deadlines are shown in the table.

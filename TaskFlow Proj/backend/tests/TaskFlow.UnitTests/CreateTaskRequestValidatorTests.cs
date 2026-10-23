@@ -134,5 +134,6 @@ public class CreateTaskRequestValidatorTests
         AdditionalRecipientUserIds: null,
         FirstReminderDays: 2,
         SecondReminderDays: 1,
-        OverdueReminderFrequency: ReminderFrequency.Daily);
+        OverdueReminderFrequency: ReminderFrequency.Daily,
+        ProjectId: 1);
 }

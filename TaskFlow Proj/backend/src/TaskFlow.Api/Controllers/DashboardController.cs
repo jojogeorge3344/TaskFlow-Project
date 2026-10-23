@@ -32,7 +32,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("admin")]
-    [RequirePermission(PermissionKeys.DashboardAdmin)]
+    [RequirePermission(PermissionKeys.DashboardViewOrganization)]
     public async Task<ActionResult<AdminDashboardDto>> GetAdminStats(CancellationToken cancellationToken)
     {
         var stats = await _dashboardService.GetAdminStatsAsync(cancellationToken);
@@ -40,7 +40,8 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("admin/analytics")]
-    [RequirePermission(PermissionKeys.DashboardAdmin)]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.DashboardAnalytics)]
+    [RequirePermission(PermissionKeys.DashboardViewOrganization)]
     public async Task<ActionResult<AdminAnalyticsDto>> GetAdminAnalytics(
         [FromQuery] AnalyticsFilter filter,
         CancellationToken cancellationToken)
@@ -60,14 +61,15 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("admin/analytics/filters")]
-    [RequirePermission(PermissionKeys.DashboardAdmin)]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.DashboardFilters)]
+    [RequirePermission(PermissionKeys.DashboardViewOrganization)]
     public async Task<ActionResult<AnalyticsFilterOptionsDto>> GetAdminAnalyticsFilters(CancellationToken cancellationToken)
     {
         return Ok(await _analyticsService.GetFilterOptionsAsync(cancellationToken));
     }
 
     [HttpGet("manager")]
-    [RequirePermission(PermissionKeys.DashboardManager)]
+    [RequirePermission(PermissionKeys.DashboardViewTeam)]
     public async Task<ActionResult<ManagerDashboardDto>> GetManagerStats(CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var managerId))
@@ -80,7 +82,8 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("manager/analytics")]
-    [RequirePermission(PermissionKeys.DashboardManager)]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.DashboardAnalytics)]
+    [RequirePermission(PermissionKeys.DashboardViewTeam)]
     public async Task<ActionResult<ManagerAnalyticsResponseDto>> GetManagerAnalytics(
         [FromQuery] AnalyticsFilter filter,
         CancellationToken cancellationToken)
@@ -109,7 +112,8 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("manager/analytics/filters")]
-    [RequirePermission(PermissionKeys.DashboardManager)]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.DashboardFilters)]
+    [RequirePermission(PermissionKeys.DashboardViewTeam)]
     public async Task<ActionResult<ManagerFilterOptionsDto>> GetManagerAnalyticsFilters(CancellationToken cancellationToken)
     {
         if (!TryGetCallerId(out var managerId))
@@ -135,6 +139,7 @@ public class DashboardController : ControllerBase
     /// <summary>Analytics of the caller's own tasks. The subject is always the session user; the only input is the
     /// period, so any other query key (an employee id, a department) is never read.</summary>
     [HttpGet("employee/analytics")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.DashboardAnalytics)]
     [Authorize]
     public async Task<ActionResult<EmployeeAnalyticsResponseDto>> GetEmployeeAnalytics(
         [FromQuery] string? period,

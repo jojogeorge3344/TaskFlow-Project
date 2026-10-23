@@ -154,6 +154,13 @@
   overflow-wrap: anywhere;
 }
 
+.kanban__project {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--tf-text-muted, #6b7280);
+  overflow-wrap: anywhere;
+}
+
 .kanban__card-foot {
   display: flex;
   align-items: center;

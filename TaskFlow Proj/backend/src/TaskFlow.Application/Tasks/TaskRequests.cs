@@ -6,7 +6,8 @@ using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
 
 namespace TaskFlow.Application.Tasks;
 
-/// <summary>A new task. Omitted (null) reminder fields take the configured reminder defaults (Screen 13).</summary>
+/// <summary>A new task. Omitted (null) reminder fields take the configured reminder defaults (Screen 13).
+/// A project is mandatory: an omitted ProjectId (0) is rejected.</summary>
 public record CreateTaskRequest(
     string Title,
     string? Description,
@@ -18,7 +19,8 @@ public record CreateTaskRequest(
     IReadOnlyCollection<int>? AdditionalRecipientUserIds = null,
     int? FirstReminderDays = null,
     int? SecondReminderDays = null,
-    ReminderFrequency? OverdueReminderFrequency = null);
+    ReminderFrequency? OverdueReminderFrequency = null,
+    int ProjectId = 0);
 
 public record UpdateTaskRequest(
     string Title,

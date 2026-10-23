@@ -57,7 +57,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task WhenTheSenderCreatedTheTaskTheProjectsManagerIsUsed()
+    public async Task WhenTheSenderCreatedTheTaskTheDepartmentsManagerIsUsed()
     {
         await using var h = new AssistantActionHarness();
         var task = h.Tracking.AddTask(h.Asha.Id, h.Asha.Id, "My own task");
@@ -70,7 +70,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task WithoutATaskTheProjectManagerIsUsed()
+    public async Task WithoutATaskTheDepartmentManagerIsUsed()
     {
         await using var h = new AssistantActionHarness();
 
@@ -80,7 +80,7 @@ public class AssistantActionToolsTests
     }
 
     [Fact]
-    public async Task SeveralManagersInTheProjectMeansTheUserIsAsked()
+    public async Task SeveralManagersOfTheDepartmentMeansTheUserIsAsked()
     {
         await using var h = new AssistantActionHarness();
         var kiran = h.AddUser("kiran", SystemRoles.Manager, h.Engineering.Id);
@@ -100,13 +100,17 @@ public class AssistantActionToolsTests
     {
         await using var h = new AssistantActionHarness();
         var loner = h.AddUser("loner", SystemRoles.Employee);
-        var noManagers = h.AddUser("othersdept", SystemRoles.Employee, (await AddProjectAsync(h, "Support")).Id);
+        var noManagers = h.AddUser("othersdept", SystemRoles.Employee);
+        var support = new TaskFlow.Domain.Entities.Department { Name = "Support", CreatedAt = DateTime.UtcNow };
+        h.Db.Departments.Add(support);
+        await h.Db.SaveChangesAsync();
+        TestMemberships.JoinDepartment(h.Db, noManagers, support.Id);
 
         var noProject = await Run(DraftTool(h), h, loner, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
         var emptyProject = await Run(DraftTool(h), h, noManagers, """{"recipient":"manager","subject":"Hi","body":"Hello."}""");
 
         Assert.Null(noProject.PendingActionId);
-        Assert.Contains("not in a project", noProject.ResultForModel);
+        Assert.Contains("not in a department", noProject.ResultForModel);
         Assert.Null(emptyProject.PendingActionId);
         Assert.Contains("could not find a manager", emptyProject.ResultForModel);
         Assert.Contains("Ask the user", emptyProject.ResultForModel);
@@ -226,7 +230,7 @@ public class AssistantActionToolsTests
         var user = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Asha.Id);
         Assert.Equal("Asha Nair", user.FullName);
         Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
-        Assert.Equal(h.Engineering.Id, user.ProjectId);
+        Assert.Equal(h.Engineering.Id, (await h.Db.UserProjectAllocations.AsNoTracking().SingleAsync(a => a.UserId == user.Id)).ProjectId);
         Assert.True(user.IsActive);
         Assert.Equal(h.Asha.Email, user.Email);
         using var schema = JsonDocument.Parse(ProfileTool(h).ParametersSchema);

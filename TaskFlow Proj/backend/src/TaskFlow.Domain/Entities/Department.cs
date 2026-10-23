@@ -14,5 +14,5 @@ public class Department
 
     public ICollection<DepartmentManager> ManagerLinks { get; set; } = new List<DepartmentManager>();
 
-    public ICollection<User> Users { get; set; } = new List<User>();
+    public ICollection<UserDepartment> Memberships { get; set; } = new List<UserDepartment>();
 }

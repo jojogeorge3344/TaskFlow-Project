@@ -12,8 +12,8 @@ describe('WorkloadService', () => {
     {
       userId: 3,
       fullName: 'Joe Thomas',
-      projectId: 2,
-      projectName: 'Engineering',
+      projects: [{ projectId: 2, projectName: 'Engineering', positionId: 1, positionName: 'Member', percent: 100 }],
+      allocatedPercent: 100,
       activeTasks: 4,
       highPriorityTasks: 2,
       overdueTasks: 1,

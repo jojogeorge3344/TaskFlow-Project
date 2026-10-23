@@ -42,6 +42,7 @@
             (click)="open(item)"
             (keydown.enter)="open(item)"
           >
+            @if (canOrganize()) {
             <button
               type="button"
               class="mail-row__star"
@@ -53,6 +54,7 @@
             >
               <tf-icon name="star" />
             </button>
+            }
             <div class="mail-row__main">
               <div class="mail-row__top">
                 <span class="mail-row__who">

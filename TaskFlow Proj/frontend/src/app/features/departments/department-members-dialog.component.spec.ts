@@ -6,6 +6,7 @@ import { DepartmentService } from '../../core/services/department.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { DepartmentMembersDialogComponent } from './department-members-dialog.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('DepartmentMembersDialogComponent', () => {
   const department = { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01' };
@@ -22,8 +23,7 @@ describe('DepartmentMembersDialogComponent', () => {
       isActive: true,
       createdAt: '2026-09-05T00:00:00Z',
       lastLoginAt: null,
-      projectId: null,
-      projectName: null,
+      ...NO_ALLOCATIONS,
       ...overrides
     };
   }
@@ -52,14 +52,32 @@ describe('DepartmentMembersDialogComponent', () => {
     return el().querySelector('dialog')!;
   }
 
-  function checkbox(field: 'managers' | 'employees', userId: number): HTMLInputElement {
-    return el().querySelector(`[data-field="${field}"] [data-user="${userId}"]`) as HTMLInputElement;
+  function checkbox(userId: number): HTMLInputElement {
+    return el().querySelector(`[data-user="${userId}"]`) as HTMLInputElement;
   }
 
-  function toggle(field: 'managers' | 'employees', userId: number, checked: boolean): void {
-    const input = checkbox(field, userId);
+  function toggle(userId: number, checked: boolean): void {
+    const input = checkbox(userId);
     input.checked = checked;
     input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  function shownNames(): string[] {
+    return Array.from(el().querySelectorAll('.department-members__name')).map((node) => node.textContent!.trim());
+  }
+
+  function search(text: string): void {
+    const input = el().querySelector('#dm-search') as HTMLInputElement;
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  function sortBy(value: string): void {
+    const select = el().querySelector('#dm-sort') as HTMLSelectElement;
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
   }
 
@@ -101,27 +119,37 @@ describe('DepartmentMembersDialogComponent', () => {
     expect(getMembersSpy).toHaveBeenCalledWith(1);
     expect(getAllUsersSpy).toHaveBeenCalledWith({ role: 'Manager', isActive: true });
     expect(getAllUsersSpy).toHaveBeenCalledWith({ role: 'Employee', isActive: true });
-    expect(checkbox('managers', 5).checked).toBeTrue();
-    expect(checkbox('employees', 7).checked).toBeTrue();
+    expect(checkbox(5).checked).toBeTrue();
+    expect(checkbox(7).checked).toBeTrue();
+    expect(checkbox(9).checked).toBeFalse();
+    expect(el().querySelector('[data-role="selected-count"]')?.textContent).toContain('2 selected');
+  });
+
+  it('lists managers and employees together, each tagged with their role', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    expect(checkbox(5).closest('label')!.textContent).toContain('Manager');
+    expect(checkbox(9).closest('label')!.textContent).toContain('Employee');
   });
 
   it('keeps an inactive current member listed and checked with an Inactive hint', () => {
     fixture.componentInstance.open(department);
     fixture.detectChanges();
 
-    const inactiveRow = checkbox('employees', 7).closest('label')!;
+    const inactiveRow = checkbox(7).closest('label')!;
     expect(inactiveRow.textContent).toContain('Sam Stopped');
     expect(inactiveRow.textContent).toContain('Inactive');
-    expect(checkbox('employees', 7).checked).toBeTrue();
+    expect(checkbox(7).checked).toBeTrue();
   });
 
-  it('sends the full checked id sets, including the inactive member, on save', () => {
+  it('selects several people and sends managers and employees separately on save', () => {
     const savedSpy = jasmine.createSpy('saved');
     fixture.componentInstance.saved.subscribe(savedSpy);
     fixture.componentInstance.open(department);
     fixture.detectChanges();
 
-    toggle('employees', 9, true);
+    toggle(9, true);
 
     saveButton().click();
 
@@ -135,10 +163,95 @@ describe('DepartmentMembersDialogComponent', () => {
     fixture.componentInstance.open(department);
     fixture.detectChanges();
 
-    toggle('employees', 7, false);
+    toggle(7, false);
     saveButton().click();
 
     expect(replaceMembersSpy).toHaveBeenCalledWith(1, { managerIds: [5], employeeIds: [] });
+  });
+
+  it('filters the list by name or username and says so when nobody matches', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    search('EVAN');
+    expect(shownNames()).toEqual(['Evan Employee']);
+
+    search('mary');
+    expect(shownNames()).toEqual(['Mary Manager']);
+
+    search('nobody');
+    expect(shownNames()).toEqual([]);
+    expect(el().querySelector('[data-empty]')?.textContent).toContain('No one matches "nobody"');
+  });
+
+  it('keeps a selection made before searching, even for people the search hides', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    toggle(9, true);
+    search('mary');
+    saveButton().click();
+
+    expect(replaceMembersSpy).toHaveBeenCalledWith(1, { managerIds: [5], employeeIds: [7, 9] });
+  });
+
+  it('sorts by name in both directions, selected first, and by role', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    expect(shownNames()).toEqual(['Evan Employee', 'Mary Manager', 'Sam Stopped']);
+
+    sortBy('name-desc');
+    expect(shownNames()).toEqual(['Sam Stopped', 'Mary Manager', 'Evan Employee']);
+
+    sortBy('selected');
+    expect(shownNames()).toEqual(['Mary Manager', 'Sam Stopped', 'Evan Employee']);
+
+    sortBy('role');
+    expect(shownNames()).toEqual(['Evan Employee', 'Sam Stopped', 'Mary Manager']);
+  });
+
+  it('selects and clears everyone shown, leaving hidden people alone', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+    const toggleAll = () => el().querySelector('[data-action="toggle-all"]') as HTMLButtonElement;
+
+    search('evan');
+    toggleAll().click();
+    fixture.detectChanges();
+    expect(checkbox(9).checked).toBeTrue();
+    expect(el().querySelector('[data-role="selected-count"]')?.textContent).toContain('3 selected');
+    expect(toggleAll().textContent).toContain('Clear shown');
+
+    toggleAll().click();
+    fixture.detectChanges();
+    expect(checkbox(9).checked).toBeFalse();
+    expect(el().querySelector('[data-role="selected-count"]')?.textContent).toContain('2 selected');
+  });
+
+  it('clears the whole selection', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    (el().querySelector('[data-action="clear"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    saveButton().click();
+
+    expect(replaceMembersSpy).toHaveBeenCalledWith(1, { managerIds: [], employeeIds: [] });
+  });
+
+  it('starts every opening with an empty search and the default sort', () => {
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+    search('mary');
+    sortBy('role');
+    dialog().close();
+
+    fixture.componentInstance.open(department);
+    fixture.detectChanges();
+
+    expect((el().querySelector('#dm-search') as HTMLInputElement).value).toBe('');
+    expect(shownNames()).toEqual(['Evan Employee', 'Mary Manager', 'Sam Stopped']);
   });
 
   it('keeps the dialog open and shows the backend error when saving fails', () => {

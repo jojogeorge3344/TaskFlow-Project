@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, map } from 'rxjs';
@@ -21,6 +23,7 @@ describe('MailComponent', () => {
       imports: [MailComponent],
       providers: [
         provideRouter([]),
+        { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Employee') })) },
         { provide: MailService, useValue: mail },
         { provide: ToastService, useValue: jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']) },
         { provide: ActivatedRoute, useValue: { queryParamMap: params.pipe(map((value) => convertToParamMap(value))) } }

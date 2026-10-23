@@ -171,7 +171,7 @@ public class MfaSignInEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var loginDoc = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
         var token = loginDoc.RootElement.GetProperty("accessToken").GetString()!;
         var change = await MfaTestHarness.SendAsync(other, HttpMethod.Post, "/api/v1/users/me/password", token,
-            new { currentPassword = MfaTestHarness.Password, newPassword = "An0therP@ss", mfaCode = _mfa.NextCode(secret) });
+            new { newPassword = "An0therP@ss", mfaCode = _mfa.NextCode(secret) });
         Assert.Equal(HttpStatusCode.NoContent, change.StatusCode);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await VerifyAsync(client, challenge, _mfa.NextCode(secret))).StatusCode);

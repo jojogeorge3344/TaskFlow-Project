@@ -74,7 +74,7 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ARoleThatCanManageEmployeesCannotDeleteThem()
     {
         var client = _factory.CreateClient();
-        var roleId = await AddRoleAsync(PermissionKeys.EmployeesManage, PermissionKeys.EmployeesView);
+        var roleId = await AddRoleAsync(PermissionKeys.EmployeesCreate, PermissionKeys.EmployeesEdit, PermissionKeys.EmployeesStatus, PermissionKeys.EmployeesView);
         var token = await SignInInRoleAsync(client, "del-people-mgr", roleId);
         var employee = await SeedAsync("del-target-people");
 
@@ -184,7 +184,11 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            (await db.Users.SingleAsync(user => user.Id == report.Id)).ManagerId = manager.Id;
+            var team = new Department { Name = "Delete Team 6", CreatedAt = DateTime.UtcNow };
+            db.Departments.Add(team);
+            await db.SaveChangesAsync();
+            db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = manager.Id, DepartmentId = team.Id });
+            db.UserDepartments.Add(new UserDepartment { UserId = report.Id, DepartmentId = team.Id });
             db.ManagerProjects.Add(new ManagerProject { ManagerUserId = manager.Id, ProjectId = projectId });
             await db.SaveChangesAsync();
         }
@@ -193,7 +197,7 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         using var check = _factory.Services.CreateScope();
         var checkDb = check.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.Null((await checkDb.Users.SingleAsync(user => user.Id == report.Id)).ManagerId);
+        Assert.False(await checkDb.DepartmentManagers.AnyAsync(link => link.ManagerUserId == manager.Id));
         Assert.False(await checkDb.ManagerProjects.AnyAsync(link => link.ManagerUserId == manager.Id));
     }
 
@@ -411,7 +415,7 @@ public class AdminDeleteEndpointsTests : IClassFixture<TaskFlowApiFactory>
         await db.SaveChangesAsync();
         if (memberId is int id)
         {
-            (await db.Users.SingleAsync(user => user.Id == id)).ProjectId = project.Id;
+            db.UserProjectAllocations.Add(new UserProjectAllocation { UserId = id, ProjectId = project.Id, AllocationPercent = 100, PositionId = 1 });
             await db.SaveChangesAsync();
         }
 

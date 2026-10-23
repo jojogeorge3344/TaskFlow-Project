@@ -113,7 +113,7 @@ public class RolesMigrationTests : IDisposable
         await Assert.ThrowsAnyAsync<Exception>(() =>
             db.Database.ExecuteSqlRawAsync("DELETE FROM \"Permissions\" WHERE \"Key\" = 'tasks.create'"));
 
-        Assert.Equal(PermissionCatalog.All.Count, count);
+        Assert.Equal(PermissionCatalog.Stored.Count(), count);
         Assert.Equal(count, await db.Permissions.CountAsync());
     }
 
@@ -180,7 +180,7 @@ public class RolesMigrationTests : IDisposable
             .OrderBy(key => key)
             .ToListAsync();
 
-        Assert.Equal(PermissionCatalog.All.Select(permission => permission.Key).Order(), adminKeys.Order());
+        Assert.Equal(PermissionCatalog.Stored.Select(permission => permission.Key).Order(), adminKeys.Order());
         Assert.Contains(PermissionKeys.TasksReassign, managerKeys);
         Assert.DoesNotContain(PermissionKeys.ReportsView, managerKeys);
         Assert.Equal(
@@ -199,15 +199,14 @@ public class RolesMigrationTests : IDisposable
             .OrderBy(key => key)
             .ToListAsync();
 
-        Assert.Equal(PermissionCatalog.All.Select(permission => permission.Key).Order(), await KeysFor(SystemRoles.AdministratorId));
+        Assert.Equal(PermissionCatalog.Stored.Select(permission => permission.Key).Order(), await KeysFor(SystemRoles.AdministratorId));
         Assert.Equal(
-            PermissionCatalog.All.Where(permission => permission.GrantedToManager).Select(permission => permission.Key).Order(),
+            PermissionCatalog.Stored.Where(permission => permission.GrantedToManager).Select(permission => permission.Key).Order(),
             await KeysFor(SystemRoles.ManagerId));
         Assert.Equal(
-            PermissionCatalog.All.Where(permission => permission.GrantedToEmployee).Select(permission => permission.Key).Order(),
+            PermissionCatalog.Stored.Where(permission => permission.GrantedToEmployee).Select(permission => permission.Key).Order(),
             await KeysFor(SystemRoles.EmployeeId));
         Assert.DoesNotContain(PermissionKeys.RolesManage, await KeysFor(SystemRoles.ManagerId));
-        Assert.False(await db.Permissions.Where(permission => permission.Key == PermissionKeys.RolesManage).Select(permission => permission.IsAssignable).SingleAsync());
     }
 
     [Fact]

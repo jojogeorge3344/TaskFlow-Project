@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Authentication;
-using IAttemptLimiter = TaskFlow.Application.Auth.IAttemptLimiter;
 using TaskFlow.Application.Mfa;
 using TaskFlow.Application.Users;
 
@@ -19,20 +18,17 @@ public class UsersController : ControllerBase
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly IValidator<ChangePasswordRequest> _passwordValidator;
     private readonly IMfaService _mfaService;
-    private readonly IAttemptLimiter _limiter;
 
     public UsersController(
         IUserService userService,
         IValidator<UpdateOwnProfileRequest> profileValidator,
         IValidator<ChangePasswordRequest> passwordValidator,
-        IMfaService mfaService,
-        IAttemptLimiter limiter)
+        IMfaService mfaService)
     {
         _userService = userService;
         _profileValidator = profileValidator;
         _passwordValidator = passwordValidator;
         _mfaService = mfaService;
-        _limiter = limiter;
     }
 
     /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
@@ -78,7 +74,7 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>Changes the caller's own password after verifying the current one. Every session of
+    /// <summary>Changes the caller's own password after checking an authenticator code. Every session of
     /// the user is ended, so the client must sign in again with the new password.</summary>
     [HttpPost("me/password")]
     [Authorize]
@@ -97,20 +93,13 @@ public class UsersController : ControllerBase
 
         try
         {
-            // Re-entering the current password is a guess an attacker holding only an access token could repeat, so it has a
-            // budget of its own. Wrong current password first, so a typo does not spend the authenticator code; then the code.
-            var passwordKey = IAttemptLimiter.PasswordKey(currentUserId);
-            if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
+            // The authenticator code is the proof of identity. RequireCodeAsync passes silently when MFA is off, which the setup
+            // gate prevents; refuse here too so a gate regression cannot leave this endpoint unprotected.
+            var current = await _userService.GetOwnAsync(currentUserId, cancellationToken);
+            if (current is null || !current.MfaEnabled)
             {
-                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "Too many attempts. Try again in a few minutes." });
+                return BadRequest(new { error = "Set up two-step verification before changing your password." });
             }
-
-            if (!await _userService.CheckOwnPasswordAsync(currentUserId, request.CurrentPassword, cancellationToken))
-            {
-                return BadRequest(new { error = "Current password is incorrect." });
-            }
-
-            _limiter.Reset(passwordKey);
 
             await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
 
@@ -132,9 +121,10 @@ public class UsersController : ControllerBase
         [FromQuery] int? projectId,
         [FromQuery] string? role,
         [FromQuery] bool? isActive,
+        [FromQuery] int? departmentId,
         CancellationToken cancellationToken)
     {
-        var filter = new UserListFilter(search, projectId, role, isActive);
+        var filter = new UserListFilter(search, projectId, role, isActive, departmentId);
         var users = await _userService.GetAllAsync(filter, cancellationToken);
         return Ok(users);
     }
@@ -149,7 +139,7 @@ public class UsersController : ControllerBase
             return Unauthorized();
         }
 
-        var isAdmin = User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesManage);
+        var isAdmin = User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesEdit);
         if (!isAdmin && currentUserId != id)
         {
             return Forbid();
@@ -164,10 +154,10 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [RequirePermission(PermissionKeys.EmployeesManage)]
+    [RequirePermission(PermissionKeys.EmployeesCreate)]
     public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserRequest request, CancellationToken cancellationToken)
     {
-        // Choosing any role other than Employee is role management, which only Administrators may do.
+        // Choosing any role other than Employee is role assignment, which needs its own permission.
         if (request.RoleId != SystemRoles.EmployeeId && !CanManageRoles())
         {
             return Forbid();
@@ -185,7 +175,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [RequirePermission(PermissionKeys.EmployeesManage)]
+    [RequirePermission(PermissionKeys.EmployeesEdit)]
     public async Task<ActionResult<UserDto>> Update(int id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
     {
         // Changing a user's role is role management, which only Administrators may do.
@@ -214,7 +204,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [RequirePermission(PermissionKeys.EmployeesManage)]
+    [RequirePermission(PermissionKeys.EmployeesStatus)]
     public async Task<ActionResult<UserDto>> UpdateStatus(int id, [FromBody] UserStatusRequest request, CancellationToken cancellationToken)
     {
         try
@@ -232,26 +222,10 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>Choosing projects for a manager and a manager for an employee is Administrator-only.</summary>
-    [HttpPut("{id}/assignments")]
-    [RequirePermission(PermissionKeys.RolesManage)]
-    public async Task<ActionResult<UserDto>> UpdateAssignments(int id, [FromBody] ManagerAssignmentRequest request, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var user = await _userService.UpdateManagerAssignmentsAsync(id, request, cancellationToken);
-            return user is null ? NotFound() : Ok(user);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
     /// <summary>Deleting an employee is Administrator-only. roles.manage is the permission only Administrators can hold,
     /// so it gates this without a new grantable permission; employees.manage alone is not enough.</summary>
     [HttpDelete("{id}")]
-    [RequirePermission(PermissionKeys.RolesManage)]
+    [RequirePermission(PermissionKeys.EmployeesDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
@@ -270,5 +244,5 @@ public class UsersController : ControllerBase
         }
     }
 
-    private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesManage);
+    private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesRoleAssign);
 }

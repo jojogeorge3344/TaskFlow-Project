@@ -35,7 +35,7 @@ export const securitySetupGuard: CanActivateFn = () => {
     return router.createUrlTree(['/login']);
   }
 
-  return user.mfaSetupRequired ? true : router.createUrlTree([dashboardRouteFor(user.role)]);
+  return user.mfaSetupRequired ? true : router.createUrlTree([dashboardRouteFor(user.role, user.permissions)]);
 };
 
 /**
@@ -55,5 +55,5 @@ export const permissionGuard: CanActivateFn = (route) => {
 
   return required.some((key) => user.permissions.includes(key))
     ? true
-    : router.createUrlTree([dashboardRouteFor(user.role)]);
+    : router.createUrlTree([dashboardRouteFor(user.role, user.permissions)]);
 };

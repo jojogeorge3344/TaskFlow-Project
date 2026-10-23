@@ -58,7 +58,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPost]
-    [RequirePermission(PermissionKeys.DepartmentsManage)]
+    [RequirePermission(PermissionKeys.DepartmentsCreate)]
     public async Task<ActionResult<DepartmentDto>> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
     {
         var validation = await _createValidator.ValidateAsync(request, cancellationToken);
@@ -79,7 +79,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [RequirePermission(PermissionKeys.DepartmentsManage)]
+    [RequirePermission(PermissionKeys.DepartmentsEdit)]
     public async Task<ActionResult<DepartmentDto>> Update(int id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
     {
         var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
@@ -104,7 +104,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpPut("{id}/members")]
-    [RequirePermission(PermissionKeys.DepartmentsManage)]
+    [RequirePermission(PermissionKeys.DepartmentsMembers)]
     public async Task<ActionResult<DepartmentMembersDto>> ReplaceMembers(int id, [FromBody] UpdateDepartmentMembersRequest request, CancellationToken cancellationToken)
     {
         try
@@ -123,7 +123,7 @@ public class DepartmentsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [RequirePermission(PermissionKeys.DepartmentsManage)]
+    [RequirePermission(PermissionKeys.DepartmentsDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         try

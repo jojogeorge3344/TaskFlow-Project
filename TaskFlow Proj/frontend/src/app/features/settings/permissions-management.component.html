@@ -1,8 +1,8 @@
-<section class="tf-page">
+<section class="tf-page rc">
   <header class="tf-page-header">
     <div>
       <h1>Role Configuration</h1>
-      <p>Choose what each role can do. Administrator, Manager and Employee are fixed; create your own roles for anyone else.</p>
+      <p>Choose exactly what each role can see and do. Administrator, Manager and Employee are protected; create your own roles for anyone else.</p>
     </div>
   </header>
 
@@ -16,115 +16,402 @@
       </div>
     </div>
   } @else if (loading()) {
-    <div class="tf-card perm-loading" aria-busy="true">
-      <span class="tf-skeleton perm-loading__row"></span>
-      <span class="tf-skeleton perm-loading__row"></span>
-      <span class="tf-skeleton perm-loading__row"></span>
+    <div class="tf-card rc-loading" aria-busy="true">
+      <span class="tf-skeleton rc-loading__row"></span>
+      <span class="tf-skeleton rc-loading__row"></span>
+      <span class="tf-skeleton rc-loading__row"></span>
     </div>
   } @else {
-    <div class="perm-layout">
-      <aside class="tf-card perm-roles" aria-label="Roles">
-        <div class="perm-roles__head">
+    <div class="rc-layout" [class.rc-layout--detail]="showDetail()">
+      <!-- ------------------------------------------------------------ roles -->
+      <aside class="tf-card rc-roles" aria-label="Roles">
+        <div class="rc-roles__head">
           <h2>Roles</h2>
-          <button type="button" class="tf-btn tf-btn--primary" data-action="new-role" (click)="startNew()">
+          <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-action="new-role" (click)="startNew()">
             <tf-icon name="plus" />
             New role
           </button>
         </div>
 
-        <ul class="perm-roles__list">
-          @for (role of roles(); track role.id) {
+        <div class="tf-search rc-roles__search">
+          <tf-icon name="search" />
+          <label for="rc-role-search" class="tf-sr-only">Find a role</label>
+          <input
+            id="rc-role-search"
+            class="tf-input"
+            type="search"
+            placeholder="Find a role"
+            data-field="role-search"
+            [value]="roleSearch()"
+            (input)="roleSearch.set($any($event.target).value)"
+          />
+        </div>
+
+        <ul class="rc-roles__list">
+          @for (role of filteredRoles(); track role.id) {
             <li>
               <button
                 type="button"
-                class="perm-role"
-                [class.perm-role--active]="selection() === role.id"
+                class="rc-role"
+                [class.rc-role--active]="selection() === role.id"
                 [attr.data-role]="role.id"
                 [attr.aria-current]="selection() === role.id ? 'true' : null"
                 (click)="select(role.id)"
               >
-                <span class="perm-role__name">{{ role.name }}</span>
-                <span class="perm-role__meta">
-                  <span class="tf-badge" [class.tf-badge--administrator]="role.isSystem" [class.tf-badge--custom]="!role.isSystem">
-                    {{ role.isSystem ? 'System' : 'Custom' }}
-                  </span>
-                  <span class="perm-role__users">{{ role.userCount }} {{ role.userCount === 1 ? 'user' : 'users' }}</span>
+                <span class="rc-role__icon" [class.rc-role__icon--system]="role.isSystem" aria-hidden="true">
+                  <tf-icon [name]="role.isSystem ? 'shield' : 'users'" />
                 </span>
+                <span class="rc-role__body">
+                  <span class="rc-role__name">{{ role.name }}</span>
+                  <span class="rc-role__meta">
+                    <span class="tf-badge" [class.tf-badge--administrator]="role.isSystem" [class.tf-badge--custom]="!role.isSystem">
+                      {{ role.isSystem ? 'System' : 'Custom' }}
+                    </span>
+                    <span class="rc-role__users">{{ role.userCount }} {{ role.userCount === 1 ? 'user' : 'users' }}</span>
+                  </span>
+                </span>
+                <tf-icon name="chevron" />
               </button>
             </li>
+          } @empty {
+            <li class="rc-roles__none">No role matches "{{ roleSearch() }}".</li>
           }
           @if (isNew()) {
             <li>
-              <span class="perm-role perm-role--active perm-role--draft" aria-current="true" data-role="new">
-                <span class="perm-role__name">{{ draftName().trim() || 'New role' }}</span>
-                <span class="perm-role__meta"><span class="tf-badge tf-badge--custom">Unsaved</span></span>
+              <span class="rc-role rc-role--active rc-role--draft" aria-current="true" data-role="new">
+                <span class="rc-role__icon" aria-hidden="true"><tf-icon name="plus" /></span>
+                <span class="rc-role__body">
+                  <span class="rc-role__name">{{ draftName().trim() || 'New role' }}</span>
+                  <span class="rc-role__meta"><span class="tf-badge tf-badge--custom">Unsaved</span></span>
+                </span>
               </span>
             </li>
           }
         </ul>
       </aside>
 
-      <div class="tf-card perm-detail">
+      <!-- ------------------------------------------------------------ detail -->
+      <div class="rc-detail">
         @if (selection() === null) {
-          <div class="tf-empty">
-            <strong>No role selected</strong>
-            <p>Pick a role on the left, or create a new one.</p>
+          <div class="tf-card">
+            <div class="tf-empty">
+              <strong>No role selected</strong>
+              <p>Pick a role on the left, or create a new one.</p>
+            </div>
           </div>
         } @else {
           <form (submit)="$event.preventDefault(); save()" novalidate>
-            @if (editable()) {
-              <div class="tf-field perm-name">
-                <label for="role-name">Role name <span class="tf-field__required" aria-hidden="true">*</span></label>
-                <input
-                  id="role-name"
-                  class="tf-input"
-                  data-field="name"
-                  maxlength="100"
-                  [value]="draftName()"
-                  [class.is-invalid]="!!nameError()"
-                  [attr.aria-invalid]="!!nameError()"
-                  [attr.aria-describedby]="nameError() ? 'role-name-error' : null"
-                  (input)="setName($any($event.target).value)"
-                  (blur)="nameTouched.set(true)"
-                />
-                @if (nameError(); as message) {
-                  <span id="role-name-error" class="tf-field__error" data-error="name">{{ message }}</span>
-                }
-              </div>
-            } @else {
-              <div class="perm-title">
-                <h2>{{ selectedRole()?.name }}</h2>
-                <span class="tf-badge tf-badge--administrator">System role</span>
-              </div>
-              <p class="perm-note" data-note="read-only">
-                <tf-icon name="alert" />
-                {{ selectedRole()?.name }} is a system role. Its permissions are read-only and cannot be changed or deleted.
-              </p>
-            }
+            <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm rc-back" data-action="back-to-roles" (click)="backToRoles()">
+              <tf-icon name="back" />
+              All roles
+            </button>
 
-            <p class="perm-count" aria-live="polite">{{ heldCount() }} of {{ totalCount() }} permissions</p>
+            <div class="tf-card rc-hero">
+              <div class="rc-hero__top">
+                <div class="rc-hero__title">
+                  @if (editable()) {
+                    <div class="tf-field rc-name">
+                      <label for="role-name">Role name <span class="tf-field__required" aria-hidden="true">*</span></label>
+                      <input
+                        id="role-name"
+                        class="tf-input"
+                        data-field="name"
+                        maxlength="100"
+                        [value]="draftName()"
+                        [class.is-invalid]="!!nameError()"
+                        [attr.aria-invalid]="!!nameError()"
+                        [attr.aria-describedby]="nameError() ? 'role-name-error' : null"
+                        (input)="setName($any($event.target).value)"
+                        (blur)="nameTouched.set(true)"
+                      />
+                      @if (nameError(); as message) {
+                        <span id="role-name-error" class="tf-field__error" data-error="name">{{ message }}</span>
+                      }
+                    </div>
+                  } @else {
+                    <div class="rc-title">
+                      <h2>{{ selectedRole()?.name }}</h2>
+                      <span class="tf-badge tf-badge--administrator">System role</span>
+                    </div>
+                  }
+                </div>
 
-            @for (group of groups(); track group.name) {
-              <fieldset class="perm-group">
-                <legend>{{ group.name }}</legend>
-                @for (permission of group.permissions; track permission.key) {
-                  <div class="perm-check">
-                    <input
-                      type="checkbox"
-                      [id]="'perm-' + permission.key"
-                      [attr.data-permission]="permission.key"
-                      [checked]="isChecked(permission.key)"
-                      [disabled]="!editable()"
-                      (change)="toggle(permission.key, $any($event.target).checked)"
-                    />
-                    <label [for]="'perm-' + permission.key">
-                      <span class="perm-check__name">{{ permission.name }}</span>
-                      <span class="perm-check__desc">{{ permission.description }}</span>
-                    </label>
+                <div class="rc-hero__actions">
+                  @if (isSystemRole()) {
+                    <button type="button" class="tf-btn tf-btn--primary" data-action="duplicate" (click)="duplicate()">
+                      <tf-icon name="copy" />
+                      Duplicate as custom role
+                    </button>
+                  }
+                  @if (editable()) {
+                    <div class="rc-copy">
+                      <label for="rc-copy-from" class="tf-sr-only">Copy permissions from a role</label>
+                      <select
+                        id="rc-copy-from"
+                        class="tf-input tf-select"
+                        data-field="copy-from"
+                        (change)="copyFrom(+$any($event.target).value); $any($event.target).value = ''"
+                      >
+                        <option value="">Copy permissions from…</option>
+                        @for (role of roles(); track role.id) {
+                          @if (role.id !== selectedRole()?.id) {
+                            <option [value]="role.id">{{ role.name }}</option>
+                          }
+                        }
+                      </select>
+                    </div>
+                  }
+                  @if (editable() && !isNew()) {
+                    <button
+                      type="button"
+                      class="tf-btn tf-btn--ghost tf-btn--danger"
+                      data-action="delete"
+                      [disabled]="deleting() || saving()"
+                      (click)="remove()"
+                    >
+                      <tf-icon name="trash" />
+                      {{ deleting() ? 'Deleting…' : 'Delete role' }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (isSystemRole()) {
+                <p class="rc-note" data-note="read-only">
+                  <tf-icon name="shield" />
+                  <span>
+                    {{ selectedRole()?.name }} is a system role. Its permissions are read-only and it cannot be changed or deleted.
+                    Duplicate it to start a custom role from the same permissions.
+                  </span>
+                </p>
+              }
+
+              <div class="rc-progress" aria-live="polite">
+                <div class="rc-progress__label">
+                  <strong class="perm-count" data-count>{{ heldCount() }} of {{ totalCount() }} permissions</strong>
+                  <span>{{ heldPercent() }}% enabled</span>
+                </div>
+                <div class="rc-progress__bar" role="progressbar" [attr.aria-valuenow]="heldPercent()" aria-valuemin="0" aria-valuemax="100" aria-label="Permissions enabled">
+                  <span [style.width.%]="heldPercent()"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="tf-card rc-board">
+              <div class="rc-toolbar" role="search">
+                <div class="tf-search rc-toolbar__search">
+                  <tf-icon name="search" />
+                  <label for="rc-search" class="tf-sr-only">Search permissions</label>
+                  <input
+                    id="rc-search"
+                    class="tf-input"
+                    type="search"
+                    placeholder="Search permissions, screens, tabs…"
+                    data-field="search"
+                    [value]="search()"
+                    (input)="setSearch($any($event.target).value)"
+                  />
+                </div>
+
+                <div class="rc-seg" role="group" aria-label="Show">
+                  <button type="button" class="rc-seg__btn" data-filter="all" [class.is-on]="filter() === 'all'" [attr.aria-pressed]="filter() === 'all'" (click)="setFilter('all')">All</button>
+                  <button type="button" class="rc-seg__btn" data-filter="enabled" [class.is-on]="filter() === 'enabled'" [attr.aria-pressed]="filter() === 'enabled'" (click)="setFilter('enabled')">Enabled</button>
+                  <button type="button" class="rc-seg__btn" data-filter="disabled" [class.is-on]="filter() === 'disabled'" [attr.aria-pressed]="filter() === 'disabled'" (click)="setFilter('disabled')">Disabled</button>
+                </div>
+
+                <div class="rc-seg" role="group" aria-label="View">
+                  <button type="button" class="rc-seg__btn" data-view="tree" [class.is-on]="view() === 'tree'" [attr.aria-pressed]="view() === 'tree'" (click)="view.set('tree')">Tree</button>
+                  <button type="button" class="rc-seg__btn" data-view="matrix" [class.is-on]="view() === 'matrix'" [attr.aria-pressed]="view() === 'matrix'" (click)="view.set('matrix')">Compare roles</button>
+                </div>
+              </div>
+
+              @if (view() === 'tree') {
+                <div class="rc-bulk">
+                  <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="expand-all" (click)="expandAll()">Expand all</button>
+                  <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="collapse-all" (click)="collapseAll()">Collapse all</button>
+                  <span class="rc-bulk__spacer"></span>
+                  @if (editable()) {
+                    <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="select-all" (click)="setAll(true)">Select all</button>
+                    <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="deselect-all" (click)="setAll(false)">Deselect all</button>
+                  }
+                </div>
+
+                <div class="rc-tree">
+                  <nav class="rc-modules" aria-label="Modules">
+                    @for (module of modules(); track module.name) {
+                      <button
+                        type="button"
+                        class="rc-module"
+                        [class.rc-module--active]="!searching() && (activeModule() ?? modules()[0].name) === module.name"
+                        [attr.data-module]="module.name"
+                        (click)="openModule(module.name)"
+                      >
+                        <span class="rc-module__name">{{ module.name }}</span>
+                        <span class="rc-module__count" [class.rc-module__count--full]="module.state === 'all'" [class.rc-module__count--none]="module.state === 'none'">
+                          {{ module.enabled }}/{{ module.total }}
+                        </span>
+                      </button>
+                    }
+                  </nav>
+
+                  <div class="rc-panel">
+                    @if (searching()) {
+                      <p class="rc-panel__hint" role="status">
+                        {{ matchCount() }} {{ matchCount() === 1 ? 'permission matches' : 'permissions match' }} across all modules.
+                      </p>
+                    }
+
+                    @for (module of panelModules(); track module.name) {
+                      <section class="rc-mod" [attr.data-module-panel]="module.name">
+                        <header class="rc-mod__head">
+                          <input
+                            type="checkbox"
+                            class="rc-check"
+                            [attr.data-module-toggle]="module.name"
+                            [attr.aria-label]="'Select every permission in ' + module.name"
+                            [checked]="module.state === 'all'"
+                            [indeterminate]="module.state === 'some'"
+                            [disabled]="!editable() || !module.selectable"
+                            (change)="toggleModule(module, $any($event.target).checked)"
+                          />
+                          <h3>{{ module.name }}</h3>
+                          <span class="rc-count">{{ module.enabled }} of {{ module.total }} enabled</span>
+                        </header>
+
+                        @for (screen of module.screens; track screen.key) {
+                          <div class="rc-screen" [attr.data-screen]="screen.key">
+                            <div class="rc-screen__head">
+                              <input
+                                type="checkbox"
+                                class="rc-check"
+                                [attr.data-screen-toggle]="screen.key"
+                                [attr.aria-label]="'Select every permission on ' + screen.name"
+                                [checked]="screen.state === 'all'"
+                                [indeterminate]="screen.state === 'some'"
+                                [disabled]="!editable() || !screen.selectable"
+                                (change)="toggleScreen(module, screen, $any($event.target).checked)"
+                              />
+                              <button
+                                type="button"
+                                class="rc-screen__title"
+                                [attr.aria-expanded]="!isCollapsed(screen)"
+                                (click)="toggleCollapsed(screen)"
+                              >
+                                <span>{{ screen.name }}</span>
+                                <span class="rc-count">{{ screen.enabled }}/{{ screen.total }}</span>
+                                <tf-icon name="chevron" />
+                              </button>
+                            </div>
+
+                            @if (!isCollapsed(screen)) {
+                              @for (section of screen.sections; track section.name) {
+                                @if (section.name !== '') {
+                                  <h4 class="rc-section">{{ section.name }}</h4>
+                                }
+                                <ul class="rc-features">
+                                  @for (item of section.features; track item.feature.id) {
+                                    <li class="rc-feature" [class.rc-feature--on]="item.state !== 'none'">
+                                      @if (item.feature.isScope) {
+                                        <div class="rc-feature__text">
+                                          <span class="rc-feature__name">{{ item.feature.name }}</span>
+                                          <span class="rc-feature__desc">{{ item.feature.description }}</span>
+                                        </div>
+                                        <div class="rc-scope" role="radiogroup" [attr.aria-label]="item.feature.name + ' scope'" [attr.data-scope]="item.feature.id">
+                                          @for (level of item.feature.permissions; track level.key) {
+                                            <button
+                                              type="button"
+                                              role="radio"
+                                              class="rc-scope__btn"
+                                              [class.is-on]="item.level.key === level.key"
+                                              [attr.aria-checked]="item.level.key === level.key"
+                                              [attr.data-permission]="level.key"
+                                              [disabled]="!editable()"
+                                              (click)="chooseScope(item.feature, level)"
+                                            >
+                                              {{ level.alwaysGranted ? 'Own' : level.key.endsWith('.all') ? 'All' : level.key.endsWith('.team') ? 'Team' : 'Organization' }}
+                                            </button>
+                                          }
+                                        </div>
+                                      } @else {
+                                        @let permission = item.feature.permissions[0];
+                                        <input
+                                          type="checkbox"
+                                          class="rc-check"
+                                          [id]="'perm-' + permission.key"
+                                          [attr.data-permission]="permission.key"
+                                          [checked]="isOn(permission)"
+                                          [disabled]="isLocked(permission)"
+                                          (change)="toggle(permission.key, $any($event.target).checked)"
+                                        />
+                                        <label class="rc-feature__text" [for]="'perm-' + permission.key">
+                                          <span class="rc-feature__name">
+                                            {{ permission.name }}
+                                            @if (permission.alwaysGranted) {
+                                              <span class="rc-tag rc-tag--locked" title="Every user has this">Always on</span>
+                                            } @else if (!permission.isAssignable) {
+                                              <span class="rc-tag rc-tag--locked" title="Only the Administrator role can hold this">Administrator only</span>
+                                            }
+                                            <span class="rc-tag">{{ permission.action }}</span>
+                                          </span>
+                                          <span class="rc-feature__desc">{{ permission.description }}</span>
+                                        </label>
+                                      }
+                                    </li>
+                                  }
+                                </ul>
+                              }
+                            }
+                          </div>
+                        }
+                      </section>
+                    } @empty {
+                      <div class="tf-empty rc-panel__empty">
+                        <tf-icon name="search" />
+                        <strong>No permissions match</strong>
+                        <p>Try a different word, or show All permissions.</p>
+                      </div>
+                    }
                   </div>
-                }
-              </fieldset>
-            }
+                </div>
+              } @else {
+                <div class="rc-matrix-wrap" data-view-panel="matrix">
+                  <table class="rc-matrix">
+                    <thead>
+                      <tr>
+                        <th scope="col" class="rc-matrix__perm">Permission</th>
+                        @for (column of matrixRoles(); track column.role.id) {
+                          <th scope="col" [class.is-current]="column.role.id === selectedRole()?.id">{{ column.role.name }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    @for (group of matrixGroups(); track group.name) {
+                      <tbody>
+                        <tr class="rc-matrix__module">
+                          <th scope="colgroup" [attr.colspan]="matrixRoles().length + 1">{{ group.name }}</th>
+                        </tr>
+                        @for (row of group.rows; track row.permission.key) {
+                          <tr>
+                            <th scope="row" class="rc-matrix__perm">
+                              <span>{{ row.label }}</span>
+                              <small>{{ row.path }}</small>
+                            </th>
+                            @for (column of matrixRoles(); track column.role.id) {
+                              <td [class.is-current]="column.role.id === selectedRole()?.id">
+                                @if (row.permission.alwaysGranted || column.keys.has(row.permission.key)) {
+                                  <span class="rc-dot rc-dot--on" role="img" aria-label="Enabled"><tf-icon name="check" /></span>
+                                } @else {
+                                  <span class="rc-dot" role="img" aria-label="Not enabled"></span>
+                                }
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    }
+                  </table>
+                </div>
+              }
+            </div>
 
             @if (editable()) {
               <!-- Next to the buttons, so a refused save or delete is seen where the Administrator just clicked. -->
@@ -134,20 +421,16 @@
                   <span>{{ formError() }}</span>
                 </div>
               }
-              <div class="perm-actions">
-                @if (!isNew()) {
-                  <button
-                    type="button"
-                    class="tf-btn tf-btn--danger"
-                    data-action="delete"
-                    [disabled]="deleting() || saving()"
-                    (click)="remove()"
-                  >
-                    <tf-icon name="trash" />
-                    {{ deleting() ? 'Deleting…' : 'Delete role' }}
-                  </button>
-                }
-                <span class="perm-actions__spacer"></span>
+              <div class="rc-savebar" [class.rc-savebar--dirty]="dirty()">
+                <span class="rc-savebar__text" aria-live="polite">
+                  @if (dirty()) {
+                    <strong>{{ changes() }}</strong> unsaved {{ changes() === 1 ? 'change' : 'changes' }}
+                  } @else {
+                    No unsaved changes
+                  }
+                </span>
+                <span class="rc-savebar__spacer"></span>
+                <button type="button" class="tf-btn tf-btn--ghost" data-action="discard" [disabled]="!dirty() || saving()" (click)="discard()">Discard</button>
                 <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving() || deleting() || !dirty()">
                   {{ saving() ? 'Saving…' : isNew() ? 'Create role' : 'Save changes' }}
                 </button>

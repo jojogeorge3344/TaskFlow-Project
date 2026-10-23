@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthUser, PagedResult, TaskListItem, UserRole } from '../../core/models';
 import { PAGE_SIZE, SEARCH_DEBOUNCE_MS, TaskListComponent, endOfLocalDay, startOfLocalDay } from './task-list.component';
+import { ProjectService } from '../../core/services/project.service';
 import { TaskService } from './task.service';
 
 describe('TaskListComponent', () => {
@@ -27,6 +28,8 @@ describe('TaskListComponent', () => {
       status: 'InProgress',
       stage: 'Upcoming',
       isOverdue: false,
+      projectId: 4,
+      projectName: 'Apollo',
       ...overrides
     };
   }
@@ -38,6 +41,7 @@ describe('TaskListComponent', () => {
   let listSpy: jasmine.Spy;
   let assigneesSpy: jasmine.Spy;
   let deleteSpy: jasmine.Spy;
+  let projectsSpy: jasmine.Spy;
 
   function create(role: UserRole, queryParams: Record<string, string> = {}): ComponentFixture<TaskListComponent> {
     const user: AuthUser = { id: 1, fullName: 'Test', username: 'test', email: 't@x', role, employeeCode: null, permissions: systemPermissions(role) };
@@ -47,6 +51,7 @@ describe('TaskListComponent', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
         { provide: TaskService, useValue: { list: listSpy, getAssignees: assigneesSpy, delete: deleteSpy } },
+        { provide: ProjectService, useValue: { getAll: projectsSpy } },
         { provide: AuthService, useValue: fakeAuthService(signal(user).asReadonly()) }
       ]
     });
@@ -74,6 +79,78 @@ describe('TaskListComponent', () => {
     );
     assigneesSpy = jasmine.createSpy('getAssignees').and.returnValue(of([{ userId: 3, fullName: 'Joe Thomas' }]));
     deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
+    projectsSpy = jasmine.createSpy('getAll').and.returnValue(
+      of([
+        { id: 4, name: 'Apollo', description: null, createdAt: '2026-10-01T00:00:00Z', employeeCount: 2, managers: [] },
+        { id: 5, name: 'Zeus', description: null, createdAt: '2026-10-01T00:00:00Z', employeeCount: 1, managers: [] }
+      ])
+    );
+  });
+
+  describe('project', () => {
+    it('shows the project of each task, or a dash for a legacy task', () => {
+      listSpy.and.returnValue(of(page([item({}), item({ id: 2, projectId: null, projectName: null })])));
+      const fixture = create('Manager');
+
+      const cells = Array.from(el(fixture).querySelectorAll('tr.task-row [data-project]')).map((cell) => cell.textContent?.trim());
+      expect(cells).toEqual(['Apollo', '—']);
+    });
+
+    it('filters by project from page 1 and resets with the other filters', () => {
+      const fixture = create('Manager');
+      const select = el(fixture).querySelector('#task-filter-project') as HTMLSelectElement;
+      expect(select.options.length).toBe(3);
+
+      select.value = '4';
+      select.dispatchEvent(new Event('change'));
+
+      expect(lastFilter()['projectId']).toBe(4);
+      expect(lastFilter()['page']).toBe(1);
+
+      fixture.detectChanges();
+      (Array.from(el(fixture).querySelectorAll('button')).find((b) => b.textContent?.includes('Reset')) as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(lastFilter()['projectId']).toBeUndefined();
+      expect((el(fixture).querySelector('#task-filter-project') as HTMLSelectElement).value).toBe('');
+    });
+
+    it('combines the project with another filter', () => {
+      const fixture = create('Manager');
+      const select = el(fixture).querySelector('#task-filter-project') as HTMLSelectElement;
+      select.value = '4';
+      select.dispatchEvent(new Event('change'));
+      const status = el(fixture).querySelector('#task-filter-status') as HTMLSelectElement;
+      status.value = 'ToDo';
+      status.dispatchEvent(new Event('change'));
+
+      expect(lastFilter()['projectId']).toBe(4);
+      expect(lastFilter()['status']).toBe('ToDo');
+    });
+
+    it('hides the filter when projects cannot be loaded', () => {
+      projectsSpy.and.returnValue(throwError(() => new Error('403')));
+      const fixture = create('Manager');
+
+      expect(el(fixture).querySelector('#task-filter-project')).toBeNull();
+      expect(el(fixture).querySelectorAll('tr.task-row').length).toBe(2);
+    });
+  });
+
+  describe('copy', () => {
+    it('is offered to a Manager on every row and links to the pre-filled create form', () => {
+      const fixture = create('Manager');
+
+      const links = Array.from(el(fixture).querySelectorAll('tr.task-row [data-action="copy"]'));
+      expect(links.length).toBe(2);
+      expect(links[0].getAttribute('href')).toBe('/tasks/new?copyFrom=1');
+    });
+
+    it('is not offered to an Employee', () => {
+      const fixture = create('Employee');
+
+      expect(el(fixture).querySelector('[data-action="copy"]')).toBeNull();
+    });
   });
 
   describe('delete', () => {
@@ -146,7 +223,7 @@ describe('TaskListComponent', () => {
     const root = el(fixture);
 
     const headers = Array.from(root.querySelectorAll('th')).map((th) => th.textContent?.trim());
-    expect(headers).toEqual(['Code', 'Title', 'Assignee', 'Creator', 'Priority', 'Start', 'Deadline', 'Est. hours', 'Status']);
+    expect(headers).toEqual(['Code', 'Title', 'Project', 'Assignee', 'Creator', 'Priority', 'Start', 'Deadline', 'Est. hours', 'Status', 'Actions']);
 
     const rows = root.querySelectorAll('tr.task-row');
     expect(rows.length).toBe(2);
@@ -156,7 +233,7 @@ describe('TaskListComponent', () => {
     expect(rows[0].querySelector('[data-stage]')?.textContent?.trim()).toBe('Upcoming');
     expect(rows[1].classList).toContain('task-row--overdue');
     expect(rows[1].querySelector('[data-stage]')?.textContent?.trim()).toBe('Overdue');
-    expect(rows[1].querySelector('a')?.getAttribute('href')).toBe('/tasks/2');
+    expect(rows[1].querySelector('a')?.getAttribute('href')).toBe('/tasks/2?returnUrl=%2Ftasks');
     expect(root.textContent).toContain('1–2 of 2 tasks');
   });
 

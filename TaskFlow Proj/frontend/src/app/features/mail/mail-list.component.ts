@@ -1,4 +1,6 @@
-import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
+import { Component, effect, inject, input, output, signal, untracked, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -19,6 +21,12 @@ const PAGE_SIZE = 25;
   styleUrl: './mail-list.component.css'
 })
 export class MailListComponent {
+  private readonly permissionAuth = inject(AuthService);
+  readonly canOrganize = computed(() => {
+    this.permissionAuth.currentUser();
+    return this.permissionAuth.hasPermission(Permissions.MailOrganize);
+  });
+
   private readonly mailService = inject(MailService);
 
   readonly folder = input.required<MailView>();

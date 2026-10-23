@@ -1,3 +1,4 @@
+import { allocationsText } from '../../shared/ui/allocation-format';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -337,8 +338,8 @@ export class SecuritySetupComponent implements OnInit {
           { label: 'Employee code', value: user.employeeCode || '—' },
           { label: 'Username', value: user.username },
           { label: 'Role', value: user.role },
-          { label: 'Project', value: user.projectName || '—' },
-          { label: 'Manager', value: user.managerName || '—' }
+          { label: 'Projects', value: allocationsText(user.projectAllocations, false) === 'Unassigned' ? '—' : allocationsText(user.projectAllocations, false) },
+          { label: 'Managers', value: user.managers.map((m) => m.fullName).join(', ') || '—' }
         ]
       : [];
   });

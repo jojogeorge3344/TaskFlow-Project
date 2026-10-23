@@ -9,6 +9,7 @@ import { User } from '../../core/models';
 import { ProfileService } from '../../core/services/profile.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { SecuritySetupComponent } from './security-setup.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('SecuritySetupComponent', () => {
   const me: User = {
@@ -21,8 +22,9 @@ describe('SecuritySetupComponent', () => {
     roleId: 3,
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z',
-    projectName: 'Engineering',
-    managerName: 'Anupama Nair',
+    ...withProject(1, 'Engineering'),
+    departments: [],
+    managers: [{ id: 20, fullName: 'Anupama Nair' }],
     mobileNumber: null
   };
 
@@ -125,7 +127,7 @@ describe('SecuritySetupComponent', () => {
     expect(el(fixture).querySelector('[data-field="avatar"]')?.textContent?.trim()).toBe('JJ');
     expect(el(fixture).querySelector('h2')?.textContent).toContain('Welcome, Jo');
     expect(el(fixture).querySelector('[data-field="fact-Employee code"]')?.textContent?.trim()).toBe('EMP-3');
-    expect(el(fixture).querySelector('[data-field="fact-Manager"]')?.textContent?.trim()).toBe('Anupama Nair');
+    expect(el(fixture).querySelector('[data-field="fact-Managers"]')?.textContent?.trim()).toBe('Anupama Nair');
     expect(el(fixture).querySelectorAll('[data-step-id]').length).toBe(3);
     expect(el(fixture).querySelector('[data-step-id="details"]')?.getAttribute('data-state')).toBe('current');
     expect(el(fixture).querySelector('[data-step-id="codes"]')?.getAttribute('data-state')).toBe('todo');

@@ -53,10 +53,25 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
 
-  /** Only roles holding settings.ai.manage (the Administrator) see this section. */
+  /** Only roles holding settings.ai.view see this section; edit, test and remove-model have their own permissions. */
   readonly visible = computed(() => {
     this.auth.currentUser();
-    return this.auth.hasPermission(Permissions.SettingsAi);
+    return this.auth.hasPermission(Permissions.SettingsAiView);
+  });
+
+  readonly canEdit = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.SettingsAiEdit);
+  });
+
+  readonly canTest = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.SettingsAiTest);
+  });
+
+  readonly mayRemoveModel = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.SettingsAiRemoveModel);
   });
 
   readonly loading = signal(true);

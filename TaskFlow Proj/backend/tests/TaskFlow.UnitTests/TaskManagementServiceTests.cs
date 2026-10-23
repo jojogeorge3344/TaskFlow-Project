@@ -29,7 +29,8 @@ public class TaskManagementServiceTests
             new[] { assignee.Id, extra.Id },
             3,
             1,
-            ReminderFrequency.Weekly);
+            ReminderFrequency.Weekly,
+            ProjectId: harness.AddProject().Id);
 
         var details = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
 
@@ -75,7 +76,8 @@ public class TaskManagementServiceTests
             TaskPriority.Medium,
             DateTime.UtcNow.AddDays(1),
             DateTime.UtcNow.AddDays(2),
-            4m);
+            4m,
+            ProjectId: harness.AddProject().Id);
 
         var details = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
 
@@ -98,7 +100,8 @@ public class TaskManagementServiceTests
             TaskPriority.Medium,
             DateTime.UtcNow.AddDays(1),
             DateTime.UtcNow.AddDays(5),
-            4m);
+            4m,
+            ProjectId: harness.AddProject().Id);
 
         var before = await harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None);
         await harness.ReminderSettings.UpdateAsync(
@@ -134,7 +137,8 @@ public class TaskManagementServiceTests
             DateTime.UtcNow.AddDays(1),
             DateTime.UtcNow.AddDays(5),
             4m,
-            SecondReminderDays: 5);
+            SecondReminderDays: 5,
+            ProjectId: harness.AddProject().Id);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
@@ -164,7 +168,8 @@ public class TaskManagementServiceTests
                 4m,
                 FirstReminderDays: 1,
                 SecondReminderDays: 0,
-                OverdueReminderFrequency: ReminderFrequency.Daily),
+                OverdueReminderFrequency: ReminderFrequency.Daily,
+                ProjectId: harness.AddProject().Id),
             manager.Id,
             SystemRoles.Manager,
             CancellationToken.None);
@@ -189,7 +194,8 @@ public class TaskManagementServiceTests
             TaskPriority.Low,
             DateTime.UtcNow.AddDays(1),
             DateTime.UtcNow.AddDays(2),
-            1m);
+            1m,
+            ProjectId: harness.AddProject().Id);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             harness.TaskService.CreateAsync(request, employee.Id, SystemRoles.Employee, CancellationToken.None));
@@ -209,7 +215,8 @@ public class TaskManagementServiceTests
             TaskPriority.Low,
             DateTime.UtcNow.AddDays(1),
             DateTime.UtcNow.AddDays(2),
-            1m);
+            1m,
+            ProjectId: harness.AddProject().Id);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
@@ -289,9 +296,10 @@ public class TaskManagementServiceTests
         var manager = harness.AddUser("tm-mgr4", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee4");
 
+        var projectId = harness.AddProject().Id;
         CreateTaskRequest Request(string title) => new(
             title, null, assignee.Id, TaskPriority.Low,
-            DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m);
+            DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m, ProjectId: projectId);
 
         var first = await harness.TaskService.CreateAsync(Request("First"), manager.Id, SystemRoles.Manager, CancellationToken.None);
         var second = await harness.TaskService.CreateAsync(Request("Second"), manager.Id, SystemRoles.Manager, CancellationToken.None);
@@ -313,7 +321,7 @@ public class TaskManagementServiceTests
 
         var request = new CreateTaskRequest(
             "Never persisted", null, assignee.Id, TaskPriority.Low,
-            DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m);
+            DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2), 1m, ProjectId: harness.AddProject().Id);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));

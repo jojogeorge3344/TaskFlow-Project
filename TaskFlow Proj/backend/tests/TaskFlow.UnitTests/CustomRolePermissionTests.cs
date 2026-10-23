@@ -18,14 +18,15 @@ public class CustomRolePermissionTests
         return user;
     }
 
-    private static CreateTaskRequest NewTask(int assigneeId) => new(
+    private static CreateTaskRequest NewTask(int assigneeId, int projectId) => new(
         "Custom role task",
         "Body",
         assigneeId,
         TaskPriority.Medium,
         DateTime.UtcNow.AddDays(1),
         DateTime.UtcNow.AddDays(3),
-        4m);
+        4m,
+        ProjectId: projectId);
 
     [Fact]
     public async Task ARoleWithTasksViewAllSeesEveryTaskAndARoleWithoutItSeesOnlyItsOwn()
@@ -63,9 +64,9 @@ public class CustomRolePermissionTests
         var editor = InRole(harness, "cr-editor", editorRole);
         var nobody = InRole(harness, "cr-nobody", nothingRole);
 
-        var created = await harness.TaskService.CreateAsync(NewTask(assignee.Id), creator.Id, creatorRole.Name, CancellationToken.None);
+        var created = await harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), creator.Id, creatorRole.Name, CancellationToken.None);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            harness.TaskService.CreateAsync(NewTask(assignee.Id), nobody.Id, nothingRole.Name, CancellationToken.None));
+            harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), nobody.Id, nothingRole.Name, CancellationToken.None));
         var update = new UpdateTaskRequest("Renamed", "Body", TaskPriority.High, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(4), 5m);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             harness.TaskService.UpdateAsync(created.Id, update, creator.Id, creatorRole.Name, CancellationToken.None));
@@ -103,11 +104,11 @@ public class CustomRolePermissionTests
         var assignee = harness.AddUser("cr3-assignee");
         var user = InRole(harness, "cr3-user", role);
 
-        await harness.TaskService.CreateAsync(NewTask(assignee.Id), user.Id, role.Name, CancellationToken.None);
+        await harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), user.Id, role.Name, CancellationToken.None);
         harness.Db.RolePermissions.RemoveRange(harness.Db.RolePermissions.Where(grant => grant.RoleId == role.Id));
         harness.Db.SaveChanges();
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            harness.TaskService.CreateAsync(NewTask(assignee.Id), user.Id, role.Name, CancellationToken.None));
+            harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), user.Id, role.Name, CancellationToken.None));
     }
 }

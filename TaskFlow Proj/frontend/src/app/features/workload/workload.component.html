@@ -67,7 +67,8 @@
           <thead>
             <tr>
               <th>Employee</th>
-              <th>Project</th>
+              <th>Projects</th>
+              <th class="num">Allocated</th>
               <th class="num">Active</th>
               <th class="num">High priority</th>
               <th class="num">Overdue</th>
@@ -85,7 +86,14 @@
                     <span class="tf-badge workload-badge--high" data-high-load>High load</span>
                   }
                 </td>
-                <td>{{ row.projectName ?? '—' }}</td>
+                <td data-field="projects">
+                  @for (project of row.projects; track project.projectId; let last = $last) {
+                    {{ project.projectName }} {{ project.percent }}%{{ last ? '' : ', ' }}
+                  } @empty {
+                    —
+                  }
+                </td>
+                <td class="num" data-field="allocated">{{ row.allocatedPercent }}%</td>
                 <td class="num">{{ row.activeTasks }}</td>
                 <td class="num">{{ row.highPriorityTasks }}</td>
                 <td class="num" [class.workload-cell--overdue]="row.overdueTasks > 0">{{ row.overdueTasks }}</td>

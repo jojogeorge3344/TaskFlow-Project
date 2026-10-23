@@ -3,8 +3,9 @@
 export interface EmployeeWorkload {
   userId: number;
   fullName: string;
-  projectId: number | null;
-  projectName: string | null;
+  /** Every project the employee is on, with their percentage. */
+  projects: { projectId: number; projectName: string; positionId: number; positionName: string; percent: number }[];
+  allocatedPercent: number;
   activeTasks: number;
   highPriorityTasks: number;
   overdueTasks: number;

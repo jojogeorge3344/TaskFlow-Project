@@ -86,12 +86,30 @@ describe('ProjectFormDialogComponent', () => {
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
+  it('emits created for a new project so the Assign team step can follow, but not for an edit', () => {
+    const createdSpy = jasmine.createSpy('created');
+    fixture.componentInstance.created.subscribe(createdSpy);
+    createSpy.and.returnValue(of({ id: 9, name: 'Apollo', description: null, createdAt: '2026-09-01' }));
+    updateSpy.and.returnValue(of({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01' }));
+
+    fixture.componentInstance.open(null);
+    fixture.detectChanges();
+    setName('Apollo');
+    submit();
+    expect(createdSpy).toHaveBeenCalledOnceWith(jasmine.objectContaining({ id: 9, name: 'Apollo' }));
+
+    fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0, managers: [] });
+    fixture.detectChanges();
+    submit();
+    expect(createdSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('updates an existing project, closes, toasts and emits saved', () => {
     const savedSpy = jasmine.createSpy('saved');
     fixture.componentInstance.saved.subscribe(savedSpy);
     updateSpy.and.returnValue(of({ id: 2, name: 'Finance & Accounts', description: null, createdAt: '2026-09-01' }));
 
-    fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0 });
+    fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0, managers: [] });
     fixture.detectChanges();
 
     expect(el().querySelector('h2')?.textContent).toContain('Edit project');

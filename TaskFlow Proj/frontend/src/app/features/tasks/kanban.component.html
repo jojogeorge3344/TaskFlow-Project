@@ -11,6 +11,15 @@
   </header>
 
   <div class="tf-card tf-toolbar kanban__filters" role="search" aria-label="Filter board">
+    <div class="tf-field">
+      <label for="board-filter-project">Project</label>
+      <select id="board-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+        <option value="" [selected]="projectId() === null">All projects</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
+        }
+      </select>
+    </div>
     @if (canManage()) {
       <div class="tf-field">
         <label for="board-filter-assignee">Assignee</label>
@@ -114,6 +123,7 @@
                 class="kanban__card"
                 [class.kanban__card--overdue]="task.isOverdue"
                 cdkDrag
+                [cdkDragDisabled]="!canMove()"
                 [cdkDragData]="task"
                 tabindex="0"
                 (click)="open(task)"
@@ -124,6 +134,9 @@
                   <span class="kanban__priority" [class]="priorityClass(task.priority)">{{ task.priority }}</span>
                 </header>
                 <h3 class="kanban__title">{{ task.title }}</h3>
+                @if (task.projectName) {
+                  <p class="kanban__project" data-field="card-project">{{ task.projectName }}</p>
+                }
                 <footer class="kanban__card-foot">
                   <span class="kanban__assignee">
                     <tf-icon name="users" />

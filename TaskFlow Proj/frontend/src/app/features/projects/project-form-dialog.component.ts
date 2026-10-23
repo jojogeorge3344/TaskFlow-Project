@@ -68,6 +68,8 @@ export class ProjectFormDialogComponent {
   private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
 
   readonly saved = output<Project>();
+  /** Emits only when a new project was added, so the screen can go straight on to assigning its team. */
+  readonly created = output<Project>();
 
   readonly editing = signal<ProjectWithCount | null>(null);
   readonly saving = signal(false);
@@ -131,6 +133,9 @@ export class ProjectFormDialogComponent {
         this.toast.success(project ? `${result.name} updated` : `${result.name} added`);
         this.close();
         this.saved.emit(result);
+        if (!project) {
+          this.created.emit(result);
+        }
       },
       error: (err) => {
         this.saving.set(false);

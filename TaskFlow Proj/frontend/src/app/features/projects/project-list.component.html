@@ -63,11 +63,13 @@
   } @else {
     <div class="project-grid">
       @for (project of filtered(); track project.id) {
-        <article class="tf-card project">
+        <article class="tf-card project project--clickable">
           <div class="project__top">
             <span class="project__icon" aria-hidden="true"><tf-icon name="building" /></span>
             <div class="project__heading">
-              <h2 class="project__name">{{ project.name }}</h2>
+              <h2 class="project__name">
+                <a class="project__link" data-action="open" [routerLink]="['/projects', project.id]">{{ project.name }}</a>
+              </h2>
               @if (project.description) {
                 <p class="project__desc">{{ project.description }}</p>
               } @else {
@@ -79,6 +81,19 @@
           <div class="project__count">
             <strong>{{ project.employeeCount }}</strong>
             <span>{{ employeeLabel(project.employeeCount) }}</span>
+          </div>
+
+          <div class="project__managers" data-field="managers">
+            <span class="project__managers-label">{{ project.managers.length === 1 ? 'Manager' : 'Managers' }}</span>
+            @if (project.managers.length > 0) {
+              <ul class="tf-chips">
+                @for (name of project.managers; track name) {
+                  <li class="tf-pill">{{ name }}</li>
+                }
+              </ul>
+            } @else {
+              <span class="project__desc--none">No manager yet</span>
+            }
           </div>
 
           <div class="project__foot">
@@ -93,8 +108,21 @@
                 <tf-icon name="arrow" />
               </a>
             }
-            @if (canManage()) {
+            @if (canMembers() || canEdit() || canDelete()) {
               <div class="project__actions">
+                @if (canMembers()) {
+                <button
+                  type="button"
+                  class="tf-btn tf-btn--icon"
+                  data-action="team"
+                  [attr.aria-label]="'Manage team of ' + project.name"
+                  title="Team"
+                  (click)="openTeam(project)"
+                >
+                  <tf-icon name="users" />
+                </button>
+                }
+                @if (canEdit()) {
                 <button
                   type="button"
                   class="tf-btn tf-btn--icon"
@@ -105,23 +133,19 @@
                 >
                   <tf-icon name="edit" />
                 </button>
+                }
+                @if (canDelete()) {
                 <button
                   type="button"
                   class="tf-btn tf-btn--icon tf-btn--danger"
                   data-action="delete"
                   [attr.aria-label]="'Delete ' + project.name"
-                  [title]="project.employeeCount > 0 ? 'Reassign its employees before deleting' : 'Delete'"
-                  [attr.aria-describedby]="project.employeeCount > 0 ? 'project-delete-hint-' + project.id : null"
-                  [attr.aria-disabled]="project.employeeCount > 0 ? 'true' : null"
+                  title="Delete"
                   [disabled]="deletingId() === project.id"
                   (click)="delete(project)"
                 >
                   <tf-icon name="trash" />
                 </button>
-                @if (project.employeeCount > 0) {
-                  <span class="tf-sr-only" [id]="'project-delete-hint-' + project.id">
-                    Reassign its {{ project.employeeCount }} {{ employeeLabel(project.employeeCount) }} before deleting.
-                  </span>
                 }
               </div>
             }
@@ -132,5 +156,6 @@
   }
 </section>
 
-<app-project-form-dialog (saved)="load()" />
+<app-project-form-dialog (saved)="load()" (created)="openAssignTeam($event)" />
+<app-project-team-dialog (saved)="load()" />
 <tf-confirm-dialog />

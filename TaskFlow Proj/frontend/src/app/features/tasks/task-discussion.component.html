@@ -1,7 +1,7 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]" queryParamsHandling="preserve">
         <tf-icon name="arrow" />
         Back to task #{{ taskId }}
       </a>
@@ -48,6 +48,7 @@
         </ol>
       }
 
+      @if (canComment) {
       <form class="tf-card discussion__composer" (ngSubmit)="post()">
         <label for="discussion-body" class="discussion__label">Add a comment</label>
         <textarea
@@ -68,6 +69,7 @@
           </button>
         </div>
       </form>
+      }
     </div>
   }
 </section>

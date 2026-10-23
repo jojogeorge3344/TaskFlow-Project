@@ -11,16 +11,18 @@
       </p>
     </div>
     <div class="tf-page-actions">
-      <button
-        type="button"
-        class="tf-btn tf-btn--primary"
-        [disabled]="exporting() || loading()"
-        (click)="exportCsv()"
-        data-action="export"
-      >
-        <tf-icon name="download" />
-        {{ exporting() ? 'Exporting…' : 'Export CSV' }}
-      </button>
+      @if (canExport()) {
+        <button
+          type="button"
+          class="tf-btn tf-btn--primary"
+          [disabled]="exporting() || loading()"
+          (click)="exportCsv()"
+          data-action="export"
+        >
+          <tf-icon name="download" />
+          {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      }
     </div>
   </header>
 

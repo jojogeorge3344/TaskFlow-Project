@@ -27,38 +27,52 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task AnAdministratorAssignsProjectsToAManagerAndAnEmployeeToThem()
+    public async Task AFlaggedProjectManagerIsTheManagerOfEveryoneOnTheProject()
     {
         var client = _factory.CreateClient();
         var admin = await SignInAsync(client, "ma-admin-1", SystemRoles.Administrator);
         var manager = await SeedAsync("ma-mgr-1", SystemRoles.Manager);
         var employee = await SeedAsync("ma-emp-1");
         var finance = await AddProjectAsync("MA Finance 1");
-        var ops = await AddProjectAsync("MA Operations 1");
 
-        var forManager = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{manager.Id}/assignments", admin,
-            new { managerId = (int?)null, managerProjectIds = new[] { finance, ops } });
-        var forEmployee = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
+        var saved = await SendAsync(client, HttpMethod.Put, $"/api/v1/projects/{finance}/members", admin, new
+        {
+            members = new object[]
+            {
+                new { userId = manager.Id, positionId = 2, percent = 20, isManager = true },
+                new { userId = employee.Id, positionId = 4, percent = 60, isManager = false }
+            }
+        });
 
-        Assert.Equal(HttpStatusCode.OK, forManager.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, forEmployee.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
 
         using var managerView = await JsonAsync(client, $"/api/v1/users/{manager.Id}", admin);
-        var projects = managerView.RootElement.GetProperty("managerProjects").EnumerateArray()
-            .Select(project => project.GetProperty("name").GetString()).Order().ToList();
-        Assert.Equal(["MA Finance 1", "MA Operations 1"], projects);
-        var reports = managerView.RootElement.GetProperty("reports").EnumerateArray()
-            .Select(report => report.GetProperty("id").GetInt32()).ToList();
-        Assert.Equal([employee.Id], reports);
+        Assert.Equal(
+            ["MA Finance 1"],
+            managerView.RootElement.GetProperty("managerProjects").EnumerateArray().Select(project => project.GetProperty("name").GetString()));
+        Assert.Equal(
+            [employee.Id],
+            managerView.RootElement.GetProperty("reports").EnumerateArray().Select(report => report.GetProperty("id").GetInt32()));
 
         using var employeeView = await JsonAsync(client, $"/api/v1/users/{employee.Id}", admin);
-        Assert.Equal(manager.Id, employeeView.RootElement.GetProperty("managerId").GetInt32());
-        Assert.Equal("ma-mgr-1 full name", employeeView.RootElement.GetProperty("managerName").GetString());
+        Assert.Equal(manager.Id, Assert.Single(employeeView.RootElement.GetProperty("managers").EnumerateArray()).GetProperty("id").GetInt32());
 
         using var list = await JsonAsync(client, "/api/v1/users", admin);
         Assert.Contains(list.RootElement.EnumerateArray(), user => user.GetProperty("id").GetInt32() == employee.Id
-            && user.GetProperty("managerName").GetString() == "ma-mgr-1 full name");
+            && user.GetProperty("managers").EnumerateArray().Any(m => m.GetProperty("fullName").GetString() == "ma-mgr-1 full name"));
+    }
+
+    [Fact]
+    public async Task TheDirectManagerProjectsEndpointNoLongerExists()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "ma-admin-gone", SystemRoles.Administrator);
+        var manager = await SeedAsync("ma-mgr-gone", SystemRoles.Manager);
+
+        var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{manager.Id}/assignments", admin,
+            new { managerProjectIds = Array.Empty<int>() });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -68,76 +82,19 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var admin = await SignInAsync(client, "ma-admin-2", SystemRoles.Administrator);
         var manager = await SeedAsync("ma-mgr-2", SystemRoles.Manager);
         var employee = await SeedAsync("ma-emp-2");
-        await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
+        await AddTeamAsync("MA Team 2", manager.Id, employee.Id);
         var employeeToken = await TokenAsync(client, "ma-emp-2");
 
         using var profile = await JsonAsync(client, "/api/v1/users/me", employeeToken);
 
-        Assert.Equal("ma-mgr-2 full name", profile.RootElement.GetProperty("managerName").GetString());
-    }
-
-    [Theory]
-    [InlineData(SystemRoles.Manager)]
-    [InlineData(SystemRoles.Employee)]
-    public async Task NonAdministratorsCannotChangeAssignments(string role)
-    {
-        var client = _factory.CreateClient();
-        var token = await SignInAsync(client, $"ma-nonadmin-{role.ToLowerInvariant()}", role);
-        var manager = await SeedAsync($"ma-target-mgr-{role.ToLowerInvariant()}", SystemRoles.Manager);
-        var employee = await SeedAsync($"ma-target-emp-{role.ToLowerInvariant()}");
-
-        var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", token,
-            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Null((await UserAsync(employee.Username)).ManagerId);
-    }
-
-    [Fact]
-    public async Task ARoleThatCanManageEmployeesCannotChangeAssignments()
-    {
-        var client = _factory.CreateClient();
-        var roleId = await AddRoleAsync(PermissionKeys.EmployeesView, PermissionKeys.EmployeesManage);
-        var token = await SignInInRoleAsync(client, "ma-people-mgr", roleId);
-        var manager = await SeedAsync("ma-target-mgr-people", SystemRoles.Manager);
-        var employee = await SeedAsync("ma-target-emp-people");
-
-        var response = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", token,
-            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Null((await UserAsync(employee.Username)).ManagerId);
-    }
-
-    [Fact]
-    public async Task InvalidAssignmentsAreRejectedWithAMessageAndAnUnknownUserIsNotFound()
-    {
-        var client = _factory.CreateClient();
-        var admin = await SignInAsync(client, "ma-admin-3", SystemRoles.Administrator);
-        var employee = await SeedAsync("ma-emp-3");
-        var otherEmployee = await SeedAsync("ma-emp-3b");
-        var project = await AddProjectAsync("MA Dept 3");
-
-        var notAManager = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = otherEmployee.Id, managerProjectIds = Array.Empty<int>() });
-        var projectsForEmployee = await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{employee.Id}/assignments", admin,
-            new { managerId = (int?)null, managerProjectIds = new[] { project } });
-        var unknown = await SendAsync(client, HttpMethod.Put, "/api/v1/users/999999/assignments", admin,
-            new { managerId = (int?)null, managerProjectIds = Array.Empty<int>() });
-
-        Assert.Equal(HttpStatusCode.BadRequest, notAManager.StatusCode);
-        Assert.Contains("active Manager", await notAManager.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.BadRequest, projectsForEmployee.StatusCode);
-        Assert.Contains("Only a Manager", await projectsForEmployee.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal("ma-mgr-2 full name", Assert.Single(profile.RootElement.GetProperty("managers").EnumerateArray()).GetProperty("fullName").GetString());
     }
 
     [Fact]
     public async Task Assignments_DefineWhichTasksAManagerSees_ButNotWorkloadOrReports()
     {
         var client = _factory.CreateClient();
-        var admin = await SignInAsync(client, "ma-admin-4", SystemRoles.Administrator);
+        await SignInAsync(client, "ma-admin-4", SystemRoles.Administrator);
         var adminUser = await UserAsync("ma-admin-4");
         var manager = await SeedAsync("ma-mgr-4", SystemRoles.Manager);
         var otherManager = await SeedAsync("ma-mgr-4b", SystemRoles.Manager);
@@ -158,13 +115,8 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         }
 
         var before = await SnapshotAsync();
-        await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{mine.Id}/assignments", admin,
-            new { managerId = manager.Id, managerProjectIds = Array.Empty<int>() });
-        await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{theirs.Id}/assignments", admin,
-            new { managerId = otherManager.Id, managerProjectIds = Array.Empty<int>() });
-        var projectId = await AddProjectAsync("MA Dept 4");
-        await SendAsync(client, HttpMethod.Put, $"/api/v1/users/{manager.Id}/assignments", admin,
-            new { managerId = (int?)null, managerProjectIds = new[] { projectId } });
+        await AddTeamAsync("MA Team 4a", manager.Id, mine.Id);
+        await AddTeamAsync("MA Team 4b", otherManager.Id, theirs.Id);
         var after = await SnapshotAsync();
 
         // The Tasks screen follows the manager's team: nobody was assigned before, only "mine" is on the team after.
@@ -192,6 +144,23 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await db.Users.IgnoreQueryFilters().AsNoTracking().SingleAsync(user => user.Username == username);
+    }
+
+    /// <summary>A department the manager manages and the employees belong to: that is what makes them the employees' manager.</summary>
+    private async Task AddTeamAsync(string departmentName, int managerId, params int[] employeeIds)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var department = new Department { Name = departmentName, CreatedAt = DateTime.UtcNow };
+        db.Departments.Add(department);
+        await db.SaveChangesAsync();
+        db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = managerId, DepartmentId = department.Id });
+        foreach (var employeeId in employeeIds)
+        {
+            db.UserDepartments.Add(new UserDepartment { UserId = employeeId, DepartmentId = department.Id });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private async Task<int> AddProjectAsync(string name)
@@ -223,36 +192,6 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
             UpdatedAt = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-    }
-
-    private async Task<int> AddRoleAsync(params string[] permissionKeys)
-    {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
-
-        var role = new Role { Name = $"Custom {Guid.NewGuid():N}"[..30], IsSystem = false, CreatedAt = DateTime.UtcNow };
-        foreach (var permission in await db.Permissions.Where(permission => permissionKeys.Contains(permission.Key)).ToListAsync())
-        {
-            role.Permissions.Add(new RolePermission { Permission = permission });
-        }
-
-        db.Roles.Add(role);
-        await db.SaveChangesAsync();
-        return role.Id;
-    }
-
-    private async Task<string> SignInInRoleAsync(HttpClient client, string username, int roleId)
-    {
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", Password, SystemRoles.Employee);
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            (await db.Users.SingleAsync(user => user.Username == username)).RoleId = roleId;
-            await db.SaveChangesAsync();
-        }
-
-        return await TokenAsync(client, username);
     }
 
     private async Task<string> SignInAsync(HttpClient client, string username, string role)

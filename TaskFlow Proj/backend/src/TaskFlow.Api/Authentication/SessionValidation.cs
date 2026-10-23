@@ -67,7 +67,7 @@ public static class SessionValidation
                 identity.AddClaim(new Claim(AuthClaims.MfaSetupRequired, "true"));
             }
 
-            identity.AddClaims(user.PermissionKeys.Select(key => new Claim(AuthClaims.Permission, key)));
+            identity.AddClaims(TaskFlow.Domain.Security.EffectivePermissions.Expand(user.PermissionKeys).Select(key => new Claim(AuthClaims.Permission, key)));
         }
     }
 }

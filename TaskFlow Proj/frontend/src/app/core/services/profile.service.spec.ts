@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { ChangePassword, UpdateOwnProfile, User } from '../models';
 import { ProfileService } from './profile.service';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('ProfileService', () => {
   let service: ProfileService;
@@ -16,7 +17,8 @@ describe('ProfileService', () => {
     role: 'Employee',
     roleId: 3,
     isActive: true,
-    createdAt: '2026-01-01T00:00:00Z'
+    createdAt: '2026-01-01T00:00:00Z',
+    ...NO_ALLOCATIONS
   };
 
   beforeEach(() => {
@@ -57,7 +59,7 @@ describe('ProfileService', () => {
   });
 
   it('changes the password with POST /users/me/password', () => {
-    const change: ChangePassword = { currentPassword: 'P@ssw0rd!', newPassword: 'N3wP@ss!' };
+    const change: ChangePassword = { newPassword: 'N3wP@ss!' };
     let completed = false;
     service.changePassword(change).subscribe(() => (completed = true));
 

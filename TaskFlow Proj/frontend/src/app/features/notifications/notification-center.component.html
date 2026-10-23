@@ -11,16 +11,18 @@
       </p>
     </div>
     <div class="tf-page-actions">
-      <button
-        type="button"
-        class="tf-btn tf-btn--ghost"
-        data-action="mark-all"
-        [disabled]="unreadCount() === 0"
-        (click)="markAllRead()"
-      >
-        <tf-icon name="check" />
-        Mark all as read
-      </button>
+      @if (canManage()) {
+        <button
+          type="button"
+          class="tf-btn tf-btn--ghost"
+          data-action="mark-all"
+          [disabled]="unreadCount() === 0"
+          (click)="markAllRead()"
+        >
+          <tf-icon name="check" />
+          Mark all as read
+        </button>
+      }
     </div>
   </header>
 

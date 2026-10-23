@@ -29,7 +29,7 @@ describe('TaskDiscussionComponent', () => {
       imports: [TaskDiscussionComponent],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '7' } } } },
-        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }) } },
+        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }), hasPermission: () => true } },
         { provide: TaskService, useValue: { getComments: getCommentsSpy, addComment: addCommentSpy } },
         { provide: ToastService, useValue: toast }
       ]
@@ -90,7 +90,7 @@ describe('TaskDiscussionComponent', () => {
       imports: [TaskDiscussionComponent],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '7' } } } },
-        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }) } },
+        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }), hasPermission: () => true } },
         { provide: TaskService, useValue: { getComments: getCommentsSpy, addComment: addCommentSpy } },
         { provide: ToastService, useValue: toast }
       ]
@@ -111,7 +111,7 @@ describe('TaskDiscussionComponent', () => {
       imports: [TaskDiscussionComponent],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '7' } } } },
-        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }) } },
+        { provide: AuthService, useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Manager' }), hasPermission: () => true } },
         { provide: TaskService, useValue: { getComments: getCommentsSpy, addComment: addCommentSpy } },
         { provide: ToastService, useValue: toast }
       ]

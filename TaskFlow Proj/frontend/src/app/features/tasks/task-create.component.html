@@ -15,6 +15,36 @@
       </div>
     }
 
+    @if (copyNotice(); as notice) {
+      <div class="tf-notice" [class.tf-notice--info]="notice.kind === 'info'" role="status" data-copy-notice>
+        <tf-icon name="alert" />
+        <span>{{ notice.message }}</span>
+      </div>
+    }
+
+    <div class="tf-field">
+      <label for="task-project">Project <span class="tf-field__required" aria-hidden="true">*</span></label>
+      <select
+        id="task-project"
+        class="tf-select"
+        formControlName="projectId"
+        [class.is-invalid]="showError('projectId')"
+        [attr.aria-invalid]="showError('projectId')"
+        aria-describedby="task-project-error"
+      >
+        <option [ngValue]="null">{{ projectsLoading() ? 'Loading projects…' : 'Select a project…' }}</option>
+        @for (project of projects(); track project.id) {
+          <option [ngValue]="project.id">{{ project.name }}</option>
+        }
+      </select>
+      @if (showError('projectId')) {
+        <span id="task-project-error" class="tf-field__error" data-error="projectId">Project is required.</span>
+      }
+      @if (projectsError()) {
+        <span class="tf-field__error">Could not load projects. Reload the page to try again.</span>
+      }
+    </div>
+
     <div class="tf-field">
       <label for="task-title">Title <span class="tf-field__required" aria-hidden="true">*</span></label>
       <input

@@ -8,6 +8,7 @@ using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
 using DepartmentEntity = TaskFlow.Domain.Entities.Department;
 using DepartmentManagerEntity = TaskFlow.Domain.Entities.DepartmentManager;
+using UserDepartmentEntity = TaskFlow.Domain.Entities.UserDepartment;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
@@ -106,9 +107,15 @@ public class ManagerAnalyticsIsolationTests : IClassFixture<TaskFlowApiFactory>
             await db.SaveChangesAsync();
             db.DepartmentManagers.Add(new DepartmentManagerEntity { ManagerUserId = users["iso-mgr-a"].Id, DepartmentId = department.Id });
             db.DepartmentManagers.Add(new DepartmentManagerEntity { ManagerUserId = users["iso-mgr-b"].Id, DepartmentId = department.Id });
-            users["iso-shared"].DepartmentId = department.Id;
-            users["iso-a-report"].ManagerId = users["iso-mgr-a"].Id;
-            users["iso-b-report"].ManagerId = users["iso-mgr-b"].Id;
+            db.UserDepartments.Add(new UserDepartmentEntity { UserId = users["iso-shared"].Id, DepartmentId = department.Id });
+            var teamA = new DepartmentEntity { Name = "Iso team A", CreatedAt = DateTime.UtcNow };
+            var teamB = new DepartmentEntity { Name = "Iso team B", CreatedAt = DateTime.UtcNow };
+            db.Departments.AddRange(teamA, teamB);
+            await db.SaveChangesAsync();
+            db.DepartmentManagers.Add(new DepartmentManagerEntity { ManagerUserId = users["iso-mgr-a"].Id, DepartmentId = teamA.Id });
+            db.DepartmentManagers.Add(new DepartmentManagerEntity { ManagerUserId = users["iso-mgr-b"].Id, DepartmentId = teamB.Id });
+            db.UserDepartments.Add(new UserDepartmentEntity { UserId = users["iso-a-report"].Id, DepartmentId = teamA.Id });
+            db.UserDepartments.Add(new UserDepartmentEntity { UserId = users["iso-b-report"].Id, DepartmentId = teamB.Id });
             var now = DateTime.UtcNow;
             foreach (var name in new[] { "iso-a-report", "iso-b-report", "iso-shared" })
             {

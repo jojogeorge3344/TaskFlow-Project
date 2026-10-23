@@ -387,7 +387,7 @@ public class AssistantActionService : IAssistantActionService
                 // UpdateAsync replaces every field, so everything except the role is passed through unchanged.
                 var updated = await _users.UpdateAsync(
                     target.Id,
-                    new UpdateUserRequest(target.EmployeeCode, target.FullName, target.Username, target.Email, change.NewRoleId, target.ProjectId, target.DepartmentId),
+                    new UpdateUserRequest(target.EmployeeCode, target.FullName, target.Username, target.Email, change.NewRoleId, target.ProjectAllocations.Select(a => new ProjectAllocationInput(a.ProjectId, a.PositionId, a.Percent)).ToList(), target.Departments.Select(d => d.Id).ToList()),
                     cancellationToken) ?? throw new InvalidOperationException("that user was not found");
                 return $"Done. {updated.FullName} is now a {updated.Role}. They were signed out and will use the new role the next time they sign in.";
         }

@@ -106,25 +106,13 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task Password_WrongCurrent_Returns400()
-    {
-        var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-wrong-pw", SystemRoles.Employee);
-
-        var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
-            JsonContent.Create(new { currentPassword = "not-the-password", newPassword = "N3wP@ss!" }));
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
     public async Task Password_ShortNewPassword_Returns400()
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "prof-short-pw", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
-            JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = "abc" }));
+            JsonContent.Create(new { newPassword = "abc" }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -137,28 +125,23 @@ public class UserProfileEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var tooLong = new string('x', 129);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
-            JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = tooLong }));
+            JsonContent.Create(new { newPassword = tooLong }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Password_Change_Returns204_AndEndsSessions()
+    public async Task Password_WithoutTwoStepVerification_Returns400_AndChangesNothing()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "prof-pw-change", SystemRoles.Employee);
+        var token = await LoginAsync(client, "prof-pw-nomfa", SystemRoles.Employee);
 
         var response = await SendAsync(client, HttpMethod.Post, $"{MeUrl}/password", token,
-            JsonContent.Create(new { currentPassword = "P@ssw0rd!", newPassword = "N3wP@ss!" }));
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            JsonContent.Create(new { newPassword = "N3wP@ss!" }));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        // The old access token no longer passes validation (the security stamp changed).
-        var oldTokenCall = await SendAsync(client, HttpMethod.Get, MeUrl, token);
-        Assert.Equal(HttpStatusCode.Unauthorized, oldTokenCall.StatusCode);
-
-        // Signing in with the new password works.
         var login = await client.PostAsJsonAsync("/api/v1/auth/login",
-            new { emailOrUsername = "prof-pw-change", password = "N3wP@ss!" });
+            new { emailOrUsername = "prof-pw-nomfa", password = "P@ssw0rd!" });
         login.EnsureSuccessStatusCode();
     }
 

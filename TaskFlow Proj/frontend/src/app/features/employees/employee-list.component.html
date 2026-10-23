@@ -10,10 +10,12 @@
         }
       </p>
     </div>
-    <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
-      <tf-icon name="plus" />
-      Add employee
-    </button>
+    @if (canCreate()) {
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+        <tf-icon name="plus" />
+        Add employee
+      </button>
+    }
   </header>
 
   <div class="tf-card tf-toolbar" role="search" aria-label="Filter employees">
@@ -82,7 +84,7 @@
         } @else {
           <strong>No employees yet</strong>
           <p>Add the first employee to get started.</p>
-          <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add employee</button>
+          @if (canCreate()) { <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add employee</button> }
         }
       </div>
     } @else {
@@ -92,7 +94,8 @@
             <tr>
               <th scope="col">Employee</th>
               <th scope="col">Email</th>
-              <th scope="col">Project</th>
+              <th scope="col">Projects</th>
+              <th scope="col">Departments</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
               <th scope="col"><span class="tf-sr-only">Actions</span></th>
@@ -104,6 +107,7 @@
                 <tr class="skeleton-row" aria-hidden="true">
                   <td class="cell-person"><span class="tf-skeleton" style="width: 10rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 12rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 6rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 6rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 5rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 4rem"></span></td>
@@ -125,10 +129,23 @@
                     </div>
                   </td>
                   <td data-label="Email" class="cell-email">{{ employee.email }}</td>
-                  <td data-label="Project">
-                    @if (employee.projectName) {
-                      {{ employee.projectName }}
-                    } @else {
+                  <td data-label="Projects" data-cell="projects">
+                    @for (allocation of employee.projectAllocations; track allocation.projectId) {
+                      <div class="project-line">
+                        {{ allocation.projectName }} <strong>{{ allocation.percent }}%</strong>
+                        <span class="project-line__position">{{ allocation.positionName }}</span>
+                      </div>
+                    } @empty {
+                      <span class="unassigned">Unassigned</span>
+                    }
+                    @if (employee.projectAllocations.length > 1) {
+                      <div class="project-line project-line--total" data-total>{{ employee.totalAllocatedPercent }}% total</div>
+                    }
+                  </td>
+                  <td data-label="Departments" data-cell="departments">
+                    @for (department of employee.departments; track department.id; let last = $last) {
+                      {{ department.name }}{{ last ? '' : ', ' }}
+                    } @empty {
                       <span class="unassigned">Unassigned</span>
                     }
                   </td>
@@ -142,6 +159,7 @@
                   </td>
                   <td class="cell-actions">
                     <div class="actions">
+                      @if (canEdit()) {
                       <button
                         type="button"
                         class="tf-btn tf-btn--icon"
@@ -152,6 +170,8 @@
                       >
                         <tf-icon name="edit" />
                       </button>
+                      }
+                      @if (canChangeStatus()) {
                       <button
                         type="button"
                         class="tf-btn tf-btn--icon"
@@ -164,6 +184,7 @@
                       >
                         <tf-icon name="power" />
                       </button>
+                      }
                       @if (canDeleteEmployee(employee)) {
                         <button
                           type="button"

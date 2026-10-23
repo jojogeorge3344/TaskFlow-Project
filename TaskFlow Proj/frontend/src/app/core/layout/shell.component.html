@@ -107,6 +107,7 @@
     <span class="header__brand">{{ appName() }}</span>
     <span class="header__title">{{ pageTitle() }}</span>
     <span class="header__spacer"></span>
+    @if (canSeeNotifications()) {
     <a
       class="header__bell"
       routerLink="/notifications"
@@ -119,6 +120,7 @@
         <span class="header__dot" data-dot aria-hidden="true"></span>
       }
     </a>
+    }
   </header>
 
   <main class="content">
@@ -129,5 +131,7 @@
   </main>
 </div>
 
-<app-tfa-panel />
+@if (canUseAssistant()) {
+  <app-tfa-panel />
+}
 <tf-toast-host />

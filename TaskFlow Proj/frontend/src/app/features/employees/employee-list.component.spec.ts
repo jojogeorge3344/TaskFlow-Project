@@ -8,16 +8,18 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of, throwError } from 'rxjs';
 import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { PositionService } from '../../core/services/position.service';
 import { ProjectService } from '../../core/services/project.service';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeListComponent, SEARCH_DEBOUNCE_MS } from './employee-list.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('EmployeeListComponent', () => {
   const projects: ProjectWithCount[] = [
-    { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 2 },
-    { id: 3, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 1 }
+    { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 2, managers: [] },
+    { id: 3, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 1, managers: [] }
   ];
 
   const departments: DepartmentWithCount[] = [
@@ -36,15 +38,16 @@ describe('EmployeeListComponent', () => {
       isActive: true,
       createdAt: '2026-09-05T00:00:00Z',
       lastLoginAt: null,
-      projectId: 1,
-      projectName: 'Engineering',
+      ...withProject(1, 'Engineering'),
+      departments: [],
+      managers: [],
       ...overrides
     };
   }
 
   const employees: User[] = [
     user({ id: 1 }),
-    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', projectId: null, projectName: null })
+    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', ...NO_ALLOCATIONS })
   ];
 
   let getAllSpy: jasmine.Spy;
@@ -55,12 +58,18 @@ describe('EmployeeListComponent', () => {
   let queryParams: Record<string, string>;
 
   function configure(): void {
+    // Specs that do not care who is signed in act as someone who may do everything on the screen.
+    if (currentUser() === null) {
+      currentUser.set({ id: 999, permissions: systemPermissions('Administrator') });
+    }
+
     TestBed.configureTestingModule({
       imports: [EmployeeListComponent],
       providers: [
         provideRouter([]),
         { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy, delete: deleteSpy } },
         { provide: ProjectService, useValue: { getAll: () => of(projects) } },
+        { provide: PositionService, useValue: { getAll: () => of([]), getOrCreate: () => of({ id: 1, name: 'Member' }) } },
         { provide: DepartmentService, useValue: { getAll: departmentsGetAllSpy } },
         { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
         { provide: RoleService, useValue: { list: () => of([]) } },
@@ -93,9 +102,41 @@ describe('EmployeeListComponent', () => {
     currentUser.set(null);
   });
 
+  describe('projects and departments', () => {
+    it('shows every project with its percentage and position, the total, and every department', () => {
+      currentUser.set({ id: 2, permissions: systemPermissions('Administrator') });
+      getAllSpy.and.returnValue(
+        of([
+          user({
+            id: 1,
+            projectAllocations: [
+              { projectId: 1, projectName: 'Apollo', positionId: 3, positionName: 'QA', percent: 60 },
+              { projectId: 2, projectName: 'Zephyr', positionId: 4, positionName: 'Developer', percent: 40 }
+            ],
+            totalAllocatedPercent: 100,
+            remainingPercent: 0,
+            departments: [{ id: 5, name: 'Finance' }, { id: 6, name: 'Human Resources' }]
+          }),
+          user({ id: 2, fullName: 'Solo Project' }),
+          user({ id: 3, fullName: 'Nobody', ...NO_ALLOCATIONS })
+        ])
+      );
+      configure();
+      const fixture = create();
+
+      const cells = (row: number, name: string) =>
+        (el(fixture).querySelectorAll('tr.employee-row')[row].querySelector(`[data-cell="${name}"]`)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+      expect(cells(0, 'projects')).toBe('Apollo 60%QA Zephyr 40%Developer100% total');
+      expect(cells(0, 'departments')).toBe('Finance, Human Resources');
+      expect(cells(1, 'projects')).toBe('Engineering 100%Member');
+      expect(cells(2, 'projects')).toBe('Unassigned');
+      expect(cells(2, 'departments')).toBe('Unassigned');
+    });
+  });
+
   describe('delete', () => {
-    it('is not offered to a Manager, even one who can manage employees', () => {
-      currentUser.set({ id: 50, permissions: [Permissions.EmployeesView, Permissions.EmployeesManage] });
+    it('is not offered to a Manager, even one who can edit employees', () => {
+      currentUser.set({ id: 50, permissions: [Permissions.EmployeesView, Permissions.EmployeesEdit] });
       configure();
       const fixture = create();
 
@@ -287,7 +328,7 @@ describe('EmployeeListComponent', () => {
     expect(el(fixture).querySelector('.tf-drawer')?.textContent).toContain('EMP-001');
   }));
 
-  it('loads the departments and offers them in the add form', fakeAsync(() => {
+  it('loads the departments and offers them as checkboxes in the add form', fakeAsync(() => {
     configure();
     const fixture = create();
 
@@ -297,9 +338,10 @@ describe('EmployeeListComponent', () => {
     fixture.detectChanges();
     flush();
 
-    const select = el(fixture).querySelector('#emp-department') as HTMLSelectElement;
-    const options = Array.from(select.options).map((option) => option.text.trim());
-    expect(options).toEqual(['Unassigned', 'Human Resources']);
+    const options = Array.from(el(fixture).querySelectorAll('[data-department]')).map((box) =>
+      (box.closest('label')?.textContent ?? '').trim()
+    );
+    expect(options).toEqual(['Human Resources']);
   }));
 
   it('does not deactivate when the confirmation is cancelled', fakeAsync(() => {

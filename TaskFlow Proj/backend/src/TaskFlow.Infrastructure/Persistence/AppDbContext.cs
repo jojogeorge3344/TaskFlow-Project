@@ -26,6 +26,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<ManagerProject> ManagerProjects => Set<ManagerProject>();
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<DepartmentManager> DepartmentManagers => Set<DepartmentManager>();
+    public DbSet<Position> Positions => Set<Position>();
+    public DbSet<UserProjectAllocation> UserProjectAllocations => Set<UserProjectAllocation>();
+    public DbSet<UserDepartment> UserDepartments => Set<UserDepartment>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
@@ -74,24 +77,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(user => user.Email).IsUnique();
 
             entity.HasQueryFilter(user => !user.IsDeleted);
-
-            entity
-                .HasOne(user => user.Project)
-                .WithMany(project => project.Users)
-                .HasForeignKey(user => user.ProjectId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity
-                .HasOne(user => user.Department)
-                .WithMany(department => department.Users)
-                .HasForeignKey(user => user.DepartmentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity
-                .HasOne(user => user.Manager)
-                .WithMany(manager => manager.Reports)
-                .HasForeignKey(user => user.ManagerId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ManagerProject>(entity =>
@@ -142,6 +127,77 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(link => link.DepartmentId);
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.HasKey(position => position.Id);
+
+            // NOCASE makes the unique index reject "qa" when "QA" exists.
+            entity.Property(position => position.Name).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+            entity.HasIndex(position => position.Name).IsUnique();
+
+            entity.HasData(
+                new Position { Id = 1, Name = "Member" },
+                new Position { Id = 2, Name = "Manager" },
+                new Position { Id = 3, Name = "QA" },
+                new Position { Id = 4, Name = "Developer" },
+                new Position { Id = 5, Name = "DevOps" },
+                new Position { Id = 6, Name = "System Admin" });
+        });
+
+        modelBuilder.Entity<UserProjectAllocation>(entity =>
+        {
+            entity.HasKey(allocation => new { allocation.UserId, allocation.ProjectId });
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_UserProjectAllocations_AllocationPercent",
+                "\"AllocationPercent\" BETWEEN 1 AND 100"));
+
+            entity
+                .HasOne(allocation => allocation.User)
+                .WithMany(user => user.ProjectAllocations)
+                .HasForeignKey(allocation => allocation.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(allocation => allocation.Project)
+                .WithMany(project => project.Allocations)
+                .HasForeignKey(allocation => allocation.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(allocation => allocation.Position)
+                .WithMany(position => position.Allocations)
+                .HasForeignKey(allocation => allocation.PositionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(allocation => allocation.ProjectId);
+            entity.HasIndex(allocation => allocation.PositionId);
+
+            // A soft-deleted user or project takes its allocations out of every query.
+            entity.HasQueryFilter(allocation => !allocation.User.IsDeleted && !allocation.Project.IsDeleted);
+        });
+
+        modelBuilder.Entity<UserDepartment>(entity =>
+        {
+            entity.HasKey(link => new { link.UserId, link.DepartmentId });
+
+            entity
+                .HasOne(link => link.User)
+                .WithMany(user => user.DepartmentMemberships)
+                .HasForeignKey(link => link.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Department)
+                .WithMany(department => department.Memberships)
+                .HasForeignKey(link => link.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.DepartmentId);
+
+            entity.HasQueryFilter(link => !link.User.IsDeleted && !link.Department.IsDeleted);
         });
 
         modelBuilder.Entity<Role>(entity =>

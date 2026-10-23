@@ -19,19 +19,48 @@ export interface User {
   createdAt: string;
   updatedAt?: string | null;
   lastLoginAt?: string | null;
-  projectId?: number | null;
-  projectName?: string | null;
-  /** The department the user belongs to. */
-  departmentId?: number | null;
-  departmentName?: string | null;
-  /** Who this user reports to. Recorded data only; it does not change what anyone can see. */
-  managerId?: number | null;
-  managerName?: string | null;
+  /** The projects the user is assigned to, each with a percentage and the position held there. */
+  projectAllocations: ProjectAllocation[];
+  /** Sum of the percentages across all projects; never above 100. */
+  totalAllocatedPercent: number;
+  remainingPercent: number;
+  /** The departments the user belongs to. */
+  departments: UserDepartmentRef[];
+  /** Derived: the managers of the user's departments. Never set on the user directly. */
+  managers: UserManagerRef[];
   /** For a manager: the projects they are assigned to. */
   managerProjects?: ManagerProjectDto[];
   /** For a manager: the people who report to them. */
   reports?: ManagerReportRef[];
 }
+
+export interface ProjectAllocation {
+  projectId: number;
+  projectName: string;
+  positionId: number;
+  positionName: string;
+  percent: number;
+}
+
+export interface UserDepartmentRef {
+  id: number;
+  name: string;
+}
+
+export interface UserManagerRef {
+  id: number;
+  fullName: string;
+}
+
+/** One project row sent from a form: the project, the position held there and a whole percentage (1 to 100). */
+export interface ProjectAllocationInput {
+  projectId: number;
+  positionId: number;
+  percent: number;
+}
+
+/** The most one person can be allocated across all projects. */
+export const MAX_TOTAL_PERCENT = 100;
 
 export interface ManagerProjectDto {
   id: number;
@@ -43,12 +72,6 @@ export interface ManagerReportRef {
   fullName: string;
 }
 
-/** Replaces a user's manager and, for a manager, their projects. Administrator only. */
-export interface ManagerAssignmentRequest {
-  managerId: number | null;
-  managerProjectIds: number[];
-}
-
 export interface CreateUserRequest {
   employeeCode?: string | null;
   fullName: string;
@@ -57,8 +80,9 @@ export interface CreateUserRequest {
   password: string;
   roleId: number;
   isActive: boolean;
-  projectId?: number | null;
-  departmentId?: number | null;
+  /** Omit to leave unchanged; an empty list clears. */
+  projectAllocations?: ProjectAllocationInput[] | null;
+  departmentIds?: number[] | null;
 }
 
 export interface UpdateUserRequest {
@@ -67,8 +91,8 @@ export interface UpdateUserRequest {
   username: string;
   email: string;
   roleId: number;
-  projectId?: number | null;
-  departmentId?: number | null;
+  projectAllocations?: ProjectAllocationInput[] | null;
+  departmentIds?: number[] | null;
   /** New password; omit or leave empty to keep the current one. Changing it (or the username) ends the user's sessions. */
   password?: string | null;
 }
@@ -85,9 +109,8 @@ export interface UpdateOwnProfile {
   mobileNumber?: string;
 }
 
-/** A self-service password change (Screen 19). Requires the current password. */
+/** A self-service password change (Screen 19). The authenticator code is the proof of identity; no current password. */
 export interface ChangePassword {
-  currentPassword: string;
   newPassword: string;
   /** The current code from the authenticator app (or a backup code). Required while two-step verification is on. */
   mfaCode?: string;

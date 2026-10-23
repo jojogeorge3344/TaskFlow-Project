@@ -82,7 +82,7 @@ public class PermissionAuthorizationTests : IClassFixture<TaskFlowApiFactory>
         var response = await GetAsync(client, "/api/v1/auth/me", token);
         using var body = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
 
-        var expected = PermissionCatalog.All
+        var expected = PermissionCatalog.Stored
             .Where(permission => role == SystemRoles.Administrator
                 || (role == SystemRoles.Manager && permission.GrantedToManager)
                 || (role == SystemRoles.Employee && permission.GrantedToEmployee))

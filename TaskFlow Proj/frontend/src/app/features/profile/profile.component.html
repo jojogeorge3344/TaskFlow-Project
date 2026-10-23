@@ -11,8 +11,8 @@
           <li class="profile-chip" [class.profile-chip--ok]="user.isActive" [class.profile-chip--off]="!user.isActive" data-chip="status">
             {{ user.isActive ? 'Active' : 'Inactive' }}
           </li>
-          @if (user.projectName) {
-            <li class="profile-chip" data-chip="project">{{ user.projectName }}</li>
+          @for (allocation of user.projectAllocations; track allocation.projectId) {
+            <li class="profile-chip" data-chip="project">{{ allocationLabel(allocation) }}</li>
           }
           <li class="profile-chip" data-chip="mfa" [class.profile-chip--ok]="user.mfaEnabled">
             {{ user.mfaEnabled ? 'Two-step on' : 'Two-step off' }}
@@ -44,42 +44,45 @@
       <span class="tf-skeleton profile-form__skeleton"></span>
     </div>
   } @else {
-    <div class="profile-tabs" role="tablist" aria-label="Profile sections">
-      <button
-        type="button"
-        role="tab"
-        class="profile-tab"
-        id="profile-tab-profile"
-        data-tab="profile"
-        aria-controls="profile-panel-profile"
-        [attr.aria-selected]="tab() === 'profile'"
-        (click)="setTab('profile')"
-      >
-        Profile
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="profile-tab"
-        id="profile-tab-security"
-        data-tab="security"
-        aria-controls="profile-panel-security"
-        [attr.aria-selected]="tab() === 'security'"
-        (click)="setTab('security')"
-      >
-        Security
-      </button>
-    </div>
-
     <div class="profile-layout">
-      <div
-        class="profile-col"
-        id="profile-panel-profile"
-        role="tabpanel"
-        aria-labelledby="profile-tab-profile"
-        [hidden]="tab() !== 'profile'"
-      >
-        <form class="pcard" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="profile-col" data-column="left">
+        <section class="pcard profile-card--account">
+          <div class="pcard__head">
+            <span class="pcard__icon" aria-hidden="true"><tf-icon name="shield" /></span>
+            <div>
+              <h2 class="pcard__title">Account details</h2>
+              <p class="pcard__sub">Your role, project and status are managed by an administrator.</p>
+            </div>
+          </div>
+
+          <dl class="profile-readonly">
+            @for (field of readonlyFields(); track field.label) {
+              <div>
+                <dt>{{ field.label }}</dt>
+                <dd [attr.data-field]="'readonly-' + field.label">
+                  @if (field.values.length > 1) {
+                    <ul class="profile-list">
+                      @for (value of field.values; track $index) {
+                        <li>{{ value }}</li>
+                      }
+                    </ul>
+                  } @else if (field.values.length === 1) {
+                    <span>{{ field.values[0] }}</span>
+                  } @else {
+                    <span>—</span>
+                  }
+                  @if (field.note) {
+                    <span class="profile-readonly__note">{{ field.note }}</span>
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+      </div>
+
+      <div class="profile-col" data-column="right">
+        <form class="pcard profile-card--personal" [formGroup]="form" (ngSubmit)="save()" novalidate>
           <div class="pcard__head">
             <span class="pcard__icon" aria-hidden="true"><tf-icon name="user" /></span>
             <div>
@@ -113,7 +116,7 @@
               }
             </div>
 
-            <div class="tf-field">
+            <div class="tf-field tf-field--wide">
               <label for="profile-email">Email address <span class="tf-field__required" aria-hidden="true">*</span></label>
               <div class="tf-input-group">
                 <input
@@ -172,204 +175,20 @@
           </div>
         </form>
 
-        <section class="pcard">
-          <div class="pcard__head">
-            <span class="pcard__icon" aria-hidden="true"><tf-icon name="shield" /></span>
-            <div>
-              <h2 class="pcard__title">Account details</h2>
-              <p class="pcard__sub">Your role, project and status are managed by an administrator.</p>
-            </div>
-          </div>
-
-          <dl class="profile-readonly">
-            @for (field of readonlyFields(); track field.label) {
-              <div>
-                <dt>{{ field.label }}</dt>
-                <dd [attr.data-field]="'readonly-' + field.label">{{ field.value }}</dd>
-              </div>
-            }
-          </dl>
-        </section>
-      </div>
-
-      <div
-        class="profile-col"
-        id="profile-panel-security"
-        role="tabpanel"
-        aria-labelledby="profile-tab-security"
-        [hidden]="tab() !== 'security'"
-      >
-        <form class="pcard" [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
+        <section class="pcard profile-card--password" data-section="security">
           <div class="pcard__head">
             <span class="pcard__icon" aria-hidden="true"><tf-icon name="lock" /></span>
             <div>
-              <h2 class="pcard__title">Change password</h2>
-              <p class="pcard__sub">Choose something others cannot guess. Passwords stay hidden, and changing one needs a code from your authenticator app. You will be signed out everywhere afterwards.</p>
+              <h2 class="pcard__title">Password</h2>
+              <p class="pcard__sub">Changing your password asks for a code from your authenticator app, and signs you out everywhere afterwards.</p>
             </div>
           </div>
-
-          @if (passwordError()) {
-            <div class="tf-alert" role="alert">
-              <tf-icon name="alert" />
-              <span>{{ passwordError() }}</span>
-            </div>
-          }
-
-          @if (unlockOpen()) {
-            <div class="profile-unlock" [formGroup]="unlockForm" data-section="unlock" role="group" aria-label="Verify to show passwords">
-              <div class="profile-unlock__head">
-                <tf-icon name="shield" />
-                <div>
-                  <strong>Verify it is you</strong>
-                  <p>Enter the 6-digit code from your authenticator app to show what you typed.</p>
-                </div>
-              </div>
-              <div class="profile-unlock__row">
-                <input
-                  class="tf-input"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="one-time-code"
-                  maxlength="6"
-                  placeholder="123456"
-                  formControlName="code"
-                  data-field="unlockCode"
-                  (keydown.enter)="$event.preventDefault(); verifyUnlock()"
-                  [attr.aria-invalid]="unlockForm.controls.code.touched && unlockForm.controls.code.invalid"
-                />
-                <button type="button" class="tf-btn tf-btn--primary" data-action="unlock-verify" [disabled]="unlockBusy()" (click)="verifyUnlock()">
-                  {{ unlockBusy() ? 'Checking…' : 'Verify' }}
-                </button>
-                <button type="button" class="tf-btn tf-btn--ghost" data-action="unlock-cancel" (click)="cancelUnlock()">Cancel</button>
-              </div>
-              @if (unlockError(); as message) {
-                <span class="tf-field__error" role="alert" data-error="unlockCode">{{ message }}</span>
-              } @else if (unlockForm.controls.code.touched && unlockForm.controls.code.invalid) {
-                <span class="tf-field__error" data-error="unlockCode">Enter the 6-digit code from the app.</span>
-              }
-            </div>
-          }
-
-          @if (revealUnlocked()) {
-            <p class="profile-unlock__note" data-state="unlocked">
-              <tf-icon name="check" /> Viewing is unlocked for a few minutes.
-              <button type="button" class="tf-btn tf-btn--link" data-action="lock" (click)="lockReveal()">Hide and lock</button>
-            </p>
-          }
-
-          <div class="pcard__body">
-            <div class="tf-field">
-              <label for="profile-current-password">Current password <span class="tf-field__required" aria-hidden="true">*</span></label>
-              <div class="profile-pw">
-                <input
-                  id="profile-current-password"
-                  class="tf-input"
-                  [type]="showCurrent() ? 'text' : 'password'"
-                  formControlName="currentPassword"
-                  data-field="currentPassword"
-                  autocomplete="current-password"
-                  [class.is-invalid]="!!passwordFieldError('currentPassword')"
-                  [attr.aria-invalid]="!!passwordFieldError('currentPassword')"
-                  [attr.aria-describedby]="passwordFieldError('currentPassword') ? 'profile-current-password-error' : null"
-                />
-                <button type="button" class="profile-pw__toggle" data-action="toggle-current" [attr.aria-pressed]="showCurrent()" [attr.aria-label]="showCurrent() ? 'Hide password' : 'Show password'" (click)="toggleReveal('current')">
-                  <tf-icon [name]="showCurrent() ? 'eye-off' : 'eye'" />
-                </button>
-              </div>
-              @if (passwordFieldError('currentPassword'); as message) {
-                <span id="profile-current-password-error" class="tf-field__error" data-error="currentPassword">{{ message }}</span>
-              }
-            </div>
-
-            <div class="tf-field">
-              <label for="profile-new-password">New password <span class="tf-field__required" aria-hidden="true">*</span></label>
-              <div class="profile-pw">
-                <input
-                  id="profile-new-password"
-                  class="tf-input"
-                  [type]="showNew() ? 'text' : 'password'"
-                  formControlName="newPassword"
-                  data-field="newPassword"
-                  autocomplete="new-password"
-                  maxlength="128"
-                  [class.is-invalid]="!!passwordFieldError('newPassword')"
-                  [attr.aria-invalid]="!!passwordFieldError('newPassword')"
-                  [attr.aria-describedby]="passwordFieldError('newPassword') ? 'profile-new-password-error' : 'profile-new-password-hint'"
-                />
-                <button type="button" class="profile-pw__toggle" data-action="toggle-new" [attr.aria-pressed]="showNew()" [attr.aria-label]="showNew() ? 'Hide password' : 'Show password'" (click)="toggleReveal('new')">
-                  <tf-icon [name]="showNew() ? 'eye-off' : 'eye'" />
-                </button>
-              </div>
-              @if (passwordFieldError('newPassword'); as message) {
-                <span id="profile-new-password-error" class="tf-field__error" data-error="newPassword">{{ message }}</span>
-              }
-              <div class="profile-strength" [attr.data-level]="strength().level" aria-live="polite" data-field="strength">
-                <span class="profile-strength__bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-                <span class="profile-strength__label">{{ strength().label }}</span>
-              </div>
-              <span id="profile-new-password-hint" class="tf-field__hint">
-                At least {{ minPasswordLength }} and at most {{ maxPasswordLength }} characters. Mix upper and lower case, numbers and symbols for a stronger one.
-              </span>
-            </div>
-
-            <div class="tf-field">
-              <label for="profile-confirm-password">Confirm new password <span class="tf-field__required" aria-hidden="true">*</span></label>
-              <div class="profile-pw">
-                <input
-                  id="profile-confirm-password"
-                  class="tf-input"
-                  [type]="showConfirm() ? 'text' : 'password'"
-                  formControlName="confirmPassword"
-                  data-field="confirmPassword"
-                  autocomplete="new-password"
-                  maxlength="128"
-                  [class.is-invalid]="!!passwordFieldError('confirmPassword')"
-                  [attr.aria-invalid]="!!passwordFieldError('confirmPassword')"
-                  [attr.aria-describedby]="passwordFieldError('confirmPassword') ? 'profile-confirm-password-error' : null"
-                />
-                <button type="button" class="profile-pw__toggle" data-action="toggle-confirm" [attr.aria-pressed]="showConfirm()" [attr.aria-label]="showConfirm() ? 'Hide password' : 'Show password'" (click)="toggleReveal('confirm')">
-                  <tf-icon [name]="showConfirm() ? 'eye-off' : 'eye'" />
-                </button>
-              </div>
-              @if (passwordFieldError('confirmPassword'); as message) {
-                <span id="profile-confirm-password-error" class="tf-field__error" data-error="confirmPassword">{{ message }}</span>
-              }
-            </div>
-          </div>
-
-          @if (mfaOn()) {
-            <div class="tf-field profile-mfa-field">
-              <label for="profile-password-code">Authenticator code <span class="tf-field__required" aria-hidden="true">*</span></label>
-              <input
-                id="profile-password-code"
-                class="tf-input"
-                type="text"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                maxlength="12"
-                placeholder="123456"
-                formControlName="mfaCode"
-                data-field="mfaCode"
-                [class.is-invalid]="!!passwordFieldError('mfaCode')"
-                [attr.aria-invalid]="!!passwordFieldError('mfaCode')"
-              />
-              @if (passwordFieldError('mfaCode'); as message) {
-                <span class="tf-field__error" data-error="mfaCode">{{ message }}</span>
-              } @else {
-                <span class="tf-field__hint">
-                  The 6-digit code from your app, or one of your backup codes. This confirms the change is really you.
-                </span>
-              }
-            </div>
-          }
-
           <div class="pcard__actions">
-            <button type="submit" class="tf-btn tf-btn--primary" data-action="change-password" [disabled]="changingPassword()">
-              {{ changingPassword() ? 'Changing…' : 'Change password' }}
-            </button>
+            <a class="tf-btn tf-btn--primary" routerLink="/profile/change-password" data-action="open-change-password">
+              <tf-icon name="lock" /> Change password
+            </a>
           </div>
-        </form>
-
+        </section>
       </div>
     </div>
   }

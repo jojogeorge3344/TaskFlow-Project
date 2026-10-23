@@ -40,6 +40,7 @@ public class ReportController : ControllerBase
 
     /// <summary>The filtered task rows as a CSV attachment.</summary>
     [HttpGet("export")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.ReportsExport)]
     public async Task<IActionResult> Export(
         [FromQuery] ReportFilter filter,
         CancellationToken cancellationToken)
