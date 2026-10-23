@@ -97,14 +97,6 @@ export const routes: Routes = [
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
       {
-        // Administrator landing page for the one-time link in the reset-request mail.
-        path: 'reset-password',
-        canActivate: [permissionGuard],
-        data: { permissions: [Permissions.EmployeesManage] },
-        loadComponent: () =>
-          import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent)
-      },
-      {
         path: 'workload',
         canActivate: [permissionGuard],
         data: { permissions: [Permissions.WorkloadView] },

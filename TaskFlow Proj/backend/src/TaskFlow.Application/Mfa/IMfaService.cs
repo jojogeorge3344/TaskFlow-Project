@@ -38,8 +38,9 @@ public interface IMfaService
     Task<MfaVerifyOutcome> CheckCodeAsync(int userId, string? code, CancellationToken cancellationToken = default);
 
     /// <summary>Checks an authenticator code, or (when <paramref name="allowBackupCode"/>) an unused backup code, applying
-    /// the replay rule and the shared lockout. Saves the counters.</summary>
-    Task<MfaVerifyOutcome> VerifyAsync(User user, string? code, bool allowBackupCode, CancellationToken cancellationToken = default);
+    /// the replay rule and the shared lockout. Saves the counters. With <paramref name="countFailure"/> false a wrong code is
+    /// refused without touching the account's failed-attempt counter, for callers that throttle by themselves (password recovery).</summary>
+    Task<MfaVerifyOutcome> VerifyAsync(User user, string? code, bool allowBackupCode, bool countFailure = true, CancellationToken cancellationToken = default);
 
     /// <summary>Administrator reset: removes the key and backup codes, ends the user's sessions and notifies them.
     /// Returns false when the user does not exist.</summary>

@@ -86,7 +86,7 @@ public class MfaRecoveryEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task Wrong_codes_in_recovery_count_toward_the_same_lockout_as_sign_in()
+    public async Task Wrong_codes_in_recovery_throttle_recovery_but_never_lock_the_owner_out_of_sign_in()
     {
         var client = _mfa.Factory.CreateClient();
         var token = await _mfa.SeedAndLoginAsync(client, "mfa-rec-lock");
@@ -94,19 +94,48 @@ public class MfaRecoveryEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var correct = _mfa.NextCode(secret);
         var wrong = correct == "000000" ? "111111" : "000000";
 
+        // A stranger who knows only the username keeps guessing.
         for (var i = 0; i < 5; i++)
         {
-            await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-lock", code = wrong });
+            var guess = await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-lock", code = wrong });
+            Assert.Equal(HttpStatusCode.BadRequest, guess.StatusCode);
         }
 
-        // Even the right code is refused now, in recovery and at sign-in alike.
+        // Recovery is now throttled, even for the right code...
         var recovery = await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-lock", code = correct });
+        Assert.Equal(HttpStatusCode.TooManyRequests, recovery.StatusCode);
+
+        // ...but the real owner can still sign in with the password and the same code.
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { emailOrUsername = "mfa-rec-lock", password = MfaTestHarness.Password });
         using var loginDoc = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
         var challenge = loginDoc.RootElement.GetProperty("challengeToken").GetString();
         var signIn = await client.PostAsJsonAsync("/api/v1/auth/mfa/verify", new { challengeToken = challenge, code = correct });
 
-        Assert.Equal(HttpStatusCode.BadRequest, recovery.StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, signIn.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_recovery_reset_notifies_the_owner()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var oldToken = await _mfa.SeedAndLoginAsync(client, "mfa-rec-notify");
+        var (secret, _) = await _mfa.EnrolAsync(client, oldToken);
+        var verify = await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-notify", code = _mfa.NextCode(secret) });
+        using var document = JsonDocument.Parse(await verify.Content.ReadAsStringAsync());
+        var resetToken = document.RootElement.GetProperty("resetToken").GetString();
+
+        var reset = await client.PostAsJsonAsync(Reset, new { resetToken, newPassword = NewPassword, confirmPassword = NewPassword });
+        Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { emailOrUsername = "mfa-rec-notify", password = NewPassword });
+        using var loginDoc = JsonDocument.Parse(await login.Content.ReadAsStringAsync());
+        var challenge = loginDoc.RootElement.GetProperty("challengeToken").GetString();
+        // The authenticator step was spent by the recovery, so wait for the next time step before signing in.
+        var signIn = await client.PostAsJsonAsync("/api/v1/auth/mfa/verify", new { challengeToken = challenge, code = _mfa.NextCode(secret) });
+        using var signInDoc = JsonDocument.Parse(await signIn.Content.ReadAsStringAsync());
+        var access = signInDoc.RootElement.GetProperty("accessToken").GetString()!;
+
+        var notifications = await MfaTestHarness.SendAsync(client, HttpMethod.Get, "/api/v1/notifications", access);
+        Assert.Contains("reset with your authenticator", await notifications.Content.ReadAsStringAsync());
     }
 }

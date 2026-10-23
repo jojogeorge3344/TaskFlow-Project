@@ -60,7 +60,7 @@ export function mailServiceStub() {
   return {
     unreadCount: { set: jasmine.createSpy('set') },
     list: jasmine.createSpy('list').and.returnValue(of({ items: [listItem()], total: 1, page: 1, pageSize: 25 })),
-    summary: jasmine.createSpy('summary').and.returnValue(of({ inboxUnread: 2, starredUnread: 0, importantUnread: 0, drafts: 1, passwordRequestUnread: 0 })),
+    summary: jasmine.createSpy('summary').and.returnValue(of({ inboxUnread: 2, starredUnread: 0, importantUnread: 0, drafts: 1 })),
     refreshUnreadCount: jasmine.createSpy('refreshUnreadCount'),
     open: jasmine.createSpy('open').and.returnValue(of(detail())),
     setFlags: jasmine.createSpy('setFlags').and.returnValue(of(undefined)),

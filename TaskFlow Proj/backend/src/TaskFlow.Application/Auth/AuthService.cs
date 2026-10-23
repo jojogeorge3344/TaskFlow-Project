@@ -102,7 +102,7 @@ public class AuthService : IAuthService
             return invalid;
         }
 
-        var outcome = await _mfaService.VerifyAsync(user, code, allowBackupCode: true, cancellationToken);
+        var outcome = await _mfaService.VerifyAsync(user, code, allowBackupCode: true, cancellationToken: cancellationToken);
         if (outcome != MfaVerifyOutcome.Success)
         {
             return new MfaSignInResult(AuthResult.Failure(), outcome);

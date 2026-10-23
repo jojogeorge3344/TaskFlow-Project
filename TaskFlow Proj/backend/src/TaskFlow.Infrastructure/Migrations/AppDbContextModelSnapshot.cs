@@ -361,9 +361,6 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsPasswordRequest")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsSystem")
                         .HasColumnType("INTEGER");
 
@@ -509,6 +506,7 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
@@ -575,6 +573,7 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
@@ -587,40 +586,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasIndex("UserId", "UsedAt");
 
                     b.ToTable("PasswordResetGrants");
-                });
-
-            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("ConsumedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Used")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash");
-
-                    b.HasIndex("UserId", "Used");
-
-                    b.ToTable("PasswordResetTokens");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
@@ -1018,9 +983,11 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("MfaFailedAttempts")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("MfaLastUsedStep")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("MfaLockedUntil")
@@ -1264,17 +1231,6 @@ namespace TaskFlow.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetGrant", b =>
-                {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetToken", b =>
                 {
                     b.HasOne("TaskFlow.Domain.Entities.User", "User")
                         .WithMany()

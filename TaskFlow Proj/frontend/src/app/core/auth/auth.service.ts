@@ -10,7 +10,6 @@ import {
   RecoveryTokenResponse
 } from './auth.models';
 import { TokenStore } from './token.store';
-import { PasswordResetRequestDetails } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -93,23 +92,6 @@ export class AuthService {
   /** Sets the new password with the single-use reset token from `verifyAuthenticatorRecovery`. */
   recoverPassword(request: RecoverPasswordRequest): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/password-recovery/reset`, request);
-  }
-
-  /** Reads the user behind a one-time reset link. Administrator only; a used or expired link fails. */
-  validateResetToken(token: string): Observable<PasswordResetRequestDetails> {
-    return this.http.get<PasswordResetRequestDetails>(`${this.baseUrl}/reset-password/${encodeURIComponent(token)}`);
-  }
-
-  /** Administrator only. Generates and delivers a new password for the user behind the reset link.
-   * The generated password is emailed to the user and never returned here. */
-  generateNewPassword(token: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/reset-password`, { token });
-  }
-
-  /** Administrator-initiated reset from the login page: the system auto-generates a password
-   * and notifies the user. No administrator email step. Requires an authenticated Administrator. */
-  adminForgotPassword(): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/admin-forgot-password`, {});
   }
 
   /**

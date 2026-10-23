@@ -117,7 +117,9 @@ once, and 5 wrong codes in a row lock code entry for 5 minutes.
 
 - **Forgot your password?** On the sign-in page choose **Forgot password?**, enter your username or email and the current
   code, then set and confirm a new password. Backup codes are not accepted here. The page gives the same answer whether or
-  not the account exists, and no password is ever sent by email or text message.
+  not the account exists, and no password is ever sent by email or text message. Wrong codes here are throttled on their own
+  (5 per account and 20 per address in 5 minutes) and never lock the owner out of sign-in. The owner gets an in-app
+  notification when a password was reset this way. There is no administrator-generated or emailed password.
 - **Nobody can turn it off.** Two-step verification is a security layer, so there is no switch for it, not for users and not
   for administrators. If a phone and its backup codes are both lost, see the next bullet.
 - **Changing your password asks for a code too.** On **Profile → Security → Change password**, enter your current password,
@@ -133,7 +135,7 @@ once, and 5 wrong codes in a row lock code entry for 5 minutes.
 
 | Setting | Meaning |
 |---|---|
-| `Mfa:Required` | `true` (default): nobody can use the app until two-step verification is set up. Set `Mfa__Required=false` only as a break-glass measure, for example if every Administrator is locked out, and turn it back on afterwards. |
+| `Mfa:Required` | `true` (default): nobody can use the app until two-step verification is set up. Set `Mfa__Required=false` only as a break-glass measure, for example if every Administrator is locked out, and turn it back on afterwards. Turning it on for an existing database sends every user without an authenticator to the setup screen on their next request, so announce the rollout first. |
 | `Mfa:Issuer` | The name the authenticator app shows beside the account (default `TaskFlow`). |
 
 The key is stored encrypted with the same key ring as the AI provider keys (`AiProviders:KeyRingPath`), so keep that

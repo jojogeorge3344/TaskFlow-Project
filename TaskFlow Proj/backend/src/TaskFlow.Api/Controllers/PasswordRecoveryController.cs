@@ -16,10 +16,12 @@ public class PasswordRecoveryController : ControllerBase
 {
     // One message for every failure, so the response never says whether the account exists or has MFA on.
     private const string FailureMessage = "The details are incorrect, or the code has expired. Check them and try again.";
+    private const string ThrottledMessage = "Too many attempts. Try again in a few minutes.";
 
     private readonly IApplicationDbContext _db;
     private readonly IMfaService _mfaService;
     private readonly IPasswordRecoveryService _recoveryService;
+    private readonly IRecoveryAttemptLimiter _limiter;
     private readonly IValidator<AuthenticatorRecoveryRequest> _verifyValidator;
     private readonly IValidator<RecoverPasswordRequest> _recoverValidator;
 
@@ -27,12 +29,14 @@ public class PasswordRecoveryController : ControllerBase
         IApplicationDbContext db,
         IMfaService mfaService,
         IPasswordRecoveryService recoveryService,
+        IRecoveryAttemptLimiter limiter,
         IValidator<AuthenticatorRecoveryRequest> verifyValidator,
         IValidator<RecoverPasswordRequest> recoverValidator)
     {
         _db = db;
         _mfaService = mfaService;
         _recoveryService = recoveryService;
+        _limiter = limiter;
         _verifyValidator = verifyValidator;
         _recoverValidator = recoverValidator;
     }
@@ -51,6 +55,15 @@ public class PasswordRecoveryController : ControllerBase
         }
 
         var identifier = request.Identifier!.Trim();
+        var address = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Recovery has its own budget per account and per address, and wrong codes here never touch the account's sign-in
+        // lockout, so a stranger who only knows a username cannot lock the owner out. Every refusal looks the same.
+        if (_limiter.IsBlocked(identifier, address))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
+        }
+
         var user = await _db.Users.FirstOrDefaultAsync(
             candidate => (candidate.Username == identifier || candidate.Email == identifier)
                 && candidate.IsActive && !candidate.IsDeleted,
@@ -58,16 +71,19 @@ public class PasswordRecoveryController : ControllerBase
 
         if (user is null || user.MfaEnabledAt is null)
         {
+            _limiter.RecordFailure(identifier, address);
             return BadRequest(new { error = FailureMessage });
         }
 
-        // The same lockout as sign-in, so recovery is no way round it. An unused backup code is not a recovery factor.
-        var outcome = await _mfaService.VerifyAsync(user, request.Code, allowBackupCode: false, cancellationToken);
+        // An unused backup code is not a recovery factor. The account's own lock still applies.
+        var outcome = await _mfaService.VerifyAsync(user, request.Code, allowBackupCode: false, countFailure: false, cancellationToken: cancellationToken);
         if (outcome != MfaVerifyOutcome.Success)
         {
+            _limiter.RecordFailure(identifier, address);
             return BadRequest(new { error = FailureMessage });
         }
 
+        _limiter.Reset(identifier);
         return Ok(new RecoveryTokenResponse(await _recoveryService.IssueResetTokenAsync(user.Id, cancellationToken)));
     }
 

@@ -15,7 +15,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
-    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<PasswordResetGrant> PasswordResetGrants => Set<PasswordResetGrant>();
     public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
 
@@ -51,6 +50,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<User>(entity =>
         {
+            // A code or counter change must win a race exactly once, so two parallel requests cannot spend the same code.
+            entity.Property(user => user.MfaLastUsedStep).IsConcurrencyToken();
+            entity.Property(user => user.MfaFailedAttempts).IsConcurrencyToken();
+
             entity.HasKey(user => user.Id);
             entity.Property(user => user.EmployeeCode).HasMaxLength(32);
             entity.Property(user => user.FullName).IsRequired().HasMaxLength(200);
@@ -69,7 +72,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
             entity.HasIndex(user => user.Username).IsUnique();
             entity.HasIndex(user => user.Email).IsUnique();
-
 
             entity.HasQueryFilter(user => !user.IsDeleted);
 
@@ -255,24 +257,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<PasswordResetToken>(entity =>
-        {
-            entity.HasKey(token => token.Id);
-            entity.Property(token => token.TokenHash).IsRequired();
-
-            entity.HasIndex(token => token.TokenHash);
-            entity.HasIndex(token => new { token.UserId, token.Used });
-
-            entity
-                .HasOne(token => token.User)
-                .WithMany()
-                .HasForeignKey(token => token.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
         modelBuilder.Entity<MfaBackupCode>(entity =>
         {
             entity.HasKey(code => code.Id);
+            entity.Property(code => code.UsedAt).IsConcurrencyToken();
             entity.Property(code => code.CodeHash).IsRequired().HasMaxLength(64);
 
             entity.HasIndex(code => new { code.UserId, code.CodeHash });
@@ -287,6 +275,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<PasswordResetGrant>(entity =>
         {
             entity.HasKey(grant => grant.Id);
+            entity.Property(grant => grant.UsedAt).IsConcurrencyToken();
             entity.Property(grant => grant.TokenHash).IsRequired().HasMaxLength(64);
 
             entity.HasIndex(grant => grant.TokenHash);

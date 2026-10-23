@@ -92,20 +92,3 @@ export interface ChangePassword {
   /** The current code from the authenticator app (or a backup code). Required while two-step verification is on. */
   mfaCode?: string;
 }
-
-/** One password-reset request a user made. */
-export interface PasswordResetRequestEntry {
-  id: number;
-  requestedAt: string;
-  expiresAt: string;
-  status: 'Pending' | 'Used' | 'Expired';
-}
-
-/** What an Administrator sees after opening a reset link: the user and how often they asked for a reset. */
-export interface PasswordResetRequestDetails {
-  user: User;
-  requestCount: number;
-  lastRequestedAt: string | null;
-  linkExpiresAt: string;
-  requests: PasswordResetRequestEntry[];
-}

@@ -11,8 +11,7 @@ public enum MailView
     Important,
     Sent,
     Drafts,
-    Trash,
-    PasswordRequest
+    Trash
 }
 
 public enum MailComposeMode
@@ -73,7 +72,7 @@ public record MailItemDetailDto(
     IReadOnlyList<MailMessageDto> Thread);
 
 /// <summary>Counts for the folder rail.</summary>
-public record MailSummaryDto(int InboxUnread, int StarredUnread, int ImportantUnread, int Drafts, int PasswordRequestUnread = 0);
+public record MailSummaryDto(int InboxUnread, int StarredUnread, int ImportantUnread, int Drafts);
 
 public record MailUnreadCountDto(int Count);
 

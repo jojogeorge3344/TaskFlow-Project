@@ -19,12 +19,6 @@ describe('forgot password routing', () => {
   it('no longer serves the old public forgot-password page', () => {
     expect(routes.some((candidate) => candidate.path === 'forgot-password')).toBeFalse();
   });
-
-  it('keeps the administrator landing page for the profile reset link', () => {
-    const shell = routes.find((candidate) => candidate.path === '' && candidate.children !== undefined)!;
-
-    expect(shell.children!.some((child) => child.path === 'reset-password')).toBeTrue();
-  });
 });
 
 describe('LoginComponent forgot password link', () => {

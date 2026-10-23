@@ -86,7 +86,7 @@ public class MfaService : IMfaService
             throw new InvalidOperationException("Start the setup first to get a key.");
         }
 
-        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: false, cancellationToken));
+        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: false, cancellationToken: cancellationToken));
 
         user.MfaEnabledAt = _timeProvider.GetUtcNow().UtcDateTime;
         var codes = await ReplaceBackupCodesAsync(user, cancellationToken);
@@ -109,7 +109,7 @@ public class MfaService : IMfaService
             throw new InvalidOperationException("Authenticator MFA is not on.");
         }
 
-        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken));
+        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken: cancellationToken));
 
         var codes = await ReplaceBackupCodesAsync(user, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
@@ -129,7 +129,7 @@ public class MfaService : IMfaService
             throw new InvalidOperationException(CodeRequiredMessage);
         }
 
-        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken));
+        RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken: cancellationToken));
     }
 
     public async Task<MfaVerifyOutcome> CheckCodeAsync(int userId, string? code, CancellationToken cancellationToken = default)
@@ -140,13 +140,13 @@ public class MfaService : IMfaService
             return MfaVerifyOutcome.Invalid;
         }
 
-        return await VerifyCoreAsync(user, code, allowBackupCode: false, consumeCode: false, cancellationToken);
+        return await VerifyCoreAsync(user, code, allowBackupCode: false, consumeCode: false, countFailure: true, cancellationToken);
     }
 
-    public Task<MfaVerifyOutcome> VerifyAsync(User user, string? code, bool allowBackupCode, CancellationToken cancellationToken = default) =>
-        VerifyCoreAsync(user, code, allowBackupCode, consumeCode: true, cancellationToken);
+    public Task<MfaVerifyOutcome> VerifyAsync(User user, string? code, bool allowBackupCode, bool countFailure = true, CancellationToken cancellationToken = default) =>
+        VerifyCoreAsync(user, code, allowBackupCode, consumeCode: true, countFailure, cancellationToken);
 
-    private async Task<MfaVerifyOutcome> VerifyCoreAsync(User user, string? code, bool allowBackupCode, bool consumeCode, CancellationToken cancellationToken)
+    private async Task<MfaVerifyOutcome> VerifyCoreAsync(User user, string? code, bool allowBackupCode, bool consumeCode, bool countFailure, CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
 
@@ -189,8 +189,12 @@ public class MfaService : IMfaService
         {
             user.MfaFailedAttempts = 0;
             user.MfaLockedUntil = null;
-            await _db.SaveChangesAsync(cancellationToken);
-            return MfaVerifyOutcome.Success;
+            return await TrySaveAsync(MfaVerifyOutcome.Success, cancellationToken);
+        }
+
+        if (!countFailure)
+        {
+            return MfaVerifyOutcome.Invalid;
         }
 
         user.MfaFailedAttempts++;
@@ -201,8 +205,24 @@ public class MfaService : IMfaService
             user.MfaFailedAttempts = 0;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await TrySaveAsync(MfaVerifyOutcome.Invalid, cancellationToken);
         return MfaVerifyOutcome.Invalid;
+    }
+
+    /// <summary>Saves the counters. The step, attempt counter and backup-code state are concurrency tokens, so when a parallel
+    /// request already spent the same code or moved the counters, this save loses and the code counts as refused instead of
+    /// being accepted twice.</summary>
+    private async Task<MfaVerifyOutcome> TrySaveAsync(MfaVerifyOutcome onSuccess, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return onSuccess;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return MfaVerifyOutcome.Invalid;
+        }
     }
 
     public async Task<bool> ResetAsync(int userId, CancellationToken cancellationToken = default)

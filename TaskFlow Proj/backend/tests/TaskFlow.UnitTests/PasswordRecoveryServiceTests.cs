@@ -5,6 +5,7 @@ using TaskFlow.Application.Auth;
 using TaskFlow.Domain.Entities;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;
@@ -32,7 +33,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         TestAccessControl.Seed(_db);
 
         _user = AddUser("recover-user");
-        _service = new PasswordRecoveryService(_db, _hasher, _clock);
+        _service = new PasswordRecoveryService(_db, _hasher, new NotificationPublisher(_db, _clock), _clock);
     }
 
     private User AddUser(string username)
@@ -139,6 +140,35 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         Assert.False(await _service.ResetPasswordAsync(token, NewPassword));
     }
 
+
+    [Fact]
+    public async Task A_deactivated_account_cannot_be_reset_even_with_a_live_token()
+    {
+        var token = await _service.IssueResetTokenAsync(_user.Id);
+        _user.IsActive = false;
+        await _db.SaveChangesAsync();
+
+        Assert.False(await _service.ResetPasswordAsync(token, NewPassword));
+        Assert.Equal(PasswordVerificationResult.Success, _hasher.VerifyHashedPassword(_user, _user.PasswordHash, OldPassword));
+    }
+
+    [Fact]
+    public async Task A_successful_reset_tells_the_owner_in_app()
+    {
+        var token = await _service.IssueResetTokenAsync(_user.Id);
+
+        await _service.ResetPasswordAsync(token, NewPassword);
+
+        Assert.Contains(await _db.Notifications.ToListAsync(), n => n.UserId == _user.Id && n.Message.Contains("reset with your authenticator"));
+    }
+
+    [Fact]
+    public async Task A_failed_reset_sends_no_notification()
+    {
+        await _service.ResetPasswordAsync("not-a-token", NewPassword);
+
+        Assert.Empty(await _db.Notifications.ToListAsync());
+    }
     public async ValueTask DisposeAsync()
     {
         await _db.DisposeAsync();

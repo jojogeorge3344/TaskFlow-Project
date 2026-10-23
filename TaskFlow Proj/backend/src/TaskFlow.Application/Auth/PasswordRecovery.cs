@@ -4,8 +4,10 @@ using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Abstractions;
+using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Users.Validators;
 using TaskFlow.Domain.Entities;
+using TaskFlow.Domain.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Application.Auth;
@@ -50,12 +52,18 @@ public class PasswordRecoveryService : IPasswordRecoveryService
 
     private readonly IApplicationDbContext _db;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly INotificationPublisher _notificationPublisher;
     private readonly TimeProvider _timeProvider;
 
-    public PasswordRecoveryService(IApplicationDbContext db, IPasswordHasher<User> passwordHasher, TimeProvider timeProvider)
+    public PasswordRecoveryService(
+        IApplicationDbContext db,
+        IPasswordHasher<User> passwordHasher,
+        INotificationPublisher notificationPublisher,
+        TimeProvider timeProvider)
     {
         _db = db;
         _passwordHasher = passwordHasher;
+        _notificationPublisher = notificationPublisher;
         _timeProvider = timeProvider;
     }
 
@@ -86,7 +94,7 @@ public class PasswordRecoveryService : IPasswordRecoveryService
             .Include(row => row.User)
             .FirstOrDefaultAsync(row => row.TokenHash == tokenHash && row.UsedAt == null, cancellationToken);
 
-        if (grant?.User is null || grant.ExpiresAt <= now || grant.User.IsDeleted)
+        if (grant?.User is null || grant.ExpiresAt <= now || grant.User.IsDeleted || !grant.User.IsActive)
         {
             return false;
         }
@@ -115,7 +123,24 @@ public class PasswordRecoveryService : IPasswordRecoveryService
             other.UsedAt = now;
         }
 
-        await _db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A parallel request spent the same token first.
+            return false;
+        }
+
+        // A recovery needs only the authenticator, so the owner is told straight away if it was not them.
+        await _notificationPublisher.PublishAsync(
+            user.Id,
+            taskId: null,
+            NotificationType.System,
+            "Your password was reset with your authenticator app. If this was not you, contact an administrator now.",
+            cancellationToken);
+
         return true;
     }
 

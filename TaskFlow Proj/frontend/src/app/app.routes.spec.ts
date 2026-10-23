@@ -83,7 +83,6 @@ describe('app routes', () => {
       'projects',
       'departments',
       'employees',
-      'reset-password',
       'workload',
       'reports',
       'mail',
@@ -131,14 +130,6 @@ describe('app routes', () => {
       expect(route.canActivate).toEqual([permissionGuard]);
       expect(route.data?.['permissions']).toEqual([expected[path]]);
     }
-  });
-
-  it('opens an administrator reset link in its own details window behind employees.manage', async () => {
-    const reset = childRoute('reset-password');
-    expect(reset.canActivate).toEqual([permissionGuard]);
-    expect(reset.data?.['permissions']).toEqual([Permissions.EmployeesManage]);
-    const component = (await load(reset)) as { name: string };
-    expect(component.name).toBe('ResetPasswordComponent');
   });
 
   it('loads the role-specific dashboards and management screens', async () => {

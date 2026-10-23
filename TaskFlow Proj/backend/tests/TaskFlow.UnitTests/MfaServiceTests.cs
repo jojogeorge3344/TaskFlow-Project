@@ -361,6 +361,54 @@ public class MfaServiceTests : IAsyncDisposable
         Assert.False(await _service.ResetAsync(9999));
     }
 
+    [Fact]
+    public async Task The_same_code_cannot_be_spent_by_two_parallel_requests()
+    {
+        var (secret, _) = await EnableAsync();
+        var code = CodeNow(secret);
+
+        // A second request that loaded the user before the first one finished.
+        await using var otherDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+        var otherUser = await otherDb.Users.FirstAsync(candidate => candidate.Id == _user.Id);
+        var otherService = new MfaService(otherDb, _hasher, _protector, new NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
+
+        Assert.Equal(MfaVerifyOutcome.Success, await _service.VerifyAsync(_user, code, true));
+        Assert.Equal(MfaVerifyOutcome.Invalid, await otherService.VerifyAsync(otherUser, code, true));
+    }
+
+    [Fact]
+    public async Task A_backup_code_cannot_be_spent_by_two_parallel_requests()
+    {
+        var (_, codes) = await EnableAsync();
+
+        await using var otherDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+        var otherUser = await otherDb.Users.FirstAsync(candidate => candidate.Id == _user.Id);
+        var otherService = new MfaService(otherDb, _hasher, _protector, new NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
+
+        // Both requests see the code as unused; only the first save may win.
+        var firstRow = await _db.MfaBackupCodes.FirstAsync(row => row.UserId == _user.Id && row.UsedAt == null);
+        Assert.NotNull(firstRow);
+        Assert.Equal(MfaVerifyOutcome.Success, await _service.VerifyAsync(_user, codes[0], true));
+        Assert.Equal(MfaVerifyOutcome.Invalid, await otherService.VerifyAsync(otherUser, codes[0], true));
+    }
+
+    [Fact]
+    public async Task A_wrong_code_does_not_touch_the_failed_counter_when_the_caller_throttles_by_itself()
+    {
+        var (secret, _) = await EnableAsync();
+        var wrong = CodeNow(secret) == "000000" ? "111111" : "000000";
+
+        for (var i = 0; i < _options.MaxFailedAttempts + 2; i++)
+        {
+            Assert.Equal(MfaVerifyOutcome.Invalid, await _service.VerifyAsync(_user, wrong, allowBackupCode: false, countFailure: false));
+        }
+
+        var stored = await _db.Users.AsNoTracking().FirstAsync(candidate => candidate.Id == _user.Id);
+        Assert.Equal(0, stored.MfaFailedAttempts);
+        Assert.Null(stored.MfaLockedUntil);
+        Assert.Equal(MfaVerifyOutcome.Success, await _service.VerifyAsync(_user, CodeNow(secret), true));
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _db.DisposeAsync();

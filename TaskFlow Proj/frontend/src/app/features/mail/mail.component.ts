@@ -63,8 +63,6 @@ export class MailComponent implements OnInit {
         return summary.importantUnread;
       case 'Drafts':
         return summary.drafts;
-      case 'PasswordRequest':
-        return summary.passwordRequestUnread;
       default:
         return 0;
     }

@@ -69,12 +69,10 @@ builder.Services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsServic
 builder.Services.AddScoped<TaskFlow.Application.Settings.IApplicationSettingsService, TaskFlow.Infrastructure.Settings.ApplicationSettingsService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, TaskFlow.Infrastructure.Services.MailAttachmentService>();
-builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordResetTokenService, TaskFlow.Infrastructure.Services.PasswordResetTokenService>();
-builder.Services.AddSingleton<TaskFlow.Application.Auth.IPasswordResetRateLimiter, TaskFlow.Infrastructure.Services.PasswordResetRateLimiter>();
-builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordResetService, TaskFlow.Application.Auth.PasswordResetService>();
 
 // Password recovery from the login page: an authenticator code buys a single-use reset token.
 builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordRecoveryService, TaskFlow.Application.Auth.PasswordRecoveryService>();
+builder.Services.AddSingleton<TaskFlow.Application.Auth.IRecoveryAttemptLimiter, TaskFlow.Infrastructure.Services.RecoveryAttemptLimiter>();
 
 // Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
 builder.Services.Configure<TaskFlow.Application.Mfa.MfaOptions>(

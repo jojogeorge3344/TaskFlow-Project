@@ -9,8 +9,6 @@ public interface IApplicationDbContext
 
     DbSet<RefreshToken> RefreshTokens { get; }
 
-    DbSet<PasswordResetToken> PasswordResetTokens { get; }
-
     DbSet<PasswordResetGrant> PasswordResetGrants { get; }
 
     DbSet<MfaBackupCode> MfaBackupCodes { get; }
