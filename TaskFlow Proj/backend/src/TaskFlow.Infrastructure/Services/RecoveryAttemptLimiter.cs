@@ -1,19 +1,20 @@
-using System.Collections.Concurrent;
 using TaskFlow.Application.Auth;
 
 namespace TaskFlow.Infrastructure.Services;
 
-/// <summary>A sliding window in memory (a restart resets it). Entries that have aged out are dropped as they are touched, and a
-/// periodic sweep removes idle keys so the table cannot grow without bound.</summary>
+/// <summary>A sliding window in memory (a restart resets it). One lock covers every operation, so a sweep can never drop a
+/// failure another request is recording; the traffic here is a handful of calls per minute. Idle keys are swept away so the
+/// table cannot grow without bound.</summary>
 public class RecoveryAttemptLimiter : IRecoveryAttemptLimiter
 {
-    public const int FailuresPerIdentifier = 5;
+    public const int FailuresPerAccount = 5;
     public const int FailuresPerAddress = 20;
 
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(5);
 
     private readonly TimeProvider _timeProvider;
-    private readonly ConcurrentDictionary<string, Queue<DateTimeOffset>> _failures = new();
+    private readonly object _gate = new();
+    private readonly Dictionary<string, Queue<DateTimeOffset>> _failures = new();
     private DateTimeOffset _lastSweep;
 
     public RecoveryAttemptLimiter(TimeProvider timeProvider)
@@ -22,27 +23,37 @@ public class RecoveryAttemptLimiter : IRecoveryAttemptLimiter
         _lastSweep = timeProvider.GetUtcNow();
     }
 
-    public bool IsBlocked(string identifier, string? remoteAddress)
+    public bool IsBlocked(string accountKey, string? remoteAddress)
     {
         var now = _timeProvider.GetUtcNow();
-        return Count(IdentifierKey(identifier), now) >= FailuresPerIdentifier
-            || (remoteAddress is not null && Count(AddressKey(remoteAddress), now) >= FailuresPerAddress);
-    }
-
-    public void RecordFailure(string identifier, string? remoteAddress)
-    {
-        var now = _timeProvider.GetUtcNow();
-        Sweep(now);
-        Record(IdentifierKey(identifier), now);
-        if (remoteAddress is not null)
+        lock (_gate)
         {
-            Record(AddressKey(remoteAddress), now);
+            return Count(accountKey, now) >= FailuresPerAccount
+                || (remoteAddress is not null && Count(AddressKey(remoteAddress), now) >= FailuresPerAddress);
         }
     }
 
-    public void Reset(string identifier) => _failures.TryRemove(IdentifierKey(identifier), out _);
+    public void RecordFailure(string accountKey, string? remoteAddress)
+    {
+        var now = _timeProvider.GetUtcNow();
+        lock (_gate)
+        {
+            Sweep(now);
+            Record(accountKey, now);
+            if (remoteAddress is not null)
+            {
+                Record(AddressKey(remoteAddress), now);
+            }
+        }
+    }
 
-    private static string IdentifierKey(string identifier) => "id:" + identifier.Trim().ToUpperInvariant();
+    public void Reset(string accountKey)
+    {
+        lock (_gate)
+        {
+            _failures.Remove(accountKey);
+        }
+    }
 
     private static string AddressKey(string address) => "ip:" + address;
 
@@ -53,24 +64,23 @@ public class RecoveryAttemptLimiter : IRecoveryAttemptLimiter
             return 0;
         }
 
-        lock (queue)
+        while (queue.Count > 0 && now - queue.Peek() >= Window)
         {
-            while (queue.Count > 0 && now - queue.Peek() >= Window)
-            {
-                queue.Dequeue();
-            }
-
-            return queue.Count;
+            queue.Dequeue();
         }
+
+        return queue.Count;
     }
 
     private void Record(string key, DateTimeOffset now)
     {
-        var queue = _failures.GetOrAdd(key, _ => new Queue<DateTimeOffset>());
-        lock (queue)
+        if (!_failures.TryGetValue(key, out var queue))
         {
-            queue.Enqueue(now);
+            queue = new Queue<DateTimeOffset>();
+            _failures[key] = queue;
         }
+
+        queue.Enqueue(now);
     }
 
     private void Sweep(DateTimeOffset now)
@@ -81,11 +91,11 @@ public class RecoveryAttemptLimiter : IRecoveryAttemptLimiter
         }
 
         _lastSweep = now;
-        foreach (var key in _failures.Keys)
+        foreach (var key in _failures.Keys.ToList())
         {
             if (Count(key, now) == 0)
             {
-                _failures.TryRemove(key, out _);
+                _failures.Remove(key);
             }
         }
     }

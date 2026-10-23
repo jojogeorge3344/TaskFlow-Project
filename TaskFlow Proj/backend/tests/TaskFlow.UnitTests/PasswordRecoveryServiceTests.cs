@@ -33,7 +33,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         TestAccessControl.Seed(_db);
 
         _user = AddUser("recover-user");
-        _service = new PasswordRecoveryService(_db, _hasher, new NotificationPublisher(_db, _clock), _clock);
+        _service = new PasswordRecoveryService(_db, _hasher, new NotificationPublisher(_db, _clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
     }
 
     private User AddUser(string username)
@@ -160,6 +160,24 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         await _service.ResetPasswordAsync(token, NewPassword);
 
         Assert.Contains(await _db.Notifications.ToListAsync(), n => n.UserId == _user.Id && n.Message.Contains("reset with your authenticator"));
+    }
+
+    [Fact]
+    public async Task A_failing_notification_does_not_undo_or_fail_the_reset()
+    {
+        var service = new PasswordRecoveryService(
+            _db, _hasher, new ThrowingPublisher(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
+        var token = await service.IssueResetTokenAsync(_user.Id);
+
+        Assert.True(await service.ResetPasswordAsync(token, NewPassword));
+        Assert.Equal(PasswordVerificationResult.Success, _hasher.VerifyHashedPassword(_user, _user.PasswordHash, NewPassword));
+    }
+
+    private sealed class ThrowingPublisher : TaskFlow.Application.Tasks.INotificationPublisher
+    {
+        public Task PublishAsync(int userId, int? taskId, TaskFlow.Domain.Enums.NotificationType type, string message, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Notifications are down.");
     }
 
     [Fact]

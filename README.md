@@ -136,6 +136,7 @@ once, and 5 wrong codes in a row lock code entry for 5 minutes.
 | Setting | Meaning |
 |---|---|
 | `Mfa:Required` | `true` (default): nobody can use the app until two-step verification is set up. Set `Mfa__Required=false` only as a break-glass measure, for example if every Administrator is locked out, and turn it back on afterwards. Turning it on for an existing database sends every user without an authenticator to the setup screen on their next request, so announce the rollout first. |
+| `Proxy:KnownProxies` | Empty by default, which trusts only a loopback proxy. When the API runs behind a reverse proxy, list its IP addresses here (`Proxy__KnownProxies__0=10.0.0.5`) so the real client address reaches the password-recovery throttle. Without it every caller behind the proxy shares one address budget. |
 | `Mfa:Issuer` | The name the authenticator app shows beside the account (default `TaskFlow`). |
 
 The key is stored encrypted with the same key ring as the AI provider keys (`AiProviders:KeyRingPath`), so keep that

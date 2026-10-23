@@ -2,7 +2,7 @@
 
 ## Why
 
-Sign-in is a password only, and a user who forgets their password cannot recover it from the login page: the administrator-approved reset needs a signed-in session. A time-based one-time code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy and similar) is free, works offline and needs no SMS gateway. It adds a second sign-in factor and gives users a no-cost way to recover their own password.
+Sign-in is a password only, and a user who forgets their password cannot recover it from the login page: the administrator-approved reset sent a generated password by mail. A time-based one-time code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy and similar) is free, works offline and needs no SMS gateway. It adds a second sign-in factor and gives users a no-cost way to recover their own password.
 
 ## What Changes
 
@@ -16,7 +16,7 @@ Sign-in is a password only, and a user who forgets their password cannot recover
 - Codes are accepted within a one-step clock tolerance, a code cannot be used twice, and repeated wrong codes **lock MFA verification temporarily**.
 - An **administrator can reset a user's MFA** (for a lost phone and lost backup codes); the user's sessions end and they are notified.
 - **Password recovery from the login page** uses the authenticator app only: the user enters their username or email and the current 6-digit code, then sets and confirms a new password with a single-use reset token (valid about 10 minutes). No text message is involved.
-- The existing **administrator-approved reset endpoint now requires a signed-in user** and acts on the caller's own account, and the old public forgot-password page is removed. No screen offers it any more, since everyone has MFA and can recover on their own.
+- The **administrator-approved reset was removed** (endpoint, administrator page, generated-password mail and Password Request folder); everyone has MFA and recovers on their own, and an administrator can reset a lost authenticator.
 - Shared secrets are stored **encrypted at rest** and never returned after setup; no secret, code or backup code is ever logged.
 - **BREAKING**: `POST auth/login` for a user with MFA on no longer returns a session; it returns an "MFA required" challenge, and a new `POST auth/mfa/verify` completes sign-in. Every user must set up MFA at their next sign-in; setting `Mfa:Required` to false is a break-glass switch.
 
@@ -38,4 +38,4 @@ _None._ `openspec/specs/` is empty, so nothing exists to delta against. The sign
 - **Frontend**: login page second step, a full-page setup screen (details and mobile number, authenticator app, backup codes) with route guards and a 403 handler, the Profile password card with a code-gated Show and a code on change, a restyled Profile page, authenticator-only recovery page, removal of the public forgot-password page, Employee list/details action for the administrator reset, `AuthService`/`ProfileService`/models. A small QR-code library (free, MIT) is added for the setup screen.
 - **Tests**: TOTP against the RFC 6238 vectors, login/verify/lockout/replay, backup codes, recovery factor, admin reset, and component specs.
 - **Configuration**: none required beyond the existing Data Protection key ring; `Mfa:Required` (default true, break-glass off switch) and optional `Mfa:Issuer` for the name shown in the authenticator app.
-- **Prerequisite**: none. The abandoned text-message flow (`sms-otp-password-reset`) is not required and none of its code remains.
+- **Prerequisite**: none. The abandoned text-message flow and the administrator-approved reset are not required and none of their code remains.

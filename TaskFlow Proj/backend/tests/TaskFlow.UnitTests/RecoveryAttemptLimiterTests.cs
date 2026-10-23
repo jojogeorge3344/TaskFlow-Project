@@ -1,3 +1,4 @@
+using TaskFlow.Application.Auth;
 using TaskFlow.Infrastructure.Services;
 
 namespace TaskFlow.UnitTests;
@@ -13,29 +14,43 @@ public class RecoveryAttemptLimiterTests
     }
 
     [Fact]
-    public void An_account_is_blocked_after_five_failures_whatever_the_case_of_the_name()
+    public void An_account_is_blocked_after_five_failures()
     {
-        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerIdentifier; i++)
+        var key = IRecoveryAttemptLimiter.AccountKey(7);
+        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerAccount; i++)
         {
-            Assert.False(_limiter.IsBlocked("Alice", "10.0.0.1"));
-            _limiter.RecordFailure(i % 2 == 0 ? "Alice" : "ALICE ", "10.0.0.1");
+            Assert.False(_limiter.IsBlocked(key, "10.0.0.1"));
+            _limiter.RecordFailure(key, "10.0.0.1");
         }
 
-        Assert.True(_limiter.IsBlocked("alice", "10.0.0.1"));
-        Assert.False(_limiter.IsBlocked("bob", "10.0.0.2"));
+        Assert.True(_limiter.IsBlocked(key, "10.0.0.1"));
+        Assert.False(_limiter.IsBlocked(IRecoveryAttemptLimiter.AccountKey(8), "10.0.0.2"));
+    }
+
+    [Fact]
+    public void An_unknown_name_is_throttled_whatever_the_case_or_spacing()
+    {
+        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerAccount; i++)
+        {
+            _limiter.RecordFailure(IRecoveryAttemptLimiter.UnknownKey(i % 2 == 0 ? "Ghost" : " GHOST "), null);
+        }
+
+        Assert.True(_limiter.IsBlocked(IRecoveryAttemptLimiter.UnknownKey("ghost"), null));
+        Assert.False(_limiter.IsBlocked(IRecoveryAttemptLimiter.UnknownKey("someone-else"), null));
     }
 
     [Fact]
     public void The_block_lifts_after_the_window()
     {
-        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerIdentifier; i++)
+        var key = IRecoveryAttemptLimiter.AccountKey(7);
+        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerAccount; i++)
         {
-            _limiter.RecordFailure("alice", null);
+            _limiter.RecordFailure(key, null);
         }
 
         _clock.Set(new DateTime(2026, 10, 24, 9, 6, 0));
 
-        Assert.False(_limiter.IsBlocked("alice", null));
+        Assert.False(_limiter.IsBlocked(key, null));
     }
 
     [Fact]
@@ -43,24 +58,35 @@ public class RecoveryAttemptLimiterTests
     {
         for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerAddress; i++)
         {
-            _limiter.RecordFailure("user" + i, "10.0.0.9");
+            _limiter.RecordFailure(IRecoveryAttemptLimiter.AccountKey(i), "10.0.0.9");
         }
 
-        Assert.True(_limiter.IsBlocked("someone-new", "10.0.0.9"));
-        Assert.False(_limiter.IsBlocked("someone-new", "10.0.0.10"));
+        Assert.True(_limiter.IsBlocked(IRecoveryAttemptLimiter.AccountKey(999), "10.0.0.9"));
+        Assert.False(_limiter.IsBlocked(IRecoveryAttemptLimiter.AccountKey(999), "10.0.0.10"));
     }
 
     [Fact]
     public void A_success_clears_the_account_budget()
     {
-        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerIdentifier - 1; i++)
+        var key = IRecoveryAttemptLimiter.AccountKey(7);
+        for (var i = 0; i < RecoveryAttemptLimiter.FailuresPerAccount - 1; i++)
         {
-            _limiter.RecordFailure("alice", null);
+            _limiter.RecordFailure(key, null);
         }
 
-        _limiter.Reset("alice");
-        _limiter.RecordFailure("alice", null);
+        _limiter.Reset(key);
+        _limiter.RecordFailure(key, null);
 
-        Assert.False(_limiter.IsBlocked("alice", null));
+        Assert.False(_limiter.IsBlocked(key, null));
+    }
+
+    [Fact]
+    public async Task Concurrent_failures_are_all_counted()
+    {
+        var key = IRecoveryAttemptLimiter.AccountKey(7);
+
+        await Task.WhenAll(Enumerable.Range(0, 200).Select(_ => Task.Run(() => _limiter.RecordFailure(key, null))));
+
+        Assert.True(_limiter.IsBlocked(key, null));
     }
 }

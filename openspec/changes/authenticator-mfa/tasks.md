@@ -49,7 +49,7 @@
 ## 9. Remove the text-message flow and re-scope the administrator reset
 
 - [x] 9.1 Remove the SMS gateway, OTP service, the old mobile numbers (entity, DTOs, validators, seeder, endpoints) and their settings and tests (a plain contact number returns in 10.3), and add the `RemoveSmsOtp` migration; verify the backend suites pass and the migration applies to a copy of the development database
-- [x] 9.2 Make `POST auth/forgot-password` authenticated and account-from-token, remove the public forgot-password page, and drop the Profile request (the card was removed in 10.5); verify the endpoint tests return 401 anonymously and act on the caller
+- [x] 9.2 Remove the administrator-approved reset (authenticated forgot-password, administrator reset page and endpoints, generated-password mail, Password Request folder) and the public forgot-password page; verify the endpoints are gone and the mail folders match Develop_env
 - [x] 9.3 Remove the mobile number fields from Profile and the employee form and redesign Profile (header, Profile and Security sections, show/hide passwords, strength meter, responsive layout); verify the Profile specs and a visual check at desktop, tablet and phone widths
 - [x] 9.4 Replace the README text-message section with the authenticator recovery description; verify no SMS settings remain documented
 
@@ -63,7 +63,7 @@
 - [x] 10.6 Require a fresh code on password change (`MfaCode`, current password checked first) and gate **Show** on password boxes behind a non-spending `users/me/mfa/check` with a five-minute unlock; verify unit, integration and component tests including that a mistyped password does not spend the code
 - [x] 10.7 Update the README for mandatory setup, the code on password change, the Show unlock, `Mfa:Required` and the contact number; verify the documented setting matches `MfaOptions`
 
-- [x] 10.8 Let a user who has MFA on change their password with only a 6-digit authenticator code (`SkipCurrentPassword`, `RequireAuthenticatorCodeAsync`, `SetOwnPasswordAsync`), with an "I don't remember my current password" switch on Profile; verify unit and integration tests (valid code, backup code refused, wrong or missing code, user without MFA, weak new password), component specs and the README line
+- [-] 10.8 Withdrawn: changing a password without the current password (`SkipCurrentPassword`, `RequireAuthenticatorCodeAsync`, `SetOwnPasswordAsync`) and its Profile switch were removed after review; a password change always needs the current password and a code
 
 ## Workflow follow-up
 

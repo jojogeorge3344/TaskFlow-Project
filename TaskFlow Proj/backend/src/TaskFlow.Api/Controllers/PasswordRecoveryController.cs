@@ -57,21 +57,23 @@ public class PasswordRecoveryController : ControllerBase
         var identifier = request.Identifier!.Trim();
         var address = HttpContext.Connection.RemoteIpAddress?.ToString();
 
-        // Recovery has its own budget per account and per address, and wrong codes here never touch the account's sign-in
-        // lockout, so a stranger who only knows a username cannot lock the owner out. Every refusal looks the same.
-        if (_limiter.IsBlocked(identifier, address))
-        {
-            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
-        }
-
         var user = await _db.Users.FirstOrDefaultAsync(
             candidate => (candidate.Username == identifier || candidate.Email == identifier)
                 && candidate.IsActive && !candidate.IsDeleted,
             cancellationToken);
 
+        // The budget follows the account (not the spelling typed, so username and email share it) and the caller's address.
+        // Wrong codes here never touch the account's sign-in lockout, so a stranger who only knows a username cannot lock the
+        // owner out. A name that matches nothing is throttled as well, and every refusal looks the same.
+        var accountKey = user is null ? IRecoveryAttemptLimiter.UnknownKey(identifier) : IRecoveryAttemptLimiter.AccountKey(user.Id);
+        if (_limiter.IsBlocked(accountKey, address))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
+        }
+
         if (user is null || user.MfaEnabledAt is null)
         {
-            _limiter.RecordFailure(identifier, address);
+            _limiter.RecordFailure(accountKey, address);
             return BadRequest(new { error = FailureMessage });
         }
 
@@ -79,11 +81,11 @@ public class PasswordRecoveryController : ControllerBase
         var outcome = await _mfaService.VerifyAsync(user, request.Code, allowBackupCode: false, countFailure: false, cancellationToken: cancellationToken);
         if (outcome != MfaVerifyOutcome.Success)
         {
-            _limiter.RecordFailure(identifier, address);
+            _limiter.RecordFailure(accountKey, address);
             return BadRequest(new { error = FailureMessage });
         }
 
-        _limiter.Reset(identifier);
+        _limiter.Reset(accountKey);
         return Ok(new RecoveryTokenResponse(await _recoveryService.IssueResetTokenAsync(user.Id, cancellationToken)));
     }
 

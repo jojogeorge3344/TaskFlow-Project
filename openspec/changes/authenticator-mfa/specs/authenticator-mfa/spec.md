@@ -154,30 +154,6 @@ Changing a password SHALL need the current password and a valid authenticator co
 - **WHEN** the current password and a valid code are given with a new password
 - **THEN** the password changes and every session of that user ends
 
-### Requirement: Password change without the current password
-
-A user who has MFA on and does not remember their current password SHALL be able to change it with a valid authenticator code alone. Only an authenticator code counts, never a backup code, and the new password SHALL still meet the password rules.
-
-#### Scenario: Code replaces the current password
-
-- **WHEN** a user with MFA on submits a new password and a valid authenticator code without a current password
-- **THEN** the password changes and every session of that user ends
-
-#### Scenario: Backup code refused
-
-- **WHEN** a backup code is submitted on this path
-- **THEN** the change is refused and the password is unchanged
-
-#### Scenario: Missing or wrong code
-
-- **WHEN** the code is missing, wrong or already used
-- **THEN** the change is refused, and wrong codes count toward the lockout
-
-#### Scenario: User without MFA
-
-- **WHEN** a user who has no MFA tries this path
-- **THEN** it is refused and they are told to use their current password
-
 ### Requirement: Showing a typed password needs a code
 
 The Profile page SHALL keep what was typed in a password box hidden until a valid authenticator code has been checked, then allow viewing for about five minutes. The check SHALL NOT spend the code or accept a backup code, and wrong codes SHALL count toward the lockout.
@@ -283,24 +259,24 @@ The reset token issued after a correct code SHALL work once, expire about 10 min
 - **WHEN** a reset succeeds
 - **THEN** any other outstanding reset token for that account stops working
 
-### Requirement: Administrator-approved reset needs a signed-in user
+### Requirement: Recovery is throttled without locking sign-in
 
-The existing administrator-approved password reset request SHALL require a signed-in user, SHALL act on that user's own account regardless of any identifier in the request, and SHALL NOT be offered on a public page or on the Profile screen.
+Wrong codes in password recovery SHALL be limited per account and per client address, and SHALL NOT count toward the account's sign-in lockout. A username and the email of the same account SHALL share one budget.
 
-#### Scenario: Anonymous request
+#### Scenario: A stranger guesses codes
 
-- **WHEN** a caller who is not signed in requests the administrator-approved reset
-- **THEN** the request is rejected as unauthorized
+- **WHEN** someone who knows only a username sends repeated wrong recovery codes
+- **THEN** recovery is refused with a throttling answer after five attempts, and the owner can still sign in with their password and a valid code
 
-#### Scenario: Acts on the caller
+#### Scenario: Alternating the spelling
 
-- **WHEN** a signed-in user makes the request with another person's identifier
-- **THEN** only the caller's own account is affected
+- **WHEN** the attempts alternate between the username and the email of one account
+- **THEN** they spend one shared budget
 
-#### Scenario: No public page and no Profile card
+#### Scenario: Owner is told
 
-- **WHEN** a visitor opens the old public forgot-password address, or a user opens Profile
-- **THEN** neither offers a password reset request
+- **WHEN** a password is reset through recovery
+- **THEN** the owner receives an in-app notification, and a failure to write it does not undo the reset
 
 ### Requirement: Secrets are protected
 

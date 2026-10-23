@@ -115,6 +115,29 @@ public class MfaRecoveryEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task The_username_and_the_email_of_one_account_share_a_single_recovery_budget()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var token = await _mfa.SeedAndLoginAsync(client, "mfa-rec-share");
+        var (secret, _) = await _mfa.EnrolAsync(client, token);
+        var correct = _mfa.NextCode(secret);
+        var wrong = correct == "000000" ? "111111" : "000000";
+
+        // Alternating the spelling must not buy extra guesses.
+        for (var i = 0; i < 5; i++)
+        {
+            var identifier = i % 2 == 0 ? "mfa-rec-share" : "mfa-rec-share@taskflow.com";
+            await client.PostAsJsonAsync(Recover, new { identifier, code = wrong });
+        }
+
+        var byName = await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-share", code = correct });
+        var byEmail = await client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-share@taskflow.com", code = correct });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, byName.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, byEmail.StatusCode);
+    }
+
+    [Fact]
     public async Task A_recovery_reset_notifies_the_owner()
     {
         var client = _mfa.Factory.CreateClient();

@@ -3,6 +3,7 @@ using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Users.Validators;
@@ -53,17 +54,20 @@ public class PasswordRecoveryService : IPasswordRecoveryService
     private readonly IApplicationDbContext _db;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly INotificationPublisher _notificationPublisher;
+    private readonly ILogger<PasswordRecoveryService> _logger;
     private readonly TimeProvider _timeProvider;
 
     public PasswordRecoveryService(
         IApplicationDbContext db,
         IPasswordHasher<User> passwordHasher,
         INotificationPublisher notificationPublisher,
+        ILogger<PasswordRecoveryService> logger,
         TimeProvider timeProvider)
     {
         _db = db;
         _passwordHasher = passwordHasher;
         _notificationPublisher = notificationPublisher;
+        _logger = logger;
         _timeProvider = timeProvider;
     }
 
@@ -133,13 +137,21 @@ public class PasswordRecoveryService : IPasswordRecoveryService
             return false;
         }
 
-        // A recovery needs only the authenticator, so the owner is told straight away if it was not them.
-        await _notificationPublisher.PublishAsync(
-            user.Id,
-            taskId: null,
-            NotificationType.System,
-            "Your password was reset with your authenticator app. If this was not you, contact an administrator now.",
-            cancellationToken);
+        // A recovery needs only the authenticator, so the owner is told straight away if it was not them. The password has
+        // already changed, so a failure to write the notice must not turn this into an error the caller would retry.
+        try
+        {
+            await _notificationPublisher.PublishAsync(
+                user.Id,
+                taskId: null,
+                NotificationType.System,
+                "Your password was reset with your authenticator app. If this was not you, contact an administrator now.",
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not record the password-recovery notification for user {UserId}.", user.Id);
+        }
 
         return true;
     }

@@ -28,6 +28,21 @@ builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<TaskFlow.Api.ConcurrencyExceptionHandler>();
+
+// The real client address matters to the password-recovery throttle. Only loopback proxies are trusted unless the deployment
+// lists its own in Proxy:KnownProxies, so a caller cannot spoof X-Forwarded-For.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor;
+    foreach (var proxy in builder.Configuration.GetSection("Proxy:KnownProxies").Get<string[]>() ?? [])
+    {
+        if (System.Net.IPAddress.TryParse(proxy, out var address))
+        {
+            options.KnownProxies.Add(address);
+        }
+    }
+});
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 
@@ -264,6 +279,7 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/api/v1/diagnostics/throw", (Func<IResult>)(() => throw new InvalidOperationException("Diagnostic failure.")));
 }
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
