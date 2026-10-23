@@ -195,12 +195,12 @@ export const EMPLOYEE_PERIODS: readonly { key: EmployeePeriod; label: string }[]
   { key: 'month', label: 'This month' }
 ];
 
-/** Aggregate department figures. There is no per-person field. `tasks` is null when the department is too small to
- * show a breakdown (`limited`), in which case only `totalTasks` is given. */
+/** Aggregate department figures. There is no per-person field. `tasks` and `totalTasks` are null when the department
+ * is too small to show figures (`limited`). */
 export interface EmployeeDepartment {
   name: string;
   limited: boolean;
-  totalTasks: number;
+  totalTasks: number | null;
   tasks: BucketCounts | null;
 }
 

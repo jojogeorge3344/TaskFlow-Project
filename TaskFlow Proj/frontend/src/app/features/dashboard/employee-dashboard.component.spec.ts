@@ -164,12 +164,12 @@ describe('EmployeeDashboardComponent', () => {
     expect(section.querySelector('table')).toBeNull();
   });
 
-  it('department: a small department shows only the total', () => {
-    data.set(analytics({ department: { name: 'Tiny', limited: true, totalTasks: 7, tasks: null } }));
+  it('department: a small department shows no task figures', () => {
+    data.set(analytics({ department: { name: 'Tiny', limited: true, totalTasks: null, tasks: null } }));
     const element = create().nativeElement as HTMLElement;
 
     expect(element.querySelector('[data-dept-stats]')).toBeNull();
-    expect(element.querySelector('[data-dept-limited]')?.textContent).toContain('7');
+    expect(element.querySelector('[data-dept-limited]')?.textContent).toContain('do not show task figures');
   });
 
   it('empty: no department shows "No department assigned"', () => {

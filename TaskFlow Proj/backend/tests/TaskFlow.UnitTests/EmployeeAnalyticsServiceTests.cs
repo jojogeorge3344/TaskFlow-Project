@@ -166,7 +166,7 @@ public class EmployeeAnalyticsServiceTests
         var result = await GetAsync(harness, me);
 
         Assert.True(result.Department!.Limited);
-        Assert.Equal(2, result.Department.TotalTasks);
+        Assert.Null(result.Department.TotalTasks);
         Assert.Null(result.Department.Tasks);
     }
 

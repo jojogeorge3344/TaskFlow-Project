@@ -10,8 +10,9 @@ public enum EmployeeAnalyticsPeriod
 
 /// <summary>Aggregate figures of the employee's department. It deliberately has no per-user field, so a colleague's name
 /// or task cannot be serialised. <see cref="Tasks"/> is null when the department is too small to show a breakdown
-/// (<see cref="Limited"/>), in which case only <see cref="TotalTasks"/> is given.</summary>
-public record EmployeeDepartmentDto(string Name, bool Limited, int TotalTasks, BucketCountsDto? Tasks);
+/// (<see cref="Limited"/>), in which case <see cref="TotalTasks"/> is null too, because a total beside the caller's own count would reveal a
+/// colleague's workload.</summary>
+public record EmployeeDepartmentDto(string Name, bool Limited, int? TotalTasks, BucketCountsDto? Tasks);
 
 public record EmployeeSummaryDto(int TotalTasks, int CompletionPercent, int Completed, int Outstanding);
 

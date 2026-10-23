@@ -11,7 +11,7 @@ namespace TaskFlow.Infrastructure.Analytics;
 
 public class EmployeeAnalyticsService : IEmployeeAnalyticsService
 {
-    /// <summary>A department with fewer active members than this shows only its task total, so a colleague's workload
+    /// <summary>A department with fewer active members than this shows no task figures at all, so a colleague's workload
     /// cannot be read off the aggregates.</summary>
     public const int MinDepartmentMembersForBreakdown = 3;
 
@@ -91,14 +91,14 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
         var tasks = _dbContext.Tasks.AsNoTracking()
             .Where(TaskBucketRules.IsCounted())
             .Where(task => members.Any(member => member.Id == task.AssignedToUserId));
-        var total = await tasks.CountAsync(cancellationToken);
 
         if (await members.CountAsync(cancellationToken) < MinDepartmentMembersForBreakdown)
         {
-            return new EmployeeDepartmentDto(name, true, total, null);
+            return new EmployeeDepartmentDto(name, true, null, null);
         }
 
-        return new EmployeeDepartmentDto(name, false, total, await TotalsAsync(tasks, now, cancellationToken));
+        var totals = await TotalsAsync(tasks, now, cancellationToken);
+        return new EmployeeDepartmentDto(name, false, totals.Total, totals);
     }
 
     private static async Task<IReadOnlyList<EmployeeDeadlineDto>> UpcomingAsync(
