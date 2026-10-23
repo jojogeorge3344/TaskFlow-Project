@@ -96,6 +96,50 @@ the task. These mails cannot be replied to, but they can be forwarded. To turn t
 
 `Mail:AppBaseUrl` sets the address used for the task link (default `http://localhost:4200`).
 
+## Two-step verification (authenticator app)
+
+Everyone must connect a free authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password and
+similar) before they can use TaskFlow. It costs nothing, and the codes work offline.
+
+**First sign-in.** Anyone who has not set it up is taken to a setup screen instead of the app, and the API refuses every
+other request until it is done:
+
+1. **Your details.** Confirm your name and email, see your employee details, and enter your **mobile number** (international
+   format, for example `+919876543210`). The number is a contact detail only; nothing is ever sent to it. It does not have
+   to be unique: **email is the only unique identity**, so colleagues may share a number. Saving is refused if another
+   record already holds the same email and number.
+2. **Authenticator app.** Confirm your password, scan the QR code (or type the key into the app) and enter the 6-digit code.
+3. **Backup codes.** You are shown **10 backup codes once**. Save them somewhere safe; each works one time if you lose
+   your phone. Tick the box and open TaskFlow.
+
+**Signing in** after that takes your password, followed by the current code (or a backup code). A code can only be used
+once, and 5 wrong codes in a row lock code entry for 5 minutes.
+
+- **Forgot your password?** On the sign-in page choose **Forgot password?**, enter your username or email and the current
+  code, then set and confirm a new password. Backup codes are not accepted here. The page gives the same answer whether or
+  not the account exists, and no password is ever sent by email or text message.
+- **Nobody can turn it off.** Two-step verification is a security layer, so there is no switch for it, not for users and not
+  for administrators. If a phone and its backup codes are both lost, see the next bullet.
+- **Changing your password asks for a code too.** On **Profile → Security → Change password**, enter your current password,
+  the new one (twice) and a fresh code from the app (or a backup code). A mistyped current password does not use up the code.
+- **Passwords stay hidden.** The **Show** button in that card first asks for a 6-digit code. Once it checks out, the boxes
+  can be shown for about five minutes, then lock again. (TaskFlow never stores or returns anyone's real password, only a
+  hash, so what is shown is only what you typed.)
+- **Lost phone and lost backup codes.** An Administrator (or anyone who can manage employees) opens the employee's
+  details and chooses **Reset MFA**. The person is signed out everywhere, notified, and sets the app up again at their
+  next sign-in. This is the only way MFA is ever removed.
+- **Clock.** Codes depend on the phone's time. If valid codes are refused, switch on automatic date and time on the
+  phone. A code is accepted for about 30 seconds either side of the server's time.
+
+| Setting | Meaning |
+|---|---|
+| `Mfa:Required` | `true` (default): nobody can use the app until two-step verification is set up. Set `Mfa__Required=false` only as a break-glass measure, for example if every Administrator is locked out, and turn it back on afterwards. |
+| `Mfa:Issuer` | The name the authenticator app shows beside the account (default `TaskFlow`). |
+
+The key is stored encrypted with the same key ring as the AI provider keys (`AiProviders:KeyRingPath`), so keep that
+folder with the database in backups, or every user with MFA would need an administrator reset. Backup codes are stored
+only as hashes. Nothing secret is logged.
+
 ## TFA, the AI assistant
 
 TFA is a chat assistant in a small panel on the right of every signed-in screen. Open it with the **TFA** button, by

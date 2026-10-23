@@ -7,4 +7,6 @@ public record UserDto(
     string Email,
     string Role,
     string? EmployeeCode,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    // True while MFA is required but the user has not set it up yet; the client sends them to the setup screen.
+    bool MfaSetupRequired = false);

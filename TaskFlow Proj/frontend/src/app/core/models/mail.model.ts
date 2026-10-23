@@ -1,5 +1,5 @@
 /** Folders the user can open. Inbox, Sent and Drafts hold items; Starred, Important and Trash are views. */
-export type MailView = 'Inbox' | 'Starred' | 'Important' | 'Sent' | 'Drafts' | 'Trash';
+export type MailView = 'Inbox' | 'Starred' | 'Important' | 'Sent' | 'Drafts' | 'Trash' | 'PasswordRequest';
 export type MailFolder = 'Inbox' | 'Sent' | 'Drafts';
 export type MailComposeMode = 'Reply' | 'ReplyAll' | 'Forward';
 
@@ -67,6 +67,7 @@ export interface MailSummary {
   starredUnread: number;
   importantUnread: number;
   drafts: number;
+  passwordRequestUnread: number;
 }
 
 export interface MailContact {

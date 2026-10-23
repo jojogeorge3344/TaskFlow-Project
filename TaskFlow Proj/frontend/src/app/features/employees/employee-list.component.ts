@@ -229,6 +229,38 @@ export class EmployeeListComponent implements OnInit {
     });
   }
 
+  /** Whether the signed-in user may remove another user's MFA. */
+  canResetMfa(): boolean {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.EmployeesManage);
+  }
+
+  async resetMfa(employee: User): Promise<void> {
+    const confirmed = await this.confirmDialog().open({
+      title: 'Reset two-step verification?',
+      message: `${employee.fullName} will be signed out everywhere and can sign in with just their password. They can set up an authenticator app again from Profile.`,
+      confirmLabel: 'Reset MFA',
+      variant: 'danger'
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.busyId.set(employee.id);
+    this.userService.resetMfa(employee.id).subscribe({
+      next: () => {
+        this.busyId.set(null);
+        this.toast.success(`MFA reset for ${employee.fullName}`);
+        this.panel.set({ mode: 'details', employee: { ...employee, mfaEnabled: false, backupCodesRemaining: 0 } });
+        this.load();
+      },
+      error: (err) => {
+        this.busyId.set(null);
+        this.toast.error(apiErrorMessage(err, 'Could not reset MFA.'));
+      }
+    });
+  }
+
   /** Nobody deletes their own account, so the action is not offered on the signed-in user's row. */
   canDeleteEmployee(employee: User): boolean {
     return this.canDelete() && this.authService.currentUser()?.id !== employee.id;

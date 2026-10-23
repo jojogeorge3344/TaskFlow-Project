@@ -127,3 +127,27 @@
   color: #1d4ed8;
   font-size: 0.8125rem;
 }
+
+.login__forgot {
+  margin: 0;
+  text-align: center;
+}
+
+.login__forgot-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.login__forgot-link:hover {
+  text-decoration: underline;
+}
+
+.login__linkbutton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}

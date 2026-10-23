@@ -17,6 +17,10 @@ public class MailMessage
     public User? SenderUser { get; set; }
 
     public bool IsSystem { get; set; }
+
+    /// <summary>A system mail asking an Administrator to reset a user's password; listed in the Password Request folder.</summary>
+    public bool IsPasswordRequest { get; set; }
+
     public string Subject { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
 

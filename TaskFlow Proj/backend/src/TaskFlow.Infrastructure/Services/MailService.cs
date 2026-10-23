@@ -458,7 +458,8 @@ public class MailService : IMailService
 
     private static IQueryable<MailboxItem> InView(IQueryable<MailboxItem> items, MailView view) => view switch
     {
-        MailView.Inbox => items.Where(item => item.Folder == MailFolder.Inbox && item.TrashedAt == null),
+        MailView.Inbox => items.Where(item => item.Folder == MailFolder.Inbox && item.TrashedAt == null && !item.Message!.IsPasswordRequest),
+        MailView.PasswordRequest => items.Where(item => item.Folder == MailFolder.Inbox && item.TrashedAt == null && item.Message!.IsPasswordRequest),
         MailView.Sent => items.Where(item => item.Folder == MailFolder.Sent && item.TrashedAt == null),
         MailView.Drafts => items.Where(item => item.Folder == MailFolder.Drafts && item.TrashedAt == null),
         MailView.Starred => items.Where(item => item.IsStarred && item.TrashedAt == null && item.Folder != MailFolder.Drafts),
@@ -477,7 +478,8 @@ public class MailService : IMailService
             await InView(mine, MailView.Inbox).CountAsync(item => !item.IsRead, cancellationToken),
             await InView(mine, MailView.Starred).CountAsync(item => !item.IsRead, cancellationToken),
             await InView(mine, MailView.Important).CountAsync(item => !item.IsRead, cancellationToken),
-            await InView(mine, MailView.Drafts).CountAsync(cancellationToken));
+            await InView(mine, MailView.Drafts).CountAsync(cancellationToken),
+            await InView(mine, MailView.PasswordRequest).CountAsync(item => !item.IsRead, cancellationToken));
     }
 
     public Task<int> GetUnreadCountAsync(int callerId, CancellationToken cancellationToken = default) =>

@@ -16,6 +16,7 @@ export const MAIL_FOLDERS: MailFolderDef[] = [
   { view: 'Important', label: 'Important', icon: 'flag' },
   { view: 'Sent', label: 'Sent', icon: 'send' },
   { view: 'Drafts', label: 'Drafts', icon: 'file' },
+  { view: 'PasswordRequest', label: 'Password Request', icon: 'lock' },
   { view: 'Trash', label: 'Trash', icon: 'trash' }
 ];
 

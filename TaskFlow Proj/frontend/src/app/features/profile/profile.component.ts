@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -7,11 +8,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons';
 import { EMAIL_SUFFIX, localPartOf, localPartValidator, toEmail } from '../../core/email-domain';
 import { IconComponent } from '../../core/layout/icon.component';
+import { MOBILE_NUMBER_HINT, mobileNumberValidator, normalizeMobileNumber } from '../../core/mobile-number';
 import { User } from '../../core/models';
 import { ProfileService } from '../../core/services/profile.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.directive';
+import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
+import { roleBadgeClass } from '../employees/role-badge';
 
 const MIN_PASSWORD_LENGTH = 6;
 /** Mirrors the server rule: login rejects passwords longer than this, so the change form must too. */
@@ -23,25 +27,68 @@ function passwordsMatch(group: AbstractControl): { mismatch: true } | null {
   return newPassword === confirmPassword ? null : { mismatch: true };
 }
 
-type ProfileField = 'fullName' | 'email';
-type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
+type ProfileField = 'fullName' | 'email' | 'mobileNumber';
+type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword' | 'mfaCode';
+export type RevealField = 'current' | 'new' | 'confirm';
+
+/** How long typed passwords stay viewable after a code unlocked them. */
+export const REVEAL_UNLOCK_MINUTES = 5;
+export type ProfileTab = 'profile' | 'security';
+
+/** A rough 0-4 score so the user sees how strong a new password is. Only a hint: the API enforces the real rules. */
+export function passwordStrength(password: string): { level: number; label: string } {
+  if (!password) {
+    return { level: 0, label: '' };
+  }
+
+  let points = 0;
+  if (password.length >= MIN_PASSWORD_LENGTH) points++;
+  if (password.length >= 10) points++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) points++;
+  if (/d/.test(password) && /[^A-Za-z0-9]/.test(password)) points++;
+
+  const level = password.length < MIN_PASSWORD_LENGTH ? 1 : Math.max(1, Math.min(4, points));
+  return { level, label: ['', 'Weak', 'Fair', 'Good', 'Strong'][level] };
+}
 
 /** User Profile (Screen 19). Every signed-in user views and maintains their own account here.
  * Role, project, username, employee code and status are read-only by design. */
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, IconComponent, EmailLocalPartDirective],
+  imports: [ReactiveFormsModule, DatePipe, IconComponent, EmailLocalPartDirective],
   templateUrl: './profile.component.html',
-  styleUrl: './profile.component.css'
+  styleUrls: ['./profile-shared.css', './profile.component.css']
 })
 export class ProfileComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly emailSuffix = EMAIL_SUFFIX;
+  readonly mobileHint = MOBILE_NUMBER_HINT;
+  readonly roleBadgeClass = roleBadgeClass;
+  readonly minPasswordLength = MIN_PASSWORD_LENGTH;
+  readonly maxPasswordLength = MAX_PASSWORD_LENGTH;
+
+  /** Which section shows on small screens; on wide screens both always show. */
+  readonly tab = signal<ProfileTab>('profile');
+  readonly showCurrent = signal(false);
+  readonly showNew = signal(false);
+  readonly showConfirm = signal(false);
+
+  /** Showing what was typed in a password box needs a code from the authenticator app first. */
+  readonly revealUnlocked = signal(false);
+  readonly unlockOpen = signal(false);
+  readonly unlockBusy = signal(false);
+  readonly unlockError = signal<string | null>(null);
+  private unlockTarget: RevealField = 'current';
+  private unlockTimer: ReturnType<typeof setTimeout> | null = null;
+  readonly unlockForm = new FormGroup({
+    code: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] })
+  });
 
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
@@ -53,6 +100,7 @@ export class ProfileComponent implements OnInit {
 
   readonly changingPassword = signal(false);
   readonly passwordError = signal<string | null>(null);
+
 
   readonly readonlyFields = computed(() => {
     const user = this.profile();
@@ -80,7 +128,9 @@ export class ProfileComponent implements OnInit {
       nonNullable: true,
       // Only the part before the fixed domain; the suffix is shown beside the input and added on save.
       validators: [Validators.required, localPartValidator]
-    })
+    }),
+    // Optional contact number. Colleagues may share one: email is the only unique identity.
+    mobileNumber: new FormControl('', { nonNullable: true, validators: [mobileNumberValidator] })
   });
 
   readonly passwordForm = new FormGroup(
@@ -90,14 +140,119 @@ export class ProfileComponent implements OnInit {
         nonNullable: true,
         validators: [Validators.required, Validators.minLength(MIN_PASSWORD_LENGTH), Validators.maxLength(MAX_PASSWORD_LENGTH)]
       }),
-      confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] })
+      confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+      // A fresh code from the authenticator app (or a backup code); required while two-step verification is on.
+      mfaCode: new FormControl('', { nonNullable: true })
     },
     { validators: passwordsMatch }
   );
 
+  /** What the new-password box currently holds, for the strength meter. */
+  private readonly newPasswordValue = signal('');
+  readonly strength = computed(() => passwordStrength(this.newPasswordValue()));
+
+  /** The initials shown in the avatar. */
+  readonly avatar = computed(() => initials(this.profile()?.fullName));
+
   constructor() {
     // A later edit makes the "Saved" confirmation stale.
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.savedAt.set(null));
+    this.passwordForm.controls.newPassword.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((value) => this.newPasswordValue.set(value));
+    this.destroyRef.onDestroy(() => this.clearRelockTimer());
+  }
+
+  setTab(tab: ProfileTab): void {
+    this.tab.set(tab);
+  }
+
+  /** Whether the password card needs an authenticator code (it always does while two-step verification is on). */
+  readonly mfaOn = computed(() => this.profile()?.mfaEnabled === true);
+
+  /** The eye button: hide at once; show only after an authenticator code has unlocked viewing. */
+  toggleReveal(field: RevealField): void {
+    const visible = this.revealSignal(field);
+    if (visible()) {
+      visible.set(false);
+      return;
+    }
+
+    if (!this.mfaOn() || this.revealUnlocked()) {
+      visible.set(true);
+      return;
+    }
+
+    this.unlockTarget = field;
+    this.unlockError.set(null);
+    this.unlockForm.reset();
+    this.unlockOpen.set(true);
+  }
+
+  verifyUnlock(): void {
+    if (this.unlockForm.invalid) {
+      this.unlockForm.markAllAsTouched();
+      return;
+    }
+
+    if (this.unlockBusy()) {
+      return;
+    }
+
+    this.unlockBusy.set(true);
+    this.unlockError.set(null);
+    this.profileService.checkMfaCode(this.unlockForm.controls.code.value).subscribe({
+      next: () => {
+        this.unlockBusy.set(false);
+        this.unlockOpen.set(false);
+        this.revealUnlocked.set(true);
+        this.revealSignal(this.unlockTarget).set(true);
+        this.unlockForm.reset();
+        this.startRelockTimer();
+      },
+      error: (err: unknown) => {
+        this.unlockBusy.set(false);
+        this.unlockForm.controls.code.reset('');
+        this.unlockError.set(apiErrorMessage(err, 'That code did not work. Try the new code from your app.'));
+      }
+    });
+  }
+
+  cancelUnlock(): void {
+    this.unlockOpen.set(false);
+    this.unlockError.set(null);
+    this.unlockForm.reset();
+  }
+
+  /** Hides every password again and asks for a code the next time one is shown. */
+  lockReveal(): void {
+    this.showCurrent.set(false);
+    this.showNew.set(false);
+    this.showConfirm.set(false);
+    this.revealUnlocked.set(false);
+    this.clearRelockTimer();
+  }
+
+  private revealSignal(field: RevealField) {
+    return field === 'current' ? this.showCurrent : field === 'new' ? this.showNew : this.showConfirm;
+  }
+
+  private startRelockTimer(): void {
+    this.clearRelockTimer();
+    this.unlockTimer = setTimeout(() => this.lockReveal(), REVEAL_UNLOCK_MINUTES * 60_000);
+  }
+
+  private clearRelockTimer(): void {
+    if (this.unlockTimer !== null) {
+      clearTimeout(this.unlockTimer);
+      this.unlockTimer = null;
+    }
+  }
+
+  private setMfaCodeRequired(required: boolean): void {
+    const control = this.passwordForm.controls.mfaCode;
+    control.setValidators(required ? [Validators.required] : []);
+    control.updateValueAndValidity();
   }
 
   ngOnInit(): void {
@@ -110,7 +265,8 @@ export class ProfileComponent implements OnInit {
     this.profileService.get().subscribe({
       next: (user) => {
         this.profile.set(user);
-        this.form.reset({ fullName: user.fullName, email: localPartOf(user.email) });
+        this.setMfaCodeRequired(!!user.mfaEnabled);
+        this.form.reset({ fullName: user.fullName, email: localPartOf(user.email), mobileNumber: user.mobileNumber ?? '' });
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -120,6 +276,7 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+
   fieldError(name: ProfileField): string | null {
     const control = this.form.controls[name];
     const server = control.getError('server') as string | undefined;
@@ -128,6 +285,9 @@ export class ProfileComponent implements OnInit {
     }
     if (control.getError('required')) {
       return `${name === 'fullName' ? 'Full name' : 'Email'} is required.`;
+    }
+    if (control.getError('mobileNumber')) {
+      return MOBILE_NUMBER_HINT;
     }
     if (control.getError('localPart')) {
       return `Use letters, digits, dot, underscore or hyphen before ${EMAIL_SUFFIX}.`;
@@ -148,6 +308,9 @@ export class ProfileComponent implements OnInit {
     // is not covered in errors and a mismatch shows up while the confirmation is being typed.
     if (!control.touched && !control.dirty) {
       return null;
+    }
+    if (name === 'mfaCode' && control.getError('required')) {
+      return 'Enter the code from your authenticator app.';
     }
     if (control.getError('required')) {
       return 'Required.';
@@ -174,12 +337,16 @@ export class ProfileComponent implements OnInit {
     const value = this.form.getRawValue();
     this.saving.set(true);
     this.profileService
-      .update({ fullName: value.fullName.trim(), email: toEmail(value.email) })
+      .update({
+        fullName: value.fullName.trim(),
+        email: toEmail(value.email),
+        mobileNumber: normalizeMobileNumber(value.mobileNumber)
+      })
       .subscribe({
         next: (user) => {
           this.saving.set(false);
           this.profile.set(user);
-          this.form.reset({ fullName: user.fullName, email: localPartOf(user.email) });
+          this.form.reset({ fullName: user.fullName, email: localPartOf(user.email), mobileNumber: user.mobileNumber ?? '' });
           this.savedAt.set(new Date());
           this.authService.applyProfile({
             id: user.id,
@@ -214,7 +381,9 @@ export class ProfileComponent implements OnInit {
     const value = this.passwordForm.getRawValue();
     this.changingPassword.set(true);
     this.profileService
-      .changePassword({ currentPassword: value.currentPassword, newPassword: value.newPassword })
+      .changePassword(
+        { currentPassword: value.currentPassword, newPassword: value.newPassword, mfaCode: value.mfaCode.trim() || undefined }
+      )
       .subscribe({
         next: () => {
           // The API ended every session, including this one; sign in again with the new password.
@@ -228,6 +397,7 @@ export class ProfileComponent implements OnInit {
         }
       });
   }
+
 
   /** Maps a validation ProblemDetails `errors` map (PascalCase keys) onto the matching controls. */
   private applyServerErrors(err: unknown, form: FormGroup): void {

@@ -211,7 +211,9 @@
     @case ('details') {
       <app-employee-details-panel
         [employee]="$any(panel()).employee"
+        [canResetMfa]="canResetMfa()"
         (edit)="openEdit($any(panel()).employee)"
+        (resetMfa)="resetMfa($any(panel()).employee)"
         (closed)="closePanel()"
       />
     }

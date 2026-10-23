@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, permissionGuard } from './core/auth/auth.guard';
+import { authGuard, mfaSetupGuard, permissionGuard } from './core/auth/auth.guard';
 import { Permissions } from './core/auth/permissions';
 import { routes } from './app.routes';
 import { ShellComponent } from './core/layout/shell.component';
@@ -74,7 +74,7 @@ describe('app routes', () => {
 
   it('wraps authenticated screens in the shell behind the auth guard', async () => {
     const shell = shellRoute();
-    expect(shell.canActivate).toEqual([authGuard]);
+    expect(shell.canActivate).toEqual([authGuard, mfaSetupGuard]);
     expect(await load(shell)).toBe(ShellComponent);
     expect(shell.children!.map((child) => child.path)).toEqual([
       'admin',
@@ -83,6 +83,7 @@ describe('app routes', () => {
       'projects',
       'departments',
       'employees',
+      'reset-password',
       'workload',
       'reports',
       'mail',
@@ -130,6 +131,14 @@ describe('app routes', () => {
       expect(route.canActivate).toEqual([permissionGuard]);
       expect(route.data?.['permissions']).toEqual([expected[path]]);
     }
+  });
+
+  it('opens an administrator reset link in its own details window behind employees.manage', async () => {
+    const reset = childRoute('reset-password');
+    expect(reset.canActivate).toEqual([permissionGuard]);
+    expect(reset.data?.['permissions']).toEqual([Permissions.EmployeesManage]);
+    const component = (await load(reset)) as { name: string };
+    expect(component.name).toBe('ResetPasswordComponent');
   });
 
   it('loads the role-specific dashboards and management screens', async () => {

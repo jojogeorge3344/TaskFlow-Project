@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Authentication;
+using TaskFlow.Application.Mfa;
 using TaskFlow.Application.Users;
 
 namespace TaskFlow.Api.Controllers;
@@ -16,15 +17,18 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly IValidator<ChangePasswordRequest> _passwordValidator;
+    private readonly IMfaService _mfaService;
 
     public UsersController(
         IUserService userService,
         IValidator<UpdateOwnProfileRequest> profileValidator,
-        IValidator<ChangePasswordRequest> passwordValidator)
+        IValidator<ChangePasswordRequest> passwordValidator,
+        IMfaService mfaService)
     {
         _userService = userService;
         _profileValidator = profileValidator;
         _passwordValidator = passwordValidator;
+        _mfaService = mfaService;
     }
 
     /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
@@ -89,6 +93,14 @@ public class UsersController : ControllerBase
 
         try
         {
+            // Wrong current password first, so a typo does not spend the authenticator code; then the code itself.
+            if (!await _userService.CheckOwnPasswordAsync(currentUserId, request.CurrentPassword, cancellationToken))
+            {
+                return BadRequest(new { error = "Current password is incorrect." });
+            }
+
+            await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
+
             var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
             return user is null ? NotFound() : NoContent();
         }

@@ -69,6 +69,18 @@ builder.Services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsServic
 builder.Services.AddScoped<TaskFlow.Application.Settings.IApplicationSettingsService, TaskFlow.Infrastructure.Settings.ApplicationSettingsService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();
 builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, TaskFlow.Infrastructure.Services.MailAttachmentService>();
+builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordResetTokenService, TaskFlow.Infrastructure.Services.PasswordResetTokenService>();
+builder.Services.AddSingleton<TaskFlow.Application.Auth.IPasswordResetRateLimiter, TaskFlow.Infrastructure.Services.PasswordResetRateLimiter>();
+builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordResetService, TaskFlow.Application.Auth.PasswordResetService>();
+
+// Password recovery from the login page: an authenticator code buys a single-use reset token.
+builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordRecoveryService, TaskFlow.Application.Auth.PasswordRecoveryService>();
+
+// Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
+builder.Services.Configure<TaskFlow.Application.Mfa.MfaOptions>(
+    builder.Configuration.GetSection(TaskFlow.Application.Mfa.MfaOptions.SectionName));
+builder.Services.AddSingleton<TaskFlow.Application.Mfa.IMfaSecretProtector, TaskFlow.Infrastructure.Services.MfaSecretProtector>();
+builder.Services.AddScoped<TaskFlow.Application.Mfa.IMfaService, TaskFlow.Application.Mfa.MfaService>();
 builder.Services.AddSingleton<TaskFlow.Application.Mail.IMailFileStore, TaskFlow.Infrastructure.Mail.LocalMailFileStore>();
 builder.Services.Configure<TaskFlow.Infrastructure.Mail.MailOptions>(
     builder.Configuration.GetSection(TaskFlow.Infrastructure.Mail.MailOptions.SectionName));
@@ -196,6 +208,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
 // The data folder must exist and be writable before the database, key ring or attachments are touched.
 var storageRoot = StorageRoot.Resolve(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Root);
 StorageRoot.EnsureAvailable(storageRoot);
@@ -260,6 +273,7 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicies.SpaClient);
 
 app.UseAuthentication();
+app.UseMiddleware<TaskFlow.Api.Authentication.MfaSetupGateMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, permissionGuard } from './core/auth/auth.guard';
+import { authGuard, mfaSetupGuard, permissionGuard, securitySetupGuard } from './core/auth/auth.guard';
 import { Permissions } from './core/auth/permissions';
 
 /**
@@ -11,6 +11,19 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent)
+  },
+  {
+    // Forgot password from the sign-in page: authenticator code, then a new password.
+    path: 'account-recovery',
+    loadComponent: () =>
+      import('./features/auth/account-recovery/account-recovery.component').then((m) => m.AccountRecoveryComponent)
+  },
+  {
+    // First stop for anyone who has not set up two-step verification: their details, then the authenticator app.
+    path: 'security-setup',
+    canActivate: [authGuard, securitySetupGuard],
+    loadComponent: () =>
+      import('./features/onboarding/security-setup.component').then((m) => m.SecuritySetupComponent)
   },
   {
     path: 'legal/copyright',
@@ -39,7 +52,7 @@ export const routes: Routes = [
   },
   {
     path: '',
-    canActivate: [authGuard],
+    canActivate: [authGuard, mfaSetupGuard],
     loadComponent: () => import('./core/layout/shell.component').then((m) => m.ShellComponent),
     children: [
       {
@@ -82,6 +95,14 @@ export const routes: Routes = [
         data: { permissions: [Permissions.EmployeesManage] },
         loadComponent: () =>
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
+      },
+      {
+        // Administrator landing page for the one-time link in the reset-request mail.
+        path: 'reset-password',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.EmployeesManage] },
+        loadComponent: () =>
+          import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent)
       },
       {
         path: 'workload',

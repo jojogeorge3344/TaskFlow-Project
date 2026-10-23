@@ -49,12 +49,19 @@ import { initials } from '../../shared/ui/initials';
         </dd>
         <dt>Created</dt>
         <dd>{{ employee().createdAt | date: 'mediumDate' }}</dd>
+        <dt>Two-step</dt>
+        <dd data-field="mfa">{{ employee().mfaEnabled ? 'On (authenticator app)' : 'Off' }}</dd>
         <dt>Last login</dt>
         <dd>{{ employee().lastLoginAt ? (employee().lastLoginAt | date: 'medium') : 'Never' }}</dd>
       </dl>
     </div>
 
     <div class="tf-drawer__foot">
+      @if (canResetMfa() && employee().mfaEnabled) {
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="reset-mfa" (click)="resetMfa.emit()">
+          Reset MFA
+        </button>
+      }
       <button type="button" class="tf-btn tf-btn--ghost" (click)="closed.emit()">Close</button>
       <button type="button" class="tf-btn tf-btn--primary" (click)="edit.emit()">
         <tf-icon name="edit" />
@@ -102,7 +109,10 @@ export class EmployeeDetailsPanelComponent {
   readonly roleBadgeClass = roleBadgeClass;
 
   readonly employee = input.required<User>();
+  /** Whether the viewer may remove this user's MFA (employee management). The API enforces it too. */
+  readonly canResetMfa = input(false);
   readonly edit = output<void>();
+  readonly resetMfa = output<void>();
   readonly closed = output<void>();
 
   readonly avatar = computed(() => initials(this.employee().fullName));
