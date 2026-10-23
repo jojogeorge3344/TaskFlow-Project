@@ -1242,3 +1242,13 @@ tf-project-analytics {
 .analytics-table-wrap {
   overflow-x: auto;
 }
+
+.analytics .link-button {
+  background: none;
+  border: 0;
+  color: var(--tf-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}

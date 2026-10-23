@@ -44,7 +44,13 @@
 
   <div class="analytics-grid">
     <tf-department-analytics [departments]="data()?.byDepartment ?? []" [loading]="loading()" (drill)="openTasks($event)" />
-    <tf-employee-analytics [section]="data()?.byEmployee ?? null" [loading]="loading()" (drill)="openTasks($event)" />
+    <tf-employee-analytics
+      [section]="data()?.byEmployee ?? null"
+      [loading]="loading()"
+      [showingAll]="allEmployees()"
+      (toggleAll)="setAllEmployees($event)"
+      (drill)="openTasks($event)"
+    />
   </div>
 
   <tf-task-analytics

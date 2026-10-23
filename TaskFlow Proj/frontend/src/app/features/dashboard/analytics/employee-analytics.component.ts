@@ -1,5 +1,4 @@
 import { Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { DrillTarget } from '../../../core/analytics/drill-down';
 import { DrillBucket, EmployeeAnalyticsSection } from '../../../core/models';
 import { BUCKET_SERIES, bucketValues } from '../../../shared/charts/chart-colors';
@@ -8,14 +7,22 @@ import { SegmentClick, StackedBarChartComponent, StackedRow } from '../../../sha
 @Component({
   selector: 'tf-employee-analytics',
   standalone: true,
-  imports: [StackedBarChartComponent, RouterLink],
+  imports: [StackedBarChartComponent],
   template: `
     <article class="analytics-card" aria-labelledby="employee-analytics-title">
       <h2 id="employee-analytics-title">Employee-wise workload</h2>
       <p class="analytics-card__hint">
-        Top {{ section()?.items?.length ?? 0 }} by open tasks
-        @if (hasMore()) {
-          &middot; <a routerLink="/workload" data-action="view-all">View all {{ section()?.totalEmployees }}</a>
+        @if (showingAll()) {
+          All {{ section()?.items?.length ?? 0 }} employees with tasks, by open tasks &middot;
+          <button type="button" class="link-button" data-action="show-top" (click)="toggleAll.emit(false)">Show top 10</button>
+        } @else {
+          Top {{ section()?.items?.length ?? 0 }} by open tasks
+          @if (hasMore()) {
+            &middot;
+            <button type="button" class="link-button" data-action="view-all" (click)="toggleAll.emit(true)">
+              View all {{ section()?.totalEmployees }} employees with tasks
+            </button>
+          }
         }
       </p>
       <tf-stacked-bar-chart
@@ -36,8 +43,10 @@ import { SegmentClick, StackedBarChartComponent, StackedRow } from '../../../sha
 export class EmployeeAnalyticsComponent {
   readonly section = input<EmployeeAnalyticsSection | null>(null);
   readonly loading = input(false);
+  readonly showingAll = input(false);
 
   readonly drill = output<DrillTarget>();
+  readonly toggleAll = output<boolean>();
 
   readonly series = BUCKET_SERIES;
 

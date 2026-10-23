@@ -75,7 +75,7 @@ describe('AdminDashboardComponent', () => {
   let data: ReturnType<typeof signal<AdminAnalytics | null>>;
   let loading: ReturnType<typeof signal<boolean>>;
   let error: ReturnType<typeof signal<string | null>>;
-  let service: { start: jasmine.Spy; update: jasmine.Spy; reset: jasmine.Spy; refresh: jasmine.Spy };
+  let service: { start: jasmine.Spy; update: jasmine.Spy; reset: jasmine.Spy; refresh: jasmine.Spy; setAllEmployees: jasmine.Spy };
   let navigate: jasmine.Spy;
 
   function create(): { fixture: ComponentFixture<AdminDashboardComponent>; element: HTMLElement } {
@@ -93,7 +93,8 @@ describe('AdminDashboardComponent', () => {
       start: jasmine.createSpy('start'),
       update: jasmine.createSpy('update'),
       reset: jasmine.createSpy('reset'),
-      refresh: jasmine.createSpy('refresh')
+      refresh: jasmine.createSpy('refresh'),
+      setAllEmployees: jasmine.createSpy('setAllEmployees')
     };
     navigate = jasmine.createSpy('navigate').and.resolveTo(true);
 
@@ -110,7 +111,8 @@ describe('AdminDashboardComponent', () => {
             data,
             loading,
             error,
-            today: signal(TODAY)
+            today: signal(TODAY),
+            allEmployees: signal(false)
           }
         },
         { provide: AuthService, useValue: { currentUser: user.asReadonly() } }

@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { AuthService } from '../auth/auth.service';
 import { AdminAnalytics, AnalyticsFilterOptions } from '../models';
 import { DashboardAnalyticsService } from './dashboard-analytics.service';
 
@@ -33,9 +35,13 @@ describe('DashboardAnalyticsService', () => {
 
   let service: DashboardAnalyticsService;
   let http: HttpTestingController;
+  let currentUser: ReturnType<typeof signal<unknown>>;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    currentUser = signal<unknown>({ id: 1 });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: { currentUser } }]
+    });
     service = TestBed.inject(DashboardAnalyticsService);
     http = TestBed.inject(HttpTestingController);
   });
@@ -61,14 +67,64 @@ describe('DashboardAnalyticsService', () => {
     expect(service.options()?.today).toBe('2026-10-21');
   });
 
-  it('still loads analytics when the filter options fail', () => {
+  it('still loads analytics when the filter options fail, using the server dates as today', () => {
     service.start();
     http.expectOne(`${url}/filters`).flush('boom', { status: 500, statusText: 'Server Error' });
 
-    http.expectOne((candidate) => candidate.url === url).flush(analytics(1));
+    const request = http.expectOne((candidate) => candidate.url === url);
+    expect(request.request.params.has('from')).toBeFalse();
+    expect(request.request.params.has('to')).toBeFalse();
+    request.flush(analytics(1));
 
     expect(service.options()).toBeNull();
     expect(service.data()?.tasksByStatus.total).toBe(1);
+    expect(service.today()).toBe('2026-10-21');
+    expect(service.filter().from).toBe('2026-09-22');
+    expect(service.filter().to).toBe('2026-10-21');
+  });
+
+  it('keeps the chosen filters when the dashboard is opened again', () => {
+    start();
+    http.expectOne((candidate) => candidate.url === url).flush(analytics(1));
+    service.update({ departmentId: 1 });
+    http.expectOne((candidate) => candidate.url === url).flush(analytics(2));
+
+    service.start();
+
+    http.expectNone(`${url}/filters`);
+    const request = http.expectOne((candidate) => candidate.url === url);
+    expect(request.request.params.get('departmentId')).toBe('1');
+    request.flush(analytics(2));
+  });
+
+  it('asks for every employee when requested and resets that on reset', () => {
+    start();
+    http.expectOne((candidate) => candidate.url === url).flush(analytics(1));
+
+    service.setAllEmployees(true);
+    const all = http.expectOne((candidate) => candidate.url === url);
+    expect(all.request.params.get('allEmployees')).toBe('true');
+    all.flush(analytics(1));
+
+    service.reset();
+    const reset = http.expectOne((candidate) => candidate.url === url);
+    expect(reset.request.params.has('allEmployees')).toBeFalse();
+    reset.flush(analytics(1));
+  });
+
+  it('forgets everything when the user signs out', () => {
+    start();
+    http.expectOne((candidate) => candidate.url === url).flush(analytics(1));
+    service.update({ departmentId: 1 });
+    http.expectOne((candidate) => candidate.url === url).flush(analytics(1));
+    TestBed.flushEffects();
+
+    currentUser.set(null);
+    TestBed.flushEffects();
+
+    expect(service.data()).toBeNull();
+    expect(service.options()).toBeNull();
+    expect(service.filter().departmentId).toBeNull();
   });
 
   it('sends the chosen entity filters', () => {

@@ -84,6 +84,7 @@ public class AdminDashboardScope : IDashboardScope
             filter.ProjectId,
             filter.EmployeeId,
             filter.ManagerId,
+            filter.AllEmployees,
             today,
             nowUtc,
             timeZone);

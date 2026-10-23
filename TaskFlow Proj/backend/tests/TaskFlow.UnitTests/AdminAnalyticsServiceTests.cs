@@ -267,6 +267,23 @@ public class AdminAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task Employee_AllEmployeesOptionReturnsEveryEmployee()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        for (var index = 1; index <= 12; index++)
+        {
+            harness.AddTask(harness.AddUser($"user{index:00}"), TaskStatus.ToDo, deadline: Future);
+        }
+
+        var top = await GetAsync(harness);
+        var all = await GetAsync(harness, new AnalyticsFilter(AllEmployees: true));
+
+        Assert.Equal(10, top.ByEmployee.Items.Count);
+        Assert.Equal(12, all.ByEmployee.Items.Count);
+        Assert.Equal(12, all.ByEmployee.TotalEmployees);
+    }
+
+    [Fact]
     public async Task Manager_ShowsTeamTotalsAndManagersWithoutATeam()
     {
         await using var harness = AnalyticsHarness.Create(Now);

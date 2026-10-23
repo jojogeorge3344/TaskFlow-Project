@@ -12,6 +12,7 @@ public sealed record ResolvedAnalyticsFilter(
     int? ProjectId,
     int? EmployeeId,
     int? ManagerId,
+    bool AllEmployees,
     DateOnly Today,
     DateTime NowUtc,
     TimeZoneInfo TimeZone);

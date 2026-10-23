@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
@@ -176,13 +177,21 @@ public class TaskService : ITaskService
             query = query.Where(DeadlineBucketRules.InBucket(deadlineBucket, DeadlineBucketRules.BoundsFor(now, timeZone)));
         }
 
-        if (filter.From is DateOnly from && filter.To is DateOnly to)
+        if (filter.From is not null || filter.To is not null)
         {
+            if (filter.From is DateOnly start && filter.To is DateOnly end && start > end)
+            {
+                throw new AnalyticsFilterException("The end date cannot be before the start date.");
+            }
+
             var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
-            query = query.ApplyDateRange(
-                filter.Basis,
-                ReminderCalculator.LocalMidnightUtc(from, timeZone),
-                ReminderCalculator.LocalMidnightUtc(to.AddDays(1), timeZone));
+            var fromUtc = filter.From is DateOnly from
+                ? ReminderCalculator.LocalMidnightUtc(from, timeZone)
+                : DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+            var toUtc = filter.To is DateOnly to
+                ? ReminderCalculator.LocalMidnightUtc(to.AddDays(1), timeZone)
+                : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+            query = query.ApplyDateRange(filter.Basis, fromUtc, toUtc);
         }
 
         return query.ApplyEntityFilters(_dbContext, filter.DepartmentId, filter.ProjectId, filter.EmployeeId, filter.ManagerId);

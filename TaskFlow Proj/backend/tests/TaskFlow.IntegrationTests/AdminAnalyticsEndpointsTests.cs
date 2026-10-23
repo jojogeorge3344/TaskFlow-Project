@@ -180,6 +180,17 @@ public class AdminAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(completed, listDocument.RootElement.GetProperty("total").GetInt32());
     }
 
+    [Fact]
+    public async Task TaskList_InvertedDateRange_IsBadRequest()
+    {
+        var client = _factory.CreateClient();
+        var token = await LoginAsync(client, "ana-admin", SystemRoles.Administrator);
+
+        var response = await GetAsync(client, "/api/v1/tasks?from=2026-02-01&to=2026-01-01", token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private async Task SeedTasksAsync(string username)
     {
         using var scope = _factory.Services.CreateScope();

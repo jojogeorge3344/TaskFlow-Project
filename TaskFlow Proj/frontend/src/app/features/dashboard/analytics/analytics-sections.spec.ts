@@ -213,17 +213,31 @@ describe('dashboard analytics sections', () => {
       totalEmployees: 48
     };
 
-    it('shows the top employees, the view-all link and the shared-task note', () => {
+    it('shows the top employees, the view-all button and the shared-task note', () => {
       const { element } = render(EmployeeAnalyticsComponent, { section });
 
       expect(element.querySelector('tbody tr')?.textContent).toContain('A. Thomas');
-      expect(element.querySelector('[data-action="view-all"]')?.textContent).toContain('View all 48');
+      expect(element.querySelector('[data-action="view-all"]')?.textContent).toContain('View all 48 employees with tasks');
       expect(element.textContent).toContain('totals can be higher than the number of tasks');
     });
 
-    it('omits the view-all link when everyone is shown', () => {
+    it('omits the view-all button when everyone is shown', () => {
       const { element } = render(EmployeeAnalyticsComponent, { section: { ...section, totalEmployees: 2 } });
 
+      expect(element.querySelector('[data-action="view-all"]')).toBeFalsy();
+    });
+
+    it('asks to show everyone, and offers to go back to the top 10', () => {
+      const { fixture, element } = render(EmployeeAnalyticsComponent, { section });
+      const requests: boolean[] = [];
+      fixture.componentInstance.toggleAll.subscribe((value) => requests.push(value));
+
+      element.querySelector<HTMLButtonElement>('[data-action="view-all"]')!.click();
+      fixture.componentRef.setInput('showingAll', true);
+      fixture.detectChanges();
+      element.querySelector<HTMLButtonElement>('[data-action="show-top"]')!.click();
+
+      expect(requests).toEqual([true, false]);
       expect(element.querySelector('[data-action="view-all"]')).toBeFalsy();
     });
 

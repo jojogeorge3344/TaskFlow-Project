@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
+using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 
@@ -61,8 +62,15 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        var tasks = await _taskService.ListAsync(filter, userId, role, cancellationToken);
-        return Ok(tasks);
+        try
+        {
+            var tasks = await _taskService.ListAsync(filter, userId, role, cancellationToken);
+            return Ok(tasks);
+        }
+        catch (AnalyticsFilterException exception)
+        {
+            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     /// <summary>Creates a task and assigns it to an employee (Screen 8). Manager/Administrator only.</summary>

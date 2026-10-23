@@ -42,6 +42,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly loading = this.analytics.loading;
   readonly error = this.analytics.error;
   readonly today = this.analytics.today;
+  readonly allEmployees = this.analytics.allEmployees;
 
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.data()?.tasksByStatus.total === 0);
 
@@ -60,6 +61,10 @@ export class AdminDashboardComponent implements OnInit {
 
   onFilterChange(patch: Partial<AnalyticsFilterState>): void {
     this.analytics.update(patch);
+  }
+
+  setAllEmployees(value: boolean): void {
+    this.analytics.setAllEmployees(value);
   }
 
   reset(): void {

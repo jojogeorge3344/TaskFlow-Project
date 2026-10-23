@@ -189,4 +189,20 @@ public class AnalyticsDrillDownTests
             Assert.Equal(point.Completed, await ListTotalAsync(harness, completed));
         }
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ASingleDateBoundIsOpenEndedAndAnInvertedRangeIsRejected()
+    {
+        var fixture = Seed();
+        await using var harness = fixture.Harness;
+        var all = await ListTotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All));
+        var created = Now.UtcDateTime;
+        var day = DateOnly.FromDateTime(created);
+
+        Assert.Equal(all, await ListTotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All, From: day.AddDays(-10))));
+        Assert.Equal(all, await ListTotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All, To: day.AddDays(1))));
+        Assert.True(await ListTotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All, From: day.AddDays(1))) < all);
+        await Assert.ThrowsAsync<AnalyticsFilterException>(() =>
+            ListTotalAsync(harness, new TaskListFilter(From: day, To: day.AddDays(-1))));
+    }
 }

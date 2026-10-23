@@ -53,7 +53,7 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             await DeadlineBucketsAsync(scoped.Tasks, resolved, cancellationToken),
             await TrendAsync(scoped.TasksIgnoringDates, resolved, cancellationToken),
             await ByDepartmentAsync(scoped.Tasks, resolved, cancellationToken),
-            await ByEmployeeAsync(scoped.Tasks, now, cancellationToken),
+            await ByEmployeeAsync(scoped.Tasks, now, resolved.AllEmployees, cancellationToken),
             await ByManagerAsync(scoped.Tasks, resolved, cancellationToken),
             await ByProjectAsync(scoped.Tasks, resolved, cancellationToken));
     }
@@ -227,16 +227,18 @@ public class AdminAnalyticsService : IAdminAnalyticsService
         ResolvedAnalyticsFilter filter,
         CancellationToken cancellationToken)
     {
-        var created = await tasks
-            .Where(task => task.CreatedAt >= filter.FromUtc && task.CreatedAt < filter.ToUtcExclusive)
-            .Select(task => task.CreatedAt)
-            .ToListAsync(cancellationToken);
-        var completed = await tasks
-            .Where(task => task.CompletedAt != null
-                && task.CompletedAt >= filter.FromUtc
-                && task.CompletedAt < filter.ToUtcExclusive)
-            .Select(task => task.CompletedAt!.Value)
-            .ToListAsync(cancellationToken);
+        var created = await QuarterHourCountsAsync(
+            tasks
+                .Where(task => task.CreatedAt >= filter.FromUtc && task.CreatedAt < filter.ToUtcExclusive)
+                .Select(task => task.CreatedAt),
+            cancellationToken);
+        var completed = await QuarterHourCountsAsync(
+            tasks
+                .Where(task => task.CompletedAt != null
+                    && task.CompletedAt >= filter.FromUtc
+                    && task.CompletedAt < filter.ToUtcExclusive)
+                .Select(task => task.CompletedAt!.Value),
+            cancellationToken);
 
         var weekly = filter.To.DayNumber - filter.From.DayNumber + 1 > DailyTrendMaxDays;
         var firstBucket = weekly ? StartOfWeek(filter.From) : filter.From;
@@ -248,8 +250,8 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             return weekly ? StartOfWeek(day) : day;
         }
 
-        var createdPerBucket = created.GroupBy(BucketOf).ToDictionary(group => group.Key, group => group.Count());
-        var completedPerBucket = completed.GroupBy(BucketOf).ToDictionary(group => group.Key, group => group.Count());
+        var createdPerBucket = created.GroupBy(row => BucketOf(row.Start)).ToDictionary(group => group.Key, group => group.Sum(row => row.Count));
+        var completedPerBucket = completed.GroupBy(row => BucketOf(row.Start)).ToDictionary(group => group.Key, group => group.Sum(row => row.Count));
 
         var points = new List<TrendPointDto>();
         for (var day = firstBucket; day <= filter.To; day = day.AddDays(step))
@@ -261,6 +263,22 @@ public class AdminAnalyticsService : IAdminAnalyticsService
         }
 
         return new TrendDto(weekly ? "week" : "day", points);
+    }
+
+    private static async Task<List<QuarterHourCount>> QuarterHourCountsAsync(
+        IQueryable<DateTime> instants,
+        CancellationToken cancellationToken)
+    {
+        var rows = await instants
+            .GroupBy(instant => new { instant.Year, instant.Month, instant.Day, instant.Hour, Quarter = instant.Minute / 15 })
+            .Select(group => new { group.Key.Year, group.Key.Month, group.Key.Day, group.Key.Hour, group.Key.Quarter, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new QuarterHourCount(
+                new DateTime(row.Year, row.Month, row.Day, row.Hour, row.Quarter * 15, 0, DateTimeKind.Utc),
+                row.Count))
+            .ToList();
     }
 
     private static DateOnly StartOfWeek(DateOnly day) => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
@@ -311,6 +329,7 @@ public class AdminAnalyticsService : IAdminAnalyticsService
     private async Task<EmployeeAnalyticsSectionDto> ByEmployeeAsync(
         IQueryable<TaskEntity> tasks,
         DateTime now,
+        bool all,
         CancellationToken cancellationToken)
     {
         var recipients = _dbContext.TaskRecipients;
@@ -334,7 +353,7 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             .OrderByDescending(pair => pair.Value.Open)
             .ThenByDescending(pair => pair.Value.Total)
             .ThenBy(pair => pair.Key)
-            .Take(TopEmployees)
+            .Take(all ? int.MaxValue : TopEmployees)
             .ToList();
 
         var topIds = top.Select(pair => pair.Key).ToList();
@@ -466,4 +485,6 @@ public class AdminAnalyticsService : IAdminAnalyticsService
     }
 
     private sealed record KeyCount(int Key, int Count);
+
+    private sealed record QuarterHourCount(DateTime Start, int Count);
 }

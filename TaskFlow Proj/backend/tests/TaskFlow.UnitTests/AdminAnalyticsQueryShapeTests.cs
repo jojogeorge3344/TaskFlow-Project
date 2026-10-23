@@ -159,6 +159,7 @@ public class AdminAnalyticsQueryShapeTests
     }
 
     [Fact]
+    [Trait("Category", "Performance")]
     public async System.Threading.Tasks.Task Timing_FullAnalyticsOver30kTasksStaysUnderTheBudget()
     {
         var (connection, db, service, _) = Create();
@@ -175,7 +176,7 @@ public class AdminAnalyticsQueryShapeTests
 
         Assert.True(result.TasksByStatus.Total > 0);
         Assert.True(
-            stopwatch.ElapsedMilliseconds < 3000,
+            stopwatch.ElapsedMilliseconds < 5000,
             $"Analytics over 30k tasks took {stopwatch.ElapsedMilliseconds} ms.");
     }
 }

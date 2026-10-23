@@ -14,7 +14,8 @@ public record AnalyticsFilter(
     int? DepartmentId = null,
     int? ProjectId = null,
     int? EmployeeId = null,
-    int? ManagerId = null);
+    int? ManagerId = null,
+    bool AllEmployees = false);
 
 public class AnalyticsFilterException(string message) : Exception(message);
 
