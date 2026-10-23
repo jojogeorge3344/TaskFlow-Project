@@ -70,6 +70,64 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task Guessing_the_current_password_with_only_an_access_token_is_throttled()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var token = await _mfa.SeedAndLoginAsync(client, "step-pw-guess");
+        var (secret, _) = await _mfa.EnrolAsync(client, token);
+
+        for (var i = 0; i < 5; i++)
+        {
+            var guess = await Change(client, token, new { currentPassword = "wrong-" + i, newPassword = NewPassword });
+            Assert.Equal(HttpStatusCode.BadRequest, guess.StatusCode);
+        }
+
+        // Even the right password and code are refused until the window passes.
+        var blocked = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = _mfa.NextCode(secret) });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_correct_current_password_clears_the_guess_budget()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var token = await _mfa.SeedAndLoginAsync(client, "step-pw-reset");
+        var (secret, _) = await _mfa.EnrolAsync(client, token);
+
+        for (var i = 0; i < 4; i++)
+        {
+            await Change(client, token, new { currentPassword = "wrong-" + i, newPassword = NewPassword });
+        }
+
+        // A right password with a wrong code still proves the password, so the budget starts over.
+        var wrongCode = await Change(client, token, new { currentPassword = MfaTestHarness.Password, newPassword = NewPassword, mfaCode = "000000" });
+        var again = await Change(client, token, new { currentPassword = "wrong-again", newPassword = NewPassword });
+
+        Assert.Equal(HttpStatusCode.BadRequest, wrongCode.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+        Assert.Contains("Current password", await ErrorOf(again));
+    }
+
+    [Fact]
+    public async Task Guessing_the_password_at_mfa_backup_code_regeneration_is_throttled_too()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var token = await _mfa.SeedAndLoginAsync(client, "step-pw-codes");
+        var (secret, _) = await _mfa.EnrolAsync(client, token);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/mfa/backup-codes", token, new { currentPassword = "wrong-" + i, code = "123456" });
+        }
+
+        var blocked = await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/mfa/backup-codes", token,
+            new { currentPassword = MfaTestHarness.Password, code = _mfa.NextCode(secret) });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+    }
+
+    [Fact]
     public async Task With_a_valid_code_the_password_changes_and_sessions_end()
     {
         var client = _mfa.Factory.CreateClient();

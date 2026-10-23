@@ -115,6 +115,23 @@ public class MfaRecoveryEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task A_burst_of_parallel_recovery_guesses_cannot_get_past_the_budget()
+    {
+        var client = _mfa.Factory.CreateClient();
+        var token = await _mfa.SeedAndLoginAsync(client, "mfa-rec-burst");
+        var (secret, _) = await _mfa.EnrolAsync(client, token);
+        var correct = _mfa.NextCode(secret);
+        var wrong = correct == "000000" ? "111111" : "000000";
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 30).Select(_ =>
+            client.PostAsJsonAsync(Recover, new { identifier = "mfa-rec-burst", code = wrong })));
+
+        // Only the budgeted attempts were ever checked; the rest were refused before any code was looked at.
+        Assert.Equal(5, responses.Count(r => r.StatusCode == HttpStatusCode.BadRequest));
+        Assert.Equal(25, responses.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests));
+    }
+
+    [Fact]
     public async Task The_username_and_the_email_of_one_account_share_a_single_recovery_budget()
     {
         var client = _mfa.Factory.CreateClient();

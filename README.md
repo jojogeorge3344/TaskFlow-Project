@@ -117,11 +117,12 @@ once, and 5 wrong codes in a row lock code entry for 5 minutes.
 
 - **Forgot your password?** On the sign-in page choose **Forgot password?**, enter your username or email and the current
   code, then set and confirm a new password. Backup codes are not accepted here. The page gives the same answer whether or
-  not the account exists, and no password is ever sent by email or text message. Wrong codes here are throttled on their own
-  (5 per account and 20 per address in 5 minutes) and never lock the owner out of sign-in. The owner gets an in-app
+  not the account exists, and no password is ever sent by email or text message. Attempts here are throttled on their own, reserved before the code is checked so parallel requests cannot beat it
+  (5 per account and 20 per address, the address pooled by /64 for IPv6, in 5 minutes) and never lock the owner out of sign-in. The owner gets an in-app
   notification when a password was reset this way. There is no administrator-generated or emailed password.
 - **Nobody can turn it off.** Two-step verification is a security layer, so there is no switch for it, not for users and not
   for administrators. If a phone and its backup codes are both lost, see the next bullet.
+- **Guessing the current password is throttled.** Re-entering it (change password, set up MFA, new backup codes) allows 5 tries per 5 minutes per account, so an access token alone cannot be used to guess it.
 - **Changing your password asks for a code too.** On **Profile → Security → Change password**, enter your current password,
   the new one (twice) and a fresh code from the app (or a backup code). A mistyped current password does not use up the code.
 - **Passwords stay hidden.** The **Show** button in that card first asks for a 6-digit code. Once it checks out, the boxes

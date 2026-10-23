@@ -87,7 +87,7 @@ builder.Services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, Tas
 
 // Password recovery from the login page: an authenticator code buys a single-use reset token.
 builder.Services.AddScoped<TaskFlow.Application.Auth.IPasswordRecoveryService, TaskFlow.Application.Auth.PasswordRecoveryService>();
-builder.Services.AddSingleton<TaskFlow.Application.Auth.IRecoveryAttemptLimiter, TaskFlow.Infrastructure.Services.RecoveryAttemptLimiter>();
+builder.Services.AddSingleton<TaskFlow.Application.Auth.IAttemptLimiter, TaskFlow.Infrastructure.Services.AttemptLimiter>();
 
 // Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
 builder.Services.Configure<TaskFlow.Application.Mfa.MfaOptions>(

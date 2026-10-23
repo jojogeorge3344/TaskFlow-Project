@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
+using TaskFlow.Application.Auth;
 using TaskFlow.Application.Mfa;
 using TaskFlow.Domain.Security;
 
@@ -14,18 +15,23 @@ namespace TaskFlow.Api.Controllers;
 [Route("api/v1/users")]
 public class MfaController : ControllerBase
 {
+    private const string TooManyAttemptsMessage = "Too many attempts. Try again in a few minutes.";
+
     private readonly IMfaService _mfaService;
+    private readonly IAttemptLimiter _limiter;
     private readonly IValidator<MfaSetupRequest> _setupValidator;
     private readonly IValidator<MfaEnableRequest> _enableValidator;
     private readonly IValidator<MfaPasswordCodeRequest> _passwordCodeValidator;
 
     public MfaController(
         IMfaService mfaService,
+        IAttemptLimiter limiter,
         IValidator<MfaSetupRequest> setupValidator,
         IValidator<MfaEnableRequest> enableValidator,
         IValidator<MfaPasswordCodeRequest> passwordCodeValidator)
     {
         _mfaService = mfaService;
+        _limiter = limiter;
         _setupValidator = setupValidator;
         _enableValidator = enableValidator;
         _passwordCodeValidator = passwordCodeValidator;
@@ -38,7 +44,15 @@ public class MfaController : ControllerBase
     {
         return await RunAsync(_setupValidator, request, async userId =>
         {
+            // The current password is a guess an access token alone could repeat, so it has a budget of its own.
+            var passwordKey = IAttemptLimiter.PasswordKey(userId);
+            if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
+            {
+                return (ActionResult<MfaSetupResponse>)StatusCode(StatusCodes.Status429TooManyRequests, new { error = TooManyAttemptsMessage });
+            }
+
             var result = await _mfaService.BeginSetupAsync(userId, request.CurrentPassword!, cancellationToken);
+            _limiter.Reset(passwordKey);
             return result is null ? NotFound() : Ok(new MfaSetupResponse(result.Key, result.ProvisioningUri));
         }, cancellationToken);
     }
@@ -80,7 +94,14 @@ public class MfaController : ControllerBase
     {
         return await RunAsync(_passwordCodeValidator, request, async userId =>
         {
+            var passwordKey = IAttemptLimiter.PasswordKey(userId);
+            if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
+            {
+                return (ActionResult<MfaBackupCodesResponse>)StatusCode(StatusCodes.Status429TooManyRequests, new { error = TooManyAttemptsMessage });
+            }
+
             var codes = await _mfaService.RegenerateBackupCodesAsync(userId, request.CurrentPassword!, request.Code!, cancellationToken);
+            _limiter.Reset(passwordKey);
             return codes is null ? NotFound() : Ok(new MfaBackupCodesResponse(codes));
         }, cancellationToken);
     }
