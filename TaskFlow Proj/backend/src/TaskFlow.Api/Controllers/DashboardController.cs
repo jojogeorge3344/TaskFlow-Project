@@ -17,14 +17,18 @@ public class DashboardController : ControllerBase
 
     private readonly IManagerAnalyticsService _managerAnalyticsService;
 
+    private readonly IEmployeeAnalyticsService _employeeAnalyticsService;
+
     public DashboardController(
         IDashboardService dashboardService,
         IAdminAnalyticsService analyticsService,
-        IManagerAnalyticsService managerAnalyticsService)
+        IManagerAnalyticsService managerAnalyticsService,
+        IEmployeeAnalyticsService employeeAnalyticsService)
     {
         _dashboardService = dashboardService;
         _analyticsService = analyticsService;
         _managerAnalyticsService = managerAnalyticsService;
+        _employeeAnalyticsService = employeeAnalyticsService;
     }
 
     [HttpGet("admin")]
@@ -126,6 +130,29 @@ public class DashboardController : ControllerBase
         }
         var stats = await _dashboardService.GetEmployeeStatsAsync(userId, cancellationToken);
         return Ok(stats);
+    }
+
+    /// <summary>Analytics of the caller's own tasks. The subject is always the session user; the only input is the
+    /// period, so any other query key (an employee id, a department) is never read.</summary>
+    [HttpGet("employee/analytics")]
+    [Authorize]
+    public async Task<ActionResult<EmployeeAnalyticsResponseDto>> GetEmployeeAnalytics(
+        [FromQuery] string? period,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCallerId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            return Ok(await _employeeAnalyticsService.GetAsync(userId, period, cancellationToken));
+        }
+        catch (AnalyticsFilterException exception)
+        {
+            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     private bool TryGetCallerId(out int userId) =>

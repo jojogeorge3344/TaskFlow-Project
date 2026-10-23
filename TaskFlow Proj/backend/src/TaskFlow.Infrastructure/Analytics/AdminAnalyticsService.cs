@@ -195,22 +195,6 @@ public class AdminAnalyticsService : IAdminAnalyticsService
         return new TrendDto(weekly ? "week" : "day", points);
     }
 
-    private static async Task<List<QuarterHourCount>> QuarterHourCountsAsync(
-        IQueryable<DateTime> instants,
-        CancellationToken cancellationToken)
-    {
-        var rows = await instants
-            .GroupBy(instant => new { instant.Year, instant.Month, instant.Day, instant.Hour, Quarter = instant.Minute / 15 })
-            .Select(group => new { group.Key.Year, group.Key.Month, group.Key.Day, group.Key.Hour, group.Key.Quarter, Count = group.Count() })
-            .ToListAsync(cancellationToken);
-
-        return rows
-            .Select(row => new QuarterHourCount(
-                new DateTime(row.Year, row.Month, row.Day, row.Hour, row.Quarter * 15, 0, DateTimeKind.Utc),
-                row.Count))
-            .ToList();
-    }
-
     private static DateOnly StartOfWeek(DateOnly day) => day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
 
     private async Task<IReadOnlyList<DepartmentAnalyticsDto>> ByDepartmentAsync(
@@ -413,6 +397,4 @@ public class AdminAnalyticsService : IAdminAnalyticsService
 
         return result;
     }
-
-    private sealed record QuarterHourCount(DateTime Start, int Count);
 }
