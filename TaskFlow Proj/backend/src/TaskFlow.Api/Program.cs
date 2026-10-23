@@ -65,6 +65,8 @@ builder.Services.AddScoped<TaskFlow.Application.Users.IUserService, TaskFlow.Inf
 builder.Services.AddScoped<TaskFlow.Application.Roles.IRoleService, TaskFlow.Infrastructure.Services.RoleService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.IDashboardService, TaskFlow.Infrastructure.Services.DashboardService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IDashboardScope, TaskFlow.Infrastructure.Analytics.AdminDashboardScope>();
+builder.Services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IManagerDashboardScope, TaskFlow.Infrastructure.Analytics.ManagerDashboardScope>();
+builder.Services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IManagerAnalyticsService, TaskFlow.Infrastructure.Analytics.ManagerAnalyticsService>();
 builder.Services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IAdminAnalyticsService, TaskFlow.Infrastructure.Analytics.AdminAnalyticsService>();
 builder.Services.AddScoped<TaskFlow.Application.Workload.IWorkloadService, TaskFlow.Infrastructure.Services.WorkloadService>();
 builder.Services.AddScoped<TaskFlow.Application.Reports.IReportService, TaskFlow.Infrastructure.Services.ReportService>();

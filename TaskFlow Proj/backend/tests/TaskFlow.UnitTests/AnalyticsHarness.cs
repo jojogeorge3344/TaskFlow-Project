@@ -16,9 +16,11 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
 {
     private readonly DashboardServiceHarness _inner;
 
-    private AnalyticsHarness(DashboardServiceHarness inner, AdminDashboardScope scope, AdminAnalyticsService service, TaskService tasks)
+    private AnalyticsHarness(DashboardServiceHarness inner, AdminDashboardScope scope, AdminAnalyticsService service, TaskService tasks, ManagerDashboardScope managerScope, ManagerAnalyticsService managerService)
     {
         _inner = inner;
+        ManagerScope = managerScope;
+        ManagerService = managerService;
         Tasks = tasks;
         Scope = scope;
         Service = service;
@@ -29,6 +31,10 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
     public FakeTimeProvider Clock => _inner.Clock;
 
     public AdminDashboardScope Scope { get; }
+
+    public ManagerDashboardScope ManagerScope { get; }
+
+    public ManagerAnalyticsService ManagerService { get; }
 
     public AdminAnalyticsService Service { get; }
 
@@ -52,7 +58,14 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             inner.Clock,
             new ReminderSettingsService(inner.Db, inner.Clock, Options.Create(new ApplicationOptions())),
             appClock);
-        return new AnalyticsHarness(inner, scope, new AdminAnalyticsService(inner.Db, scope, appClock), tasks);
+        var managerScope = new ManagerDashboardScope(inner.Db, appClock);
+        return new AnalyticsHarness(
+            inner,
+            scope,
+            new AdminAnalyticsService(inner.Db, scope, appClock),
+            tasks,
+            managerScope,
+            new ManagerAnalyticsService(inner.Db, managerScope, appClock));
     }
 
     public Project AddProject(string name) => _inner.AddProject(name);
@@ -116,6 +129,12 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
         Db.Tasks.Add(task);
         Db.SaveChanges();
         return task;
+    }
+
+    public void AddManagerProject(User manager, Project project)
+    {
+        Db.ManagerProjects.Add(new ManagerProject { ManagerUserId = manager.Id, ProjectId = project.Id });
+        Db.SaveChanges();
     }
 
     public void AddRecipient(TaskEntity task, User user) => _inner.AddRecipient(task, user);

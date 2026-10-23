@@ -131,3 +131,58 @@ export interface AnalyticsFilterState {
   employeeId: number | null;
   managerId: number | null;
 }
+
+export interface TeamSummary {
+  teamSize: number;
+  totalProjects: number;
+  tasks: BucketCounts;
+  totalTasks: number;
+  completionPercent: number;
+}
+
+/** One team member. The flags are computed by the server so the thresholds live in one place. */
+export interface TeamEmployee {
+  userId: number;
+  name: string;
+  tasks: BucketCounts;
+  highWorkload: boolean;
+  hasOverdue: boolean;
+}
+
+export interface DelayedTask {
+  taskId: number;
+  taskCode: string;
+  title: string;
+  assigneeName: string;
+  projectName: string | null;
+  daysOverdue: number;
+}
+
+export interface ProjectAttention {
+  projectId: number;
+  name: string;
+  overdueTasks: number;
+}
+
+export interface TeamAttention {
+  delayedTasks: DelayedTask[];
+  projectsNeedingAttention: ProjectAttention[];
+}
+
+/** The Manager analytics response. It has no department section: managed departments only decide who is on the team. */
+export interface TeamAnalytics {
+  filter: AppliedAnalyticsFilter;
+  summary: TeamSummary;
+  tasksByStatus: BucketCounts;
+  tasksByPriority: PriorityCount[];
+  byEmployee: TeamEmployee[];
+  byProject: ProjectAnalytics[];
+  attention: TeamAttention;
+}
+
+export interface TeamFilterOptions {
+  today: string;
+  timezone: string;
+  employees: AnalyticsOption[];
+  projects: AnalyticsOption[];
+}

@@ -135,6 +135,12 @@ public class TaskService : ITaskService
                 || EF.Functions.Like(task.TaskCode, $"%{term}%", @"\"));
         }
 
+        if (IsDrillDown(filter) && await IsManagerScopedAsync(currentUserRole, cancellationToken))
+        {
+            // A manager's dashboard drill-down can only ever show their own team's tasks, whatever the query string says.
+            query = new ManagerDashboardScope(_dbContext, _clock).TeamTasks(query, currentUserId);
+        }
+
         query = await ApplyAnalyticsFiltersAsync(query, filter, cancellationToken);
 
         var total = await query.CountAsync(cancellationToken);
@@ -154,6 +160,16 @@ public class TaskService : ITaskService
         var items = tasks.Select(task => ToListItem(task, now, timeZone)).ToList();
         return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
     }
+
+    private static bool IsDrillDown(TaskListFilter filter) =>
+        filter.Bucket is not null || filter.DeadlineBucket is not null || filter.DepartmentId is not null
+        || filter.ProjectId is not null || filter.EmployeeId is not null || filter.ManagerId is not null
+        || filter.From is not null || filter.To is not null;
+
+    /// <summary>Holds the manager dashboard but not the administrator one, so the dashboard is limited to a team.</summary>
+    private async Task<bool> IsManagerScopedAsync(string roleName, CancellationToken cancellationToken) =>
+        await HasPermissionAsync(roleName, PermissionKeys.DashboardManager, cancellationToken)
+        && !await HasPermissionAsync(roleName, PermissionKeys.DashboardAdmin, cancellationToken);
 
     /// <summary>The dashboard drill-down filters. They reuse the analytics rules, so a list opened from a chart
     /// segment holds exactly the tasks the segment counted.</summary>
