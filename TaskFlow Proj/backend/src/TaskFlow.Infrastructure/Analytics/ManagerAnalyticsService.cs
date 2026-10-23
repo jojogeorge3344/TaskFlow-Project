@@ -94,7 +94,10 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
         var baseline = scoped.Tasks;
         if (requested.EmployeeId is not null)
         {
-            baseline = (await _scope.ScopeAsync(managerId, requested with { EmployeeId = null }, cancellationToken)).Tasks;
+            // The dates are pinned to the first resolution so both queries cover the same range, and the bucket
+            // boundary below uses the first run's "now", so a task at its deadline classifies identically in both.
+            var wholeTeam = requested with { EmployeeId = null, From = scoped.Filter.From, To = scoped.Filter.To };
+            baseline = (await _scope.ScopeAsync(managerId, wholeTeam, cancellationToken)).Tasks;
         }
 
         var recipients = _dbContext.TaskRecipients;

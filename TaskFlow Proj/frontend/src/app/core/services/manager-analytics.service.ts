@@ -18,6 +18,7 @@ export class ManagerAnalyticsService {
   private readonly refresh$ = new Subject<void>();
   private started = false;
   private serverDates = false;
+  private session = 0;
 
   readonly filter = signal<AnalyticsFilterState>(defaultFilter(localToday()));
   readonly options = signal<AnalyticsFilterOptions | null>(null);
@@ -44,7 +45,9 @@ export class ManagerAnalyticsService {
           if (this.serverDates) {
             this.serverDates = false;
             this.serverToday.set(result.data.filter.to);
-            this.filter.set(defaultFilter(result.data.filter.to));
+            // Only the dates come from the server; anything the user picked while the first request was in flight stays.
+            const defaults = defaultFilter(result.data.filter.to);
+            this.filter.update((current) => ({ ...current, from: defaults.from, to: defaults.to }));
           }
         } else {
           this.error.set('Could not load analytics. Check your connection and try again.');
@@ -68,12 +71,16 @@ export class ManagerAnalyticsService {
     }
 
     this.started = true;
+    const session = this.session;
     this.loading.set(true);
     this.error.set(null);
     this.http
       .get<TeamFilterOptions>(`${this.baseUrl}/filters`)
       .pipe(catchError(() => of(null)))
       .subscribe((options) => {
+        if (session !== this.session) {
+          return; // signed out (or reset) while the request was in flight
+        }
         this.options.set(options ? { ...options, departments: [], managers: [] } : null);
         if (options) {
           this.filter.set(defaultFilter(options.today));
@@ -104,6 +111,7 @@ export class ManagerAnalyticsService {
   }
 
   clear(): void {
+    this.session++;
     this.started = false;
     this.serverDates = false;
     this.serverToday.set(null);

@@ -49,6 +49,26 @@ public class ManagerDrillDownScopeTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task NoProjectRow_IncludingDeletedProjects_MatchesTheDrillDownCount()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        var mine = harness.AddUser("e1", managerId: manager.Id);
+        var deleted = harness.AddProject("Gone");
+        harness.AddTask(mine);
+        harness.AddTask(mine, projectId: deleted.Id);
+        deleted.IsDeleted = true;
+        harness.Db.SaveChanges();
+
+        var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Application.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);
+        var row = analytics.ByProject.Single(project => project.ProjectId is null);
+        var listed = await TotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All, ProjectId: 0), manager.Id, SystemRoles.Manager);
+
+        Assert.Equal(2, row.Tasks.Total);
+        Assert.Equal(row.Tasks.Total, listed);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task Administrator_DrillDownIsNotLimitedToATeam()
     {
         await using var harness = AnalyticsHarness.Create(Now);

@@ -138,6 +138,34 @@ describe('ManagerAnalyticsService', () => {
     expect(service.options()).toBeNull();
   });
 
+  it('keeps a filter chosen while the first request is in flight when the server dates arrive', () => {
+    service.start();
+    http.expectOne(`${url}/filters`).flush('boom', { status: 500, statusText: 'Server Error' });
+    http.expectOne((candidate) => candidate.url === url);
+
+    service.update({ projectId: 4 });
+    // The first request is cancelled by the second; the server dates arrive with the response to the latest one.
+    const pending = http.match((candidate) => candidate.url === url).filter((request) => !request.cancelled);
+    expect(pending.length).toBe(1);
+    pending[0].flush(analytics(1));
+
+    expect(service.filter().projectId).toBe(4);
+    expect(service.filter().to).toBe('2026-10-21');
+  });
+
+  it('ignores a late filters response after the user signed out', () => {
+    service.start();
+    const filters = http.expectOne(`${url}/filters`);
+    TestBed.flushEffects();
+
+    currentUser.set(null);
+    TestBed.flushEffects();
+    filters.flush(options);
+
+    http.expectNone((candidate) => candidate.url === url);
+    expect(service.options()).toBeNull();
+  });
+
   it('resets the filters to the default range', () => {
     start();
     http.expectOne((candidate) => candidate.url === url).flush(analytics(1));

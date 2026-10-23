@@ -51,14 +51,15 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             Options.Create(new ApplicationOptions { Timezone = timezone }),
             NullLogger<AppClock>.Instance);
         var scope = new AdminDashboardScope(inner.Db, appClock);
+        var managerScope = new ManagerDashboardScope(inner.Db, appClock);
         var tasks = new TaskService(
             inner.Db,
             new TaskActivityService(inner.Db, inner.Clock),
             new NotificationPublisher(inner.Db, inner.Clock),
             inner.Clock,
             new ReminderSettingsService(inner.Db, inner.Clock, Options.Create(new ApplicationOptions())),
-            appClock);
-        var managerScope = new ManagerDashboardScope(inner.Db, appClock);
+            appClock,
+            managerScope);
         return new AnalyticsHarness(
             inner,
             scope,

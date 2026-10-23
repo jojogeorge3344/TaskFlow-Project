@@ -23,6 +23,7 @@ public class TaskService : ITaskService
     private readonly TimeProvider _timeProvider;
     private readonly IReminderSettingsService _reminderSettings;
     private readonly IAppClock _clock;
+    private readonly IManagerDashboardScope _managerScope;
 
     public TaskService(
         AppDbContext dbContext,
@@ -30,7 +31,8 @@ public class TaskService : ITaskService
         INotificationPublisher notificationPublisher,
         TimeProvider timeProvider,
         IReminderSettingsService reminderSettings,
-        IAppClock clock)
+        IAppClock clock,
+        IManagerDashboardScope managerScope)
     {
         _dbContext = dbContext;
         _activityService = activityService;
@@ -38,6 +40,7 @@ public class TaskService : ITaskService
         _timeProvider = timeProvider;
         _reminderSettings = reminderSettings;
         _clock = clock;
+        _managerScope = managerScope;
     }
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
@@ -137,8 +140,9 @@ public class TaskService : ITaskService
 
         if (IsDrillDown(filter) && await IsManagerScopedAsync(currentUserRole, cancellationToken))
         {
-            // A manager's dashboard drill-down can only ever show their own team's tasks, whatever the query string says.
-            query = new ManagerDashboardScope(_dbContext, _clock).TeamTasks(query, currentUserId);
+            // A drill-down from the manager dashboard shows exactly the team's tasks, whatever the query string says.
+            // The plain Tasks screen is deliberately untouched: managers keep seeing every task there.
+            query = _managerScope.TeamTasks(query, currentUserId);
         }
 
         query = await ApplyAnalyticsFiltersAsync(query, filter, cancellationToken);
