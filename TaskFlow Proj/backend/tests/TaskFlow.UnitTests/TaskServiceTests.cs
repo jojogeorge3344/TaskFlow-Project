@@ -46,6 +46,8 @@ public class TaskServiceTests
         await using var harness = TaskTrackingServiceHarness.Create();
         var manager = harness.AddUser("tkmgr2", SystemRoles.Manager);
         var assignee = harness.AddUser("tkasgn3");
+        assignee.ManagerId = manager.Id; // a manager reaches their own team's tasks
+        harness.Db.SaveChanges();
         var creator = harness.AddUser("tkcreator");
         var recipient = harness.AddUser("tkrecipient");
         var task = harness.AddTask(assignee.Id, creator.Id);
@@ -55,6 +57,46 @@ public class TaskServiceTests
         Assert.NotNull(await harness.TaskService.GetDetailsAsync(task.Id, creator.Id, SystemRoles.Employee, CancellationToken.None));
         Assert.NotNull(await harness.TaskService.GetDetailsAsync(task.Id, recipient.Id, SystemRoles.Employee, CancellationToken.None));
         Assert.NotNull(await harness.TaskService.GetDetailsAsync(task.Id, manager.Id, SystemRoles.Manager, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Manager_CannotReadAnotherTeamsTaskButReadsTheirOwnTeamAndCreatedTasks()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tkmgr-scope", SystemRoles.Manager);
+        var member = harness.AddUser("tkmember-scope");
+        member.ManagerId = manager.Id;
+        var foreign = harness.AddUser("tkforeign-scope");
+        harness.Db.SaveChanges();
+        var team = harness.AddTask(member.Id, manager.Id, "Team task");
+        var created = harness.AddTask(foreign.Id, manager.Id, "Created by me, assigned outside the team");
+        var other = harness.AddTask(foreign.Id, foreign.Id, "Another team");
+
+        Assert.NotNull(await harness.TaskService.GetDetailsAsync(team.Id, manager.Id, SystemRoles.Manager, CancellationToken.None));
+        Assert.NotNull(await harness.TaskService.GetDetailsAsync(created.Id, manager.Id, SystemRoles.Manager, CancellationToken.None));
+        Assert.Null(await harness.TaskService.GetDetailsAsync(other.Id, manager.Id, SystemRoles.Manager, CancellationToken.None));
+
+        var board = await harness.TaskService.GetBoardAsync(manager.Id, SystemRoles.Manager, CancellationToken.None);
+        Assert.DoesNotContain(board, card => card.Title == "Another team");
+        Assert.Equal(2, board.Count);
+
+        var list = await harness.TaskService.ListAsync(new TaskFlow.Application.Tasks.TaskListFilter(), manager.Id, SystemRoles.Manager, CancellationToken.None);
+        Assert.Equal(2, list.Total);
+
+        var assignees = await harness.TaskService.GetAssigneesAsync(manager.Id, SystemRoles.Manager, CancellationToken.None);
+        Assert.Equal(2, assignees.Count);
+    }
+
+    [Fact]
+    public async Task Administrator_StillSeesEveryTask()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var admin = harness.AddUser("tkadmin-scope", SystemRoles.Administrator);
+        var one = harness.AddUser("tkone-scope");
+        var task = harness.AddTask(one.Id, one.Id, "Anyone");
+
+        Assert.NotNull(await harness.TaskService.GetDetailsAsync(task.Id, admin.Id, SystemRoles.Administrator, CancellationToken.None));
+        Assert.Single(await harness.TaskService.GetBoardAsync(admin.Id, SystemRoles.Administrator, CancellationToken.None));
     }
 
     [Fact]
