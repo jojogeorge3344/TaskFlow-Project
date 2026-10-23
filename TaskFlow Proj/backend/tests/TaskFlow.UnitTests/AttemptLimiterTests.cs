@@ -105,6 +105,40 @@ public class AttemptLimiterTests
     }
 
     [Fact]
+    public void The_address_check_reads_the_budget_without_spending_it()
+    {
+        Assert.False(_limiter.IsAddressBlocked("10.0.0.9"));
+        for (var i = 0; i < 100; i++)
+        {
+            Assert.False(_limiter.IsAddressBlocked("10.0.0.9"));
+        }
+
+        for (var i = 0; i < AttemptLimiter.AttemptsPerAddress; i++)
+        {
+            _limiter.TryAcquire(IAttemptLimiter.AccountKey(i), "10.0.0.9");
+        }
+
+        Assert.True(_limiter.IsAddressBlocked("10.0.0.9"));
+        Assert.False(_limiter.IsAddressBlocked("10.0.0.10"));
+        Assert.False(_limiter.IsAddressBlocked(null));
+    }
+
+    [Fact]
+    public void The_address_check_follows_the_same_pooling_and_window()
+    {
+        for (var i = 0; i < AttemptLimiter.AttemptsPerAddress; i++)
+        {
+            _limiter.TryAcquire(IAttemptLimiter.AccountKey(i), "2001:db8:1:2::1");
+        }
+
+        Assert.True(_limiter.IsAddressBlocked("2001:db8:1:2:aaaa::9"));
+
+        _clock.Set(new DateTime(2026, 10, 24, 9, 6, 0));
+
+        Assert.False(_limiter.IsAddressBlocked("2001:db8:1:2:aaaa::9"));
+    }
+
+    [Fact]
     public void An_ipv6_caller_is_pooled_by_its_64_bit_prefix()
     {
         for (var i = 0; i < AttemptLimiter.AttemptsPerAddress; i++)

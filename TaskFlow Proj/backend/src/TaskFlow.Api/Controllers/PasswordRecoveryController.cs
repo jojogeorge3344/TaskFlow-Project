@@ -57,6 +57,12 @@ public class PasswordRecoveryController : ControllerBase
         var identifier = request.Identifier!.Trim();
         var address = HttpContext.Connection.RemoteIpAddress?.ToString();
 
+        // A caller whose address is already over budget is turned away before any database work.
+        if (_limiter.IsAddressBlocked(address))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
+        }
+
         var user = await _db.Users.FirstOrDefaultAsync(
             candidate => (candidate.Username == identifier || candidate.Email == identifier)
                 && candidate.IsActive && !candidate.IsDeleted,

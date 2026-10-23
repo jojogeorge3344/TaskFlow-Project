@@ -14,6 +14,10 @@ public interface IAttemptLimiter
     /// <summary>The budget key for re-entering the current password while signed in (kept apart from recovery).</summary>
     static string PasswordKey(int userId) => "pwd:" + userId;
 
+    /// <summary>A cheap read-only look at the address budget alone, so a caller that is already refused can be turned away before any
+    /// database work. It reserves nothing; <see cref="TryAcquire"/> still decides atomically.</summary>
+    bool IsAddressBlocked(string? remoteAddress);
+
     /// <summary>Reserves one attempt. Returns false, without checking anything, when the account or address budget is spent.</summary>
     bool TryAcquire(string accountKey, string? remoteAddress);
 

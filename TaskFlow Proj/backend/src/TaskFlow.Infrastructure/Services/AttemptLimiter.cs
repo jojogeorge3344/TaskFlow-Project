@@ -26,6 +26,20 @@ public class AttemptLimiter : IAttemptLimiter
         _lastSweep = timeProvider.GetUtcNow();
     }
 
+    public bool IsAddressBlocked(string? remoteAddress)
+    {
+        if (remoteAddress is null)
+        {
+            return false;
+        }
+
+        var now = _timeProvider.GetUtcNow();
+        lock (_gate)
+        {
+            return Count(AddressKey(remoteAddress), now) >= AttemptsPerAddress;
+        }
+    }
+
     public bool TryAcquire(string accountKey, string? remoteAddress)
     {
         var now = _timeProvider.GetUtcNow();
