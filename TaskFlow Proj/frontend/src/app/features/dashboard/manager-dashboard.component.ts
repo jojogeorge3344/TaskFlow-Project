@@ -1,8 +1,9 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { BASIS_LABELS, RANGE_PRESETS, detectPreset, shortDate } from '../../core/analytics/analytics-filter';
 import { DrillTarget, drillDownQuery } from '../../core/analytics/drill-down';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { AnalyticsFilterState } from '../../core/models';
 import { ManagerAnalyticsService } from '../../core/services/manager-analytics.service';
 import { provideDashboardCharts } from '../../shared/charts/chart-providers';
@@ -17,6 +18,7 @@ import { TeamTaskAnalyticsComponent } from './analytics/team-task-analytics.comp
   selector: 'app-manager-dashboard',
   standalone: true,
   imports: [
+    RouterLink,
     DashboardFilterBarComponent,
     KpiCardComponent,
     TeamAttentionComponent,
@@ -40,6 +42,9 @@ export class ManagerDashboardComponent implements OnInit {
   readonly loading = this.analytics.loading;
   readonly error = this.analytics.error;
   readonly today = this.analytics.today;
+
+  /** Administrators hold the manager dashboard permission too but have no team of their own. */
+  readonly isAdministrator = computed(() => this.user()?.permissions.includes(Permissions.DashboardAdmin) ?? false);
 
   /** The manager has no one on their team yet, so no filter could ever match. */
   readonly noTeam = computed(() => !this.loading() && !this.error() && this.data()?.summary.teamSize === 0);

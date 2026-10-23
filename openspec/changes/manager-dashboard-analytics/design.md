@@ -32,7 +32,7 @@
 
 **D8. No department-wise view.** Managed departments are used only to resolve the team (D1). The manager dashboard has no department chart, table or filter; the department grouping in the shared aggregates is simply not requested for the manager.
 
-**D7. Drill-down.** Uses the shared mapping; the task list API applies the caller's scope itself, so tampered query params cannot widen results (tested).
+**D7. Drill-down.** Uses the shared mapping. The task list API limits a manager (holds `dashboard.manager` but not `dashboard.admin`) to their team whenever any drill-down parameter is present (bucket, deadlineBucket, department, project, employee, manager, from or to), so tampered drill-down params cannot widen results (tested). Scope of this guarantee: it covers the dashboard and its drill-down only. The plain Tasks screen, board and task details are unchanged, because managers hold `tasks.view.all` and the existing `AssignmentsDoNotChangeWhatAManagerCanSee` contract says assignments never change what a manager sees there. Scoping those screens for managers would be a separate change that replaces that contract.
 
 ## Risks / Trade-offs
 

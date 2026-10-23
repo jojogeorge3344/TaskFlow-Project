@@ -53,7 +53,9 @@ public class ManagerDashboardScope : IManagerDashboardScope
         await EnsureInScopeAsync(managerId, requested, cancellationToken);
         var resolved = await _resolver.ResolveAsync(requested, checkEntitiesExist: false, cancellationToken);
 
-        var team = TeamUserIds(managerId);
+        // The team is read once and passed to the task queries as a plain id list, so the many aggregate queries a
+        // dashboard request runs do not each re-evaluate the department and report subqueries.
+        var team = await TeamUserIds(managerId).ToListAsync(cancellationToken);
         var withoutDates = TeamTasks(_dbContext.Tasks.AsNoTracking().Where(TaskBucketRules.IsCounted()), team)
             .ApplyEntityFilters(_dbContext, null, resolved.ProjectId, resolved.EmployeeId, null);
         var tasks = withoutDates.ApplyDateRange(resolved.Basis, resolved.FromUtc, resolved.ToUtcExclusive);
@@ -63,6 +65,11 @@ public class ManagerDashboardScope : IManagerDashboardScope
 
     public IQueryable<TaskEntity> TeamTasks(IQueryable<TaskEntity> tasks, int managerId) =>
         TeamTasks(tasks, TeamUserIds(managerId));
+
+    private IQueryable<TaskEntity> TeamTasks(IQueryable<TaskEntity> tasks, List<int> team) =>
+        tasks.Where(task =>
+            team.Contains(task.AssignedToUserId)
+            || _dbContext.TaskRecipients.Any(recipient => recipient.TaskId == task.Id && team.Contains(recipient.UserId)));
 
     private IQueryable<TaskEntity> TeamTasks(IQueryable<TaskEntity> tasks, IQueryable<int> team) =>
         tasks.Where(task =>

@@ -26,9 +26,16 @@
 
   @if (noTeam()) {
     <div class="tf-card analytics-state" role="status" data-no-team>
-      <span>
-        <strong>You have no team yet.</strong> Ask an administrator to assign departments or direct reports to you.
-      </span>
+      @if (isAdministrator()) {
+        <span data-admin-note>
+          <strong>This dashboard shows one manager's team.</strong> Organisation-wide figures are on the
+          <a routerLink="/admin">Administrator Dashboard</a>.
+        </span>
+      } @else {
+        <span>
+          <strong>You have no team yet.</strong> Ask an administrator to assign departments or direct reports to you.
+        </span>
+      }
     </div>
   } @else if (isEmpty()) {
     <div class="tf-card analytics-state" role="status" data-empty>

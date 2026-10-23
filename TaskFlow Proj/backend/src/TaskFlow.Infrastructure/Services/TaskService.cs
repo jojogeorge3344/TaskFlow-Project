@@ -141,7 +141,8 @@ public class TaskService : ITaskService
         if (IsDrillDown(filter) && await IsManagerScopedAsync(currentUserRole, cancellationToken))
         {
             // A drill-down from the manager dashboard shows exactly the team's tasks, whatever the query string says.
-            // The plain Tasks screen is deliberately untouched: managers keep seeing every task there.
+            // The plain Tasks screen, board and details are deliberately untouched: managers keep seeing every task there
+            // (the AssignmentsDoNotChangeWhatAManagerCanSee contract; see design D7 of manager-dashboard-analytics).
             query = _managerScope.TeamTasks(query, currentUserId);
         }
 

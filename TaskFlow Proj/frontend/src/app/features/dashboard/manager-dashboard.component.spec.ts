@@ -199,6 +199,18 @@ describe('ManagerDashboardComponent', () => {
     expect(element.querySelector('[data-empty]')).toBeNull();
   });
 
+  it('tells an administrator the dashboard is per-manager and links to their own dashboard', () => {
+    user.set({ ...user()!, role: 'Administrator', permissions: systemPermissions('Administrator') });
+    data.set({ ...analytics(counts(0, 0, 0, 0), 0), byEmployee: [], byProject: [] });
+    const { element } = create();
+
+    const note = element.querySelector('[data-admin-note]')!;
+    expect(note.textContent).toContain('shows one manager');
+    expect(note.querySelector('a')?.getAttribute('href')).toBe('/admin');
+    expect(element.querySelector('[data-no-team]')?.textContent).not.toContain('Ask an administrator');
+    user.set({ ...user()!, role: 'Manager', permissions: systemPermissions('Manager') });
+  });
+
   it('shows an error with a retry and keeps the filter bar usable', () => {
     data.set(null);
     error.set('Could not load analytics. Check your connection and try again.');

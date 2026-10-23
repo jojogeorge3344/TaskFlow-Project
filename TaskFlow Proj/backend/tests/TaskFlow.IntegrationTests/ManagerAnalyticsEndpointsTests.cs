@@ -17,6 +17,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private const string AnalyticsUrl = "/api/v1/dashboard/manager/analytics";
 
     private readonly TaskFlowApiFactory _factory;
+    private readonly string _u = Guid.NewGuid().ToString("N")[..8]; // a new instance per test, so every test owns its users, tasks and projects
 
     public ManagerAnalyticsEndpointsTests(TaskFlowApiFactory factory)
     {
@@ -27,9 +28,9 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_AsManager_ReturnsOnlyTheTeamsDataAndNoDepartmentSection()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-iso-a", SystemRoles.Manager);
-        await SeedTeamAsync("mgr-iso-a", "mgr-iso-a-member", tasks: 2);
-        await SeedTeamAsync("mgr-iso-b", "mgr-iso-b-member", tasks: 3);
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
+        await SeedTeamAsync($"mgr-a-{_u}", $"mgr-a-member-{_u}", tasks: 2);
+        await SeedTeamAsync($"mgr-b-{_u}", $"mgr-b-member-{_u}", tasks: 3);
 
         var response = await GetAsync(client, AnalyticsUrl, token);
 
@@ -44,7 +45,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.False(root.TryGetProperty("byDepartment", out _));
         Assert.Equal(2, root.GetProperty("tasksByStatus").GetProperty("total").GetInt32());
         var employees = root.GetProperty("byEmployee").EnumerateArray().Select(row => row.GetProperty("name").GetString()).ToList();
-        Assert.Equal(["mgr-iso-a-member full name"], employees);
+        Assert.Equal([$"mgr-a-member-{_u} full name"], employees);
     }
 
     [Fact]
@@ -59,7 +60,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_AsEmployee_IsForbiddenWithNoData()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-employee", SystemRoles.Employee);
+        var token = await LoginAsync(client, $"mgr-employee-{_u}", SystemRoles.Employee);
 
         var response = await GetAsync(client, AnalyticsUrl, token);
 
@@ -71,9 +72,9 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_EmployeeOnAnotherManagersTeam_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
-        await SeedTeamAsync("mgr-a", "mgr-a-member", tasks: 1);
-        var foreignId = await SeedTeamAsync("mgr-b", "mgr-b-member", tasks: 1);
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
+        await SeedTeamAsync($"mgr-a-{_u}", $"mgr-a-member-{_u}", tasks: 1);
+        var foreignId = await SeedTeamAsync($"mgr-b-{_u}", $"mgr-b-member-{_u}", tasks: 1);
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?employeeId={foreignId}", token);
 
@@ -85,10 +86,10 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_ProjectOfAnotherTeam_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
-        await SeedTeamAsync("mgr-a", "mgr-a-member", tasks: 1);
-        await SeedTeamAsync("mgr-b", "mgr-b-member", tasks: 1);
-        var foreignProjectId = await SeedProjectTaskAsync("mgr-b-member", "Foreign project");
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
+        await SeedTeamAsync($"mgr-a-{_u}", $"mgr-a-member-{_u}", tasks: 1);
+        await SeedTeamAsync($"mgr-b-{_u}", $"mgr-b-member-{_u}", tasks: 1);
+        var foreignProjectId = await SeedProjectTaskAsync($"mgr-b-member-{_u}", $"Foreign project {_u}");
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?projectId={foreignProjectId}", token);
 
@@ -99,9 +100,9 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_OwnEmployeeAndProject_AreAccepted()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
-        var memberId = await SeedTeamAsync("mgr-a", "mgr-a-member", tasks: 1);
-        var projectId = await SeedProjectTaskAsync("mgr-a-member", "Own project");
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
+        var memberId = await SeedTeamAsync($"mgr-a-{_u}", $"mgr-a-member-{_u}", tasks: 1);
+        var projectId = await SeedProjectTaskAsync($"mgr-a-member-{_u}", $"Own project {_u}");
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?employeeId={memberId}&projectId={projectId}", token);
 
@@ -114,7 +115,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_UnknownEntityId_IsNotFound(string parameter)
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?{parameter}=999999", token);
 
@@ -125,7 +126,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_DepartmentParameter_IsIgnored()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?departmentId=999999&managerId=999999", token);
 
@@ -140,7 +141,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Analytics_EndBeforeStart_IsBadRequest()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
 
         var response = await GetAsync(client, $"{AnalyticsUrl}?from=2026-02-01&to=2026-01-01", token);
 
@@ -151,11 +152,11 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Filters_AsManager_ListOnlyInScopeEmployeesAndProjects()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-a", SystemRoles.Manager);
-        await SeedTeamAsync("mgr-a", "mgr-a-member", tasks: 1);
-        await SeedTeamAsync("mgr-b", "mgr-b-member", tasks: 1);
-        await SeedProjectTaskAsync("mgr-a-member", "Own project");
-        await SeedProjectTaskAsync("mgr-b-member", "Foreign project");
+        var token = await LoginAsync(client, $"mgr-a-{_u}", SystemRoles.Manager);
+        await SeedTeamAsync($"mgr-a-{_u}", $"mgr-a-member-{_u}", tasks: 1);
+        await SeedTeamAsync($"mgr-b-{_u}", $"mgr-b-member-{_u}", tasks: 1);
+        await SeedProjectTaskAsync($"mgr-a-member-{_u}", $"Own project {_u}");
+        await SeedProjectTaskAsync($"mgr-b-member-{_u}", $"Foreign project {_u}");
 
         var response = await GetAsync(client, $"{AnalyticsUrl}/filters", token);
 
@@ -164,10 +165,10 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var root = document.RootElement;
         Assert.False(root.TryGetProperty("departments", out _));
         Assert.Equal(
-            ["mgr-a-member full name"],
+            [$"mgr-a-member-{_u} full name"],
             root.GetProperty("employees").EnumerateArray().Select(option => option.GetProperty("name").GetString()));
         Assert.Equal(
-            ["Own project"],
+            [$"Own project {_u}"],
             root.GetProperty("projects").EnumerateArray().Select(option => option.GetProperty("name").GetString()));
     }
 
@@ -175,7 +176,7 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Filters_AsEmployee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "mgr-employee", SystemRoles.Employee);
+        var token = await LoginAsync(client, $"mgr-employee-{_u}", SystemRoles.Employee);
 
         var response = await GetAsync(client, $"{AnalyticsUrl}/filters", token);
 
