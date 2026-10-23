@@ -68,7 +68,9 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
                 ["Mail:AttachmentsPath"] = AttachmentsPath,
-                ["AiProviders:KeyRingPath"] = KeyRingPath
+                ["AiProviders:KeyRingPath"] = KeyRingPath,
+                // Most tests sign in without an authenticator app; the gate has its own tests that switch this on.
+                ["Mfa:Required"] = "false"
             });
         });
     }

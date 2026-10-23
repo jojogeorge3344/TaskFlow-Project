@@ -35,6 +35,7 @@ public static class SessionValidation
             {
                 candidate.SecurityStamp,
                 candidate.IsActive,
+                candidate.MfaEnabledAt,
                 RoleName = candidate.Role.Name,
                 PermissionKeys = candidate.Role.Permissions.Select(grant => grant.Permission.Key).ToList()
             })
@@ -54,6 +55,18 @@ public static class SessionValidation
             }
 
             identity.AddClaim(new Claim(identity.RoleClaimType, user.RoleName));
+
+            var mfa = context.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Application.Mfa.MfaOptions>>().Value;
+            foreach (var stale in identity.FindAll(AuthClaims.MfaSetupRequired).ToList())
+            {
+                identity.RemoveClaim(stale);
+            }
+
+            if (mfa.Required && user.MfaEnabledAt is null)
+            {
+                identity.AddClaim(new Claim(AuthClaims.MfaSetupRequired, "true"));
+            }
+
             identity.AddClaims(user.PermissionKeys.Select(key => new Claim(AuthClaims.Permission, key)));
         }
     }

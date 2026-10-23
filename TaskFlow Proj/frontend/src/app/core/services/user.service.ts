@@ -41,6 +41,11 @@ export class UserService {
     return this.http.patch<User>(`${this.baseUrl}/${id}/status`, request);
   }
 
+  /** Removes the user's authenticator MFA (lost phone and backup codes), ends their sessions and notifies them. */
+  resetMfa(id: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/mfa/reset`, {});
+  }
+
   /** Administrator only. Replaces the user's manager and, for a manager, their projects. */
   updateAssignments(id: number, request: ManagerAssignmentRequest): Observable<User> {
     return this.http.put<User>(`${this.baseUrl}/${id}/assignments`, request);

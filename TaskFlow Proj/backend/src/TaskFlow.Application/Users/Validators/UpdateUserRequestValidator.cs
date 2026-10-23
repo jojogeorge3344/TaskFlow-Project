@@ -24,5 +24,6 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
             .WithMessage("Password cannot be blank.")
             .MinimumLength(6)
             .When(x => !string.IsNullOrEmpty(x.Password));
+
     }
 }

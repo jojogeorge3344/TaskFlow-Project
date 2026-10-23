@@ -84,7 +84,10 @@ public class UserService : IUserService
                 u.Reports
                     .OrderBy(report => report.FullName)
                     .Select(report => new ManagerReportDto(report.Id, report.FullName))
-                    .ToList()))
+                    .ToList(),
+                u.MfaEnabledAt != null,
+                u.MfaBackupCodes.Count(code => code.UsedAt == null),
+                u.MobileNumber))
             .ToListAsync(cancellationToken);
 
         return users;
@@ -122,7 +125,10 @@ public class UserService : IUserService
                 u.Reports
                     .OrderBy(report => report.FullName)
                     .Select(report => new ManagerReportDto(report.Id, report.FullName))
-                    .ToList()))
+                    .ToList(),
+                u.MfaEnabledAt != null,
+                u.MfaBackupCodes.Count(code => code.UsedAt == null),
+                u.MobileNumber))
             .FirstOrDefaultAsync(cancellationToken);
 
         return user;
@@ -346,6 +352,23 @@ public class UserService : IUserService
 
         var email = RequireValidEmail(request.Email);
 
+        // Null keeps the current number; an empty value clears it.
+        var mobileNumber = request.MobileNumber is null
+            ? user.MobileNumber
+            : MobileNumberPolicy.Normalize(request.MobileNumber);
+        if (mobileNumber is not null && !MobileNumberPolicy.IsValid(mobileNumber))
+        {
+            throw new InvalidOperationException(MobileNumberPolicy.InvalidMessage);
+        }
+
+        // Email is the only unique identity, so a number may be shared. What is refused is a second record that already holds
+        // this exact email and number together.
+        if (mobileNumber is not null
+            && await _dbContext.Users.AnyAsync(u => u.Id != id && u.Email == email && u.MobileNumber == mobileNumber, cancellationToken))
+        {
+            throw new InvalidOperationException("A user with this email and mobile number already exists.");
+        }
+
         if (await EmailTakenAsync(email, id, cancellationToken))
         {
             throw new InvalidOperationException("Email already exists.");
@@ -353,12 +376,24 @@ public class UserService : IUserService
 
         user.FullName = request.FullName!.Trim();
         user.Email = email;
+        user.MobileNumber = mobileNumber;
         user.UpdatedAt = DateTime.UtcNow;
 
         // Role, project, username, employee code and status are deliberately untouched.
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return (await GetByIdAsync(user.Id, cancellationToken))!;
+    }
+
+    public async Task<bool> CheckOwnPasswordAsync(int id, string? password, CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
+
+        return user is not null
+            && !string.IsNullOrEmpty(password)
+            && _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Success;
     }
 
     public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)

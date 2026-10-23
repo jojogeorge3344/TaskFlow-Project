@@ -7,7 +7,8 @@ public record AuthenticatedUserResponse(
     string Email,
     string Role,
     string? EmployeeCode,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    bool MfaSetupRequired = false);
 
 public record AuthResponse(
     string AccessToken,

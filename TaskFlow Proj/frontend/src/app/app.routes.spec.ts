@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, permissionGuard } from './core/auth/auth.guard';
+import { authGuard, mfaSetupGuard, permissionGuard } from './core/auth/auth.guard';
 import { Permissions } from './core/auth/permissions';
 import { routes } from './app.routes';
 import { ShellComponent } from './core/layout/shell.component';
@@ -74,7 +74,7 @@ describe('app routes', () => {
 
   it('wraps authenticated screens in the shell behind the auth guard', async () => {
     const shell = shellRoute();
-    expect(shell.canActivate).toEqual([authGuard]);
+    expect(shell.canActivate).toEqual([authGuard, mfaSetupGuard]);
     expect(await load(shell)).toBe(ShellComponent);
     expect(shell.children!.map((child) => child.path)).toEqual([
       'admin',

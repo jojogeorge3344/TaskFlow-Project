@@ -68,4 +68,5 @@ describe('ProfileService', () => {
 
     expect(completed).toBeTrue();
   });
+
 });

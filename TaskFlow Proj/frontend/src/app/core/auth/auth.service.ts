@@ -1,7 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
-import { AuthResponse, AuthUser, LoginRequest } from './auth.models';
+import {
+  AuthResponse,
+  AuthUser,
+  LoginRequest,
+  MfaChallenge,
+  RecoverPasswordRequest,
+  RecoveryTokenResponse
+} from './auth.models';
 import { TokenStore } from './token.store';
 
 @Injectable({ providedIn: 'root' })
@@ -20,13 +27,33 @@ export class AuthService {
     return this.currentUserSignal()?.permissions.includes(key) ?? false;
   }
 
-  login(request: LoginRequest): Observable<AuthUser> {
-    return this.http
-      .post<AuthResponse>(`${this.baseUrl}/login`, request)
-      .pipe(
-        tap((response) => this.applySession(response)),
-        map((response) => response.user)
-      );
+  /** Signs in. For an account with MFA on there is no session yet: the result is a challenge to complete with
+   * `verifyMfa` (the type guard `isMfaChallenge` tells the two apart). */
+  login(request: LoginRequest): Observable<AuthUser | MfaChallenge> {
+    return this.http.post<AuthResponse | MfaChallenge>(`${this.baseUrl}/login`, request).pipe(
+      tap((response) => {
+        if ('accessToken' in response) {
+          this.applySession(response);
+        }
+      }),
+      map((response) => ('accessToken' in response ? response.user : response))
+    );
+  }
+
+  /** The second sign-in step: the challenge from `login` plus an authenticator code or a backup code. */
+  verifyMfa(challengeToken: string, code: string): Observable<AuthUser> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/mfa/verify`, { challengeToken, code }).pipe(
+      tap((response) => this.applySession(response)),
+      map((response) => response.user)
+    );
+  }
+
+  /** Account recovery with an authenticator code instead of an SMS code. Returns the single-use reset token. */
+  verifyAuthenticatorRecovery(identifier: string, code: string): Observable<RecoveryTokenResponse> {
+    return this.http.post<RecoveryTokenResponse>(`${this.baseUrl}/password-recovery/authenticator/verify`, {
+      identifier,
+      code
+    });
   }
 
   restoreSession(): Observable<AuthUser | null> {
@@ -62,6 +89,11 @@ export class AuthService {
     );
   }
 
+  /** Sets the new password with the single-use reset token from `verifyAuthenticatorRecovery`. */
+  recoverPassword(request: RecoverPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/password-recovery/reset`, request);
+  }
+
   /**
    * Asks the API whether the current session is still valid. A 401 (e.g. the user's username or
    * password was changed) is handled by the auth interceptor, which signs the user out.
@@ -83,6 +115,22 @@ export class AuthService {
   applyProfile(user: Omit<AuthUser, 'permissions'>): void {
     // A profile edit never changes the role, so the permissions already held stay as they are.
     this.currentUserSignal.set({ ...user, permissions: this.currentUserSignal()?.permissions ?? [] });
+  }
+
+  /** The setup screen finished: the app is open now. The API stopped gating the session as soon as MFA was confirmed. */
+  markMfaConfigured(): void {
+    const user = this.currentUserSignal();
+    if (user) {
+      this.currentUserSignal.set({ ...user, mfaSetupRequired: false });
+    }
+  }
+
+  /** The API refused a request because two-step verification is still to be set up (a stale session); show the setup screen. */
+  markMfaRequired(): void {
+    const user = this.currentUserSignal();
+    if (user) {
+      this.currentUserSignal.set({ ...user, mfaSetupRequired: true });
+    }
   }
 
   private applySession(response: AuthResponse): void {

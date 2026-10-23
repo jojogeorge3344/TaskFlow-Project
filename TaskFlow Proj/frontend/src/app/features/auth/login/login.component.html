@@ -1,4 +1,5 @@
 <section class="login">
+  @if (challenge() === null) {
   <form class="login__card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <header class="login__header">
       <div class="login__logo" aria-hidden="true">TF</div>
@@ -47,6 +48,61 @@
     <button type="submit" class="login__submit" [disabled]="submitting()">
       {{ submitting() ? 'Signing in…' : 'Sign in' }}
     </button>
+
+    <p class="login__forgot">
+      <a class="login__forgot-link" routerLink="/account-recovery">Forgot password?</a>
+    </p>
   </form>
+  } @else {
+  <form class="login__card" [formGroup]="mfaForm" (ngSubmit)="submitCode()" novalidate data-step="mfa">
+    <header class="login__header">
+      <div class="login__logo" aria-hidden="true">TF</div>
+      <h1 class="login__title">Two-step verification</h1>
+      <p class="login__subtitle">
+        @if (useBackupCode()) {
+          Enter one of your backup codes.
+        } @else {
+          Enter the 6-digit code from your authenticator app.
+        }
+      </p>
+    </header>
+
+    <label class="login__field">
+      <span class="login__label">{{ useBackupCode() ? 'Backup code' : 'Authentication code' }}</span>
+      <input
+        type="text"
+        formControlName="code"
+        [attr.inputmode]="useBackupCode() ? 'text' : 'numeric'"
+        autocomplete="one-time-code"
+        [attr.maxlength]="useBackupCode() ? 12 : 6"
+        [placeholder]="useBackupCode() ? 'XXXXX-XXXXX' : '123456'"
+        data-field="mfaCode"
+        [attr.aria-invalid]="mfaForm.controls.code.invalid && mfaForm.controls.code.touched"
+      />
+      @if (mfaForm.controls.code.touched && mfaForm.controls.code.hasError('required')) {
+        <span class="login__hint" data-error="mfaCode">Enter the code to continue.</span>
+      }
+    </label>
+
+    @if (errorMessage(); as message) {
+      <p class="login__error" role="alert">{{ message }}</p>
+    }
+
+    <button type="submit" class="login__submit" data-action="verify-mfa" [disabled]="submitting()">
+      {{ submitting() ? 'Verifying…' : 'Verify' }}
+    </button>
+
+    <p class="login__forgot">
+      <button type="button" class="login__forgot-link login__linkbutton" data-action="toggle-backup" (click)="toggleBackupCode()">
+        {{ useBackupCode() ? 'Use my authenticator app instead' : 'Use a backup code instead' }}
+      </button>
+    </p>
+    <p class="login__forgot">
+      <button type="button" class="login__forgot-link login__linkbutton" data-action="cancel-mfa" (click)="cancelMfa()">
+        ← Back to sign in
+      </button>
+    </p>
+  </form>
+  }
   <app-legal-footer variant="dark" />
 </section>

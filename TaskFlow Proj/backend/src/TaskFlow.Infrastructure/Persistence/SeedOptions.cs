@@ -12,4 +12,5 @@ public class SeedOptions
     public string ManagerPassword { get; set; } = "123456";
 
     public string EmployeePassword { get; set; } = "123456";
+
 }

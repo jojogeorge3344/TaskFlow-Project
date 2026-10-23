@@ -15,6 +15,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<PasswordResetGrant> PasswordResetGrants => Set<PasswordResetGrant>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
@@ -47,11 +50,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<User>(entity =>
         {
+            // A code or counter change must win a race exactly once, so two parallel requests cannot spend the same code.
+            entity.Property(user => user.MfaLastUsedStep).IsConcurrencyToken();
+            entity.Property(user => user.MfaFailedAttempts).IsConcurrencyToken();
+
             entity.HasKey(user => user.Id);
             entity.Property(user => user.EmployeeCode).HasMaxLength(32);
             entity.Property(user => user.FullName).IsRequired().HasMaxLength(200);
             entity.Property(user => user.Username).IsRequired().HasMaxLength(100);
             entity.Property(user => user.Email).IsRequired().HasMaxLength(256);
+            entity.Property(user => user.MobileNumber).HasMaxLength(20);
+            entity.Property(user => user.MfaSecretProtected).HasMaxLength(512);
             entity.Property(user => user.PasswordHash).IsRequired();
             entity.Property(user => user.SecurityStamp).IsRequired().HasMaxLength(64);
 
@@ -245,6 +254,37 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .HasOne(token => token.User)
                 .WithMany(user => user.RefreshTokens)
                 .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MfaBackupCode>(entity =>
+        {
+            entity.HasKey(code => code.Id);
+            entity.Property(code => code.UsedAt).IsConcurrencyToken();
+            entity.Property(code => code.CodeHash).IsRequired().HasMaxLength(64);
+
+            entity.HasIndex(code => new { code.UserId, code.CodeHash });
+
+            entity
+                .HasOne(code => code.User)
+                .WithMany(user => user.MfaBackupCodes)
+                .HasForeignKey(code => code.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetGrant>(entity =>
+        {
+            entity.HasKey(grant => grant.Id);
+            entity.Property(grant => grant.UsedAt).IsConcurrencyToken();
+            entity.Property(grant => grant.TokenHash).IsRequired().HasMaxLength(64);
+
+            entity.HasIndex(grant => grant.TokenHash);
+            entity.HasIndex(grant => new { grant.UserId, grant.UsedAt });
+
+            entity
+                .HasOne(grant => grant.User)
+                .WithMany()
+                .HasForeignKey(grant => grant.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

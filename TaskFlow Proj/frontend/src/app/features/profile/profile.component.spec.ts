@@ -114,7 +114,7 @@ describe('ProfileComponent', () => {
     fixture.componentInstance.form.patchValue({ fullName: 'Joanna Jo', email: 'joanna' });
     submit(fixture, 'save');
 
-    expect(updateSpy).toHaveBeenCalledOnceWith({ fullName: 'Joanna Jo', email: 'joanna@taskflow.com' });
+    expect(updateSpy).toHaveBeenCalledOnceWith({ fullName: 'Joanna Jo', email: 'joanna@taskflow.com', mobileNumber: '' });
     expect(authService.applyProfile).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith('Profile updated');
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
@@ -200,7 +200,8 @@ describe('ProfileComponent', () => {
     fixture.componentInstance.passwordForm.setValue({
       currentPassword: 'P@ssw0rd!',
       newPassword: 'N3wP@ss!',
-      confirmPassword: 'different'
+      confirmPassword: 'different',
+      mfaCode: ''
     });
     fixture.detectChanges();
     submit(fixture, 'change-password');
@@ -217,11 +218,12 @@ describe('ProfileComponent', () => {
     fixture.componentInstance.passwordForm.setValue({
       currentPassword: 'P@ssw0rd!',
       newPassword: 'N3wP@ss!',
-      confirmPassword: 'N3wP@ss!'
+      confirmPassword: 'N3wP@ss!',
+      mfaCode: ''
     });
     submit(fixture, 'change-password');
 
-    expect(changePasswordSpy).toHaveBeenCalledOnceWith({ currentPassword: 'P@ssw0rd!', newPassword: 'N3wP@ss!' });
+    expect(changePasswordSpy).toHaveBeenCalledOnceWith({ currentPassword: 'P@ssw0rd!', newPassword: 'N3wP@ss!', mfaCode: undefined });
     expect(authService.clearSession).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/login'], {
       queryParams: { reason: LOGIN_REASON_CREDENTIALS_CHANGED }
@@ -237,7 +239,8 @@ describe('ProfileComponent', () => {
     fixture.componentInstance.passwordForm.setValue({
       currentPassword: 'wrong',
       newPassword: 'N3wP@ss!',
-      confirmPassword: 'N3wP@ss!'
+      confirmPassword: 'N3wP@ss!',
+      mfaCode: ''
     });
     submit(fixture, 'change-password');
 

@@ -12,6 +12,23 @@ public class User
 
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>Optional contact number in international (E.164) format, for example +919876543210. Not unique: email is the
+    /// only unique identity, so colleagues may share a number.</summary>
+    public string? MobileNumber { get; set; }
+
+    /// <summary>The authenticator key, encrypted. Set during setup; it only takes effect once <see cref="MfaEnabledAt"/> is set.</summary>
+    public string? MfaSecretProtected { get; set; }
+
+    /// <summary>When MFA was confirmed and turned on; null while MFA is off or setup is unconfirmed.</summary>
+    public DateTime? MfaEnabledAt { get; set; }
+
+    /// <summary>The highest time step already accepted, so a code can never be used twice.</summary>
+    public long MfaLastUsedStep { get; set; }
+
+    public int MfaFailedAttempts { get; set; }
+
+    public DateTime? MfaLockedUntil { get; set; }
+
     public string PasswordHash { get; set; } = string.Empty;
 
     /// <summary>Changes whenever the sign-in credentials change; access tokens carrying an older stamp are rejected.</summary>
@@ -54,4 +71,6 @@ public class User
     public ICollection<DepartmentManager> ManagedDepartments { get; set; } = new List<DepartmentManager>();
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public ICollection<MfaBackupCode> MfaBackupCodes { get; set; } = new List<MfaBackupCode>();
 }

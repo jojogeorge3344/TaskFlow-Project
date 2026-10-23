@@ -39,7 +39,7 @@ describe('legal documents registry', () => {
       if (copy.sections.length === 0) {
         throw new Error('invalid: document must have at least one section');
       }
-    }).toThrow('invalid: document must have at least one section');
+    }).toThrowError('invalid: document must have at least one section');
     // The real registry still satisfies the invariant.
     expect(LEGAL_DOCUMENTS.every((doc) => doc.sections.length > 0)).toBeTrue();
   });
@@ -118,25 +118,39 @@ describe('legal documents registry', () => {
     expect(ownership).toBe(`© ${LEGAL_OWNER.year} ${LEGAL_OWNER.name}. ${LEGAL_OWNER.rights}.`);
     expect(ownership).toBe('© 2026 Jojo George. All Rights Reserved.');
 
+    const tokenValues: ReadonlyArray<readonly [string, string]> = [
+      ['{{owner}}', LEGAL_OWNER.name],
+      ['{{year}}', String(LEGAL_OWNER.year)],
+      ['{{email}}', LEGAL_OWNER.email],
+      ['{{rights}}', LEGAL_OWNER.rights]
+    ];
+
     for (const doc of LEGAL_DOCUMENTS) {
       const raw = JSON.stringify(doc);
       // The registry must not contain the literal owner details; they come through placeholders.
       expect(raw).not.toContain('Jojo George');
       expect(raw).not.toContain('jojogeorge3344@gmail.com');
-      // The resolved text must contain them exactly as the footer does.
+
       const resolved = resolveLegalTokens(raw);
-      expect(resolved).toContain(LEGAL_OWNER.name);
-      expect(resolved).toContain(String(LEGAL_OWNER.year));
-      expect(resolved).toContain(LEGAL_OWNER.email);
-      expect(resolved).toContain(LEGAL_OWNER.rights);
+      // No placeholder may survive resolution.
+      expect(resolved).not.toContain('{{');
+      // Every placeholder a document uses resolves to the value the footer shows.
+      for (const [token, value] of tokenValues) {
+        if (raw.includes(token)) {
+          expect(resolved).toContain(value);
+        }
+      }
     }
   });
 
   it('every document states the same owner values as the footer after resolution', () => {
     const ownership = legalOwnershipLine();
-    for (const doc of LEGAL_DOCUMENTS) {
-      const resolved = resolveLegalTokens(JSON.stringify(doc));
-      expect(resolved).toContain(ownership);
+    // Only the notices that name the owner carry the full footer line; the others
+    // never repeat it, so they are checked separately above for leftover tokens.
+    for (const id of ['copyright', 'licenses']) {
+      const doc = getLegalDocument(id);
+      expect(doc).toBeTruthy();
+      expect(resolveLegalTokens(JSON.stringify(doc))).toContain(ownership);
     }
   });
 });

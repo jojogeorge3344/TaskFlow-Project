@@ -18,6 +18,7 @@ export class LegalFooterComponent {
 
   readonly variant = input<LegalFooterVariant>('surface');
   readonly applicationName = LEGAL_APPLICATION.name;
+  readonly applicationTitle = LEGAL_APPLICATION.title;
   readonly ownershipLine = legalOwnershipLine();
   readonly links = LEGAL_DOCUMENTS.map((doc) => ({
     id: doc.id,

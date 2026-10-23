@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Authentication;
+using IAttemptLimiter = TaskFlow.Application.Auth.IAttemptLimiter;
+using TaskFlow.Application.Mfa;
 using TaskFlow.Application.Users;
 
 namespace TaskFlow.Api.Controllers;
@@ -16,15 +18,21 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly IValidator<ChangePasswordRequest> _passwordValidator;
+    private readonly IMfaService _mfaService;
+    private readonly IAttemptLimiter _limiter;
 
     public UsersController(
         IUserService userService,
         IValidator<UpdateOwnProfileRequest> profileValidator,
-        IValidator<ChangePasswordRequest> passwordValidator)
+        IValidator<ChangePasswordRequest> passwordValidator,
+        IMfaService mfaService,
+        IAttemptLimiter limiter)
     {
         _userService = userService;
         _profileValidator = profileValidator;
         _passwordValidator = passwordValidator;
+        _mfaService = mfaService;
+        _limiter = limiter;
     }
 
     /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
@@ -89,6 +97,23 @@ public class UsersController : ControllerBase
 
         try
         {
+            // Re-entering the current password is a guess an attacker holding only an access token could repeat, so it has a
+            // budget of its own. Wrong current password first, so a typo does not spend the authenticator code; then the code.
+            var passwordKey = IAttemptLimiter.PasswordKey(currentUserId);
+            if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
+            {
+                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = "Too many attempts. Try again in a few minutes." });
+            }
+
+            if (!await _userService.CheckOwnPasswordAsync(currentUserId, request.CurrentPassword, cancellationToken))
+            {
+                return BadRequest(new { error = "Current password is incorrect." });
+            }
+
+            _limiter.Reset(passwordKey);
+
+            await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
+
             var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
             return user is null ? NotFound() : NoContent();
         }

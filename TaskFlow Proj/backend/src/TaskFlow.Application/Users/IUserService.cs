@@ -22,6 +22,10 @@ public interface IUserService
     /// <summary>Updates the caller's own full name and email. Nothing else is changeable.</summary>
     Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Whether the password is the caller's current one. Lets a sensitive action check it before spending an MFA code.</summary>
+    Task<bool> CheckOwnPasswordAsync(int id, string? password, CancellationToken cancellationToken = default);
+
     /// <summary>Changes the caller's own password after verifying the current one, ending other sessions.</summary>
     Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default);
+
 }

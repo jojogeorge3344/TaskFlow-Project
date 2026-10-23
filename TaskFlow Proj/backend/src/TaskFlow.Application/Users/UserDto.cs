@@ -21,7 +21,12 @@ public record UserDto(
     string? ManagerName = null,
     // For a manager: the projects they oversee and the people who report to them.
     IReadOnlyList<ManagerProjectDto>? ManagerProjects = null,
-    IReadOnlyList<ManagerReportDto>? Reports = null);
+    IReadOnlyList<ManagerReportDto>? Reports = null,
+    // Authenticator MFA status. The key is never part of any DTO.
+    bool MfaEnabled = false,
+    int BackupCodesRemaining = 0,
+    // Contact number in international format; null when none has been given.
+    string? MobileNumber = null);
 
 public record ManagerProjectDto(int Id, string Name);
 

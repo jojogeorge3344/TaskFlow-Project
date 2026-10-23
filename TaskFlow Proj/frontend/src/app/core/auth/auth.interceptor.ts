@@ -21,6 +21,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(authorizedRequest).pipe(
     catchError((error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.status === 403 && (error.error as { code?: string } | null)?.code === 'mfa_setup_required') {
+        // The session is valid but two-step verification is not set up yet: show the setup screen instead of a failure.
+        authService.markMfaRequired();
+        void router.navigate(['/security-setup']);
+        return throwError(() => error);
+      }
+
       if (!(error instanceof HttpErrorResponse) || error.status !== 401 || isCredentialEndpoint) {
         return throwError(() => error);
       }

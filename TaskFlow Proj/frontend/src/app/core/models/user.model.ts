@@ -7,6 +7,11 @@ export interface User {
   fullName: string;
   username: string;
   email: string;
+  /** Contact number in international format. Not unique: email is the only unique identity. */
+  mobileNumber?: string | null;
+  /** Whether authenticator-app MFA is on, and how many unused backup codes remain. The key is never sent. */
+  mfaEnabled?: boolean;
+  backupCodesRemaining?: number;
   /** The role's name, for display. */
   role: Role;
   roleId: number;
@@ -76,10 +81,14 @@ export interface UserStatusRequest {
 export interface UpdateOwnProfile {
   fullName: string;
   email: string;
+  /** Omit to keep the current number; an empty string clears it. */
+  mobileNumber?: string;
 }
 
 /** A self-service password change (Screen 19). Requires the current password. */
 export interface ChangePassword {
   currentPassword: string;
   newPassword: string;
+  /** The current code from the authenticator app (or a backup code). Required while two-step verification is on. */
+  mfaCode?: string;
 }

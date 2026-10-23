@@ -14,6 +14,11 @@ public class UpdateOwnProfileRequestValidator : AbstractValidator<UpdateOwnProfi
             .NotEmpty()
             .Must(EmailPolicy.IsValid).WithMessage(EmailPolicy.InvalidMessage)
             .MaximumLength(256);
+
+        // Omitted keeps the current number; an empty value clears it; anything else must be a real international number.
+        RuleFor(x => x.MobileNumber)
+            .Must(MobileNumberPolicy.IsValid).WithMessage(MobileNumberPolicy.InvalidMessage)
+            .When(x => !string.IsNullOrWhiteSpace(x.MobileNumber));
     }
 }
 
@@ -32,5 +37,9 @@ public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRe
             .NotEmpty()
             .MinimumLength(MinPasswordLength)
             .MaximumLength(MaxPasswordLength);
+
+        RuleFor(x => x.MfaCode)
+            .MaximumLength(32);
     }
 }
+
