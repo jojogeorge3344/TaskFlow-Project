@@ -115,7 +115,7 @@ The system SHALL offer filters for employees and projects limited to the manager
 - **THEN** only that employee's tasks in that project are included
 
 ### Requirement: Manager drill-down
-The system SHALL let the Manager click a chart element to open the task list for the same records, restricted to the manager's scope.
+The system SHALL let the Manager click a chart element to open the task list for the same records, restricted to the manager's scope. The same limit applies to the ordinary Tasks screen, board and task reads for a manager (see design D7); workload and reports are unchanged.
 
 #### Scenario: Drill into an employee's overdue tasks
 - **WHEN** the Manager clicks the Overdue segment on a team member's bar

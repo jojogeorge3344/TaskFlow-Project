@@ -20,3 +20,5 @@ public record AnalyticsFilter(
 public class AnalyticsFilterException(string message) : Exception(message);
 
 public class AnalyticsEntityNotFoundException(string message) : Exception(message);
+
+public class AnalyticsForbiddenException(string message) : Exception(message);

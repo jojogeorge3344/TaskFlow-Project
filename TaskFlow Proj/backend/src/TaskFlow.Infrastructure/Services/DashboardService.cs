@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard;
+using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
@@ -15,11 +16,13 @@ public class DashboardService : IDashboardService
 
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
+    private readonly IManagerDashboardScope _managerScope;
 
-    public DashboardService(AppDbContext dbContext, IAppClock clock)
+    public DashboardService(AppDbContext dbContext, IAppClock clock, IManagerDashboardScope managerScope)
     {
         _dbContext = dbContext;
         _clock = clock;
+        _managerScope = managerScope;
     }
 
     public async Task<AdminDashboardDto> GetAdminStatsAsync(CancellationToken cancellationToken)
@@ -49,13 +52,13 @@ public class DashboardService : IDashboardService
             overdueTasks);
     }
 
-    public async Task<ManagerDashboardDto> GetManagerStatsAsync(CancellationToken cancellationToken)
+    public async Task<ManagerDashboardDto> GetManagerStatsAsync(int managerId, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
         var (today, tomorrow) = await TodayBoundsAsync(cancellationToken);
         var upcomingHorizon = await DayStartUtcAsync(UpcomingDeadlineWindowDays + 1, cancellationToken);
 
-        var tasks = ActiveTasks();
+        var tasks = _managerScope.TeamTasks(ActiveTasks(), managerId);
         var openTasks = tasks.Where(IsOpen());
 
         var totalTasks = await tasks.CountAsync(cancellationToken);

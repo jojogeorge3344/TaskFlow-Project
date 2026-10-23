@@ -134,7 +134,7 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task AssignmentsDoNotChangeWhatAManagerCanSee()
+    public async Task Assignments_DefineWhichTasksAManagerSees_ButNotWorkloadOrReports()
     {
         var client = _factory.CreateClient();
         var admin = await SignInAsync(client, "ma-admin-4", SystemRoles.Administrator);
@@ -167,10 +167,15 @@ public class ManagerAssignmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
             new { managerId = (int?)null, managerProjectIds = new[] { projectId } });
         var after = await SnapshotAsync();
 
-        Assert.Equal(before, after);
+        // The Tasks screen follows the manager's team: nobody was assigned before, only "mine" is on the team after.
+        Assert.DoesNotContain("Visible mine", before.Tasks);
         Assert.Contains("Visible mine", after.Tasks);
-        Assert.Contains("Visible theirs", after.Tasks);
-        Assert.Contains("Visible unassigned", after.Tasks);
+        Assert.DoesNotContain("Visible theirs", after.Tasks);
+        Assert.DoesNotContain("Visible unassigned", after.Tasks);
+
+        // Workload and reports are outside this scoping and stay organisation-wide.
+        Assert.Equal(before.Workload, after.Workload);
+        Assert.Equal(before.ReportTotal, after.ReportTotal);
         Assert.Contains("ma-emp-4-theirs full name", after.Workload);
     }
 

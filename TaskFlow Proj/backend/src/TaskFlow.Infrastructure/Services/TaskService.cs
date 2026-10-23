@@ -23,6 +23,7 @@ public class TaskService : ITaskService
     private readonly TimeProvider _timeProvider;
     private readonly IReminderSettingsService _reminderSettings;
     private readonly IAppClock _clock;
+    private readonly IManagerDashboardScope _managerScope;
 
     public TaskService(
         AppDbContext dbContext,
@@ -30,7 +31,8 @@ public class TaskService : ITaskService
         INotificationPublisher notificationPublisher,
         TimeProvider timeProvider,
         IReminderSettingsService reminderSettings,
-        IAppClock clock)
+        IAppClock clock,
+        IManagerDashboardScope managerScope)
     {
         _dbContext = dbContext;
         _activityService = activityService;
@@ -38,6 +40,7 @@ public class TaskService : ITaskService
         _timeProvider = timeProvider;
         _reminderSettings = reminderSettings;
         _clock = clock;
+        _managerScope = managerScope;
     }
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
@@ -64,7 +67,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             return null;
         }
@@ -78,7 +81,8 @@ public class TaskService : ITaskService
         CancellationToken cancellationToken)
     {
         var now = Now;
-        var tasks = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
+        var scoped = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
+        var tasks = await scoped
             .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .OrderBy(task => task.Deadline)
@@ -96,7 +100,7 @@ public class TaskService : ITaskService
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize is < 1 or > 100 ? 20 : filter.PageSize;
 
-        var query = ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken));
+        var query = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
 
         if (filter.AssignedToUserId is int assignedTo)
         {
@@ -135,6 +139,13 @@ public class TaskService : ITaskService
                 || EF.Functions.Like(task.TaskCode, $"%{term}%", @"\"));
         }
 
+        if (IsDrillDown(filter) && await IsManagerScopedAsync(currentUserRole, cancellationToken))
+        {
+            // A drill-down from the manager dashboard shows exactly the team's tasks, whatever the query string says.
+            // Stricter than the general manager scope in ScopedForCallerAsync: only the team, so the list matches the chart.
+            query = _managerScope.TeamTasks(query, currentUserId);
+        }
+
         query = await ApplyAnalyticsFiltersAsync(query, filter, cancellationToken);
 
         var total = await query.CountAsync(cancellationToken);
@@ -154,6 +165,16 @@ public class TaskService : ITaskService
         var items = tasks.Select(task => ToListItem(task, now, timeZone)).ToList();
         return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
     }
+
+    private static bool IsDrillDown(TaskListFilter filter) =>
+        filter.Bucket is not null || filter.DeadlineBucket is not null || filter.DepartmentId is not null
+        || filter.ProjectId is not null || filter.EmployeeId is not null || filter.ManagerId is not null
+        || filter.From is not null || filter.To is not null;
+
+    /// <summary>Holds the manager dashboard but not the administrator one, so the dashboard is limited to a team.</summary>
+    private async Task<bool> IsManagerScopedAsync(string roleName, CancellationToken cancellationToken) =>
+        await HasPermissionAsync(roleName, PermissionKeys.DashboardManager, cancellationToken)
+        && !await HasPermissionAsync(roleName, PermissionKeys.DashboardAdmin, cancellationToken);
 
     /// <summary>The dashboard drill-down filters. They reuse the analytics rules, so a list opened from a chart
     /// segment holds exactly the tasks the segment counted.</summary>
@@ -210,7 +231,8 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        var assignees = await ScopedTasks(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken))
+        var scoped = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
+        var assignees = await scoped
             .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Select(task => new { task.AssignedToUserId, task.AssignedTo!.FullName })
             .Distinct()
@@ -220,6 +242,49 @@ public class TaskService : ITaskService
             .OrderBy(assignee => assignee.FullName)
             .Select(assignee => new TaskRecipientDto(assignee.AssignedToUserId, assignee.FullName))
             .ToList();
+    }
+
+    /// <summary>The tasks the caller may see. A manager (dashboard.manager without dashboard.admin) sees their team's tasks
+    /// plus the tasks they created, are assigned or receive, never another team's tasks; every other caller follows
+    /// <see cref="ScopedTasks"/>.</summary>
+    private async Task<IQueryable<TaskEntity>> ScopedForCallerAsync(int currentUserId, string roleName, CancellationToken cancellationToken)
+    {
+        var canViewAll = await CanViewAllAsync(roleName, cancellationToken);
+        var query = ScopedTasks(currentUserId, canViewAll);
+        if (!canViewAll || !await IsManagerScopedAsync(roleName, cancellationToken))
+        {
+            return query;
+        }
+
+        var teamTaskIds = _managerScope.TeamTasks(query, currentUserId).Select(task => task.Id);
+        var ownTaskIds = ScopedTasks(currentUserId, canViewAll: false).Select(task => task.Id);
+        return query.Where(task => teamTaskIds.Contains(task.Id) || ownTaskIds.Contains(task.Id));
+    }
+
+    /// <summary>Single-task access: the usual rule, plus a manager may only reach tasks of their own team or ones they
+    /// created, are assigned or receive.</summary>
+    private async Task<bool> CanAccessTaskAsync(
+        TaskEntity task,
+        IReadOnlyCollection<int> recipientUserIds,
+        int currentUserId,
+        string roleName,
+        CancellationToken cancellationToken)
+    {
+        var canViewAll = await CanViewAllAsync(roleName, cancellationToken);
+        if (!TaskAccessScope.CanAccess(currentUserId, canViewAll, task, recipientUserIds))
+        {
+            return false;
+        }
+
+        if (!canViewAll
+            || TaskAccessScope.CanAccess(currentUserId, canViewAll: false, task, recipientUserIds)
+            || !await IsManagerScopedAsync(roleName, cancellationToken))
+        {
+            return true;
+        }
+
+        return await _managerScope.TeamTasks(_dbContext.Tasks.Where(candidate => candidate.Id == task.Id), currentUserId)
+            .AnyAsync(cancellationToken);
     }
 
     /// <summary>Non-deleted tasks the caller may access: everything for roles holding tasks.view.all,
@@ -388,7 +453,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -444,7 +509,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -517,7 +582,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -584,7 +649,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, await CanViewAllAsync(currentUserRole, cancellationToken), task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             return null;
         }

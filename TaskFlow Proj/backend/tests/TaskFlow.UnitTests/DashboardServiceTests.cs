@@ -1,5 +1,6 @@
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Security;
+using User = TaskFlow.Domain.Entities.User;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
@@ -43,14 +44,15 @@ public class DashboardServiceTests
     {
         await using var harness = DashboardServiceHarness.Create(Now);
         var manager = harness.AddUser("manager", role: SystemRoles.Manager);
+        var member = AddReport(harness, "member", manager);
 
-        harness.AddTask(manager.Id, Today.AddHours(18), TaskStatus.ToDo);          // due today, pending
-        harness.AddTask(manager.Id, new DateTime(2026, 6, 3), TaskStatus.ToDo);   // upcoming, pending
-        harness.AddTask(manager.Id, new DateTime(2026, 5, 30), TaskStatus.ToDo);  // overdue, pending
-        harness.AddTask(manager.Id, new DateTime(2026, 5, 29), TaskStatus.Completed);
-        harness.AddTask(manager.Id, new DateTime(2026, 6, 2), TaskStatus.Cancelled);
+        harness.AddTask(member.Id, Today.AddHours(18), TaskStatus.ToDo);          // due today, pending
+        harness.AddTask(member.Id, new DateTime(2026, 6, 3), TaskStatus.ToDo);   // upcoming, pending
+        harness.AddTask(member.Id, new DateTime(2026, 5, 30), TaskStatus.ToDo);  // overdue, pending
+        harness.AddTask(member.Id, new DateTime(2026, 5, 29), TaskStatus.Completed);
+        harness.AddTask(member.Id, new DateTime(2026, 6, 2), TaskStatus.Cancelled);
 
-        var stats = await harness.Service.GetManagerStatsAsync(CancellationToken.None);
+        var stats = await harness.Service.GetManagerStatsAsync(manager.Id, CancellationToken.None);
 
         Assert.Equal(5, stats.TotalTasks);
         Assert.Equal(3, stats.PendingTasks);
@@ -65,13 +67,59 @@ public class DashboardServiceTests
     {
         await using var harness = DashboardServiceHarness.Create(Now);
         var manager = harness.AddUser("manager", role: SystemRoles.Manager);
+        var member = AddReport(harness, "member", manager);
 
-        harness.AddTask(manager.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
-        harness.AddTask(manager.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo, isDeleted: true);
+        harness.AddTask(member.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
+        harness.AddTask(member.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo, isDeleted: true);
 
-        var stats = await harness.Service.GetManagerStatsAsync(CancellationToken.None);
+        var stats = await harness.Service.GetManagerStatsAsync(manager.Id, CancellationToken.None);
 
         Assert.Equal(1, stats.TotalTasks);
+    }
+
+    [Fact]
+    public async Task GetManagerStatsAsync_DoesNotCountAnotherManagersTeam()
+    {
+        await using var harness = DashboardServiceHarness.Create(Now);
+        var managerA = harness.AddUser("manager-a", role: SystemRoles.Manager);
+        var managerB = harness.AddUser("manager-b", role: SystemRoles.Manager);
+        var memberA = AddReport(harness, "member-a", managerA);
+        var memberB = AddReport(harness, "member-b", managerB);
+
+        harness.AddTask(memberA.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
+        harness.AddTask(memberB.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
+        harness.AddTask(memberB.Id, new DateTime(2026, 5, 20), TaskStatus.ToDo);
+
+        var statsA = await harness.Service.GetManagerStatsAsync(managerA.Id, CancellationToken.None);
+        var statsB = await harness.Service.GetManagerStatsAsync(managerB.Id, CancellationToken.None);
+
+        Assert.Equal(1, statsA.TotalTasks);
+        Assert.Equal(0, statsA.OverdueTasks);
+        Assert.Equal(2, statsB.TotalTasks);
+        Assert.Equal(1, statsB.OverdueTasks);
+    }
+
+    [Fact]
+    public async Task GetManagerStatsAsync_WithNoTeam_ReturnsZeros()
+    {
+        await using var harness = DashboardServiceHarness.Create(Now);
+        var manager = harness.AddUser("manager", role: SystemRoles.Manager);
+        var outsider = harness.AddUser("outsider");
+        harness.AddTask(outsider.Id, new DateTime(2026, 6, 5), TaskStatus.ToDo);
+
+        var stats = await harness.Service.GetManagerStatsAsync(manager.Id, CancellationToken.None);
+
+        Assert.Equal(0, stats.TotalTasks);
+        Assert.Equal(0, stats.PendingTasks);
+        Assert.Equal(0, stats.CompletedTasks);
+    }
+
+    private static User AddReport(DashboardServiceHarness harness, string username, User manager)
+    {
+        var user = harness.AddUser(username);
+        user.ManagerId = manager.Id;
+        harness.Db.SaveChanges();
+        return user;
     }
 
     [Fact]
@@ -133,7 +181,8 @@ public class DashboardServiceTests
     {
         // 19:00 UTC on 1 June is 00:30 IST on 2 June.
         await using var harness = DashboardServiceHarness.Create(new DateTimeOffset(2026, 6, 1, 19, 0, 0, TimeSpan.Zero), "Asia/Kolkata");
-        var employee = harness.AddUser("ist-employee");
+        var manager = harness.AddUser("ist-manager", role: SystemRoles.Manager);
+        var employee = AddReport(harness, "ist-employee", manager);
 
         // 05:00 UTC on 2 June is 10:30 IST on 2 June: due today in IST, tomorrow in UTC.
         harness.AddTask(employee.Id, new DateTime(2026, 6, 2, 5, 0, 0), TaskStatus.ToDo);
@@ -141,11 +190,11 @@ public class DashboardServiceTests
         // 20:00 UTC on 2 June is 01:30 IST on 3 June: upcoming in IST.
         harness.AddTask(employee.Id, new DateTime(2026, 6, 2, 20, 0, 0), TaskStatus.ToDo);
 
-        var manager = await harness.Service.GetManagerStatsAsync(CancellationToken.None);
+        var team = await harness.Service.GetManagerStatsAsync(manager.Id, CancellationToken.None);
         var mine = await harness.Service.GetEmployeeStatsAsync(employee.Id, CancellationToken.None);
 
-        Assert.Equal(1, manager.TasksDueToday);
-        Assert.Equal(1, manager.UpcomingDeadlines);
+        Assert.Equal(1, team.TasksDueToday);
+        Assert.Equal(1, team.UpcomingDeadlines);
         Assert.Equal(1, mine.TasksDueToday);
     }
 }

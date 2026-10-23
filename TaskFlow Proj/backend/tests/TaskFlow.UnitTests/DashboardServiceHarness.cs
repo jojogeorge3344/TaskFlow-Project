@@ -62,7 +62,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
 
         var clock = new FakeTimeProvider(now ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
         var appClock = new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
-        var service = new DashboardService(db, appClock);
+        var service = new DashboardService(db, appClock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, appClock));
 
         return new DashboardServiceHarness(connection, db, service, clock);
     }
