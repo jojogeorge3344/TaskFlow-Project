@@ -1055,3 +1055,190 @@ fieldset.tf-field > legend {
   gap: var(--tf-space-2);
   padding: var(--tf-space-1) 0;
 }
+
+/* ---------- Dashboard analytics ---------- */
+.analytics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+}
+
+.analytics-cards {
+  display: grid;
+  gap: var(--tf-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(9.5rem, 100%), 1fr));
+}
+
+.analytics-grid {
+  display: grid;
+  gap: var(--tf-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+}
+
+.analytics-card {
+  background: var(--tf-surface);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius);
+  box-shadow: var(--tf-shadow-sm);
+  min-width: 0;
+  padding: var(--tf-space-4);
+}
+
+.analytics-card h2 {
+  font-size: 1rem;
+  margin: 0 0 var(--tf-space-1);
+}
+
+.analytics-card__hint {
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+  margin: 0 0 var(--tf-space-3);
+}
+
+.analytics-card__note {
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+  margin: var(--tf-space-3) 0 0;
+}
+
+.analytics-card__empty {
+  color: var(--tf-muted);
+  margin: 0;
+}
+
+.analytics-card__divider {
+  border: 0;
+  border-top: 1px solid var(--tf-border);
+  margin: var(--tf-space-4) 0;
+}
+
+.analytics .num {
+  text-align: right;
+}
+
+.analytics .cell-button {
+  background: none;
+  border: 0;
+  color: var(--tf-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.analytics .cell-button:disabled {
+  color: var(--tf-muted);
+  cursor: default;
+}
+
+.analytics .cell-button--overdue:not(:disabled) {
+  color: var(--tf-danger-strong);
+  font-weight: 600;
+}
+
+.analytics .deadline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analytics .deadline-row {
+  align-items: center;
+  display: grid;
+  gap: var(--tf-space-3);
+  grid-template-columns: 6.5rem 1fr 3rem;
+  margin: var(--tf-space-2) 0;
+}
+
+.analytics .deadline-row__bar {
+  background: var(--tf-surface-alt);
+  border-radius: var(--tf-radius-sm);
+  display: block;
+  height: 1.35rem;
+  overflow: hidden;
+}
+
+.analytics .deadline-row__fill {
+  background: var(--tf-primary);
+  border: 0;
+  cursor: pointer;
+  display: block;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+.analytics .deadline-row__fill--overdue {
+  background: var(--tf-danger);
+}
+
+.analytics .deadline-row__fill:disabled {
+  cursor: default;
+}
+
+.analytics .deadline-row__value {
+  text-align: right;
+}
+
+.analytics .deadline-skeleton,
+.analytics .manager-skeleton {
+  min-height: 8rem;
+}
+
+.analytics-state {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-3);
+  justify-content: space-between;
+}
+
+.dashboard__subtitle {
+  color: var(--tf-muted);
+  margin: 0.25rem 0 0;
+}
+
+.analytics-table {
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 100%;
+  width: max-content;
+}
+
+.analytics-table th,
+.analytics-table td {
+  border-bottom: 1px solid var(--tf-border);
+  padding: var(--tf-space-2) var(--tf-space-3);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.analytics-table thead th {
+  color: var(--tf-muted);
+  font-weight: 600;
+}
+
+.analytics-table tbody th {
+  font-weight: 500;
+}
+
+.analytics-table .num {
+  text-align: right;
+}
+
+.analytics-grid > *,
+.analytics > * {
+  min-width: 0;
+}
+
+tf-department-analytics,
+tf-task-analytics,
+tf-employee-analytics,
+tf-manager-analytics,
+tf-project-analytics {
+  display: block;
+}
+
+.analytics-table-wrap {
+  overflow-x: auto;
+}

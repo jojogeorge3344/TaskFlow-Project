@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Application.Dashboard;
+using TaskFlow.Application.Dashboard.Analytics;
 
 namespace TaskFlow.Api.Controllers;
 
@@ -12,10 +13,12 @@ namespace TaskFlow.Api.Controllers;
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;
+    private readonly IAdminAnalyticsService _analyticsService;
 
-    public DashboardController(IDashboardService dashboardService)
+    public DashboardController(IDashboardService dashboardService, IAdminAnalyticsService analyticsService)
     {
         _dashboardService = dashboardService;
+        _analyticsService = analyticsService;
     }
 
     [HttpGet("admin")]
@@ -24,6 +27,33 @@ public class DashboardController : ControllerBase
     {
         var stats = await _dashboardService.GetAdminStatsAsync(cancellationToken);
         return Ok(stats);
+    }
+
+    [HttpGet("admin/analytics")]
+    [RequirePermission(PermissionKeys.DashboardAdmin)]
+    public async Task<ActionResult<AdminAnalyticsDto>> GetAdminAnalytics(
+        [FromQuery] AnalyticsFilter filter,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _analyticsService.GetAsync(filter, cancellationToken));
+        }
+        catch (AnalyticsFilterException exception)
+        {
+            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+        catch (AnalyticsEntityNotFoundException exception)
+        {
+            return Problem(detail: exception.Message, statusCode: StatusCodes.Status404NotFound);
+        }
+    }
+
+    [HttpGet("admin/analytics/filters")]
+    [RequirePermission(PermissionKeys.DashboardAdmin)]
+    public async Task<ActionResult<AnalyticsFilterOptionsDto>> GetAdminAnalyticsFilters(CancellationToken cancellationToken)
+    {
+        return Ok(await _analyticsService.GetFilterOptionsAsync(cancellationToken));
     }
 
     [HttpGet("manager")]

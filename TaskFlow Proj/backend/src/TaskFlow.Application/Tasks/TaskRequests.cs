@@ -1,3 +1,5 @@
+using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Domain.Rules;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
@@ -43,4 +45,22 @@ public record TaskListFilter(
     DateTime? DeadlineTo = null,
     string? Search = null,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    TaskBucketFilter? Bucket = null,
+    DeadlineBucket? DeadlineBucket = null,
+    int? DepartmentId = null,
+    int? ProjectId = null,
+    int? EmployeeId = null,
+    int? ManagerId = null,
+    DateOnly? From = null,
+    DateOnly? To = null,
+    AnalyticsDateBasis Basis = AnalyticsDateBasis.Created);
+
+public enum TaskBucketFilter
+{
+    All,
+    Pending,
+    InProgress,
+    Completed,
+    Overdue
+}

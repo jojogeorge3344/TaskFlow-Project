@@ -1,0 +1,100 @@
+<section class="filter-bar tf-card" aria-label="Dashboard filters">
+  <div class="filter-bar__presets" role="group" aria-label="Date range">
+    @for (preset of presets; track preset.key) {
+      <button
+        type="button"
+        class="chip"
+        [class.chip--on]="activePreset() === preset.key"
+        [attr.aria-pressed]="activePreset() === preset.key"
+        [attr.data-preset]="preset.key"
+        (click)="choosePreset(preset.key)"
+      >
+        {{ preset.label }}
+      </button>
+    }
+  </div>
+
+  <div class="tf-field">
+    <label for="filter-from">From</label>
+    <input
+      id="filter-from"
+      class="tf-input"
+      type="date"
+      [class.is-invalid]="rangeError()"
+      [value]="filter().from"
+      [max]="filter().to || null"
+      (change)="setFrom($any($event.target).value)"
+    />
+  </div>
+  <div class="tf-field">
+    <label for="filter-to">To</label>
+    <input
+      id="filter-to"
+      class="tf-input"
+      type="date"
+      [class.is-invalid]="rangeError()"
+      [value]="filter().to"
+      [min]="filter().from || null"
+      (change)="setTo($any($event.target).value)"
+    />
+  </div>
+  <div class="tf-field">
+    <label for="filter-basis">Date basis</label>
+    <select id="filter-basis" class="tf-select" (change)="setBasis($any($event.target).value)">
+      @for (basis of bases; track basis) {
+        <option [value]="basis" [selected]="basis === filter().basis">{{ basisLabels[basis] }}</option>
+      }
+    </select>
+  </div>
+
+  @if (showDepartment()) {
+    <div class="tf-field">
+      <label for="filter-department">Department</label>
+      <select id="filter-department" class="tf-select" (change)="setEntity('departmentId', $any($event.target).value)">
+        <option value="" [selected]="filter().departmentId === null">All</option>
+        @for (option of options()?.departments ?? []; track option.id) {
+          <option [value]="option.id" [selected]="option.id === filter().departmentId">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+  }
+  @if (showProject()) {
+    <div class="tf-field">
+      <label for="filter-project">Project</label>
+      <select id="filter-project" class="tf-select" (change)="setEntity('projectId', $any($event.target).value)">
+        <option value="" [selected]="filter().projectId === null">All</option>
+        @for (option of options()?.projects ?? []; track option.id) {
+          <option [value]="option.id" [selected]="option.id === filter().projectId">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+  }
+  @if (showManager()) {
+    <div class="tf-field">
+      <label for="filter-manager">Manager</label>
+      <select id="filter-manager" class="tf-select" (change)="setEntity('managerId', $any($event.target).value)">
+        <option value="" [selected]="filter().managerId === null">All</option>
+        @for (option of options()?.managers ?? []; track option.id) {
+          <option [value]="option.id" [selected]="option.id === filter().managerId">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+  }
+  @if (showEmployee()) {
+    <div class="tf-field">
+      <label for="filter-employee">Employee</label>
+      <select id="filter-employee" class="tf-select" (change)="setEntity('employeeId', $any($event.target).value)">
+        <option value="" [selected]="filter().employeeId === null">All</option>
+        @for (option of options()?.employees ?? []; track option.id) {
+          <option [value]="option.id" [selected]="option.id === filter().employeeId">{{ option.name }}</option>
+        }
+      </select>
+    </div>
+  }
+
+  <button type="button" class="tf-btn tf-btn--ghost filter-bar__reset" data-action="reset" (click)="reset.emit()">Reset</button>
+
+  @if (rangeError(); as message) {
+    <p class="tf-field__error filter-bar__error" role="alert">{{ message }}</p>
+  }
+</section>

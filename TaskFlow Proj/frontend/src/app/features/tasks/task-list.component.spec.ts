@@ -266,4 +266,54 @@ describe('TaskListComponent', () => {
 
     expect(el(fixture).querySelectorAll('tr.task-row').length).toBe(1);
   });
+
+  describe('dashboard drill-down', () => {
+    const drillParams = {
+      bucket: 'Overdue',
+      departmentId: '4',
+      from: '2026-09-22',
+      to: '2026-10-21',
+      basis: 'Deadline',
+      priority: 'High'
+    };
+
+    it('applies the drill-down params to the list request and shows where it came from', () => {
+      const fixture = create('Administrator', drillParams);
+      fixture.detectChanges();
+
+      expect(lastFilter()).toEqual(
+        jasmine.objectContaining({
+          bucket: 'Overdue',
+          departmentId: 4,
+          from: '2026-09-22',
+          to: '2026-10-21',
+          basis: 'Deadline',
+          priority: 'High'
+        })
+      );
+      expect(el(fixture).querySelector('[data-drill]')?.textContent).toContain('Opened from the dashboard');
+      expect(el(fixture).querySelector<HTMLSelectElement>('#task-filter-priority')?.value).toBe('High');
+    });
+
+    it('ignores malformed drill-down params', () => {
+      const fixture = create('Administrator', { bucket: 'Nonsense', departmentId: 'abc', from: 'x', to: 'y' });
+      fixture.detectChanges();
+
+      expect(el(fixture).querySelector('[data-drill]')).toBeFalsy();
+      expect(lastFilter()['bucket']).toBeUndefined();
+      expect(lastFilter()['departmentId']).toBeUndefined();
+    });
+
+    it('drops the dashboard filters when asked to show all tasks', () => {
+      const fixture = create('Administrator', drillParams);
+      fixture.detectChanges();
+
+      el(fixture).querySelector<HTMLButtonElement>('[data-action="clear-drill"]')!.click();
+      fixture.detectChanges();
+
+      expect(el(fixture).querySelector('[data-drill]')).toBeFalsy();
+      expect(lastFilter()['bucket']).toBeUndefined();
+      expect(lastFilter()['departmentId']).toBeUndefined();
+    });
+  });
 });

@@ -90,3 +90,13 @@
     display: none;
   }
 }
+
+.drill-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3) var(--tf-space-4);
+  background: var(--tf-primary-soft);
+}

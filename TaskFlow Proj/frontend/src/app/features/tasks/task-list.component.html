@@ -97,6 +97,15 @@
     </button>
   </div>
 
+  @if (drill(); as drillDown) {
+    <div class="tf-card drill-banner" role="status" data-drill>
+      <span>Opened from the dashboard: {{ drillDown.summary }}</span>
+      <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="clear-drill" (click)="clearDrill()">
+        Show all tasks
+      </button>
+    </div>
+  }
+
   <div class="tf-card">
     @if (error()) {
       <div class="tf-empty" role="alert">
