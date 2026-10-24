@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "dist/taskflow-frontend/browser",
   "rewrites": [
     {
       "source": "/(.*)",
