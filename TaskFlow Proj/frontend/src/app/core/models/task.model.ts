@@ -58,6 +58,7 @@ export interface TaskComment {
   authorUserId: number;
   authorName: string;
   createdAt: string;
+  editedAt?: string | null;
 }
 
 export interface ActivityEntry {

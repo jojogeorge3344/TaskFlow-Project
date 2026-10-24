@@ -165,7 +165,7 @@ public class PermissionCatalogTests : IDisposable
         var keys = PermissionCatalog.All.Select(definition => definition.Key).ToHashSet();
 
         Assert.All(before, key => Assert.Contains(key, keys));
-        Assert.Equal(before.Length + 5, keys.Count);
+        Assert.Equal(before.Length + 7, keys.Count);
     }
 
     [Fact]

@@ -26,7 +26,7 @@
 .chip--on {
   background: var(--tf-primary);
   border-color: var(--tf-primary);
-  color: #ffffff;
+  color: var(--tf-on-primary)fff;
 }
 
 .filter-bar__reset {

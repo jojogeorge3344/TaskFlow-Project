@@ -120,7 +120,7 @@ describe('hiding what a role may not use', () => {
           provide: AuthService,
           useValue: { currentUser: () => ({ id: 1, fullName: 'Boss', role: 'Custom', permissions }), hasPermission: (key: string) => permissions.includes(key) }
         },
-        { provide: TaskService, useValue: { getComments: () => of([]), addComment: () => of(null) } },
+        { provide: TaskService, useValue: { getById: () => of(null), getComments: () => of([]), addComment: () => of(null) } },
         { provide: ToastService, useValue: { success: () => undefined, error: () => undefined } }
       ]
     });

@@ -64,10 +64,144 @@
   --tf-rail-w: 4.5rem;
   --tf-header-h: 4rem;
   --tf-font: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Animated backdrop (RGB triplets so the canvas can apply its own alpha) */
+  --tf-on-primary: #ffffff;
+  --tf-on-danger: #ffffff;
+  --tf-chip-blue-bg: #dbeafe;
+  --tf-chip-blue-fg: #1e40af;
+  --tf-chip-orange-bg: #ffedd5;
+  --tf-chip-orange-fg: #9a3412;
+  --tf-surface-hover: #eef1f6;
+  --tf-surface-muted: #f5f6f8;
+  --tf-text-muted: #6b7280;
+  --tf-backdrop-from: #eef2f9;
+  --tf-backdrop-to: #dfe8fb;
+  --tf-backdrop-node: 37, 99, 235;
+  --tf-overlay-blur: 2px;
+}
+
+/* Professional: navy blue surfaces. Selected from the header theme menu via data-theme on <html>. */
+:root[data-theme='professional'] {
+  color-scheme: dark;
+  --tf-primary: #60a5fa;
+  --tf-primary-hover: #93c5fd;
+  --tf-primary-soft: #16294d;
+  --tf-sidebar: #081020;
+  --tf-sidebar-hover: #1b2d52;
+  --tf-sidebar-text: #b4c2dc;
+  --tf-sidebar-muted: #7d8fb0;
+  --tf-bg: #0b1426;
+  --tf-surface: #12203a;
+  --tf-surface-alt: #162746;
+  --tf-border: #243659;
+  --tf-border-strong: #34496f;
+  --tf-text: #e6edfa;
+  --tf-text-secondary: #bccae3;
+  --tf-muted: #93a6c7;
+  --tf-subtle: #7f92b4;
+  --tf-success: #4ade80;
+  --tf-success-soft: #12351f;
+  --tf-danger: #f87171;
+  --tf-danger-strong: #fca5a5;
+  --tf-danger-soft: #3b1620;
+  --tf-danger-tint: #2a121a;
+  --tf-warning: #fbbf24;
+  --tf-warning-soft: #3a2c0d;
+  --tf-violet: #a78bfa;
+  --tf-violet-soft: #2a2050;
+  --tf-overlay: rgba(4, 9, 20, 0.55);
+  --tf-label: #cbd7ee;
+  --tf-field-bg: #0f1c34;
+  --tf-field-border: #2b4066;
+  --tf-field-border-hover: #3c5887;
+  --tf-warning-border: #6b5516;
+  --tf-info-soft: #16294d;
+  --tf-info: #93c5fd;
+  --tf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tf-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --tf-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.5);
+  --tf-focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.35);
+  --tf-danger-ring: 0 0 0 3px rgba(248, 113, 113, 0.3);
+  --tf-on-primary: #06101f;
+  --tf-chip-blue-bg: #1d3a6b;
+  --tf-chip-blue-fg: #bfdbfe;
+  --tf-chip-orange-bg: #3d2310;
+  --tf-chip-orange-fg: #fdba74;
+  --tf-surface-hover: #1b2f52;
+  --tf-surface-muted: #162746;
+  --tf-text-muted: #93a6c7;
+  --tf-on-danger: #1a0508;
+  --tf-backdrop-from: #0b1426;
+  --tf-backdrop-to: #14254a;
+  --tf-backdrop-node: 120, 170, 255;
+}
+
+/* Dark: black surfaces. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --tf-primary: #6ea8fe;
+  --tf-primary-hover: #9ec5fe;
+  --tf-primary-soft: #14213a;
+  --tf-sidebar: #0a0a0a;
+  --tf-sidebar-hover: #232323;
+  --tf-sidebar-text: #bdbdbd;
+  --tf-sidebar-muted: #8a8a8a;
+  --tf-bg: #000000;
+  --tf-surface: #111111;
+  --tf-surface-alt: #181818;
+  --tf-border: #2a2a2a;
+  --tf-border-strong: #3a3a3a;
+  --tf-text: #f2f2f2;
+  --tf-text-secondary: #cfcfcf;
+  --tf-muted: #a1a1a1;
+  --tf-subtle: #8a8a8a;
+  --tf-success: #4ade80;
+  --tf-success-soft: #0f2a18;
+  --tf-danger: #f87171;
+  --tf-danger-strong: #fca5a5;
+  --tf-danger-soft: #331418;
+  --tf-danger-tint: #240f12;
+  --tf-warning: #fbbf24;
+  --tf-warning-soft: #33270b;
+  --tf-violet: #a78bfa;
+  --tf-violet-soft: #241c45;
+  --tf-overlay: rgba(0, 0, 0, 0.6);
+  --tf-label: #dcdcdc;
+  --tf-field-bg: #0c0c0c;
+  --tf-field-border: #333333;
+  --tf-field-border-hover: #4a4a4a;
+  --tf-warning-border: #5e4a12;
+  --tf-info-soft: #14213a;
+  --tf-info: #9ec5fe;
+  --tf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --tf-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  --tf-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.7);
+  --tf-focus-ring: 0 0 0 3px rgba(110, 168, 254, 0.35);
+  --tf-danger-ring: 0 0 0 3px rgba(248, 113, 113, 0.3);
+  --tf-on-primary: #000000;
+  --tf-chip-blue-bg: #172a4a;
+  --tf-chip-blue-fg: #bfdbfe;
+  --tf-chip-orange-bg: #35200e;
+  --tf-chip-orange-fg: #fdba74;
+  --tf-surface-hover: #1c1c1c;
+  --tf-surface-muted: #161616;
+  --tf-text-muted: #a1a1a1;
+  --tf-on-danger: #1a0508;
+  --tf-backdrop-from: #000000;
+  --tf-backdrop-to: #0a0a0a;
+  --tf-backdrop-node: 200, 200, 200;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* The animated backdrop (app-backdrop) is fixed at z-index 0; every routed screen sits above it. */
+app-root > :not(app-backdrop):not(router-outlet) {
+  display: block;
+  position: relative;
+  z-index: 1;
 }
 
 html,
@@ -177,7 +311,7 @@ textarea {
 
 .tf-btn--primary {
   background: var(--tf-primary);
-  color: #ffffff;
+  color: var(--tf-on-primary);
 }
 
 .tf-btn--primary:hover:not(:disabled) {
@@ -195,7 +329,7 @@ textarea {
 
 .tf-btn--danger {
   background: var(--tf-danger);
-  color: #ffffff;
+  color: var(--tf-on-danger);
 }
 
 .tf-btn--danger:hover:not(:disabled) {
@@ -422,7 +556,7 @@ textarea {
 .tf-badge--employee,
 .tf-badge--custom {
   background: var(--tf-bg);
-  color: #334155;
+  color: var(--tf-text-secondary);
 }
 
 /* ---------- Chips ---------- */
@@ -608,7 +742,7 @@ textarea {
   padding: var(--tf-space-3) var(--tf-space-4);
   border-radius: var(--tf-radius-md);
   background: var(--tf-danger-soft);
-  color: #991b1b;
+  color: var(--tf-danger-strong);
 }
 
 .tf-alert .tf-icon {
@@ -642,6 +776,7 @@ textarea {
   inset: 0;
   z-index: 55;
   background: var(--tf-overlay);
+  backdrop-filter: blur(var(--tf-overlay-blur));
 }
 
 .tf-drawer {
@@ -756,6 +891,7 @@ textarea {
 
 .tf-modal::backdrop {
   background: var(--tf-overlay);
+  backdrop-filter: blur(var(--tf-overlay-blur));
 }
 
 .tf-modal__body {
@@ -803,7 +939,7 @@ textarea {
   padding: var(--tf-space-1) var(--tf-space-2);
   border-radius: var(--tf-radius-sm);
   background: var(--tf-text);
-  color: #ffffff;
+  color: var(--tf-bg);
   font-size: 0.8125rem;
   font-weight: 500;
   white-space: nowrap;
@@ -837,7 +973,7 @@ textarea {
   padding: var(--tf-space-3) var(--tf-space-4);
   border-radius: var(--tf-radius-md);
   background: var(--tf-text);
-  color: #ffffff;
+  color: var(--tf-bg);
   font-size: 0.875rem;
   box-shadow: var(--tf-shadow-lg);
   animation: tf-rise 0.2s ease;
@@ -995,7 +1131,7 @@ textarea {
   border-radius: var(--tf-radius-md);
   padding: 0.375rem var(--tf-space-3);
   background: var(--tf-danger-strong);
-  color: #ffffff;
+  color: var(--tf-on-danger);
   font-weight: 600;
   cursor: pointer;
 }

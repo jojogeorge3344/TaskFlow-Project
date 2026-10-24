@@ -468,6 +468,14 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.header__brand')?.textContent?.trim()).toBe('Renamed Corp');
   });
 
+  it('shows the theme menu in the header', () => {
+    mockViewport(true);
+    asUser('Manager');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('header.header app-theme-menu .theme-menu__button')).not.toBeNull();
+  });
+
   it('shows the notification bell linking to the center and hides the dot when there are none', () => {
     mockViewport(true);
     asUser('Manager');

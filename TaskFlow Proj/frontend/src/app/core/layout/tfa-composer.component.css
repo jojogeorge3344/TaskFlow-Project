@@ -205,7 +205,7 @@
 
 .tfa-round--send {
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
 }
 
 .tfa-round--send:hover:not(:disabled) {

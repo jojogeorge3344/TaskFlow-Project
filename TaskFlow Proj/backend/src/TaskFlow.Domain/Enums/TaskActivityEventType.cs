@@ -14,5 +14,7 @@ public enum TaskActivityEventType
     HoursLogged,
     TimeLogged,
     /// <summary>Appended last: the value is stored as text, so existing rows keep their meaning.</summary>
-    Deleted
+    Deleted,
+    CommentEdited,
+    CommentDeleted
 }

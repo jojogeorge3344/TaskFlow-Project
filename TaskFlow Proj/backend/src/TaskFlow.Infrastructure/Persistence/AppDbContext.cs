@@ -348,6 +348,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         {
             entity.HasKey(comment => comment.Id);
             entity.Property(comment => comment.Body).IsRequired();
+            entity.Property(comment => comment.IsDeleted).HasDefaultValue(false);
 
             entity.HasIndex(comment => new { comment.TaskId, comment.CreatedAt });
 

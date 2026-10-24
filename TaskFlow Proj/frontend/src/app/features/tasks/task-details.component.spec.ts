@@ -39,15 +39,21 @@ describe('TaskDetailsComponent', () => {
   let fixture: ComponentFixture<TaskDetailsComponent>;
   let component: TaskDetailsComponent;
   let getByIdSpy: jasmine.Spy;
+  let getCommentsSpy: jasmine.Spy;
+  let getActivitySpy: jasmine.Spy;
   let changeStatusSpy: jasmine.Spy;
   let updateSpy: jasmine.Spy;
+  let logHoursSpy: jasmine.Spy;
   let deleteSpy: jasmine.Spy;
   let toast: { success: jasmine.Spy; error: jasmine.Spy };
 
   function create(role: string, task: TaskDetails = details, returnUrl: string | null = null): void {
     getByIdSpy = jasmine.createSpy('getById').and.returnValue(of(task));
+    getCommentsSpy = jasmine.createSpy('getComments').and.returnValue(of([]));
+    getActivitySpy = jasmine.createSpy('getActivity').and.returnValue(of([]));
     changeStatusSpy = jasmine.createSpy('changeStatus');
     updateSpy = jasmine.createSpy('update');
+    logHoursSpy = jasmine.createSpy('logHours');
     deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
     toast = { success: jasmine.createSpy('success'), error: jasmine.createSpy('error') };
 
@@ -65,7 +71,7 @@ describe('TaskDetailsComponent', () => {
         },
         {
           provide: TaskService,
-          useValue: { getById: getByIdSpy, changeStatus: changeStatusSpy, update: updateSpy, delete: deleteSpy }
+          useValue: { getById: getByIdSpy, getComments: getCommentsSpy, getActivity: getActivitySpy, changeStatus: changeStatusSpy, update: updateSpy, logHours: logHoursSpy, delete: deleteSpy }
         },
         { provide: ToastService, useValue: toast }
       ]
@@ -158,14 +164,72 @@ describe('TaskDetailsComponent', () => {
   });
 
   describe('edit form layout', () => {
-    it('groups the fields into Details and Schedule sections with an action bar', () => {
+    function openEditor(): void {
+      create('Manager');
+      (fixture.nativeElement.querySelector('[data-action="edit-task"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+    }
+
+    it('picks a priority with the segmented buttons and marks the form changed', () => {
+      openEditor();
+
+      (fixture.nativeElement.querySelector('[data-edit-form] button[data-priority="Critical"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(component.editForm.controls.priority.value).toBe('Critical');
+      expect(component.editForm.dirty).toBeTrue();
+      expect(fixture.nativeElement.querySelector('.ef__segment.is-active')?.getAttribute('data-priority')).toBe('Critical');
+      expect(fixture.nativeElement.querySelector('[data-edit-actions]').textContent).toContain('unsaved changes');
+    });
+
+    it('steps the hour fields and never goes below zero', () => {
+      openEditor();
+      component.editForm.patchValue({ estimatedHours: 8, actualHours: 0.5 });
+
+      (fixture.nativeElement.querySelector('button[aria-label="Increase estimated hours"]') as HTMLButtonElement).click();
+      (fixture.nativeElement.querySelector('button[aria-label="Decrease worked hours"]') as HTMLButtonElement).click();
+      (fixture.nativeElement.querySelector('button[aria-label="Decrease worked hours"]') as HTMLButtonElement).click();
+
+      expect(component.editForm.controls.estimatedHours.value).toBe(8.5);
+      expect(component.editForm.controls.actualHours.value).toBe(0);
+    });
+
+    it('summarises worked against estimated hours from the form', () => {
+      openEditor();
+      component.editForm.patchValue({ estimatedHours: 12, actualHours: 10 });
+      fixture.detectChanges();
+
+      expect(component.effort()).toEqual(jasmine.objectContaining({ worked: 10, estimated: 12, percent: 83, over: false }));
+      expect(fixture.nativeElement.querySelector('[data-effort-summary]').textContent).toContain('2h remaining');
+
+      component.editForm.patchValue({ actualHours: 14 });
+      expect(component.effort()).toEqual(jasmine.objectContaining({ over: true, label: '2h over estimate' }));
+    });
+
+    it('summarises the schedule length and hides the strip for an invalid range', () => {
+      openEditor();
+      component.editForm.patchValue({ startDate: '2099-01-01T09:00', deadline: '2099-01-05T17:00' });
+      fixture.detectChanges();
+
+      const summary = component.scheduleSummary();
+      expect(summary?.length).toBe('4 days, 8 hours long');
+      expect(summary?.late).toBeFalse();
+      expect(fixture.nativeElement.querySelector('[data-schedule-summary]')).not.toBeNull();
+
+      component.editForm.patchValue({ deadline: '2099-01-01T08:00' });
+      fixture.detectChanges();
+      expect(component.scheduleSummary()).toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-schedule-summary]')).toBeNull();
+    });
+
+    it('groups the fields into Details, Schedule and Effort sections with an action bar', () => {
       create('Manager');
       (fixture.nativeElement.querySelector('[data-action="edit-task"]') as HTMLButtonElement).click();
       fixture.detectChanges();
 
       const form = fixture.nativeElement.querySelector('[data-edit-form]') as HTMLElement;
       const sections = Array.from(form.querySelectorAll('.tf-section__title')).map((h) => h.textContent?.trim());
-      expect(sections).toEqual(['Details', 'Schedule']);
+      expect(sections).toEqual(['Details', 'Schedule', 'Effort']);
       expect(form.querySelector('[data-edit-actions]')).not.toBeNull();
       for (const field of ['title', 'description', 'priority', 'startDate', 'deadline', 'estimatedHours']) {
         expect(form.querySelector(`[data-field="${field}"]`)).withContext(field).not.toBeNull();
@@ -191,6 +255,80 @@ describe('TaskDetailsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('TSK-1007');
     expect(fixture.nativeElement.textContent).toContain('Upcoming');
     expect(fixture.nativeElement.textContent).toContain('Sara');
+  });
+
+  describe('tabs', () => {
+    const entries = [
+      { id: 1, eventType: 'Created', actorUserId: 1, actorName: 'Boss', message: 'Task created', oldValue: null, newValue: null, createdAt: '2026-10-01T08:00:00Z' },
+      { id: 2, eventType: 'HoursLogged', actorUserId: 1, actorName: 'Boss', message: 'Worked hours logged: 3h (total)', oldValue: '0', newValue: '3', createdAt: '2026-10-02T08:00:00Z' }
+    ];
+
+    function tabLabels(): string[] {
+      return Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[role="tab"]')).map((tab) =>
+        (tab.textContent ?? '').replace(/\d+/g, '').trim()
+      );
+    }
+
+    function createWithActivity(role: string): void {
+      create(role);
+      getActivitySpy.and.returnValue(of(entries));
+      component.load(7);
+      fixture.detectChanges();
+    }
+
+    it('offers Discussion, Activity history and Reassign task tabs to a Manager', () => {
+      createWithActivity('Manager');
+
+      expect(tabLabels()).toEqual(['Discussion', 'Activity history', 'Reassign task']);
+      expect(fixture.nativeElement.querySelector('[data-tab="discussion"]').getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('hides the Reassign tab from a role that cannot reassign', () => {
+      create('Employee');
+
+      expect(tabLabels()).toEqual(['Discussion', 'Activity history']);
+      expect(fixture.nativeElement.querySelector('[data-tab="reassign"]')).toBeNull();
+    });
+
+    it('switches the panel in place and lists the newest activity first', () => {
+      createWithActivity('Manager');
+
+      (fixture.nativeElement.querySelector('[data-tab="activity"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const panel = fixture.nativeElement.querySelector('[data-activity-panel]') as HTMLElement;
+      expect(panel).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-comments]')).toBeNull();
+      const messages = Array.from<HTMLElement>(panel.querySelectorAll('.tf-activity__card p')).map((p) => p.textContent?.trim());
+      expect(messages).toEqual(['Worked hours logged: 3h (total)', 'Task created']);
+      expect(panel.textContent).toContain('Hours logged');
+
+      (fixture.nativeElement.querySelector('[data-tab="reassign"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[data-reassign-panel]').textContent).toContain('Choose new assignee');
+    });
+
+    it('shows only the latest three comments with a count', () => {
+      const many = [1, 2, 3, 4].map((id) => ({ id, body: `Note ${id}`, authorUserId: 2, authorName: 'Asha', createdAt: `2026-10-0${id}T10:00:00Z` }));
+      create('Manager');
+      getCommentsSpy.and.returnValue(of(many));
+      component.load(7);
+      fixture.detectChanges();
+
+      const text = fixture.nativeElement.querySelector('[data-comments]').textContent;
+      expect(text).not.toContain('Note 1');
+      expect(text).toContain('Note 4');
+      expect(text).toContain('Showing the latest 3 of 4');
+      expect(fixture.nativeElement.querySelector('[data-comment-count]').textContent.trim()).toBe('4');
+    });
+  });
+
+  it('has no Reassign button in the header, only the Reassign tab', () => {
+    create('Manager');
+
+    const headerLinks = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('.tf-page-actions a')).map((link) => link.textContent?.trim());
+    expect(headerLinks).not.toContain('Reassign');
+    expect(fixture.nativeElement.querySelector('[data-tab="reassign"]')).not.toBeNull();
   });
 
   it('exposes the overdue stage and hides the edit form for employees', () => {
@@ -351,6 +489,117 @@ describe('TaskDetailsComponent', () => {
       expect(toast.error).toHaveBeenCalledWith('Task not found.');
       expect(navigateSpy).not.toHaveBeenCalled();
     }));
+  });
+
+  describe('comments and time tracking', () => {
+    it('shows "No comments yet" when the task has no comments', () => {
+      create('Manager');
+
+      expect(fixture.nativeElement.querySelector('[data-no-comments]').textContent).toContain('No comments yet');
+    });
+
+    it('lists discussion comments when they exist', () => {
+      create('Manager');
+      getCommentsSpy.and.returnValue(
+        of([{ id: 1, body: 'Please review', authorUserId: 2, authorName: 'Asha', createdAt: '2026-10-01T10:00:00Z' }])
+      );
+      component.load(7);
+      fixture.detectChanges();
+
+      const text = fixture.nativeElement.querySelector('[data-comments]').textContent;
+      expect(text).toContain('Asha');
+      expect(text).toContain('Please review');
+      expect(fixture.nativeElement.querySelector('[data-no-comments]')).toBeNull();
+    });
+
+    it('marks an edited comment in the details list', () => {
+      create('Manager');
+      getCommentsSpy.and.returnValue(
+        of([{ id: 1, body: 'Revised note', authorUserId: 2, authorName: 'Asha', createdAt: '2026-10-01T10:00:00Z', editedAt: '2026-10-02T10:00:00Z' }])
+      );
+      component.load(7);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-comments] [data-edited]')).not.toBeNull();
+    });
+
+    it('computes remaining hours as estimated minus worked, treating no worked hours as 0', () => {
+      create('Manager', { ...details, estimatedHours: 8, actualHours: 3 });
+      expect(component.remainingHours()).toBe(5);
+
+      component.task.set({ ...details, estimatedHours: 8, actualHours: null });
+      expect(component.remainingHours()).toBe(8);
+    });
+
+    it('logs hours by adding them to the worked total', () => {
+      create('Manager', { ...details, estimatedHours: 8, actualHours: 2 });
+      logHoursSpy.and.returnValue(of({ ...details, estimatedHours: 8, actualHours: 5 }));
+
+      component.hoursToLog.set('3');
+      component.logHours();
+
+      expect(logHoursSpy).toHaveBeenCalledWith(details.id, 3);
+      expect(component.task()?.actualHours).toBe(5);
+    });
+
+    it('does a native-submit-safe log: submitting the form is default-prevented and shows the new totals', () => {
+      create('Manager', { ...details, estimatedHours: 8, actualHours: 2 });
+      logHoursSpy.and.returnValue(of({ ...details, estimatedHours: 8, actualHours: 5 }));
+      const root = fixture.nativeElement as HTMLElement;
+
+      component.hoursToLog.set('3');
+      const form = root.querySelector('form.tf-side__log') as HTMLFormElement;
+      const submit = new Event('submit', { cancelable: true });
+      form.dispatchEvent(submit);
+      fixture.detectChanges();
+
+      expect(submit.defaultPrevented).toBeTrue();
+      expect(logHoursSpy).toHaveBeenCalledTimes(1);
+      expect(root.querySelector('[data-worked]')?.textContent).toContain('5h');
+      expect(root.querySelector('[data-remaining]')?.textContent).toContain('3h');
+    });
+
+    it('patches the open edit form with the new worked total after logging', () => {
+      create('Manager', { ...details, estimatedHours: 8, actualHours: 2 });
+      logHoursSpy.and.returnValue(of({ ...details, estimatedHours: 8, actualHours: 5 }));
+      component.startEdit();
+
+      component.hoursToLog.set('3');
+      component.logHours();
+
+      expect(component.editForm.controls.actualHours.value).toBe(5);
+    });
+
+    it('lets an employee log hours on a task assigned to them, without edit rights', () => {
+      create('Employee', { ...details, assignedToUserId: 1, estimatedHours: 8, actualHours: 2 });
+      logHoursSpy.and.returnValue(of({ ...details, assignedToUserId: 1, estimatedHours: 8, actualHours: 4 }));
+      const root = fixture.nativeElement as HTMLElement;
+
+      expect(component.canEdit()).toBeFalse();
+      expect(root.querySelector('[data-action="log-hours"]')).not.toBeNull();
+
+      component.hoursToLog.set('2');
+      component.logHours();
+
+      expect(logHoursSpy).toHaveBeenCalledWith(details.id, 2);
+    });
+
+    it('hides time tracking from an employee who is not assigned to the task', () => {
+      create('Employee', { ...details, assignedToUserId: 99 });
+
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-action="log-hours"]')).toBeNull();
+    });
+
+    it('sends 0 when the worked hours field is cleared and saved', () => {
+      create('Manager', { ...details, estimatedHours: 8, actualHours: 4 });
+      updateSpy.and.returnValue(of({ ...details, estimatedHours: 8, actualHours: 0 }));
+      component.startEdit();
+      component.editForm.patchValue({ actualHours: null });
+
+      component.saveEdit();
+
+      expect(updateSpy).toHaveBeenCalledWith(details.id, jasmine.objectContaining({ actualHours: 0 }));
+    });
   });
 
   it('shows the error state when details cannot be loaded', () => {

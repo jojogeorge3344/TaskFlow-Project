@@ -587,7 +587,7 @@
 
 .rc-scope__btn.is-on {
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
   box-shadow: var(--tf-shadow-sm);
 }
 

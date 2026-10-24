@@ -105,6 +105,10 @@ public static class PermissionCatalog
             Monitoring, TaskManagement, "Details", "Assign", GrantedToManager: true),
         new(PermissionKeys.TasksCommentCreate, "Post task comments", "Write comments in a task's discussion.",
             Monitoring, TaskManagement, "Discussion", "Create", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.TasksCommentEdit, "Edit own task comments", "Change the text of a comment you wrote in a task's discussion.",
+            Monitoring, TaskManagement, "Discussion", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.TasksCommentDelete, "Delete own task comments", "Delete a comment you wrote in a task's discussion.",
+            Monitoring, TaskManagement, "Discussion", "Delete", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
         new(PermissionKeys.TasksActivityView, "View task history", "Open a task's activity history.",
             Monitoring, TaskManagement, "Activity", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
 

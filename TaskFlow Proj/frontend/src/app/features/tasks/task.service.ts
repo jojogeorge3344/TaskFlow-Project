@@ -65,6 +65,11 @@ export class TaskService {
     return this.http.put<TaskDetails>(`${this.baseUrl}/${id}`, request);
   }
 
+  /** Adds worked hours to the task total. The assignee may do this without task-edit permission. */
+  logHours(id: number, hours: number): Observable<TaskDetails> {
+    return this.http.post<TaskDetails>(`${this.baseUrl}/${id}/hours`, { hours });
+  }
+
   changeStatus(id: number, request: UpdateTaskStatusRequest): Observable<TaskCard> {
     return this.http.patch<TaskCard>(`${this.baseUrl}/${id}/status`, request);
   }
@@ -92,6 +97,24 @@ export class TaskService {
 
   addComment(id: number, request: AddCommentRequest): Observable<TaskComment> {
     return this.http.post<TaskComment>(`${this.baseUrl}/${id}/comments`, request);
+  }
+
+  updateComment(id: number, commentId: number, request: AddCommentRequest): Observable<TaskComment> {
+    return this.http.put<TaskComment>(`${this.baseUrl}/${id}/comments/${commentId}`, request);
+  }
+
+  deleteComment(id: number, commentId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/comments/${commentId}`);
+  }
+
+  /** Administrator only: sets the hours one "worked hours logged" entry added; the task's worked total follows. */
+  updateHoursEntry(id: number, entryId: number, hours: number): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}/activity/${entryId}/hours`, { hours });
+  }
+
+  /** Administrator only: removes one "worked hours logged" entry; the task's worked total follows. */
+  deleteHoursEntry(id: number, entryId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}/activity/${entryId}/hours`);
   }
 
   getActivity(id: number, filter: ActivityFilter = {}): Observable<ActivityEntry[]> {

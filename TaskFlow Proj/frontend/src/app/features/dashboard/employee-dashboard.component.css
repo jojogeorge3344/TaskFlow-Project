@@ -21,7 +21,7 @@
 .period__chip[aria-pressed='true'] {
   background: var(--tf-primary);
   border-color: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
 }
 
 .period__note {
@@ -61,18 +61,18 @@
   font-size: 0.75rem;
   padding: 0.1rem 0.5rem;
   border-radius: 99px;
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--tf-chip-blue-bg);
+  color: var(--tf-chip-blue-fg);
 }
 
 .badge--overdue {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tf-danger-soft);
+  color: var(--tf-danger-strong);
 }
 
 .badge--today {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
 }
 
 .summary-bar {

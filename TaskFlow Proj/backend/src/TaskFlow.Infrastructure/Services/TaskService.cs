@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Application.Mail;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
@@ -24,6 +26,8 @@ public class TaskService : ITaskService
     private readonly IReminderSettingsService _reminderSettings;
     private readonly IAppClock _clock;
     private readonly IManagerDashboardScope _managerScope;
+    private readonly IMailService _mail;
+    private readonly ILogger<TaskService> _logger;
 
     public TaskService(
         AppDbContext dbContext,
@@ -32,7 +36,9 @@ public class TaskService : ITaskService
         TimeProvider timeProvider,
         IReminderSettingsService reminderSettings,
         IAppClock clock,
-        IManagerDashboardScope managerScope)
+        IManagerDashboardScope managerScope,
+        IMailService mail,
+        ILogger<TaskService> logger)
     {
         _dbContext = dbContext;
         _activityService = activityService;
@@ -41,6 +47,8 @@ public class TaskService : ITaskService
         _reminderSettings = reminderSettings;
         _clock = clock;
         _managerScope = managerScope;
+        _mail = mail;
+        _logger = logger;
     }
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
@@ -496,8 +504,10 @@ public class TaskService : ITaskService
                 cancellationToken);
         }
 
+        decimal? hoursChangedFrom = null;
         if (request.ActualHours.HasValue && task.ActualHours != request.ActualHours.Value)
         {
+            hoursChangedFrom = task.ActualHours ?? 0;
             var oldHours = task.ActualHours?.ToString() ?? "0";
             var newHours = request.ActualHours.Value.ToString();
             task.ActualHours = request.ActualHours.Value;
@@ -521,7 +531,122 @@ public class TaskService : ITaskService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        if (hoursChangedFrom is { } previousHours)
+        {
+            await NotifyHoursChangedAsync(task, recipients, previousHours, task.ActualHours ?? 0, currentUserId, cancellationToken);
+        }
+
         return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    public async Task<TaskDetailsDto?> LogHoursAsync(
+        int taskId,
+        LogHoursRequest request,
+        int currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken)
+    {
+        if (request.Hours <= 0 || request.Hours > 24)
+        {
+            throw new InvalidOperationException("Hours must be greater than 0 and at most 24 per entry.");
+        }
+
+        var task = await LoadTaskAsync(taskId, cancellationToken);
+        if (task is null)
+        {
+            return null;
+        }
+
+        var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("You do not have access to this task.");
+        }
+
+        if (task.AssignedToUserId != currentUserId
+            && !await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Only the assignee can log hours on this task.");
+        }
+
+        var previous = task.ActualHours ?? 0;
+        var total = previous + request.Hours;
+        task.ActualHours = total;
+        task.UpdatedAt = Now;
+        await _activityService.AppendAsync(
+            taskId,
+            TaskActivityEventType.HoursLogged,
+            currentUserId,
+            $"Worked hours logged: {total}h (total)",
+            previous.ToString(),
+            total.ToString(),
+            cancellationToken);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await NotifyHoursChangedAsync(task, recipients, previous, total, currentUserId, cancellationToken);
+
+        return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    /// <summary>Tells the assignee and recipients (except the person who made the change) that worked hours were
+    /// added, updated or cleared, by notification and internal mail. Best effort: a failure is logged and never
+    /// undoes the saved change.</summary>
+    private async Task NotifyHoursChangedAsync(
+        TaskEntity task,
+        IReadOnlyCollection<TaskRecipientDto> recipients,
+        decimal oldHours,
+        decimal newHours,
+        int actorId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var targetIds = recipients.Select(recipient => recipient.UserId)
+                .Append(task.AssignedToUserId)
+                .Distinct()
+                .ToList();
+            if (targetIds.Count == 0)
+            {
+                return;
+            }
+
+            var actorName = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => user.Id == actorId)
+                .Select(user => user.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? "A teammate";
+
+            var action = newHours == 0
+                ? $"cleared the worked hours (was {oldHours}h)"
+                : newHours > oldHours
+                    ? $"added {newHours - oldHours}h of worked time (was {oldHours}h)"
+                    : $"updated the worked hours (was {oldHours}h)";
+            var remaining = task.EstimatedHours - newHours;
+            var summary = $"Total worked now: {newHours}h of {task.EstimatedHours}h estimated ({remaining}h remaining).";
+            var message = $"{actorName} {action} on task {task.Title}. {summary}";
+
+            foreach (var userId in targetIds)
+            {
+                await _notificationPublisher.PublishAsync(userId, task.Id, NotificationType.System, message, cancellationToken);
+            }
+
+            var emails = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => targetIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+                .Select(user => user.Email)
+                .ToListAsync(cancellationToken);
+            if (emails.Count > 0)
+            {
+                await _mail.SendAsync(
+                    actorId,
+                    new SendMailRequest(emails, null, $"Worked hours changed: {task.Title}", message, null),
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not notify assigned members of the worked-hours change on task {TaskId}.", task.Id);
+        }
     }
 
     public async Task<TaskCardDto?> ChangeStatusAsync(
@@ -654,15 +779,73 @@ public class TaskService : ITaskService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await _notificationPublisher.PublishAsync(
-            request.NewAssigneeUserId,
-            taskId,
-            NotificationType.Reassigned,
-            $"A task was reassigned to you: {task.Title}",
+        var updatedRecipients = await LoadRecipientsAsync(taskId, cancellationToken);
+        await NotifyReassignedAsync(
+            task,
+            updatedRecipients,
+            oldAssigneeId,
+            oldAssignee?.FullName ?? oldAssigneeId.ToString(),
+            newAssignee.FullName,
+            request.Reason.Trim(),
+            currentUserId,
             cancellationToken);
 
-        var updatedRecipients = await LoadRecipientsAsync(taskId, cancellationToken);
         return ToDetails(task, updatedRecipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    /// <summary>Tells the new assignee, the previous assignee and everyone else who is notified about the task that it
+    /// was reassigned, by notification and internal mail. Best effort: a failure is logged and never undoes the saved
+    /// reassignment.</summary>
+    private async Task NotifyReassignedAsync(
+        TaskEntity task,
+        IReadOnlyCollection<TaskRecipientDto> recipients,
+        int oldAssigneeId,
+        string oldAssigneeName,
+        string newAssigneeName,
+        string reason,
+        int actorId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var targetIds = recipients.Select(recipient => recipient.UserId)
+                .Append(task.AssignedToUserId)
+                .Append(oldAssigneeId)
+                .Append(actorId)
+                .Distinct()
+                .ToList();
+
+            var actorName = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => user.Id == actorId)
+                .Select(user => user.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? "A teammate";
+
+            var details = $"{actorName} reassigned task \"{task.Title}\" ({task.TaskCode}) from {oldAssigneeName} to {newAssigneeName}. Reason: {reason}";
+
+            foreach (var userId in targetIds)
+            {
+                var message = userId == task.AssignedToUserId ? $"A task was reassigned to you: {task.Title}. Reason: {reason}" : details;
+                await _notificationPublisher.PublishAsync(userId, task.Id, NotificationType.Reassigned, message, cancellationToken);
+            }
+
+            var emails = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => targetIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+                .Select(user => user.Email)
+                .ToListAsync(cancellationToken);
+            if (emails.Count > 0)
+            {
+                await _mail.SendAsync(
+                    actorId,
+                    new SendMailRequest(emails, null, $"Task reassigned: {task.Title}", details, null),
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not notify assigned members of the reassignment of task {TaskId}.", task.Id);
+        }
     }
 
     public async Task<IReadOnlyCollection<TaskRecipientDto>?> GetRecipientsAsync(

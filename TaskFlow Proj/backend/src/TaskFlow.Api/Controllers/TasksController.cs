@@ -183,6 +183,33 @@ public class TasksController : ControllerBase
         }
     }
 
+    /// <summary>Adds worked hours to a task. The task's assignee can do this without edit rights.</summary>
+    [HttpPost("{id:int}/hours")]
+    public async Task<ActionResult<TaskDetailsDto>> LogHours(
+        int id,
+        [FromBody] LogHoursRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var task = await _taskService.LogHoursAsync(id, request, userId, role, cancellationToken);
+            return task is null ? NotFound() : Ok(task);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
     /// <summary>Deleting a task requires the tasks.delete permission.</summary>
     [HttpDelete("{id:int}")]
     [RequirePermission(PermissionKeys.TasksDelete)]
@@ -362,6 +389,122 @@ public class TasksController : ControllerBase
         {
             return BadRequest(new { message = exception.Message });
         }
+    }
+
+    [HttpPut("{id:int}/comments/{commentId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.TasksCommentEdit)]
+    public async Task<ActionResult<TaskCommentDto>> UpdateComment(
+        int id,
+        int commentId,
+        [FromBody] AddCommentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var validation = await _commentValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
+
+        if (!await CanAccessTaskAsync(id))
+        {
+            return Forbid();
+        }
+
+        if (!TryGetCurrentUser(out var userId, out _))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var comment = await _commentService.UpdateAsync(id, commentId, request, userId, cancellationToken);
+            return comment is null ? NotFound() : Ok(comment);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpDelete("{id:int}/comments/{commentId:int}")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.TasksCommentDelete)]
+    public async Task<IActionResult> DeleteComment(int id, int commentId, CancellationToken cancellationToken)
+    {
+        if (!await CanAccessTaskAsync(id))
+        {
+            return Forbid();
+        }
+
+        if (!TryGetCurrentUser(out var userId, out _))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            return await _commentService.DeleteAsync(id, commentId, userId, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    /// <summary>Administrator only: correct the hours added by one "worked hours logged" history entry.</summary>
+    [HttpPut("{id:int}/activity/{entryId:int}/hours")]
+    public async Task<IActionResult> UpdateHoursEntry(
+        int id,
+        int entryId,
+        [FromBody] UpdateHoursEntryRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        if (role != SystemRoles.Administrator)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            return await _activityService.UpdateHoursEntryAsync(id, entryId, request.Hours, userId, cancellationToken)
+                ? NoContent()
+                : NotFound();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    /// <summary>Administrator only: remove one "worked hours logged" history entry and rebuild the worked total.</summary>
+    [HttpDelete("{id:int}/activity/{entryId:int}/hours")]
+    public async Task<IActionResult> DeleteHoursEntry(int id, int entryId, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUser(out var userId, out var role))
+        {
+            return Unauthorized();
+        }
+
+        if (role != SystemRoles.Administrator)
+        {
+            return Forbid();
+        }
+
+        return await _activityService.DeleteHoursEntryAsync(id, entryId, userId, cancellationToken)
+            ? NoContent()
+            : NotFound();
     }
 
     [HttpGet("{id:int}/activity")]

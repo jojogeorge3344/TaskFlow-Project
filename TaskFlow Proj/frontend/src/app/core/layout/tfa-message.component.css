@@ -51,7 +51,7 @@
 
 .tfa-msg--user .tfa-bubble {
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
   border-top-right-radius: 0.3125rem;
 }
 

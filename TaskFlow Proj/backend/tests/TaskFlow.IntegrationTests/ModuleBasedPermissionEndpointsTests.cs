@@ -33,6 +33,7 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
         { "DELETE", "/api/v1/tasks/1", PermissionKeys.TasksDelete, "" },
         { "GET", "/api/v1/tasks/board", PermissionKeys.BoardView, "" },
         { "POST", "/api/v1/tasks/1/comments", PermissionKeys.TasksCommentCreate, "" },
+        { "PUT", "/api/v1/tasks/1/comments/1", PermissionKeys.TasksCommentEdit, "" },
         { "GET", "/api/v1/reports/export", PermissionKeys.ReportsExport, PermissionKeys.ReportsView },
         { "POST", "/api/v1/projects", PermissionKeys.ProjectsCreate, "" },
         { "PUT", "/api/v1/projects/1", PermissionKeys.ProjectsEdit, "" },
@@ -90,6 +91,8 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
     [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.ChangeStatus), PermissionKeys.TasksStatus)]
     [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.GetActivity), PermissionKeys.TasksActivityView)]
     [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.AddComment), PermissionKeys.TasksCommentCreate)]
+    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.UpdateComment), PermissionKeys.TasksCommentEdit)]
+    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.DeleteComment), PermissionKeys.TasksCommentDelete)]
     public void ActionsOnASingleTaskCarryTheirPermissionAlongsideTheTaskAccessRule(string action, string key)
     {
         // These also depend on whether the caller may see that task, so the permission is checked on the attribute.
