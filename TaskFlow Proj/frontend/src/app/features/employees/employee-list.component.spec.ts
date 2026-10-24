@@ -72,7 +72,7 @@ describe('EmployeeListComponent', () => {
         { provide: PositionService, useValue: { getAll: () => of([]), getOrCreate: () => of({ id: 1, name: 'Member' }) } },
         { provide: DepartmentService, useValue: { getAll: departmentsGetAllSpy } },
         { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
-        { provide: RoleService, useValue: { list: () => of([]) } },
+        { provide: RoleService, useValue: { assignable: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
       ]
     });

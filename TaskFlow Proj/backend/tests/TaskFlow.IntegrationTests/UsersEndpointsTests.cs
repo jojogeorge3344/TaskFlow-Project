@@ -80,7 +80,7 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task Update_WithNewPassword_EndsExistingSessions_AndOnlyNewPasswordWorks()
+    public async Task Update_WithAPassword_IgnoresIt_AndKeepsSessionsAndTheOldPassword()
     {
         var adminClient = _factory.CreateClient();
         var adminToken = (await LoginAsync(adminClient, "users-admin-pwd", SystemRoles.Administrator)).AccessToken;
@@ -91,20 +91,15 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
             UpdateBody("users-emp-pwd", password: "NewPass#1"));
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
 
-        // The access token issued before the change is rejected immediately.
+        // Nothing about the credentials changed, so the session carries on.
         var me = await SendAsync(employeeClient, HttpMethod.Get, "/api/v1/auth/me", employee.AccessToken);
-        Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
-
-        // The refresh token was revoked, so the session cannot be renewed.
-        using var refresh = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/refresh");
-        refresh.Headers.Add("Cookie", $"taskflow_refresh={employee.RefreshCookie}");
-        Assert.Equal(HttpStatusCode.Unauthorized, (await employeeClient.SendAsync(refresh)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
 
         var oldLogin = await PostLoginAsync(employeeClient, "users-emp-pwd", Password);
-        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, oldLogin.StatusCode);
 
         var newLogin = await PostLoginAsync(employeeClient, "users-emp-pwd", "NewPass#1");
-        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, newLogin.StatusCode);
     }
 
     [Fact]
@@ -142,30 +137,21 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
     }
 
-    [Fact]
-    public async Task Update_WithTooShortPassword_IsRejected()
+    [Theory]
+    [InlineData("123")]
+    [InlineData("      ")]
+    public async Task Update_WithAShortOrBlankPassword_IsIgnoredLikeAnyOther(string password)
     {
+        var name = $"users-emp-{(password.Trim().Length == 0 ? "blank" : "short")}";
         var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-short", SystemRoles.Administrator)).AccessToken;
-        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-short", SystemRoles.Employee);
+        var adminToken = (await LoginAsync(adminClient, $"users-admin-{name}", SystemRoles.Administrator)).AccessToken;
+        var employee = await LoginAsync(_factory.CreateClient(), name, SystemRoles.Employee);
 
         var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
-            UpdateBody("users-emp-short", password: "123"));
+            UpdateBody(name, password: password));
 
-        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
-    }
-
-    [Fact]
-    public async Task Update_WithBlankPassword_IsRejected()
-    {
-        var adminClient = _factory.CreateClient();
-        var adminToken = (await LoginAsync(adminClient, "users-admin-blank", SystemRoles.Administrator)).AccessToken;
-        var employee = await LoginAsync(_factory.CreateClient(), "users-emp-blank", SystemRoles.Employee);
-
-        var update = await SendAsync(adminClient, HttpMethod.Put, $"/api/v1/users/{employee.UserId}", adminToken,
-            UpdateBody("users-emp-blank", password: "      "));
-
-        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await PostLoginAsync(_factory.CreateClient(), name, Password)).StatusCode);
     }
 
     [Fact]

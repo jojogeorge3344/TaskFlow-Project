@@ -10,6 +10,7 @@
     </button>
   </header>
 
+  @if (canFilter()) {
   <div class="tf-card tf-toolbar kanban__filters" role="search" aria-label="Filter board">
     <div class="tf-field">
       <label for="board-filter-project">Project</label>
@@ -73,6 +74,7 @@
       Clear
     </button>
   </div>
+  }
 
   @if (error()) {
     <div class="tf-card tf-empty" role="alert">

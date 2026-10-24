@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { AccessRole, PermissionInfo, SaveRoleRequest } from '../models';
 
 /** Roles and the permission catalog (Permissions Management). Administrator only. */
@@ -11,6 +11,13 @@ export class RoleService {
 
   list(): Observable<AccessRole[]> {
     return this.http.get<AccessRole[]>(`${this.baseUrl}/roles`);
+  }
+
+  /** Roles the employee form and filter offer. Needs "Assign roles" and not Role Configuration. */
+  assignable(): Observable<AccessRole[]> {
+    return this.http
+      .get<{ id: number; name: string; isSystem: boolean }[]>(`${this.baseUrl}/users/roles`)
+      .pipe(map((roles) => roles.map((role) => ({ ...role, userCount: 0, permissionKeys: [] }))));
   }
 
   permissions(): Observable<PermissionInfo[]> {

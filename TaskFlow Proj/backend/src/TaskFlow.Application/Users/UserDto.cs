@@ -64,7 +64,7 @@ public record UpdateUserRequest(
     int RoleId,
     IReadOnlyList<ProjectAllocationInput>? ProjectAllocations = null,
     IReadOnlyList<int>? DepartmentIds = null,
-    // Optional new password; null or empty keeps the current one.
+    // Ignored: employees change their own password. Kept so existing clients still deserialize.
     string? Password = null);
 
 public record UserStatusRequest(bool IsActive);

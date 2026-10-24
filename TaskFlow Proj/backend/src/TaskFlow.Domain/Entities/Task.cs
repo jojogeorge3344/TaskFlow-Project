@@ -26,5 +26,6 @@ public class Task
     public DateTime UpdatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public decimal? ActualHours { get; set; }
     public bool IsDeleted { get; set; }
 }

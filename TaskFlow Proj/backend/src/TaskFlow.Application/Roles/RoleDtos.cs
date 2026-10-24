@@ -21,6 +21,9 @@ public record PermissionDto(
 /// <summary>A role with the keys of the permissions it holds. <see cref="UserCount"/> counts every account holding it.</summary>
 public record RoleDto(int Id, string Name, bool IsSystem, int UserCount, IReadOnlyList<string> PermissionKeys);
 
+/// <summary>A role as the employee form offers it: no permissions, so it can be shown to anyone who may assign roles.</summary>
+public record RoleOptionDto(int Id, string Name, bool IsSystem);
+
 public record SaveRoleRequest(string? Name, IReadOnlyList<string>? PermissionKeys);
 
 public enum RoleFailure

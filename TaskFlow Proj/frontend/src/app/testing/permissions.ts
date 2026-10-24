@@ -27,6 +27,10 @@ const MANAGER_PERMISSIONS: string[] = [
   Permissions.TasksRecipients,
   Permissions.ReportsView,
   Permissions.WorkloadView,
+  Permissions.WorkloadFilters,
+  Permissions.WorkloadTasksOpen,
+  Permissions.BoardView,
+  Permissions.BoardFilters,
   Permissions.SettingsReminders
 ];
 
@@ -45,6 +49,8 @@ export function systemPermissions(role: string): string[] {
         Permissions.TasksStatus,
         Permissions.TasksCommentCreate,
         Permissions.TasksActivityView,
+        Permissions.BoardView,
+        Permissions.BoardFilters,
         Permissions.MailRead,
         Permissions.MailCompose,
         Permissions.MailOrganize,

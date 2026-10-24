@@ -496,6 +496,21 @@ public class TaskService : ITaskService
                 cancellationToken);
         }
 
+        if (request.ActualHours.HasValue && task.ActualHours != request.ActualHours.Value)
+        {
+            var oldHours = task.ActualHours?.ToString() ?? "0";
+            var newHours = request.ActualHours.Value.ToString();
+            task.ActualHours = request.ActualHours.Value;
+            await _activityService.AppendAsync(
+                taskId,
+                TaskActivityEventType.HoursLogged,
+                currentUserId,
+                $"Worked hours logged: {newHours}h (total)",
+                oldHours,
+                newHours,
+                cancellationToken);
+        }
+
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.Priority = request.Priority;
@@ -622,9 +637,9 @@ public class TaskService : ITaskService
             taskId,
             TaskActivityEventType.Reassigned,
             currentUserId,
-            $"Reassigned from {oldAssignee?.FullName ?? "Unknown"} to {newAssignee.FullName}. Reason: {request.Reason}",
-            oldAssigneeId.ToString(),
-            request.NewAssigneeUserId.ToString(),
+            $"Reassigned from {oldAssignee?.FullName ?? oldAssigneeId.ToString()} to {newAssignee.FullName}. Reason: {request.Reason}",
+            oldAssignee?.FullName ?? oldAssigneeId.ToString(),
+            newAssignee.FullName,
             cancellationToken);
 
         // BR-5: the assignee is always a recipient - make sure the new assignee is included.
@@ -842,6 +857,7 @@ public class TaskService : ITaskService
             task.StartDate,
             task.Deadline,
             task.EstimatedHours,
+            task.ActualHours,
             task.Status,
             stage,
             recipients,

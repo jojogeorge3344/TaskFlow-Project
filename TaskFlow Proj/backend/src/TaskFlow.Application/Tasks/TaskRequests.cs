@@ -28,7 +28,8 @@ public record UpdateTaskRequest(
     TaskPriority Priority,
     DateTime StartDate,
     DateTime Deadline,
-    decimal EstimatedHours);
+    decimal EstimatedHours,
+    decimal? ActualHours = null);
 
 public record UpdateTaskStatusRequest(TaskStatus Status);
 

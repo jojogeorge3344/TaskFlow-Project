@@ -26,7 +26,7 @@ function firstBeforeSecond(group: AbstractControl): ValidationErrors | null {
 
 type SettingsField = 'defaultFirstDays' | 'defaultSecondDays' | 'defaultOverdueFrequency';
 
-/** Reminder Settings (Screen 13). Administrator and Manager only; validation mirrors
+/** Reminder Settings (Screen 13). Needs settings.reminders.manage; validation mirrors
  * UpdateReminderSettingsRequestValidator. */
 @Component({
   selector: 'app-reminder-settings',

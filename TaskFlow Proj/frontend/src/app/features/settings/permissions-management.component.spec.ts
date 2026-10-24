@@ -1,5 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { of, throwError } from 'rxjs';
 import { AccessRole, PermissionInfo } from '../../core/models';
 import { RoleService } from '../../core/services/role.service';
@@ -102,7 +104,8 @@ describe('PermissionsManagementComponent', () => {
           provide: RoleService,
           useValue: { list: listSpy, permissions: permissionsSpy, create: createSpy, update: updateSpy, delete: deleteSpy }
         },
-        { provide: ToastService, useValue: toast }
+        { provide: ToastService, useValue: toast },
+        { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Administrator') })) }
       ]
     });
     const fixture = TestBed.createComponent(PermissionsManagementComponent);

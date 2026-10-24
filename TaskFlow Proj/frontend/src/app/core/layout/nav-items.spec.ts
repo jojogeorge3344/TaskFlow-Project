@@ -177,7 +177,7 @@ describe('buildNavigation', () => {
 
       expect(nav.map((item) => item.label)).toEqual(['Dashboard', 'Task Management', 'My Profile']);
       expect(nav[0].route).toBe('/me');
-      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Board']);
+      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks']);
     });
 
     it('adds the menu entries the permissions of the role open', () => {
@@ -185,6 +185,7 @@ describe('buildNavigation', () => {
         Permissions.TasksViewAll,
         Permissions.ReportsView,
         Permissions.WorkloadView,
+        Permissions.BoardView,
         Permissions.SettingsReminders,
         Permissions.ProjectsView,
         Permissions.MailRead
@@ -217,7 +218,19 @@ describe('buildNavigation', () => {
     it('lists the workload under Task Management for a role that cannot see every task', () => {
       const nav = navFor('Planner', [Permissions.WorkloadView]);
 
-      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Employee Workload', 'Board']);
+      expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Employee Workload']);
+    });
+
+    it('lists Board only for a role that holds board.view', () => {
+      const boardOnly = navFor('Viewer', [Permissions.BoardView]);
+      const neither = navFor('Viewer', []);
+      const allTasks = navFor('Viewer', [Permissions.TasksViewAll, Permissions.BoardView]);
+      const allTasksWithoutBoard = navFor('Viewer', [Permissions.TasksViewAll]);
+
+      expect(child(boardOnly, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Board']);
+      expect(child(neither, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks']);
+      expect(child(allTasks, 'TaskFlow Monitoring').children!.map((item) => item.label)).toEqual(['Task Management', 'Board']);
+      expect(child(allTasksWithoutBoard, 'TaskFlow Monitoring').children!.map((item) => item.label)).toEqual(['Task Management']);
     });
 
     it('sends a custom role to the widest dashboard its scope allows', () => {

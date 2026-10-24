@@ -153,7 +153,7 @@ export class EmployeeListComponent implements OnInit {
     });
     if (this.authService.hasPermission(Permissions.RolesManage) || this.authService.hasPermission(Permissions.EmployeesRoleAssign)) {
       // Custom roles join the filter; the standard three stay if the list cannot be loaded.
-      this.roleService.list().subscribe({
+      this.roleService.assignable().subscribe({
         next: (roles) => this.roles.set(roles.map((role) => role.name))
       });
     }

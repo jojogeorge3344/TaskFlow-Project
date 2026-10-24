@@ -22,7 +22,7 @@ export class TaskDiscussionComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly toast = inject(ToastService);
 
-  readonly taskId = Number(this.route.snapshot.paramMap.get('id'));
+  taskId = 0;
 
   /** Reading a discussion is open to anyone who can see the task; writing in it needs its own permission. */
   get canComment(): boolean {
@@ -38,10 +38,30 @@ export class TaskDiscussionComponent implements OnInit {
   readonly posting = signal(false);
 
   ngOnInit(): void {
-    this.load();
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    if (Number.isFinite(id) && id > 0) {
+      this.taskId = id;
+    } else {
+      this.route.paramMap.subscribe((params) => {
+        const parsed = Number(params.get('id'));
+        if (Number.isFinite(parsed) && parsed > 0 && parsed !== this.taskId) {
+          this.taskId = parsed;
+          this.load();
+        }
+      });
+    }
+    if (this.taskId) {
+      this.load();
+    } else {
+      this.loading.set(false);
+      this.error.set('Invalid task id.');
+    }
   }
 
   load(): void {
+    if (!this.taskId) {
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
 

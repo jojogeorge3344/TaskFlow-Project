@@ -9,6 +9,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { DepartmentWithCount, Position, User } from '../../core/models';
 import { PositionService } from '../../core/services/position.service';
 import { withProject } from '../../testing/users';
+import { Permissions } from '../../core/auth/permissions';
 import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -108,7 +109,7 @@ describe('EmployeeFormPanelComponent', () => {
         {
           provide: RoleService,
           useValue: {
-            list: () =>
+            assignable: () =>
               of([
                 { id: 3, name: 'Employee', isSystem: true, userCount: 1, permissionKeys: [] },
                 { id: 2, name: 'Manager', isSystem: true, userCount: 1, permissionKeys: [] },
@@ -123,6 +124,18 @@ describe('EmployeeFormPanelComponent', () => {
     toastSpy = spyOn(TestBed.inject(ToastService), 'success');
     errorToastSpy = spyOn(TestBed.inject(ToastService), 'error');
     navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+  });
+
+  it('lists the assignable roles without a failure hint for a user who can assign roles but not manage them', () => {
+    currentUser.set({
+      id: 2, fullName: 'Assigner', username: 'assigner', email: 'assigner@taskflow.com', role: 'Team Lead', employeeCode: null,
+      permissions: [Permissions.EmployeesView, Permissions.EmployeesEdit, Permissions.EmployeesRoleAssign]
+    });
+    const fixture = create(existing);
+
+    expect(fixture.componentInstance.roleLoadFailed()).toBeFalse();
+    expect(fixture.componentInstance.roles().map((role) => role.name)).toContain('Team Lead');
+    expect(el(fixture).textContent).not.toContain('Custom roles could not be loaded');
   });
 
   it('keeps the current password when the new password is left blank', () => {

@@ -121,6 +121,7 @@ public class TasksController : ControllerBase
 
     /// <summary>All tasks the caller may access, flat list the Kanban board groups client-side.</summary>
     [HttpGet("board")]
+    [RequirePermission(PermissionKeys.BoardView)]
     public async Task<ActionResult<IReadOnlyCollection<TaskCardDto>>> GetBoard(CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUser(out var userId, out var role))
@@ -379,7 +380,24 @@ public class TasksController : ControllerBase
             return Forbid();
         }
 
-        var filter = new ActivityFilter(eventType, actorUserId, from, to, search);
+        DateTime? fromUtc = from?.Kind == DateTimeKind.Utc ? from : from?.ToUniversalTime();
+        DateTime? toUtc = to;
+        if (toUtc.HasValue)
+        {
+            var toValue = toUtc.Value;
+            if (toValue.Kind != DateTimeKind.Utc)
+            {
+                toValue = toValue.ToUniversalTime();
+            }
+            // If the client passed a date-only value, include the whole day
+            if (toValue.TimeOfDay == TimeSpan.Zero)
+            {
+                toValue = toValue.Date.AddDays(1).AddTicks(-1);
+            }
+            toUtc = toValue;
+        }
+
+        var filter = new ActivityFilter(eventType, actorUserId, fromUtc, toUtc, search);
         var entries = await _activityService.GetForTaskAsync(id, filter, cancellationToken);
         return Ok(entries);
     }

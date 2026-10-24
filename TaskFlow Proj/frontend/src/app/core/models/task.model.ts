@@ -38,6 +38,7 @@ export interface TaskDetails {
   startDate: string;
   deadline: string;
   estimatedHours: number;
+  actualHours?: number | null;
   status: TaskStatus;
   stage: TaskStage;
   recipients: TaskRecipient[];
@@ -77,6 +78,7 @@ export interface UpdateTaskRequest {
   startDate: string;
   deadline: string;
   estimatedHours: number;
+  actualHours?: number | null;
 }
 
 export interface UpdateTaskStatusRequest {

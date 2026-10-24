@@ -31,6 +31,7 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
     public static TheoryData<string, string, string, string> GatedActions => new()
     {
         { "DELETE", "/api/v1/tasks/1", PermissionKeys.TasksDelete, "" },
+        { "GET", "/api/v1/tasks/board", PermissionKeys.BoardView, "" },
         { "POST", "/api/v1/tasks/1/comments", PermissionKeys.TasksCommentCreate, "" },
         { "GET", "/api/v1/reports/export", PermissionKeys.ReportsExport, PermissionKeys.ReportsView },
         { "POST", "/api/v1/projects", PermissionKeys.ProjectsCreate, "" },

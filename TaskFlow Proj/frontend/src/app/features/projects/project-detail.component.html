@@ -64,9 +64,6 @@
                 <div class="pd__member-main">
                   <span class="pd__member-name">
                     {{ member.fullName }}
-                    @if (member.isManager) {
-                      <span class="tf-pill tf-pill--violet">Manager</span>
-                    }
                   </span>
                   <span class="pd__role">{{ member.positionName }}</span>
                   <span class="pd__bar" role="img" [attr.aria-label]="member.percent + '% allocated'">

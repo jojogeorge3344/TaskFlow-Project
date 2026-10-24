@@ -201,7 +201,7 @@ export class EmployeeFormPanelComponent implements OnInit {
       return;
     }
 
-    this.roleService.list().subscribe({
+    this.roleService.assignable().subscribe({
       next: (roles) => this.roles.set(roles),
       error: () => {
         // Fall back to the system roles so the form stays usable.

@@ -13,6 +13,7 @@
     </div>
   </header>
 
+  @if (canFilter()) {
   <div class="tf-card tf-toolbar workload-toolbar">
     <div class="tf-field">
       <label for="workload-project">Project</label>
@@ -46,6 +47,7 @@
       Reset
     </button>
   </div>
+  }
 
   <div class="tf-card">
     @if (error()) {
@@ -74,7 +76,9 @@
               <th class="num">Overdue</th>
               <th class="num">Completed</th>
               <th>Workload</th>
-              <th><span class="tf-sr-only">Task list</span></th>
+              @if (canOpenTasks()) {
+                <th><span class="tf-sr-only">Task list</span></th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -103,6 +107,7 @@
                     <span class="workload-bar__fill" [style.width.%]="barWidth(row)"></span>
                   </div>
                 </td>
+                @if (canOpenTasks()) {
                 <td>
                   <a
                     class="tf-btn tf-btn--link"
@@ -115,6 +120,7 @@
                     <tf-icon name="arrow" />
                   </a>
                 </td>
+                }
               </tr>
             }
           </tbody>

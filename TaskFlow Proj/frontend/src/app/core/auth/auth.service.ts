@@ -96,10 +96,11 @@ export class AuthService {
 
   /**
    * Asks the API whether the current session is still valid. A 401 (e.g. the user's username or
-   * password was changed) is handled by the auth interceptor, which signs the user out.
+   * password was changed) is handled by the auth interceptor, which signs the user out. The reply also carries the
+   * role's current permissions, so an administrator editing a role reaches signed-in users without a new sign-in.
    */
   checkSession(): Observable<unknown> {
-    return this.http.get(`${this.baseUrl}/me`);
+    return this.http.get<AuthUser>(`${this.baseUrl}/me`).pipe(tap((user) => this.syncPermissions(user)));
   }
 
   getAccessToken(): string | null {
@@ -130,6 +131,21 @@ export class AuthService {
     const user = this.currentUserSignal();
     if (user) {
       this.currentUserSignal.set({ ...user, mfaSetupRequired: true });
+    }
+  }
+
+  private syncPermissions(latest: AuthUser | null | undefined): void {
+    const current = this.currentUserSignal();
+    if (!current || !latest || !Array.isArray(latest.permissions)) {
+      return;
+    }
+
+    const same =
+      current.role === latest.role &&
+      current.permissions.length === latest.permissions.length &&
+      current.permissions.every((key) => latest.permissions.includes(key));
+    if (!same) {
+      this.currentUserSignal.set({ ...current, role: latest.role, permissions: latest.permissions });
     }
   }
 

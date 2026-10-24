@@ -14,6 +14,8 @@ export const ACTIVITY_EVENT_TYPES = [
   'PriorityChanged',
   'Completed',
   'CommentAdded',
+  'HoursLogged',
+  'TimeLogged',
   'Administrative'
 ] as const;
 
@@ -28,7 +30,7 @@ export class ActivityComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly taskService = inject(TaskService);
 
-  readonly taskId = Number(this.route.snapshot.paramMap.get('id'));
+  taskId = 0;
 
   readonly entries = signal<ActivityEntry[]>([]);
   readonly loading = signal(true);
@@ -39,10 +41,30 @@ export class ActivityComponent implements OnInit {
   readonly to = signal('');
 
   ngOnInit(): void {
-    this.load();
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    if (Number.isFinite(id) && id > 0) {
+      this.taskId = id;
+    } else {
+      this.route.paramMap.subscribe((params) => {
+        const parsed = Number(params.get('id'));
+        if (Number.isFinite(parsed) && parsed > 0 && parsed !== this.taskId) {
+          this.taskId = parsed;
+          this.load();
+        }
+      });
+    }
+    if (this.taskId) {
+      this.load();
+    } else {
+      this.loading.set(false);
+      this.error.set('Invalid task id.');
+    }
   }
 
   load(): void {
+    if (!this.taskId) {
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
 

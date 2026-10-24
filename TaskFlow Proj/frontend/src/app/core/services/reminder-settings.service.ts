@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ReminderSettings, UpdateReminderSettings } from '../models';
 
-/** Reads and saves the global reminder settings (Screen 13). Administrator and Manager only. */
+/** Reads and saves the global reminder settings (Screen 13). Needs settings.reminders.manage. */
 @Injectable({ providedIn: 'root' })
 export class ReminderSettingsService {
   private readonly http = inject(HttpClient);

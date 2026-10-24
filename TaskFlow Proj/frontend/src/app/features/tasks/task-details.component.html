@@ -162,6 +162,18 @@
                 <p class="tf-field__error">Enter at least 0.5 hours.</p>
               }
             </div>
+            <div class="tf-field">
+              <label for="edit-actual-hours">Worked hours</label>
+              <input
+                id="edit-actual-hours"
+                class="tf-input"
+                type="number"
+                min="0"
+                step="0.5"
+                formControlName="actualHours"
+                data-field="actualHours"
+              />
+            </div>
           </div>
         </section>
 
@@ -212,6 +224,10 @@
             <dd>{{ current.estimatedHours }}h</dd>
           </div>
           <div>
+            <dt>Worked hours</dt>
+            <dd>{{ current.actualHours != null && current.actualHours !== undefined ? current.actualHours + 'h' : '—' }}</dd>
+          </div>
+          <div>
             <dt>Status</dt>
             <dd>{{ current.status }}</dd>
           </div>
@@ -256,6 +272,12 @@
               </a>
             </li>
           }
+          <li>
+            <a [routerLink]="['/tasks', current.id, 'activity']" [queryParams]="{ eventType: 'Administrative', search: 'hours' }" queryParamsHandling="merge">
+              <tf-icon name="chart" />
+              Time tracking
+            </a>
+          </li>
         </ul>
 
         @if (allowedNext(current.status).length > 0) {

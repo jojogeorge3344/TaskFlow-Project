@@ -6,7 +6,7 @@ using TaskFlow.Application.Workload;
 
 namespace TaskFlow.Api.Controllers;
 
-/// <summary>Employee workload (Screen 16). Administrator and Manager only.</summary>
+/// <summary>Employee workload (Screen 16). Needs workload.view.</summary>
 [ApiController]
 [Route("api/v1/workload")]
 [RequirePermission(PermissionKeys.WorkloadView)]

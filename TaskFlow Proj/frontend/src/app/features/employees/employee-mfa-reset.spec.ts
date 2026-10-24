@@ -83,7 +83,7 @@ describe('EmployeeListComponent MFA reset', () => {
         { provide: ProjectService, useValue: { getAll: () => of([]) } },
         { provide: DepartmentService, useValue: { getAll: () => of([]) } },
         { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
-        { provide: RoleService, useValue: { list: () => of([]) } },
+        { provide: RoleService, useValue: { assignable: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } }
       ]
     });
