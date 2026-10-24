@@ -196,17 +196,22 @@ public class RoleService : IRoleService
         var effective = EffectivePermissions.Expand(wanted);
         foreach (var permission in found)
         {
-            var requires = PermissionCatalog.All.First(definition => definition.Key == permission.Key).Requires;
+            var definition = PermissionCatalog.All.FirstOrDefault(definition => definition.Key == permission.Key);
+            var requires = definition?.Requires;
             if (requires is not null && !effective.Contains(requires))
             {
-                var needed = PermissionCatalog.All.First(definition => definition.Key == requires).Name;
+                var needed = PermissionCatalog.All.FirstOrDefault(definition => definition.Key == requires)?.Name ?? requires;
                 throw new RoleException(RoleFailure.Invalid, $"\"{permission.Name}\" also needs \"{needed}\".");
             }
         }
 
         // The catalogue decides, not the stored row: rows of the permission table can never be updated.
         var notAssignable = found
-            .Where(permission => !PermissionCatalog.All.First(definition => definition.Key == permission.Key).IsAssignable)
+            .Where(permission =>
+            {
+                var definition = PermissionCatalog.All.FirstOrDefault(definition => definition.Key == permission.Key);
+                return definition is { IsAssignable: false };
+            })
             .Select(permission => permission.Name)
             .ToList();
         if (notAssignable.Count > 0)

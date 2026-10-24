@@ -182,8 +182,7 @@ public class TasksController : ControllerBase
         }
     }
 
-    /// <summary>Deleting a task is Administrator-only. roles.manage is the permission only Administrators can hold,
-    /// so it gates this without a new grantable permission; tasks.update alone is not enough.</summary>
+    /// <summary>Deleting a task requires the tasks.delete permission.</summary>
     [HttpDelete("{id:int}")]
     [RequirePermission(PermissionKeys.TasksDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)

@@ -222,8 +222,7 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>Deleting an employee is Administrator-only. roles.manage is the permission only Administrators can hold,
-    /// so it gates this without a new grantable permission; employees.manage alone is not enough.</summary>
+    /// <summary>Deleting an employee requires the employees.delete permission.</summary>
     [HttpDelete("{id}")]
     [RequirePermission(PermissionKeys.EmployeesDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)

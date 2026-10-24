@@ -64,6 +64,7 @@ public static class EffectivePermissions
         {
             if (ByKey.TryGetValue(key, out var definition) && definition.ScopeGroup is not null)
             {
+                // Always-on permissions are handled separately and cannot be switched off.
                 result.UnionWith(
                     PermissionCatalog.All
                         .Where(other => other.ScopeGroup == definition.ScopeGroup && other.ScopeRank < definition.ScopeRank && !other.AlwaysGranted)
