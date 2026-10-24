@@ -826,6 +826,9 @@ namespace TaskFlow.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("ActualHours")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("AssignedToUserId")
                         .HasColumnType("INTEGER");
 

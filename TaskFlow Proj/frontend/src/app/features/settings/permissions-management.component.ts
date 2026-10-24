@@ -1,5 +1,7 @@
 import { Component, HostListener, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { forkJoin } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { AccessRole, PermissionInfo } from '../../core/models';
 import { RoleService } from '../../core/services/role.service';
@@ -19,6 +21,7 @@ import {
   featuresOfScreen,
   isEnabled,
   isSelectable,
+  restrictForCaller,
   matches,
   scopeLevel,
   setMany,
@@ -74,6 +77,7 @@ export interface FeatureView {
 export class PermissionsManagementComponent implements OnInit {
   private readonly roleService = inject(RoleService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
   private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
   readonly roles = signal<AccessRole[]>([]);
@@ -223,7 +227,7 @@ export class PermissionsManagementComponent implements OnInit {
     forkJoin({ roles: this.roleService.list(), catalog: this.roleService.permissions() }).subscribe({
       next: ({ roles, catalog }) => {
         this.roles.set(roles);
-        this.catalog.set(catalog);
+        this.catalog.set(restrictForCaller(catalog, this.auth.hasPermission(Permissions.RolesAdministratorAssign)));
         this.loading.set(false);
         this.activeModule.set(buildTree(catalog)[0]?.name ?? null);
         this.show(roles[0]?.id ?? null);

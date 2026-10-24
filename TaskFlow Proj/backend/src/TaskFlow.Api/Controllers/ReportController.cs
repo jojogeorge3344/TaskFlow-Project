@@ -8,7 +8,7 @@ using TaskFlow.Application.Reports;
 
 namespace TaskFlow.Api.Controllers;
 
-/// <summary>Task reports and CSV export (Screen 17). Administrator and Manager only.</summary>
+/// <summary>Task reports and CSV export (Screen 17). Needs reports.view; export needs reports.export.</summary>
 [ApiController]
 [Route("api/v1/reports")]
 [RequirePermission(PermissionKeys.ReportsView)]

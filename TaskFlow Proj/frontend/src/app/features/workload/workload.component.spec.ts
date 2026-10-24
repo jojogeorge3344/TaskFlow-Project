@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { ProjectWithCount, EmployeeWorkload } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';
 import { WorkloadService } from '../../core/services/workload.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { WorkloadComponent } from './workload.component';
 
 describe('WorkloadComponent', () => {
@@ -28,6 +31,7 @@ describe('WorkloadComponent', () => {
 
   let getWorkloadSpy: jasmine.Spy;
   let getAllSpy: jasmine.Spy;
+  let permissions: string[];
 
   function create(): ComponentFixture<WorkloadComponent> {
     const fixture = TestBed.createComponent(WorkloadComponent);
@@ -40,6 +44,7 @@ describe('WorkloadComponent', () => {
   }
 
   beforeEach(() => {
+    permissions = systemPermissions('Manager');
     getWorkloadSpy = jasmine.createSpy('getWorkload').and.returnValue(
       of([
         employee({ userId: 1, fullName: 'Joe Thomas', activeTasks: 1 }),
@@ -53,7 +58,8 @@ describe('WorkloadComponent', () => {
       providers: [
         provideRouter([]),
         { provide: WorkloadService, useValue: { getWorkload: getWorkloadSpy } },
-        { provide: ProjectService, useValue: { getAll: getAllSpy } }
+        { provide: ProjectService, useValue: { getAll: getAllSpy } },
+        { provide: AuthService, useValue: fakeAuthService(() => ({ permissions })) }
       ]
     });
   });
@@ -142,6 +148,30 @@ describe('WorkloadComponent', () => {
 
     expect(rows[0].querySelector('a[data-open-tasks]')?.getAttribute('href')).toBe('/tasks?assignedToUserId=1');
     expect(rows[2].querySelector('a[data-open-tasks]')?.getAttribute('href')).toBe('/tasks?assignedToUserId=3');
+  });
+
+  it('hides the filters without the workload filters permission', () => {
+    permissions = [Permissions.WorkloadView, Permissions.WorkloadTasksOpen];
+    const fixture = create();
+
+    expect(el(fixture).querySelector('.workload-toolbar')).toBeNull();
+    expect(el(fixture).querySelectorAll('tr.workload-row').length).toBe(3);
+  });
+
+  it('shows the filters with the workload filters permission', () => {
+    permissions = [Permissions.WorkloadView, Permissions.WorkloadFilters];
+    const fixture = create();
+
+    expect(el(fixture).querySelector('.workload-toolbar')).not.toBeNull();
+  });
+
+  it('hides the task list link without the open-tasks permission', () => {
+    permissions = [Permissions.WorkloadView, Permissions.WorkloadFilters];
+    const fixture = create();
+
+    expect(el(fixture).querySelector('a[data-open-tasks]')).toBeNull();
+    expect(el(fixture).querySelectorAll('tr.workload-row').length).toBe(3);
+    expect(el(fixture).querySelectorAll('thead th').length).toBe(8);
   });
 
   it('shows the error state and retries', () => {

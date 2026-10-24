@@ -72,7 +72,8 @@ export class TaskDetailsComponent implements OnInit {
       priority: this.fb.control<TaskPriority>('Medium'),
       startDate: this.fb.control('', Validators.required),
       deadline: this.fb.control('', Validators.required),
-      estimatedHours: this.fb.control<number>(0, [Validators.required, Validators.min(0.5)])
+      estimatedHours: this.fb.control<number>(0, [Validators.required, Validators.min(0.5)]),
+      actualHours: this.fb.control<number | null>(null)
     },
     { validators: [deadlineAfterStartValidator] }
   );
@@ -221,7 +222,8 @@ export class TaskDetailsComponent implements OnInit {
       priority: task.priority,
       startDate: toInputDate(task.startDate),
       deadline: toInputDate(task.deadline),
-      estimatedHours: task.estimatedHours
+      estimatedHours: task.estimatedHours,
+      actualHours: task.actualHours ?? null
     });
     this.editing.set(true);
   }
@@ -241,6 +243,7 @@ export class TaskDetailsComponent implements OnInit {
     const deadline = new Date(value.deadline ?? new Date());
 
     this.saving.set(true);
+    const actualHours = value.actualHours ?? null;
     this.taskService
       .update(task.id, {
         title: value.title?.trim() ?? '',
@@ -248,7 +251,8 @@ export class TaskDetailsComponent implements OnInit {
         priority: value.priority ?? 'Medium',
         startDate: start.toISOString(),
         deadline: deadline.toISOString(),
-        estimatedHours: value.estimatedHours ?? 0
+        estimatedHours: value.estimatedHours ?? 0,
+        actualHours: actualHours
       })
       .subscribe({
         next: (updated) => {

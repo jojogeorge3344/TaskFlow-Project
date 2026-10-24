@@ -1,7 +1,8 @@
 /**
  * The permission keys the SPA checks. They mirror the stored entries of the API's module-based catalogue
  * (`PermissionCatalog.Stored`); a backend test fails when the two lists differ. Features every signed-in user has
- * (own profile, mail, notifications, assistant chat, own dashboard and tasks) need no key.
+ * (own profile, own dashboard and own tasks) need no key. Mail, notifications and the assistant do have keys; they are
+ * given to every role when first added, so they can still be switched off for a role.
  */
 export const Permissions = {
   // Dashboard: view team < view organization (each includes the lower level)
@@ -49,6 +50,12 @@ export const Permissions = {
   ReportsView: 'reports.view',
   ReportsExport: 'reports.export',
   WorkloadView: 'workload.view',
+  WorkloadFilters: 'workload.filters.use',
+  WorkloadTasksOpen: 'workload.tasks.open',
+
+  // Board
+  BoardView: 'board.view',
+  BoardFilters: 'board.filters.use',
 
   // Settings
   SettingsReminders: 'settings.reminders.manage',
@@ -69,7 +76,8 @@ export const Permissions = {
   AssistantActions: 'assistant.actions.confirm',
 
   // Role configuration
-  RolesManage: 'roles.manage'
+  RolesManage: 'roles.manage',
+  RolesAdministratorAssign: 'roles.administrator.assign'
 } as const;
 
 export type PermissionKey = (typeof Permissions)[keyof typeof Permissions];

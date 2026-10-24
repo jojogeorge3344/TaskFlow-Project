@@ -192,11 +192,6 @@ describe('app routes', () => {
     expect(await load(mail)).toBe(MailComponent);
   });
 
-  it('registers the board for every authenticated role', () => {
-    const board = childRoute('board');
-    expect(board.canActivate).toBeUndefined();
-  });
-
   it('registers the task list for every authenticated role', async () => {
     const list = childRoute('tasks');
     expect(list.canActivate).toBeUndefined();
@@ -217,13 +212,24 @@ describe('app routes', () => {
   it('registers the task detail and discussion routes for every authenticated role', () => {
     expect(childRoute('tasks/:id').canActivate).toBeUndefined();
     expect(childRoute('tasks/:id/discussion').canActivate).toBeUndefined();
-    expect(childRoute('tasks/:id/activity').canActivate).toBeUndefined();
   });
 
   it('protects reassignment with tasks.reassign', () => {
     const reassign = childRoute('tasks/:id/reassign');
     expect(reassign.canActivate).toEqual([permissionGuard]);
     expect(reassign.data?.['permissions']).toEqual([Permissions.TasksReassign]);
+  });
+
+  it('opens the board only with board.view', () => {
+    const board = childRoute('board');
+    expect(board.canActivate).toEqual([permissionGuard]);
+    expect(board.data?.['permissions']).toEqual([Permissions.BoardView]);
+  });
+
+  it('opens a task activity history only with tasks.activity.view', () => {
+    const activity = childRoute('tasks/:id/activity');
+    expect(activity.canActivate).toEqual([permissionGuard]);
+    expect(activity.data?.['permissions']).toEqual([Permissions.TasksActivityView]);
   });
 
   it('lazy-loads the task screens', async () => {

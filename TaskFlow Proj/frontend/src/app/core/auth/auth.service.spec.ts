@@ -69,6 +69,19 @@ describe('AuthService', () => {
     expect(service.getAccessToken()).toBeNull();
   });
 
+  it('checkSession picks up permissions an administrator changed on the role', () => {
+    service.login({ emailOrUsername: 'admin', password: 'secret' }).subscribe();
+    httpMock.expectOne('/api/v1/auth/login').flush(response);
+
+    service.checkSession().subscribe();
+    httpMock
+      .expectOne('/api/v1/auth/me')
+      .flush({ ...response.user, role: 'Team Lead', permissions: ['dashboard.view.team'] });
+
+    expect(service.currentUser()?.permissions).toEqual(['dashboard.view.team']);
+    expect(service.currentUser()?.role).toBe('Team Lead');
+  });
+
   it('logout posts and clears the session', () => {
     service.login({ emailOrUsername: 'admin', password: 'secret' }).subscribe();
     httpMock.expectOne('/api/v1/auth/login').flush(response);

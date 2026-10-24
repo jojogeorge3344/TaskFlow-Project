@@ -75,6 +75,12 @@ export class KanbanComponent implements OnInit {
     return this.auth.hasPermission(Permissions.TasksStatus);
   });
 
+  /** The filter row (project, assignee, status, deadline) is its own permission. */
+  readonly canFilter = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.BoardFilters);
+  });
+
   /** Only roles that see every task need the assignee filter; others see only their own tasks. */
   readonly canManage = computed(() => {
     this.auth.currentUser();

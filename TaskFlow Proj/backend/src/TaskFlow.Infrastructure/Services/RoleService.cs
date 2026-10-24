@@ -99,16 +99,24 @@ public class RoleService : IRoleService
 
         role.Name = name;
 
+        var permissionsChanged = false;
         var wanted = permissions.Select(permission => permission.Id).ToHashSet();
         foreach (var grant in role.Permissions.Where(grant => !wanted.Contains(grant.PermissionId)).ToList())
         {
             role.Permissions.Remove(grant);
+            permissionsChanged = true;
         }
 
         var held = role.Permissions.Select(grant => grant.PermissionId).ToHashSet();
         foreach (var permission in permissions.Where(permission => !held.Contains(permission.Id)))
         {
             role.Permissions.Add(new RolePermission { RoleId = role.Id, PermissionId = permission.Id });
+            permissionsChanged = true;
+        }
+
+        if (permissionsChanged)
+        {
+            await EndSessionsOfRoleHoldersAsync(id, cancellationToken);
         }
 
         await SaveAsync(cancellationToken);
@@ -132,6 +140,27 @@ public class RoleService : IRoleService
 
         _db.Roles.Remove(role);
         await SaveAsync(cancellationToken);
+    }
+
+    /// <summary>Signs out everyone holding the role: a new security stamp fails their access tokens on the next request and
+    /// revoking the refresh tokens stops new ones being minted. Saved by the caller.</summary>
+    private async System.Threading.Tasks.Task EndSessionsOfRoleHoldersAsync(int roleId, CancellationToken cancellationToken)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var holders = await _db.Users.IgnoreQueryFilters().Where(user => user.RoleId == roleId).ToListAsync(cancellationToken);
+        var holderIds = holders.Select(user => user.Id).ToList();
+        foreach (var holder in holders)
+        {
+            holder.SecurityStamp = Guid.NewGuid().ToString("N");
+        }
+
+        var tokens = await _db.RefreshTokens
+            .Where(token => holderIds.Contains(token.UserId) && token.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var token in tokens)
+        {
+            token.RevokedAt = now;
+        }
     }
 
     private async Task<Role> LoadCustomRoleAsync(int id, CancellationToken cancellationToken)

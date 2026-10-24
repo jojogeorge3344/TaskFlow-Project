@@ -1,6 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { ProjectWithCount, EmployeeWorkload, WorkloadSummary } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';
@@ -17,6 +19,17 @@ import { WorkloadService } from '../../core/services/workload.service';
 export class WorkloadComponent implements OnInit {
   private readonly workloadService = inject(WorkloadService);
   private readonly projectService = inject(ProjectService);
+  private readonly auth = inject(AuthService);
+
+  /** Filters and the link to an employee's task list are separate permissions from opening the screen. */
+  readonly canFilter = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.WorkloadFilters);
+  });
+  readonly canOpenTasks = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.WorkloadTasksOpen);
+  });
 
   readonly rows = signal<EmployeeWorkload[]>([]);
   readonly projects = signal<ProjectWithCount[]>([]);

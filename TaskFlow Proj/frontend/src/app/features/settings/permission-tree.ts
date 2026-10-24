@@ -1,3 +1,4 @@
+import { Permissions } from '../../core/auth/permissions';
 import { PermissionInfo } from '../../core/models';
 
 /**
@@ -116,6 +117,19 @@ export function effectiveKeys(keys: readonly string[], catalog: PermissionInfo[]
     }
   }
   return result;
+}
+
+/** Keys only the Administrator role holds: making an Administrator is never delegated. */
+export const RESTRICTED_KEYS: readonly string[] = [Permissions.RolesAdministratorAssign];
+
+/**
+ * The catalogue as the signed-in user may use it: without the Administrator-only key, the privilege-raising entries
+ * count as Administrator only, so they are not offered and cannot be ticked. The API refuses them as well.
+ */
+export function restrictForCaller(catalog: PermissionInfo[], canGiveRestricted: boolean): PermissionInfo[] {
+  return canGiveRestricted
+    ? catalog
+    : catalog.map((permission) => (RESTRICTED_KEYS.includes(permission.key) ? { ...permission, isAssignable: false } : permission));
 }
 
 /** What an administrator can tick or clear: not always-on features and not Administrator-only ones. */

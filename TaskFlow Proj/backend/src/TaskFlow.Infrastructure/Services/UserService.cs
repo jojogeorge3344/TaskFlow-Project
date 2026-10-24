@@ -279,16 +279,9 @@ public class UserService : IUserService
             await _allocations.ValidateDepartmentsAsync(request.DepartmentIds, cancellationToken);
         }
 
-        // An empty password keeps the current one; anything else must be a real password.
-        var passwordChanged = !string.IsNullOrEmpty(request.Password);
-        if (passwordChanged && string.IsNullOrWhiteSpace(request.Password))
-        {
-            throw new InvalidOperationException("Password cannot be blank.");
-        }
-        if (passwordChanged && request.Password!.Length < MinPasswordLength)
-        {
-            throw new InvalidOperationException($"Password must be at least {MinPasswordLength} characters.");
-        }
+        // An employee's password is never set here: the employee changes it from their own profile or account recovery,
+        // both of which need the authenticator. Any password on the request is ignored.
+        const bool passwordChanged = false;
 
         var role = await RequireRoleAsync(request.RoleId, cancellationToken);
 
@@ -317,11 +310,6 @@ public class UserService : IUserService
         user.Role = role;
         await _allocations.StageForUserAsync(user, request.ProjectAllocations, request.DepartmentIds, cancellationToken);
         user.UpdatedAt = now;
-
-        if (passwordChanged)
-        {
-            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password!);
-        }
 
         // A role change ends sessions too, so a demoted user cannot keep the old role's access token.
         if (usernameChanged || passwordChanged || roleChanged)

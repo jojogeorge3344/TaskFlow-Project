@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { AiProviderSettingsComponent } from './ai-provider-settings.component';
 
 /** TFA Settings, under the Settings module: where the Administrator chooses the model and server TFA uses, adds models
- * and enters API keys. Only the Administrator (settings.ai.manage) can open it. */
+ * and enters API keys. Opening it needs settings.ai.view; editing, testing and removing models need their own keys. */
 @Component({
   selector: 'app-tfa-settings',
   standalone: true,

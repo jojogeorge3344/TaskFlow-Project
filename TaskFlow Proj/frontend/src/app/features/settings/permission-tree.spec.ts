@@ -1,6 +1,7 @@
 import { PermissionInfo } from '../../core/models';
 import {
   buildTree,
+  restrictForCaller,
   changeCount,
   effectiveKeys,
   featuresOf,
@@ -118,5 +119,51 @@ describe('permission tree', () => {
   it('counts the ticks that differ from the stored state', () => {
     expect(changeCount(['a', 'b'], ['b', 'c'])).toBe(2);
     expect(changeCount(['a'], ['a'])).toBe(0);
+  });
+});
+
+describe('buildTree with the module structure', () => {
+  const catalog: PermissionInfo[] = [
+    perm('dashboard.view.team', 'Dashboard', 'Dashboard'),
+    perm('tasks.create', 'TaskFlow Monitoring', 'Task Management'),
+    perm('workload.view', 'TaskFlow Monitoring', 'Employee Workload'),
+    perm('board.view', 'TaskFlow Monitoring', 'Board'),
+    perm('employees.view', 'TaskFlow Management', 'Employee Management'),
+    perm('mail.read', 'Communication Management', 'Mail'),
+    perm('reports.view', 'Report', 'Reports'),
+    perm('roles.manage', 'Settings', 'Role Configuration', { isAssignable: false })
+  ];
+
+  it('lists modules in catalogue order, each once, with submodules as screens', () => {
+    const tree = buildTree(catalog);
+
+    expect(tree.map((module) => module.name)).toEqual([
+      'Dashboard',
+      'TaskFlow Monitoring',
+      'TaskFlow Management',
+      'Communication Management',
+      'Report',
+      'Settings'
+    ]);
+    expect(tree[1].screens.map((screen) => screen.name)).toEqual(['Task Management', 'Employee Workload', 'Board']);
+  });
+});
+
+describe('restrictForCaller', () => {
+  const catalog: PermissionInfo[] = [
+    perm('roles.manage', 'Settings', 'Role Configuration'),
+    perm('employees.role.assign', 'TaskFlow Management', 'Employee Management'),
+    perm('roles.administrator.assign', 'Settings', 'Role Configuration', { isAssignable: false }),
+    perm('tasks.create', 'TaskFlow Monitoring', 'Task Management')
+  ];
+
+  it('keeps Role Configuration tickable for a delegated user and only locks the Administrator-only key', () => {
+    const restricted = restrictForCaller(catalog, false);
+
+    expect(restricted.map((permission) => permission.isAssignable)).toEqual([true, true, false, true]);
+  });
+
+  it('leaves the catalogue as it is for the Administrator', () => {
+    expect(restrictForCaller(catalog, true)).toBe(catalog);
   });
 });

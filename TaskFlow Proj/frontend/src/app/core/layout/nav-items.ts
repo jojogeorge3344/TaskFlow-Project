@@ -30,6 +30,8 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
     ? [{ label: 'Employee Workload', icon: 'gauge', route: '/workload' }]
     : [];
 
+  const board: NavItem[] = has(Permissions.BoardView) ? [{ label: 'Board', icon: 'kanban', route: '/board' }] : [];
+
   const items: NavItem[] = [{ label: 'Dashboard', icon: 'home', route: dashboardRouteFor(user.role, user.permissions) }];
 
   if (canViewAllTasks) {
@@ -39,7 +41,7 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
       children: [
         { label: 'Task Management', icon: 'tasks', route: '/tasks' },
         ...workload,
-        { label: 'Board', icon: 'kanban', route: '/board' }
+        ...board
       ]
     });
   }
@@ -73,7 +75,7 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
     items.push({
       label: 'Task Management',
       icon: 'tasks',
-      children: [{ label: 'My Tasks', icon: 'tasks', route: '/tasks' }, ...workload, { label: 'Board', icon: 'kanban', route: '/board' }]
+      children: [{ label: 'My Tasks', icon: 'tasks', route: '/tasks' }, ...workload, ...board]
     });
   }
 

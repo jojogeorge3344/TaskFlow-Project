@@ -51,8 +51,8 @@ public class PermissionCatalogTests : IDisposable
     {
         var definition = PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.TasksCommentCreate);
 
-        Assert.Equal("Tasks", definition.Module);
-        Assert.Equal("Task details", definition.Screen);
+        Assert.Equal("TaskFlow Monitoring", definition.Module);
+        Assert.Equal("Task Management", definition.Screen);
         Assert.Equal("Discussion", definition.Section);
         Assert.Equal("Create", definition.Action);
         Assert.Equal(definition.Module, definition.Group);
@@ -111,6 +111,88 @@ public class PermissionCatalogTests : IDisposable
             var ranks = group.Select(definition => definition.ScopeRank).Order().ToList();
             Assert.Equal(Enumerable.Range(1, ranks.Count), ranks);
         }
+    }
+
+    [Fact]
+    public void ModulesAreTheSixRequestedOnesPlusDashboardAndTheAssistant()
+    {
+        var modules = PermissionCatalog.All.Select(definition => definition.Module).Distinct().ToList();
+
+        Assert.Equal(
+            ["Dashboard", "TaskFlow Monitoring", "TaskFlow Management", "Communication Management", "Report", "Settings", "My Profile", "TFA assistant"],
+            modules);
+        Assert.DoesNotContain("Tasks", modules);
+    }
+
+    [Theory]
+    [InlineData("TaskFlow Monitoring", "Task Management", "Employee Workload", "Board")]
+    [InlineData("TaskFlow Management", "Employee Management", "Project Management", "Department Management")]
+    [InlineData("Communication Management", "Mail", "Notification")]
+    [InlineData("Settings", "Reminder Settings", "Application Settings", "TFA Settings", "Role Configuration")]
+    public void SubmodulesSitUnderTheirModule(string module, params string[] screens)
+    {
+        var actual = PermissionCatalog.All.Where(definition => definition.Module == module).Select(definition => definition.Screen).Distinct();
+
+        Assert.Equal(screens.Order(), actual.Order());
+    }
+
+    [Fact]
+    public void WorkloadIsUnderMonitoringAndReportsStayUnderReport()
+    {
+        Assert.Equal("TaskFlow Monitoring", PermissionCatalog.All.Single(definition => definition.Key == PermissionKeys.WorkloadView).Module);
+        Assert.Equal("Report", PermissionCatalog.All.Single(definition => definition.Key == PermissionKeys.ReportsView).Module);
+        Assert.Equal("Report", PermissionCatalog.All.Single(definition => definition.Key == PermissionKeys.ReportsExport).Module);
+    }
+
+    [Fact]
+    public void EveryKeyThatExistedBeforeTheRegroupingIsStillInTheCatalogue()
+    {
+        // The 55 keys of the catalogue before the module regrouping. A regrouping changes places and names, never keys.
+        string[] before =
+        [
+            "dashboard.view.own", "dashboard.view.team", "dashboard.view.organization", "dashboard.analytics.view", "dashboard.filters.use",
+            "tasks.view.own", "tasks.view.all", "tasks.create", "tasks.delete", "tasks.status.change", "tasks.update", "tasks.reassign",
+            "tasks.recipients.manage", "tasks.comment.create", "tasks.activity.view",
+            "projects.view", "projects.create", "projects.edit", "projects.delete", "projects.members.manage", "positions.create",
+            "departments.view", "departments.create", "departments.edit", "departments.delete", "departments.members.manage",
+            "employees.view", "employees.create", "employees.edit", "employees.status.change", "employees.role.assign", "employees.mfa.reset", "employees.delete",
+            "reports.view", "reports.export", "workload.view",
+            "mail.read", "mail.compose", "mail.organize", "mail.attachments", "notifications.view", "notifications.manage",
+            "assistant.chat", "assistant.actions.confirm",
+            "settings.reminders.manage", "settings.application.manage", "settings.ai.view", "settings.ai.edit", "settings.ai.test", "settings.ai.model.remove",
+            "roles.manage", "profile.view", "profile.edit", "profile.password.change", "profile.mfa.manage"
+        ];
+        var keys = PermissionCatalog.All.Select(definition => definition.Key).ToHashSet();
+
+        Assert.All(before, key => Assert.Contains(key, keys));
+        Assert.Equal(before.Length + 5, keys.Count);
+    }
+
+    [Fact]
+    public void OnlyTheAdministratorHoldsTheKeyThatGivesTheAdministratorRole()
+    {
+        var definition = PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.RolesAdministratorAssign);
+
+        Assert.False(definition.IsAssignable);
+        Assert.False(definition.GrantedToManager);
+        Assert.False(definition.GrantedToEmployee);
+        Assert.True(PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.RolesManage).IsAssignable);
+    }
+
+    [Fact]
+    public void BoardAndWorkloadHaveTheirOwnPermissions()
+    {
+        string[] added = [PermissionKeys.BoardView, PermissionKeys.BoardFilters, PermissionKeys.WorkloadFilters, PermissionKeys.WorkloadTasksOpen];
+
+        Assert.All(added, key =>
+        {
+            var definition = PermissionCatalog.All.Single(entry => entry.Key == key);
+            Assert.True(definition.IsAssignable, key);
+            Assert.False(definition.AlwaysGranted, key);
+        });
+        Assert.Equal(PermissionKeys.BoardView, PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.BoardFilters).Requires);
+        Assert.Equal(PermissionKeys.WorkloadView, PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.WorkloadFilters).Requires);
+        Assert.Equal(PermissionKeys.WorkloadView, PermissionCatalog.All.Single(entry => entry.Key == PermissionKeys.WorkloadTasksOpen).Requires);
     }
 
     [Fact]
@@ -327,5 +409,57 @@ public class PermissionCatalogTests : IDisposable
 
         var keys = await db.RolePermissions.Where(grant => grant.RoleId == role.Id).Select(grant => grant.Permission.Key).ToListAsync();
         Assert.Equal([PermissionKeys.ReportsView], keys);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AddingBoardAndWorkloadKeysKeepsEveryExistingRolesAccess()
+    {
+        await using var db = NewContext();
+        await db.Database.MigrateAsync();
+
+        // The database as it was before the four keys existed: roles hold the old keys, and no row exists for the new ones.
+        var rows = new Dictionary<string, Permission>();
+        foreach (var key in new[] { PermissionKeys.WorkloadView, PermissionKeys.ProjectsView })
+        {
+            var existing = await db.Permissions.FirstOrDefaultAsync(permission => permission.Key == key);
+            if (existing is null)
+            {
+                existing = new Permission { Key = key, Name = key, Description = key, Group = "Old" };
+                db.Permissions.Add(existing);
+            }
+
+            rows[key] = existing;
+        }
+
+        await db.SaveChangesAsync();
+        Assert.False(await db.Permissions.AnyAsync(permission => permission.Key == PermissionKeys.BoardView));
+
+        var custom = new Role { Name = "Workload watcher", CreatedAt = DateTime.UtcNow };
+        custom.Permissions.Add(new RolePermission { Permission = rows[PermissionKeys.WorkloadView] });
+        var plain = new Role { Name = "Plain", CreatedAt = DateTime.UtcNow };
+        plain.Permissions.Add(new RolePermission { Permission = rows[PermissionKeys.ProjectsView] });
+        db.Roles.AddRange(custom, plain);
+        await db.SaveChangesAsync();
+
+        await new AccessControlSeeder(db, TimeProvider.System).SeedAsync();
+
+        async System.Threading.Tasks.Task<IReadOnlySet<string>> EffectiveAsync(int roleId) => EffectivePermissions.Expand(
+            await db.RolePermissions.Where(grant => grant.RoleId == roleId).Select(grant => grant.Permission.Key).ToListAsync());
+
+        // Everyone who could open the board still can, whatever kind of role they hold.
+        foreach (var roleId in new[] { SystemRoles.AdministratorId, SystemRoles.ManagerId, SystemRoles.EmployeeId, custom.Id, plain.Id })
+        {
+            var effective = await EffectiveAsync(roleId);
+            Assert.Contains(PermissionKeys.BoardView, effective);
+            Assert.Contains(PermissionKeys.BoardFilters, effective);
+        }
+
+        // Workload keys follow workload view, and only that.
+        Assert.Contains(PermissionKeys.WorkloadFilters, await EffectiveAsync(custom.Id));
+        Assert.Contains(PermissionKeys.WorkloadTasksOpen, await EffectiveAsync(custom.Id));
+        Assert.DoesNotContain(PermissionKeys.WorkloadFilters, await EffectiveAsync(plain.Id));
+        Assert.DoesNotContain(PermissionKeys.WorkloadTasksOpen, await EffectiveAsync(SystemRoles.EmployeeId));
+        Assert.Contains(PermissionKeys.WorkloadFilters, await EffectiveAsync(SystemRoles.ManagerId));
+        Assert.Contains(PermissionKeys.WorkloadTasksOpen, await EffectiveAsync(SystemRoles.AdministratorId));
     }
 }

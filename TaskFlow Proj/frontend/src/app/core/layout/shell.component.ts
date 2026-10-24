@@ -15,7 +15,7 @@ import { LayoutService } from './layout.service';
 import { NavItem, buildNavigation } from './nav-items';
 import { LegalFooterComponent } from '../../features/legal/legal-footer.component';
 
-export const SESSION_CHECK_INTERVAL_MS = 60_000;
+export const SESSION_CHECK_INTERVAL_MS = 15_000;
 
 /** Authenticated application frame: header bar, role-based side menu, account area and routed content. */
 @Component({

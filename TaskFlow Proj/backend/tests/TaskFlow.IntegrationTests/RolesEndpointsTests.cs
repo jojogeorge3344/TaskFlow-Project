@@ -143,7 +143,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task RoleManagementCanBeGivenToACustomRoleButNeverChangesTheSystemRoles()
+    public async Task RoleManagementCanBeGivenToACustomRoleByTheAdministrator()
     {
         var (client, token) = await SignInAsync("roles-grant", SystemRoles.Administrator);
 
@@ -156,6 +156,82 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var editSystem = await SendAsync(delegated, HttpMethod.Put, $"{Roles}/{SystemRoles.AdministratorId}", delegatedToken, new { name = "Hacked", permissionKeys = Array.Empty<string>() });
         Assert.NotEqual(HttpStatusCode.OK, editSystem.StatusCode);
         Assert.Equal(SystemRoles.Administrator, await DbAsync(db => db.Roles.Where(role => role.Id == SystemRoles.AdministratorId).Select(role => role.Name).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task ADelegatedRoleManagerCanManageOrdinaryRolesAndTickRoleConfigurationForThem()
+    {
+        var (admin, adminToken) = await SignInAsync("roles-deleg-admin", SystemRoles.Administrator);
+        var delegated = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var (client, token) = await SignInInRoleAsync("roles-deleg-user", (await JsonOf(delegated)).GetProperty("id").GetInt32());
+
+        var ordinary = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Ordinary By Delegate", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        var ordinaryId = (await JsonOf(ordinary)).GetProperty("id").GetInt32();
+        var rename = await SendAsync(client, HttpMethod.Put, $"{Roles}/{ordinaryId}", token, new { name = "Ordinary Renamed", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+
+        Assert.Equal(HttpStatusCode.Created, ordinary.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, rename.StatusCode);
+
+        foreach (var key in new[] { PermissionKeys.EmployeesRoleAssign, PermissionKeys.RolesManage })
+        {
+            var keys = new[] { PermissionKeys.EmployeesView, key };
+            var create = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = $"Delegated {key}", permissionKeys = keys });
+            var update = await SendAsync(client, HttpMethod.Put, $"{Roles}/{ordinaryId}", token, new { name = "Ordinary Renamed", permissionKeys = keys });
+            var untick = await SendAsync(client, HttpMethod.Put, $"{Roles}/{ordinaryId}", token, new { name = "Ordinary Renamed", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+
+            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, untick.StatusCode);
+        }
+
+        var adminKey = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Wants Admin Role Key", permissionKeys = new[] { PermissionKeys.RolesAdministratorAssign } });
+        Assert.Equal(HttpStatusCode.BadRequest, adminKey.StatusCode);
+        Assert.Equal([PermissionKeys.WorkloadView], await DbAsync(db => db.RolePermissions.Where(grant => grant.RoleId == ordinaryId).Select(grant => grant.Permission.Key).ToListAsync()));
+    }
+
+    [Fact]
+    public async Task ChangingARolesPermissionsSignsOutItsUsersButARenameDoesNot()
+    {
+        var (admin, adminToken) = await SignInAsync("roles-signout-admin", SystemRoles.Administrator);
+        var created = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Sign Out Role", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        var roleId = (await JsonOf(created)).GetProperty("id").GetInt32();
+        var (user, userToken) = await SignInInRoleAsync("roles-signout-user", roleId);
+
+        await SendAsync(admin, HttpMethod.Put, $"{Roles}/{roleId}", adminToken, new { name = "Sign Out Role Renamed", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        Assert.Equal(HttpStatusCode.OK, (await SendAsync(user, HttpMethod.Get, "/api/v1/auth/me", userToken)).StatusCode);
+
+        var change = await SendAsync(admin, HttpMethod.Put, $"{Roles}/{roleId}", adminToken, new { name = "Sign Out Role Renamed", permissionKeys = new[] { PermissionKeys.WorkloadView, PermissionKeys.ReportsView } });
+
+        Assert.Equal(HttpStatusCode.OK, change.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(user, HttpMethod.Get, "/api/v1/auth/me", userToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task ADelegatedRoleManagerCanEditARoleThatHoldsAssignRoles()
+    {
+        var (admin, adminToken) = await SignInAsync("roles-restr-admin", SystemRoles.Administrator);
+        var managers = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers 2", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var assigners = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Assigners", permissionKeys = new[] { PermissionKeys.EmployeesView, PermissionKeys.EmployeesRoleAssign } });
+        var assignersId = (await JsonOf(assigners)).GetProperty("id").GetInt32();
+        var (client, token) = await SignInInRoleAsync("roles-restr-user", (await JsonOf(managers)).GetProperty("id").GetInt32());
+
+        var edit = await SendAsync(client, HttpMethod.Put, $"{Roles}/{assignersId}", token, new { name = "Assigners", permissionKeys = new[] { PermissionKeys.EmployeesView } });
+
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.DoesNotContain(PermissionKeys.EmployeesRoleAssign, await DbAsync(db => db.RolePermissions.Where(grant => grant.RoleId == assignersId).Select(grant => grant.Permission.Key).ToListAsync()));
+    }
+
+    [Fact]
+    public async Task TheAdministratorOnlyKeyCannotBeGivenToAnyRole()
+    {
+        var (client, token) = await SignInAsync("roles-admin-key", SystemRoles.Administrator);
+
+        var response = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Wants Admin Key", permissionKeys = new[] { PermissionKeys.RolesAdministratorAssign } });
+        var catalog = await JsonOf(await SendAsync(client, HttpMethod.Get, "/api/v1/permissions", token));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.False(catalog.EnumerateArray().Single(permission => permission.GetProperty("key").GetString() == PermissionKeys.RolesAdministratorAssign).GetProperty("isAssignable").GetBoolean());
+        Assert.Equal([SystemRoles.AdministratorId], await DbAsync(db => db.RolePermissions.Where(grant => grant.Permission.Key == PermissionKeys.RolesAdministratorAssign).Select(grant => grant.RoleId).ToListAsync()));
     }
 
     [Fact]
@@ -240,7 +316,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task EditingARolesPermissionsAppliesToItsUsersWithoutSigningInAgain()
+    public async Task EditingARolesPermissionsEndsItsUsersSessions()
     {
         var (client, token) = await SignInAsync("roles-live-admin", SystemRoles.Administrator);
         var roleId = await AddRoleAsync("Live Role", PermissionKeys.WorkloadView);
@@ -248,12 +324,12 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var allowed = await SendAsync(userClient, HttpMethod.Get, "/api/v1/workload", userToken);
         await SendAsync(client, HttpMethod.Put, $"{Roles}/{roleId}", token, new { name = "Live Role", permissionKeys = new[] { PermissionKeys.ReportsView } });
-        var refused = await SendAsync(userClient, HttpMethod.Get, "/api/v1/workload", userToken);
-        var nowAllowed = await SendAsync(userClient, HttpMethod.Get, "/api/v1/reports", userToken);
+        var signedOut = await SendAsync(userClient, HttpMethod.Get, "/api/v1/workload", userToken);
+        var signedOutReports = await SendAsync(userClient, HttpMethod.Get, "/api/v1/reports", userToken);
 
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, nowAllowed.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, signedOut.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, signedOutReports.StatusCode);
     }
 
     // ------------------------------------------------------------------ 5.3 assigning a role to a user

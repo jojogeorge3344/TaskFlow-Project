@@ -5,8 +5,8 @@ using TaskFlow.Domain.Security;
 
 namespace TaskFlow.Api.Controllers;
 
-/// <summary>Roles and the permission catalog (Permissions Management). Administrator only: the roles.manage permission
-/// is held by the Administrator system role and cannot be given to another role.</summary>
+/// <summary>Roles and the permission catalog (Permissions Management). Open to any role holding roles.manage, which an
+/// administrator can give to a custom role. System roles stay read-only and "Give the Administrator role" is not assignable.</summary>
 [ApiController]
 [Route("api/v1")]
 [RequirePermission(PermissionKeys.RolesManage)]
@@ -42,8 +42,10 @@ public class RolesController : ControllerBase
     }
 
     [HttpPut("roles/{id:int}")]
-    public Task<ActionResult<RoleDto>> Update(int id, [FromBody] SaveRoleRequest request, CancellationToken cancellationToken) =>
-        RunAsync(() => _roles.UpdateAsync(id, request, cancellationToken));
+    public async Task<ActionResult<RoleDto>> Update(int id, [FromBody] SaveRoleRequest request, CancellationToken cancellationToken)
+    {
+        return await RunAsync(() => _roles.UpdateAsync(id, request, cancellationToken));
+    }
 
     [HttpDelete("roles/{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)

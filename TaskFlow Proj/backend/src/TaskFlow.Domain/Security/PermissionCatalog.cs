@@ -53,18 +53,23 @@ public sealed record PermissionDefinition(
 /// </summary>
 public static class PermissionCatalog
 {
+    // Top-level modules, in the order the Role Configuration tree lists them. Each is one contiguous block below.
     public const string Dashboard = "Dashboard";
-    public const string Tasks = "Tasks";
-    public const string Projects = "Projects";
-    public const string Departments = "Departments";
-    public const string Employees = "Employees";
-    public const string Reports = "Reports and workload";
-    public const string Mail = "Mail";
-    public const string Notifications = "Notifications";
-    public const string Assistant = "AI assistant";
+    public const string Monitoring = "TaskFlow Monitoring";
+    public const string Management = "TaskFlow Management";
+    public const string Communication = "Communication Management";
+    public const string Report = "Report";
     public const string Settings = "Settings";
-    public const string RoleConfiguration = "Role configuration";
-    public const string Profile = "Profile";
+    public const string Profile = "My Profile";
+    public const string Assistant = "TFA assistant";
+
+    // Submodules (the Screen level of the tree) that more than one entry names.
+    private const string TaskManagement = "Task Management";
+    private const string Board = "Board";
+    private const string EmployeeWorkload = "Employee Workload";
+    private const string EmployeeManagement = "Employee Management";
+    private const string ProjectManagement = "Project Management";
+    private const string DepartmentManagement = "Department Management";
 
     private const string DashboardScope = "dashboard.view";
     private const string TaskScope = "tasks.view";
@@ -83,115 +88,127 @@ public static class PermissionCatalog
         new(PermissionKeys.DashboardFilters, "Use dashboard filters", "Filter dashboard analytics by department, project, employee and period.",
             Dashboard, "Dashboard", "Analytics", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
 
-        // ---- Tasks -----------------------------------------------------------------------------------------------
+        // ---- TaskFlow Monitoring > Task Management ---------------------------------------------------------------
         new(PermissionKeys.TasksViewOwn, "View my tasks", "See tasks the user created or is assigned to, on the list, board and details screens.",
-            Tasks, "Task list", "", "View", AlwaysGranted: true, IsAssignable: false, ScopeGroup: TaskScope, ScopeRank: 1),
+            Monitoring, TaskManagement, "Task list", "View", AlwaysGranted: true, IsAssignable: false, ScopeGroup: TaskScope, ScopeRank: 1),
         new(PermissionKeys.TasksViewAll, "View all tasks", "See every task in the organization. Without it a user sees only tasks they created or are assigned to.",
-            Tasks, "Task list", "", "View", GrantedToManager: true, ScopeGroup: TaskScope, ScopeRank: 2),
+            Monitoring, TaskManagement, "Task list", "View", GrantedToManager: true, ScopeGroup: TaskScope, ScopeRank: 2),
         new(PermissionKeys.TasksCreate, "Create tasks", "Create tasks, or copy an existing one, and assign them.",
-            Tasks, "Task list", "", "Create", GrantedToManager: true),
+            Monitoring, TaskManagement, "Task list", "Create", GrantedToManager: true),
         new(PermissionKeys.TasksDelete, "Delete tasks", "Delete a task from the list or the details screen.",
-            Tasks, "Task list", "", "Delete"),
-        new(PermissionKeys.TasksStatus, "Update task status", "Move a task between statuses, on the board or the details screen.",
-            Tasks, "Task board", "", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+            Monitoring, TaskManagement, "Task list", "Delete"),
         new(PermissionKeys.TasksUpdate, "Edit tasks", "Change the title, description, priority, deadline, reminders and other details of a task.",
-            Tasks, "Task details", "Details", "Edit", GrantedToManager: true),
+            Monitoring, TaskManagement, "Details", "Edit", GrantedToManager: true),
         new(PermissionKeys.TasksReassign, "Reassign tasks", "Move a task to another assignee.",
-            Tasks, "Task details", "Details", "Assign", GrantedToManager: true),
+            Monitoring, TaskManagement, "Details", "Assign", GrantedToManager: true),
         new(PermissionKeys.TasksRecipients, "Manage task recipients", "Choose who is notified about a task.",
-            Tasks, "Task details", "Details", "Assign", GrantedToManager: true),
+            Monitoring, TaskManagement, "Details", "Assign", GrantedToManager: true),
         new(PermissionKeys.TasksCommentCreate, "Post task comments", "Write comments in a task's discussion.",
-            Tasks, "Task details", "Discussion", "Create", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+            Monitoring, TaskManagement, "Discussion", "Create", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
         new(PermissionKeys.TasksActivityView, "View task history", "Open a task's activity history.",
-            Tasks, "Task details", "Activity", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+            Monitoring, TaskManagement, "Activity", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
 
-        // ---- Projects --------------------------------------------------------------------------------------------
-        new(PermissionKeys.ProjectsView, "View projects", "See projects, their members and their tasks.",
-            Projects, "Project list", "", "View", GrantedToManager: true),
-        new(PermissionKeys.ProjectsCreate, "Create projects", "Create a project.",
-            Projects, "Project list", "", "Create", Requires: PermissionKeys.ProjectsView),
-        new(PermissionKeys.ProjectsEdit, "Edit projects", "Rename a project and change its details.",
-            Projects, "Project detail", "Details", "Edit", Requires: PermissionKeys.ProjectsView),
-        new(PermissionKeys.ProjectsDelete, "Delete projects", "Delete a project.",
-            Projects, "Project list", "", "Delete", Requires: PermissionKeys.ProjectsView),
-        new(PermissionKeys.ProjectsMembers, "Manage project members", "Add and remove the people in a project.",
-            Projects, "Project detail", "Members", "Assign", Requires: PermissionKeys.ProjectsView),
-        new(PermissionKeys.PositionsCreate, "Create positions", "Add a job position used when allocating people to projects.",
-            Projects, "Project detail", "Members", "Create", Requires: PermissionKeys.ProjectsView),
-
-        // ---- Departments -----------------------------------------------------------------------------------------
-        new(PermissionKeys.DepartmentsView, "View departments", "See departments and the managers and employees in them.",
-            Departments, "Department list", "", "View", GrantedToManager: true),
-        new(PermissionKeys.DepartmentsCreate, "Create departments", "Create a department.",
-            Departments, "Department list", "", "Create", Requires: PermissionKeys.DepartmentsView),
-        new(PermissionKeys.DepartmentsEdit, "Edit departments", "Rename a department and change its details.",
-            Departments, "Department list", "", "Edit", Requires: PermissionKeys.DepartmentsView),
-        new(PermissionKeys.DepartmentsDelete, "Delete departments", "Delete a department.",
-            Departments, "Department list", "", "Delete", Requires: PermissionKeys.DepartmentsView),
-        new(PermissionKeys.DepartmentsMembers, "Manage department members", "Choose the managers and employees in a department.",
-            Departments, "Department list", "Members", "Assign", Requires: PermissionKeys.DepartmentsView),
-
-        // ---- Employees -------------------------------------------------------------------------------------------
-        new(PermissionKeys.EmployeesView, "View employees", "See the employee list and employee details.",
-            Employees, "Employee list", "", "View", GrantedToManager: true),
-        new(PermissionKeys.EmployeesCreate, "Create employees", "Add an employee.",
-            Employees, "Employee list", "", "Create", Requires: PermissionKeys.EmployeesView),
-        new(PermissionKeys.EmployeesEdit, "Edit employees", "Change an employee's details.",
-            Employees, "Employee list", "", "Edit", Requires: PermissionKeys.EmployeesView),
-        new(PermissionKeys.EmployeesStatus, "Activate or deactivate employees", "Switch an employee account on or off.",
-            Employees, "Employee list", "", "Edit", Requires: PermissionKeys.EmployeesView),
-        new(PermissionKeys.EmployeesRoleAssign, "Assign roles", "Change which role an employee holds.",
-            Employees, "Employee list", "", "Assign", Requires: PermissionKeys.EmployeesView),
-        new(PermissionKeys.EmployeesMfaReset, "Reset two-step verification", "Reset an employee's authenticator setup.",
-            Employees, "Employee list", "", "Manage", Requires: PermissionKeys.EmployeesView),
-        new(PermissionKeys.EmployeesDelete, "Delete employees", "Permanently remove an employee account.",
-            Employees, "Employee list", "", "Delete", Requires: PermissionKeys.EmployeesView),
-
-        // ---- Reports and workload --------------------------------------------------------------------------------
-        new(PermissionKeys.ReportsView, "View reports", "Open task reports and filter them.",
-            Reports, "Reports", "", "View", GrantedToManager: true),
-        new(PermissionKeys.ReportsExport, "Export reports", "Download a report as a file.",
-            Reports, "Reports", "", "Export", GrantedToManager: true, GrantFrom: PermissionKeys.ReportsView, Requires: PermissionKeys.ReportsView),
+        // ---- TaskFlow Monitoring > Employee Workload -------------------------------------------------------------
         new(PermissionKeys.WorkloadView, "View workload", "Open the team workload view.",
-            Reports, "Employee workload", "", "View", GrantedToManager: true),
+            Monitoring, EmployeeWorkload, "", "View", GrantedToManager: true),
+        new(PermissionKeys.WorkloadFilters, "Use workload filters", "Filter the workload table by project and employee.",
+            Monitoring, EmployeeWorkload, "", "Use", GrantedToManager: true, GrantFrom: PermissionKeys.WorkloadView, Requires: PermissionKeys.WorkloadView),
+        new(PermissionKeys.WorkloadTasksOpen, "Open an employee's tasks", "Follow the link from a workload row to that employee's task list. Task visibility still follows the user's task scope.",
+            Monitoring, EmployeeWorkload, "", "Access", GrantedToManager: true, GrantFrom: PermissionKeys.WorkloadView, Requires: PermissionKeys.WorkloadView),
 
-        // ---- Mail ------------------------------------------------------------------
-        new(PermissionKeys.MailRead, "Read mail", "Open the inbox, folders and messages.", Mail, "Mailbox", "", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
-        new(PermissionKeys.MailCompose, "Write and send mail", "Compose, save drafts, reply and forward.", Mail, "Mailbox", "", "Create", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
-        new(PermissionKeys.MailOrganize, "Organize mail", "Star, mark important, move to trash, restore and delete.", Mail, "Mailbox", "", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
-        new(PermissionKeys.MailAttachments, "Use mail attachments", "Upload and download attachments.", Mail, "Mailbox", "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        // ---- TaskFlow Monitoring > Board -------------------------------------------------------------------------
+        new(PermissionKeys.BoardView, "View board", "Open the task board and see the tasks the user's task scope allows.",
+            Monitoring, Board, "", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.BoardFilters, "Use board filters", "Filter the board by project, assignee, status and deadline.",
+            Monitoring, Board, "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true, Requires: PermissionKeys.BoardView),
+        new(PermissionKeys.TasksStatus, "Update task status", "Move a task between statuses, on the board or the details screen.",
+            Monitoring, Board, "", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
 
-        // ---- Notifications ---------------------------------------------------------------------------------------
-        new(PermissionKeys.NotificationsView, "View notifications", "Open the notification centre.", Notifications, "Notification centre", "", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
-        new(PermissionKeys.NotificationsManage, "Mark notifications read", "Mark one or all notifications as read.", Notifications, "Notification centre", "", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        // ---- TaskFlow Management > Employee Management -----------------------------------------------------------
+        new(PermissionKeys.EmployeesView, "View employees", "See the employee list and employee details.",
+            Management, EmployeeManagement, "Employee list", "View", GrantedToManager: true),
+        new(PermissionKeys.EmployeesCreate, "Create employees", "Add an employee.",
+            Management, EmployeeManagement, "Employee list", "Create", Requires: PermissionKeys.EmployeesView),
+        new(PermissionKeys.EmployeesEdit, "Edit employees", "Change an employee's details.",
+            Management, EmployeeManagement, "Employee list", "Edit", Requires: PermissionKeys.EmployeesView),
+        new(PermissionKeys.EmployeesStatus, "Activate or deactivate employees", "Switch an employee account on or off.",
+            Management, EmployeeManagement, "Employee list", "Edit", Requires: PermissionKeys.EmployeesView),
+        new(PermissionKeys.EmployeesRoleAssign, "Assign roles", "Change which role an employee holds.",
+            Management, EmployeeManagement, "Employee list", "Assign", Requires: PermissionKeys.EmployeesView),
+        new(PermissionKeys.EmployeesMfaReset, "Reset two-step verification", "Reset an employee's authenticator setup.",
+            Management, EmployeeManagement, "Employee list", "Manage", Requires: PermissionKeys.EmployeesView),
+        new(PermissionKeys.EmployeesDelete, "Delete employees", "Permanently remove an employee account.",
+            Management, EmployeeManagement, "Employee list", "Delete", Requires: PermissionKeys.EmployeesView),
 
-        // ---- AI assistant ----------------------------------------------------------------------------------------
-        new(PermissionKeys.AssistantChat, "Chat with the assistant", "Ask the AI assistant questions and start new conversations.", Assistant, "Assistant", "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
-        new(PermissionKeys.AssistantActions, "Confirm assistant actions", "Approve or cancel actions the assistant proposes. The assistant can only do what the user's own permissions allow.", Assistant, "Assistant", "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        // ---- TaskFlow Management > Project Management ------------------------------------------------------------
+        new(PermissionKeys.ProjectsView, "View projects", "See projects, their members and their tasks.",
+            Management, ProjectManagement, "Project list", "View", GrantedToManager: true),
+        new(PermissionKeys.ProjectsCreate, "Create projects", "Create a project.",
+            Management, ProjectManagement, "Project list", "Create", Requires: PermissionKeys.ProjectsView),
+        new(PermissionKeys.ProjectsEdit, "Edit projects", "Rename a project and change its details.",
+            Management, ProjectManagement, "Details", "Edit", Requires: PermissionKeys.ProjectsView),
+        new(PermissionKeys.ProjectsDelete, "Delete projects", "Delete a project.",
+            Management, ProjectManagement, "Project list", "Delete", Requires: PermissionKeys.ProjectsView),
+        new(PermissionKeys.ProjectsMembers, "Manage project members", "Add and remove the people in a project.",
+            Management, ProjectManagement, "Members", "Assign", Requires: PermissionKeys.ProjectsView),
+        new(PermissionKeys.PositionsCreate, "Create positions", "Add a job position used when allocating people to projects.",
+            Management, ProjectManagement, "Members", "Create", Requires: PermissionKeys.ProjectsView),
+
+        // ---- TaskFlow Management > Department Management ---------------------------------------------------------
+        new(PermissionKeys.DepartmentsView, "View departments", "See departments and the managers and employees in them.",
+            Management, DepartmentManagement, "Department list", "View", GrantedToManager: true),
+        new(PermissionKeys.DepartmentsCreate, "Create departments", "Create a department.",
+            Management, DepartmentManagement, "Department list", "Create", Requires: PermissionKeys.DepartmentsView),
+        new(PermissionKeys.DepartmentsEdit, "Edit departments", "Rename a department and change its details.",
+            Management, DepartmentManagement, "Department list", "Edit", Requires: PermissionKeys.DepartmentsView),
+        new(PermissionKeys.DepartmentsDelete, "Delete departments", "Delete a department.",
+            Management, DepartmentManagement, "Department list", "Delete", Requires: PermissionKeys.DepartmentsView),
+        new(PermissionKeys.DepartmentsMembers, "Manage department members", "Choose the managers and employees in a department.",
+            Management, DepartmentManagement, "Members", "Assign", Requires: PermissionKeys.DepartmentsView),
+
+        // ---- Communication Management > Mail ---------------------------------------------------------------------
+        new(PermissionKeys.MailRead, "Read mail", "Open the inbox, folders and messages.", Communication, "Mail", "Mailbox", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.MailCompose, "Write and send mail", "Compose, save drafts, reply and forward.", Communication, "Mail", "Mailbox", "Create", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.MailOrganize, "Organize mail", "Star, mark important, move to trash, restore and delete.", Communication, "Mail", "Mailbox", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.MailAttachments, "Use mail attachments", "Upload and download attachments.", Communication, "Mail", "Mailbox", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+
+        // ---- Communication Management > Notification -------------------------------------------------------------
+        new(PermissionKeys.NotificationsView, "View notifications", "Open the notification centre.", Communication, "Notification", "Notification centre", "View", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.NotificationsManage, "Mark notifications read", "Mark one or all notifications as read.", Communication, "Notification", "Notification centre", "Edit", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+
+        // ---- Report ----------------------------------------------------------------------------------------------
+        new(PermissionKeys.ReportsView, "View reports", "Open task reports and filter them.",
+            Report, "Reports", "", "View", GrantedToManager: true),
+        new(PermissionKeys.ReportsExport, "Export reports", "Download a report as a file.",
+            Report, "Reports", "", "Export", GrantedToManager: true, GrantFrom: PermissionKeys.ReportsView, Requires: PermissionKeys.ReportsView),
 
         // ---- Settings --------------------------------------------------------------------------------------------
         new(PermissionKeys.SettingsReminders, "Reminder settings", "View and change deadline reminder settings.",
-            Settings, "Reminder settings", "", "Manage", GrantedToManager: true),
+            Settings, "Reminder Settings", "", "Manage", GrantedToManager: true),
         new(PermissionKeys.SettingsApplication, "Application settings", "Change application-wide settings.",
-            Settings, "Application settings", "", "Manage"),
+            Settings, "Application Settings", "", "Manage"),
         new(PermissionKeys.SettingsAiView, "View AI provider settings", "See which AI providers and models are configured.",
-            Settings, "TFA settings", "AI providers", "View"),
+            Settings, "TFA Settings", "AI providers", "View"),
         new(PermissionKeys.SettingsAiEdit, "Edit AI provider settings", "Configure AI providers, keys and models.",
-            Settings, "TFA settings", "AI providers", "Edit", Requires: PermissionKeys.SettingsAiView),
+            Settings, "TFA Settings", "AI providers", "Edit", Requires: PermissionKeys.SettingsAiView),
         new(PermissionKeys.SettingsAiTest, "Test AI providers", "Run a connection test against a provider.",
-            Settings, "TFA settings", "AI providers", "Use", Requires: PermissionKeys.SettingsAiView),
+            Settings, "TFA Settings", "AI providers", "Use", Requires: PermissionKeys.SettingsAiView),
         new(PermissionKeys.SettingsAiRemoveModel, "Remove AI models", "Remove a configured model from a provider.",
-            Settings, "TFA settings", "AI providers", "Delete", Requires: PermissionKeys.SettingsAiView),
+            Settings, "TFA Settings", "AI providers", "Delete", Requires: PermissionKeys.SettingsAiView),
+        new(PermissionKeys.RolesManage, "Manage roles and permissions", "Open Role Configuration and create, edit and delete custom roles. Whoever holds it can also tick or untick it, and Assign roles, on custom roles.",
+            Settings, "Role Configuration", "", "Manage"),
+        new(PermissionKeys.RolesAdministratorAssign, "Give the Administrator role", "Make an account an Administrator, or take the role away. Only the Administrator role holds it.",
+            Settings, "Role Configuration", "", "Assign", IsAssignable: false),
 
-        // ---- Role configuration ---------------------------------------------------------------
-        new(PermissionKeys.RolesManage, "Manage roles and permissions", "Open Role Configuration and create, edit and delete custom roles. The Administrator role always has it; giving it to another role lets its users change what every custom role can do.",
-            RoleConfiguration, "Role configuration", "", "Manage"),
-
-        // ---- Profile (always on: sign-in and first-login set-up depend on it) ----------------------------------------------------------------------
+        // ---- My Profile (always on: sign-in and first-login set-up depend on it) ---------------------------------
         new(PermissionKeys.ProfileView, "View my profile", "Open the user's own profile.", Profile, "My profile", "Account", "View", AlwaysGranted: true, IsAssignable: false),
         new(PermissionKeys.ProfileEdit, "Edit my personal information", "Update the user's own contact details.", Profile, "My profile", "Personal information", "Edit", AlwaysGranted: true, IsAssignable: false),
         new(PermissionKeys.ProfilePassword, "Change my password", "Change the user's own password.", Profile, "My profile", "Security", "Edit", AlwaysGranted: true, IsAssignable: false),
-        new(PermissionKeys.ProfileMfa, "Manage my authenticator", "Set up two-step verification and regenerate backup codes.", Profile, "My profile", "Security", "Manage", AlwaysGranted: true, IsAssignable: false)
+        new(PermissionKeys.ProfileMfa, "Manage my authenticator", "Set up two-step verification and regenerate backup codes.", Profile, "My profile", "Security", "Manage", AlwaysGranted: true, IsAssignable: false),
+
+        // ---- TFA assistant ---------------------------------------------------------------------------------------
+        new(PermissionKeys.AssistantChat, "Chat with the assistant", "Ask the AI assistant questions and start new conversations.", Assistant, "Assistant", "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true),
+        new(PermissionKeys.AssistantActions, "Confirm assistant actions", "Approve or cancel actions the assistant proposes. The assistant can only do what the user's own permissions allow.", Assistant, "Assistant", "", "Use", GrantedToManager: true, GrantedToEmployee: true, GrantToAllExistingRoles: true)
     ];
 
     /// <summary>Entries stored as grants. Always-on entries are not stored; every user simply has them.</summary>

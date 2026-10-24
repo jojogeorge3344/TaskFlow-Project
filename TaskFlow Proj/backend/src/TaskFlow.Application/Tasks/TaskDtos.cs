@@ -32,6 +32,7 @@ public record TaskDetailsDto(
     DateTime StartDate,
     DateTime Deadline,
     decimal EstimatedHours,
+    decimal? ActualHours,
     TaskStatus Status,
     string Stage,
     IReadOnlyCollection<TaskRecipientDto> Recipients,

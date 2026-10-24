@@ -223,4 +223,5 @@ public class RolesMigrationTests : IDisposable
         Assert.Equal(grants, await db.RolePermissions.CountAsync());
         Assert.Equal(3, await db.Roles.CountAsync());
     }
+
 }

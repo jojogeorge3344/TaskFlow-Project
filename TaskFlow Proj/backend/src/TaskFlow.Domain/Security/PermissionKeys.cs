@@ -57,6 +57,12 @@ public static class PermissionKeys
     public const string ReportsView = "reports.view";
     public const string ReportsExport = "reports.export";
     public const string WorkloadView = "workload.view";
+    public const string WorkloadFilters = "workload.filters.use";
+    public const string WorkloadTasksOpen = "workload.tasks.open";
+
+    // Board
+    public const string BoardView = "board.view";
+    public const string BoardFilters = "board.filters.use";
 
     // Settings
     public const string SettingsReminders = "settings.reminders.manage";
@@ -69,6 +75,7 @@ public static class PermissionKeys
 
     // Role configuration (Administrator only)
     public const string RolesManage = "roles.manage";
+    public const string RolesAdministratorAssign = "roles.administrator.assign";
 
     // Always-on features every signed-in user has. Listed so the catalogue is complete; they cannot be switched off.
     public const string ProfileView = "profile.view";

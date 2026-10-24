@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthUser, UserRole } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { TaskCard } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -219,6 +220,28 @@ describe('KanbanComponent', () => {
 
     expect(component.error()).not.toBeNull();
     expect(component.loading()).toBeFalse();
+  });
+
+  describe('board permissions', () => {
+    const filterRow = () => (fixture.nativeElement as HTMLElement).querySelector('.kanban__filters');
+
+    it('shows the filter row to a user who holds board.filters.use', () => {
+      asUser('Employee');
+      fixture.detectChanges();
+
+      expect(component.canFilter()).toBeTrue();
+      expect(filterRow()).not.toBeNull();
+    });
+
+    it('hides the filter row but keeps the cards without board.filters.use', () => {
+      asUser('Employee');
+      userSignal.update((user) => ({ ...user!, permissions: user!.permissions.filter((key) => key !== Permissions.BoardFilters) }));
+      fixture.detectChanges();
+
+      expect(component.canFilter()).toBeFalse();
+      expect(filterRow()).toBeNull();
+      expect(component.columns().flatMap((column) => column.tasks).length).toBeGreaterThan(0);
+    });
   });
 
   describe('filters', () => {

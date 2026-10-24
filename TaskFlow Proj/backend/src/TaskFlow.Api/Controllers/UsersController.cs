@@ -6,6 +6,7 @@ using TaskFlow.Api.Authorization;
 using TaskFlow.Domain.Security;
 using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Application.Mfa;
+using TaskFlow.Application.Roles;
 using TaskFlow.Application.Users;
 
 namespace TaskFlow.Api.Controllers;
@@ -18,17 +19,20 @@ public class UsersController : ControllerBase
     private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
     private readonly IValidator<ChangePasswordRequest> _passwordValidator;
     private readonly IMfaService _mfaService;
+    private readonly IRoleService _roleService;
 
     public UsersController(
         IUserService userService,
         IValidator<UpdateOwnProfileRequest> profileValidator,
         IValidator<ChangePasswordRequest> passwordValidator,
-        IMfaService mfaService)
+        IMfaService mfaService,
+        IRoleService roleService)
     {
         _userService = userService;
         _profileValidator = profileValidator;
         _passwordValidator = passwordValidator;
         _mfaService = mfaService;
+        _roleService = roleService;
     }
 
     /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
@@ -129,6 +133,25 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>The roles the employee form and role filter offer. Needs the assign roles permission, or role
+    /// management; the Administrator role is listed only for callers who may hand it out.</summary>
+    [HttpGet("roles")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<RoleOptionDto>>> GetRoleOptions(CancellationToken cancellationToken)
+    {
+        var canAssignAdministrator = CanAssignAdministrator();
+        if (!CanManageRoles() && !User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesManage))
+        {
+            return Forbid();
+        }
+
+        var roles = await _roleService.GetRolesAsync(cancellationToken);
+        return Ok(roles
+            .Where(role => canAssignAdministrator || role.Id != SystemRoles.AdministratorId)
+            .Select(role => new RoleOptionDto(role.Id, role.Name, role.IsSystem))
+            .ToList());
+    }
+
     [HttpGet("{id}")]
     [Authorize]
     public async Task<ActionResult<UserDto>> GetById(int id, CancellationToken cancellationToken)
@@ -163,6 +186,12 @@ public class UsersController : ControllerBase
             return Forbid();
         }
 
+        // The Administrator role is the highest privilege; handing it out needs its own permission, which only the Administrator role holds.
+        if (request.RoleId == SystemRoles.AdministratorId && !CanAssignAdministrator())
+        {
+            return Forbid();
+        }
+
         try
         {
             var user = await _userService.CreateAsync(request, cancellationToken);
@@ -178,11 +207,13 @@ public class UsersController : ControllerBase
     [RequirePermission(PermissionKeys.EmployeesEdit)]
     public async Task<ActionResult<UserDto>> Update(int id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
     {
-        // Changing a user's role is role management, which only Administrators may do.
-        if (!CanManageRoles())
+        // Changing a user's role needs the assign roles permission, and moving anyone into or out of the Administrator
+        // role needs the Administrator-only permission as well.
+        var current = await _userService.GetByIdAsync(id, cancellationToken);
+        if (current is not null && current.RoleId != request.RoleId)
         {
-            var current = await _userService.GetByIdAsync(id, cancellationToken);
-            if (current is not null && current.RoleId != request.RoleId)
+            var involvesAdministrator = current.RoleId == SystemRoles.AdministratorId || request.RoleId == SystemRoles.AdministratorId;
+            if (!CanManageRoles() || (involvesAdministrator && !CanAssignAdministrator()))
             {
                 return Forbid();
             }
@@ -244,4 +275,6 @@ public class UsersController : ControllerBase
     }
 
     private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesRoleAssign);
+
+    private bool CanAssignAdministrator() => User.HasClaim(AuthClaims.Permission, PermissionKeys.RolesAdministratorAssign);
 }

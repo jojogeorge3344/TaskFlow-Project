@@ -172,6 +172,8 @@ export const routes: Routes = [
       },
       {
         path: 'board',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.BoardView] },
         loadComponent: () => import('./features/tasks/kanban.component').then((m) => m.KanbanComponent)
       },
       {
@@ -199,6 +201,8 @@ export const routes: Routes = [
       },
       {
         path: 'tasks/:id/activity',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.TasksActivityView] },
         loadComponent: () => import('./features/tasks/activity.component').then((m) => m.ActivityComponent)
       },
       {

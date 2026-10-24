@@ -8,7 +8,7 @@ using TaskFlow.Application.Settings;
 
 namespace TaskFlow.Api.Controllers;
 
-/// <summary>Global reminder settings (Screen 13). Administrator and Manager only.</summary>
+/// <summary>Global reminder settings (Screen 13). Needs settings.reminders.manage.</summary>
 [ApiController]
 [Route("api/v1/settings")]
 [RequirePermission(PermissionKeys.SettingsReminders)]
