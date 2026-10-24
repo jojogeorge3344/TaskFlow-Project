@@ -1,7 +1,17 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateProjectRequest, Project, ProjectWithCount, UpdateProjectRequest, User } from '../models';
+import {
+  CreateProjectRequest,
+  Project,
+  ProjectMember,
+  ProjectMemberInput,
+  ProjectTask,
+  ProjectTaskFilter,
+  ProjectWithCount,
+  UpdateProjectRequest,
+  User
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
@@ -18,6 +28,26 @@ export class ProjectService {
 
   getEmployees(id: number): Observable<User[]> {
     return this.http.get<User[]>(`${this.baseUrl}/${id}/employees`);
+  }
+
+  getMembers(id: number): Observable<ProjectMember[]> {
+    return this.http.get<ProjectMember[]>(`${this.baseUrl}/${id}/members`);
+  }
+
+  /** The project's tasks, soonest deadline first; filters combine with AND. */
+  getTasks(id: number, filter: ProjectTaskFilter = {}): Observable<ProjectTask[]> {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(filter)) {
+      if (value !== null && value !== undefined && value !== '') {
+        params = params.set(key, String(value));
+      }
+    }
+    return this.http.get<ProjectTask[]>(`${this.baseUrl}/${id}/tasks`, { params });
+  }
+
+  /** Replaces the project's whole team. All-or-nothing: if anyone would pass 100% in total, nothing is saved (400). */
+  replaceMembers(id: number, members: ProjectMemberInput[]): Observable<ProjectMember[]> {
+    return this.http.put<ProjectMember[]>(`${this.baseUrl}/${id}/members`, { members });
   }
 
   create(request: CreateProjectRequest): Observable<Project> {

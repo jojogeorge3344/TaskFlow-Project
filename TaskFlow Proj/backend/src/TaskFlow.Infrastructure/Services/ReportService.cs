@@ -54,24 +54,49 @@ public class ReportService : IReportService
         ReportFilter filter,
         CancellationToken cancellationToken)
     {
-        return await Scope(filter)
+        var rows = await Scope(filter)
             .OrderBy(task => task.Deadline)
             .ThenBy(task => task.Id)
             .Take(MaxExportRows)
-            .Select(task => new ReportRowDto(
+            .Select(task => new
+            {
                 task.TaskCode,
                 task.Title,
-                task.AssignedTo == null ? string.Empty : task.AssignedTo.FullName,
-                task.AssignedTo == null || task.AssignedTo.Project == null
-                    ? string.Empty
-                    : task.AssignedTo.Project.Name,
+                Assignee = task.AssignedTo == null ? string.Empty : task.AssignedTo.FullName,
+                task.AssignedToUserId,
                 task.Priority,
                 task.Status,
                 task.StartDate,
                 task.Deadline,
                 task.EstimatedHours,
-                task.CompletedAt))
+                task.CompletedAt
+            })
             .ToListAsync(cancellationToken);
+
+        // The Project column lists every project the assignee is on. Filters are ignored so a deleted person's work keeps its projects.
+        var assigneeIds = rows.Select(row => row.AssignedToUserId).Distinct().ToList();
+        var projectNames = (await _dbContext.UserProjectAllocations
+                .IgnoreQueryFilters()
+                .Where(allocation => assigneeIds.Contains(allocation.UserId))
+                .OrderBy(allocation => allocation.Project.Name)
+                .Select(allocation => new { allocation.UserId, allocation.Project.Name })
+                .ToListAsync(cancellationToken))
+            .GroupBy(allocation => allocation.UserId)
+            .ToDictionary(group => group.Key, group => string.Join(", ", group.Select(allocation => allocation.Name)));
+
+        return rows
+            .Select(row => new ReportRowDto(
+                row.TaskCode,
+                row.Title,
+                row.Assignee,
+                projectNames.GetValueOrDefault(row.AssignedToUserId, string.Empty),
+                row.Priority,
+                row.Status,
+                row.StartDate,
+                row.Deadline,
+                row.EstimatedHours,
+                row.CompletedAt))
+            .ToList();
     }
 
     private IQueryable<TaskEntity> Scope(ReportFilter filter)
@@ -98,7 +123,8 @@ public class ReportService : IReportService
 
         if (filter.ProjectId is not null)
         {
-            tasks = tasks.Where(task => task.AssignedTo != null && task.AssignedTo.ProjectId == filter.ProjectId);
+            tasks = tasks.Where(task => task.AssignedTo != null
+                && task.AssignedTo.ProjectAllocations.Any(allocation => allocation.ProjectId == filter.ProjectId));
         }
 
         if (filter.Status is not null)

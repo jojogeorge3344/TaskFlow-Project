@@ -354,7 +354,7 @@ public class AssistantActionServiceTests
         Assert.Equal("Asha Nair", user.FullName);
         Assert.Equal("asha.nair@taskflow.com", user.Email);
         Assert.Equal(SystemRoles.EmployeeId, user.RoleId);
-        Assert.Equal(h.Engineering.Id, user.ProjectId);
+        Assert.Equal(h.Engineering.Id, (await h.Db.UserProjectAllocations.AsNoTracking().SingleAsync(a => a.UserId == user.Id)).ProjectId);
         Assert.True(user.IsActive);
     }
 
@@ -363,6 +363,7 @@ public class AssistantActionServiceTests
     {
         await using var h = new AssistantActionHarness();
         var before = await h.Db.Users.AsNoTracking().SingleAsync(u => u.Id == h.Priya.Id);
+        var projectsBefore = await h.Db.UserProjectAllocations.AsNoTracking().Where(a => a.UserId == h.Priya.Id).OrderBy(a => a.ProjectId).Select(a => new { a.ProjectId, a.AllocationPercent, a.PositionId }).ToListAsync();
         var caller = AssistantActionHarness.Caller(h.Admin);
         var card = await h.Actions.CreateAsync(caller, h.Conversation(h.Admin).Id, AssistantActionKind.ChangeUserRole,
             new ChangeRolePayload(h.Priya.Id, h.Priya.FullName, SystemRoles.Employee, SystemRoles.ManagerId, SystemRoles.Manager));
@@ -376,7 +377,7 @@ public class AssistantActionServiceTests
         Assert.Equal(before.FullName, after.FullName);
         Assert.Equal(before.Email, after.Email);
         Assert.Equal(before.Username, after.Username);
-        Assert.Equal(before.ProjectId, after.ProjectId);
+        Assert.Equal(projectsBefore, await h.Db.UserProjectAllocations.AsNoTracking().Where(a => a.UserId == h.Priya.Id).OrderBy(a => a.ProjectId).Select(a => new { a.ProjectId, a.AllocationPercent, a.PositionId }).ToListAsync());
         Assert.Equal(before.IsActive, after.IsActive);
         Assert.Equal(before.PasswordHash, after.PasswordHash);
         Assert.NotEqual(before.SecurityStamp, after.SecurityStamp);

@@ -45,8 +45,48 @@ public class ProjectsController : ControllerBase
         return Ok(employees);
     }
 
+    /// <summary>The project's team with the position and percentage of each member.</summary>
+    [HttpGet("{id}/members")]
+    [RequirePermission(PermissionKeys.ProjectsView)]
+    public async Task<ActionResult<IReadOnlyCollection<ProjectMemberDto>>> GetMembers(int id, CancellationToken cancellationToken)
+    {
+        var members = await _projectService.GetMembersAsync(id, cancellationToken);
+        return members is null ? NotFound() : Ok(members);
+    }
+
+    /// <summary>The project's tasks with each assignee's role on the project; filters combine with AND.</summary>
+    [HttpGet("{id}/tasks")]
+    [RequirePermission(PermissionKeys.ProjectsView)]
+    public async Task<ActionResult<IReadOnlyCollection<ProjectTaskDto>>> GetTasks(
+        int id,
+        [FromQuery] ProjectTaskFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var tasks = await _projectService.GetTasksAsync(id, filter, cancellationToken);
+        return tasks is null ? NotFound() : Ok(tasks);
+    }
+
+    /// <summary>Replaces the project's team. All-or-nothing: if anyone would pass 100% in total, nothing is saved.</summary>
+    [HttpPut("{id}/members")]
+    [RequirePermission(PermissionKeys.ProjectsMembers)]
+    public async Task<ActionResult<IReadOnlyCollection<ProjectMemberDto>>> ReplaceMembers(
+        int id,
+        [FromBody] ReplaceProjectMembersRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var members = await _projectService.ReplaceMembersAsync(id, request, cancellationToken);
+            return members is null ? NotFound() : Ok(members);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPost]
-    [RequirePermission(PermissionKeys.ProjectsManage)]
+    [RequirePermission(PermissionKeys.ProjectsCreate)]
     public async Task<ActionResult<ProjectDto>> Create([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
         try
@@ -61,7 +101,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [RequirePermission(PermissionKeys.ProjectsManage)]
+    [RequirePermission(PermissionKeys.ProjectsEdit)]
     public async Task<ActionResult<ProjectDto>> Update(int id, [FromBody] UpdateProjectRequest request, CancellationToken cancellationToken)
     {
         try
@@ -80,7 +120,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [RequirePermission(PermissionKeys.ProjectsManage)]
+    [RequirePermission(PermissionKeys.ProjectsDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         try

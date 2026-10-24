@@ -23,11 +23,15 @@ public class ManagerDashboardScope : IManagerDashboardScope
         var managedDepartments = _dbContext.DepartmentManagers
             .Where(link => link.ManagerUserId == managerId)
             .Select(link => link.DepartmentId);
+        // The projects this person is flagged as a manager of: their members belong to the team as well.
+        var managedProjects = _dbContext.UserProjectAllocations
+            .Where(allocation => allocation.UserId == managerId && allocation.IsProjectManager)
+            .Select(allocation => allocation.ProjectId);
 
         return _dbContext.Users
-            .Where(user => user.IsActive
-                && (user.ManagerId == managerId
-                    || (user.DepartmentId != null && managedDepartments.Contains(user.DepartmentId.Value))))
+            .Where(user => user.IsActive && user.Id != managerId
+                && (user.DepartmentMemberships.Any(m => managedDepartments.Contains(m.DepartmentId))
+                    || user.ProjectAllocations.Any(a => managedProjects.Contains(a.ProjectId))))
             .Select(user => user.Id);
     }
 

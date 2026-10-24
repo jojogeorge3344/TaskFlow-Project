@@ -46,8 +46,7 @@ public class TaskServiceTests
         await using var harness = TaskTrackingServiceHarness.Create();
         var manager = harness.AddUser("tkmgr2", SystemRoles.Manager);
         var assignee = harness.AddUser("tkasgn3");
-        assignee.ManagerId = manager.Id; // a manager reaches their own team's tasks
-        harness.Db.SaveChanges();
+        TestMemberships.ReportTo(harness.Db, assignee, manager.Id); // a manager reaches their own team's tasks
         var creator = harness.AddUser("tkcreator");
         var recipient = harness.AddUser("tkrecipient");
         var task = harness.AddTask(assignee.Id, creator.Id);
@@ -65,9 +64,8 @@ public class TaskServiceTests
         await using var harness = TaskTrackingServiceHarness.Create();
         var manager = harness.AddUser("tkmgr-scope", SystemRoles.Manager);
         var member = harness.AddUser("tkmember-scope");
-        member.ManagerId = manager.Id;
+        TestMemberships.ReportTo(harness.Db, member, manager.Id);
         var foreign = harness.AddUser("tkforeign-scope");
-        harness.Db.SaveChanges();
         var team = harness.AddTask(member.Id, manager.Id, "Team task");
         var created = harness.AddTask(foreign.Id, manager.Id, "Created by me, assigned outside the team");
         var other = harness.AddTask(foreign.Id, foreign.Id, "Another team");
@@ -116,6 +114,30 @@ public class TaskServiceTests
         var assigneeBoard = await harness.TaskService.GetBoardAsync(assignee.Id, SystemRoles.Employee, CancellationToken.None);
         var card = Assert.Single(assigneeBoard);
         Assert.Equal("Assigned to me", card.Title);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_CardsCarryTheirProjectIdAndName()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var admin = harness.AddUser("tkbp-admin", SystemRoles.Administrator);
+        var project = new TaskFlow.Domain.Entities.Project { Name = "Atlas", CreatedAt = DateTime.UtcNow };
+        harness.Db.Projects.Add(project);
+        harness.Db.SaveChanges();
+
+        var withProject = harness.AddTask(admin.Id, admin.Id, "In a project");
+        withProject.ProjectId = project.Id;
+        harness.Db.SaveChanges();
+        harness.AddTask(admin.Id, admin.Id, "No project");
+
+        var board = await harness.TaskService.GetBoardAsync(admin.Id, SystemRoles.Administrator, CancellationToken.None);
+
+        var card = Assert.Single(board, c => c.Title == "In a project");
+        Assert.Equal(project.Id, card.ProjectId);
+        Assert.Equal("Atlas", card.ProjectName);
+        var bare = Assert.Single(board, c => c.Title == "No project");
+        Assert.Null(bare.ProjectId);
+        Assert.Null(bare.ProjectName);
     }
 
     [Fact]

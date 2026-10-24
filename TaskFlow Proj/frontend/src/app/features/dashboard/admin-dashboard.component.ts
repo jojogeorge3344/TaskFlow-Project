@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { BASIS_LABELS, RANGE_PRESETS, detectPreset, shortDate } from '../../core/analytics/analytics-filter';
 import { DrillTarget, drillDownQuery } from '../../core/analytics/drill-down';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { AnalyticsFilterState } from '../../core/models';
 import { DashboardAnalyticsService } from '../../core/services/dashboard-analytics.service';
 import { provideDashboardCharts } from '../../shared/charts/chart-providers';
@@ -35,6 +36,9 @@ export class AdminDashboardComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly user = this.authService.currentUser;
+
+  /** The filter bar is part of "use dashboard filters"; the analytics themselves need "view charts and reports". */
+  readonly canFilter = computed(() => this.user()?.permissions.includes(Permissions.DashboardFilters) ?? false);
 
   readonly filter = this.analytics.filter;
   readonly options = this.analytics.options;

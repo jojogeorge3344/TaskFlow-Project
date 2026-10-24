@@ -182,10 +182,9 @@ public class TasksController : ControllerBase
         }
     }
 
-    /// <summary>Deleting a task is Administrator-only. roles.manage is the permission only Administrators can hold,
-    /// so it gates this without a new grantable permission; tasks.update alone is not enough.</summary>
+    /// <summary>Deleting a task requires the tasks.delete permission.</summary>
     [HttpDelete("{id:int}")]
-    [RequirePermission(PermissionKeys.RolesManage)]
+    [RequirePermission(PermissionKeys.TasksDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUser(out var userId, out _))
@@ -198,6 +197,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.TasksStatus)]
     public async Task<ActionResult<TaskCardDto>> ChangeStatus(
         int id,
         [FromBody] UpdateTaskStatusRequest request,
@@ -330,6 +330,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost("{id:int}/comments")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.TasksCommentCreate)]
     public async Task<ActionResult<TaskCommentDto>> AddComment(
         int id,
         [FromBody] AddCommentRequest request,
@@ -363,6 +364,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet("{id:int}/activity")]
+    [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.TasksActivityView)]
     public async Task<ActionResult<IReadOnlyCollection<ActivityEntryDto>>> GetActivity(
         int id,
         [FromQuery] TaskActivityEventType? eventType,

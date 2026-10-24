@@ -206,8 +206,8 @@ public class AuthService : IAuthService
             .AsNoTracking()
             .Where(grant => grant.RoleId == user.RoleId)
             .Select(grant => grant.Permission.Key)
-            .OrderBy(key => key)
             .ToListAsync(cancellationToken);
+        permissions = TaskFlow.Domain.Security.EffectivePermissions.Expand(permissions).Order(StringComparer.Ordinal).ToList();
 
         return new UserDto(
             user.Id,

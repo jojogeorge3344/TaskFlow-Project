@@ -1,23 +1,30 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <button type="button" class="tf-btn tf-btn--ghost tf-back" (click)="backToBoard()">
+      <button type="button" class="tf-btn tf-btn--ghost tf-back" (click)="goBack()" data-action="back">
         <tf-icon name="arrow" />
-        Back to board
+        {{ back.label }}
       </button>
       <h1>{{ loading() || error() ? 'Task details' : task()?.title }}</h1>
       @if (task(); as current) {
         <p class="tf-page-subtitle">
           <span class="tf-chip tf-chip--muted">{{ current.taskCode }}</span>
+          <span class="tf-chip tf-chip--muted" data-project>Project: {{ current.projectName || '—' }}</span>
           <span class="tf-chip" [class]="stageClass(current.stage)">{{ stageLabel(current.stage) }}</span>
         </p>
       }
     </div>
 
-    @if ((canReassign() || canEdit() || canDelete()) && task(); as current) {
+    @if ((canReassign() || canEdit() || canDelete() || canCreate()) && task(); as current) {
       <div class="tf-page-actions">
+        @if (canCreate()) {
+          <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks/new']" [queryParams]="{ copyFrom: current.id }" data-action="copy-task">
+            <tf-icon name="copy" />
+            Copy
+          </a>
+        }
         @if (canReassign()) {
-          <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
+          <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']" queryParamsHandling="preserve">
             <tf-icon name="users" />
             Reassign
           </a>
@@ -57,79 +64,108 @@
   } @else {
     @if (task(); as current) {
       @if (editing()) {
-        <form class="tf-card tf-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
-        <h2 class="tf-card-title">Edit {{ current.taskCode }}</h2>
+      <form class="edit-form" [formGroup]="editForm" (ngSubmit)="saveEdit()" novalidate data-edit-form>
+        <header class="tf-card edit-form__head">
+          <div>
+            <span class="edit-form__eyebrow">Editing task</span>
+            <h2 class="edit-form__title">{{ current.taskCode }}</h2>
+          </div>
+          <dl class="edit-form__project">
+            <dt>Project</dt>
+            <dd data-edit-project>{{ current.projectName || '—' }}</dd>
+          </dl>
+        </header>
 
-        <div class="tf-field">
-          <label for="edit-title">Title</label>
-          <input
-            id="edit-title"
-            class="tf-input"
-            type="text"
-            formControlName="title"
-            data-field="title"
-            autocomplete="off"
-          />
-          @if (editForm.controls.title.invalid && editForm.controls.title.touched) {
-            <p class="tf-field__error">Title is required.</p>
-          }
-        </div>
+        <section class="tf-section" aria-labelledby="edit-details-title">
+          <div class="tf-section__head">
+            <h3 id="edit-details-title" class="tf-section__title">Details</h3>
+            <span class="tf-section__hint">What the task is about</span>
+          </div>
 
-        <div class="tf-field">
-          <label for="edit-description">Description</label>
-          <textarea
-            id="edit-description"
-            class="tf-input"
-            rows="4"
-            formControlName="description"
-            data-field="description"
-          ></textarea>
-        </div>
-
-        <div class="tf-form-row">
           <div class="tf-field">
+            <label for="edit-title">Title</label>
+            <input
+              id="edit-title"
+              class="tf-input"
+              type="text"
+              formControlName="title"
+              data-field="title"
+              autocomplete="off"
+              [class.is-invalid]="editForm.controls.title.invalid && editForm.controls.title.touched"
+            />
+            @if (editForm.controls.title.invalid && editForm.controls.title.touched) {
+              <p class="tf-field__error">Title is required.</p>
+            }
+          </div>
+
+          <div class="tf-field">
+            <label for="edit-description">Description</label>
+            <textarea
+              id="edit-description"
+              class="tf-input tf-textarea"
+              rows="4"
+              formControlName="description"
+              data-field="description"
+            ></textarea>
+          </div>
+
+          <div class="tf-field edit-form__narrow">
             <label for="edit-priority">Priority</label>
-            <select id="edit-priority" class="tf-input" formControlName="priority" data-field="priority">
+            <select id="edit-priority" class="tf-select" formControlName="priority" data-field="priority">
               @for (priority of ['Low', 'Medium', 'High', 'Critical']; track priority) {
                 <option [value]="priority">{{ priorityLabel(priority) }}</option>
               }
             </select>
           </div>
+        </section>
 
-          <div class="tf-field">
-            <label for="edit-hours">Estimated hours</label>
-            <input
-              id="edit-hours"
-              class="tf-input"
-              type="number"
-              min="0.5"
-              step="0.5"
-              formControlName="estimatedHours"
-              data-field="estimatedHours"
-            />
-            @if (editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched) {
-              <p class="tf-field__error">Enter at least 0.5 hours.</p>
-            }
-          </div>
-        </div>
-
-        <div class="tf-form-row">
-          <div class="tf-field">
-            <label for="edit-start">Start date</label>
-            <input id="edit-start" class="tf-input" type="datetime-local" formControlName="startDate" data-field="startDate" />
+        <section class="tf-section" aria-labelledby="edit-schedule-title">
+          <div class="tf-section__head">
+            <h3 id="edit-schedule-title" class="tf-section__title">Schedule</h3>
+            <span class="tf-section__hint">When it starts, when it is due and how long it takes</span>
           </div>
 
-          <div class="tf-field">
-            <label for="edit-deadline">Deadline</label>
-            <input id="edit-deadline" class="tf-input" type="datetime-local" formControlName="deadline" data-field="deadline" />
+          <div class="edit-form__grid">
+            <div class="tf-field">
+              <label for="edit-start">Start date</label>
+              <input id="edit-start" class="tf-input" type="datetime-local" formControlName="startDate" data-field="startDate" />
+            </div>
+
+            <div class="tf-field">
+              <label for="edit-deadline">Deadline</label>
+              <input
+                id="edit-deadline"
+                class="tf-input"
+                type="datetime-local"
+                formControlName="deadline"
+                data-field="deadline"
+                [class.is-invalid]="editForm.errors?.['deadlineBeforeStart']"
+              />
+              @if (editForm.errors?.['deadlineBeforeStart']) {
+                <p class="tf-field__error" data-error="deadline">Deadline must be after the start date.</p>
+              }
+            </div>
+
+            <div class="tf-field">
+              <label for="edit-hours">Estimated hours</label>
+              <input
+                id="edit-hours"
+                class="tf-input"
+                type="number"
+                min="0.5"
+                step="0.5"
+                formControlName="estimatedHours"
+                data-field="estimatedHours"
+                [class.is-invalid]="editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched"
+              />
+              @if (editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched) {
+                <p class="tf-field__error">Enter at least 0.5 hours.</p>
+              }
+            </div>
           </div>
-        </div>
+        </section>
 
-        @if (editForm.errors?.['deadlineBeforeStart']) {
-          <p class="tf-field__error">Deadline must be after the start date.</p>
-        }
-
-        <div class="tf-form-actions">
+        <div class="edit-form__actions" data-edit-actions>
           <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelEdit()">Cancel</button>
           <button type="submit" class="tf-btn tf-btn--primary" [disabled]="editForm.invalid || saving()">
             {{ saving() ? 'Saving…' : 'Save changes' }}
@@ -147,6 +183,10 @@
         }
 
         <dl class="tf-details__meta">
+          <div>
+            <dt>Project</dt>
+            <dd data-meta-project>{{ current.projectName || '—' }}</dd>
+          </div>
           <div>
             <dt>Assignee</dt>
             <dd>{{ current.assignedToName || 'Unassigned' }}</dd>
@@ -195,20 +235,22 @@
         <h3 class="tf-side__title">Links</h3>
         <ul class="tf-side__links">
           <li>
-            <a [routerLink]="['/tasks', current.id, 'discussion']">
+            <a [routerLink]="['/tasks', current.id, 'discussion']" queryParamsHandling="preserve">
               <tf-icon name="users" />
               Discussion
             </a>
           </li>
-          <li>
-            <a [routerLink]="['/tasks', current.id, 'activity']">
-              <tf-icon name="chart" />
-              Activity history
-            </a>
-          </li>
+          @if (canViewActivity()) {
+            <li>
+              <a [routerLink]="['/tasks', current.id, 'activity']" queryParamsHandling="preserve">
+                <tf-icon name="chart" />
+                Activity history
+              </a>
+            </li>
+          }
           @if (canReassign()) {
             <li>
-              <a [routerLink]="['/tasks', current.id, 'reassign']">
+              <a [routerLink]="['/tasks', current.id, 'reassign']" queryParamsHandling="preserve">
                 <tf-icon name="users" />
                 Reassign task
               </a>

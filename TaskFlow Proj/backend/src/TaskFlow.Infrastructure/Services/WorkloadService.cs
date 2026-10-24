@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Settings;
+using TaskFlow.Application.Users;
 using TaskFlow.Application.Workload;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Security;
@@ -34,7 +35,7 @@ public class WorkloadService : IWorkloadService
             && !user.Role.Permissions.Any(grant => grant.Permission.Key == PermissionKeys.TasksViewAll));
         if (projectId is not null)
         {
-            usersQuery = usersQuery.Where(user => user.ProjectId == projectId);
+            usersQuery = usersQuery.Where(user => user.ProjectAllocations.Any(a => a.ProjectId == projectId));
         }
 
         var users = await usersQuery
@@ -44,8 +45,10 @@ public class WorkloadService : IWorkloadService
             {
                 user.Id,
                 user.FullName,
-                user.ProjectId,
-                ProjectName = user.Project == null ? null : user.Project.Name
+                Projects = user.ProjectAllocations
+                    .OrderBy(a => a.Project.Name)
+                    .Select(a => new ProjectAllocationDto(a.ProjectId, a.Project.Name, a.PositionId, a.Position.Name, a.AllocationPercent))
+                    .ToList()
             })
             .ToListAsync(cancellationToken);
 
@@ -79,8 +82,8 @@ public class WorkloadService : IWorkloadService
                 return new EmployeeWorkloadDto(
                     user.Id,
                     user.FullName,
-                    user.ProjectId,
-                    user.ProjectName,
+                    user.Projects,
+                    user.Projects.Sum(project => project.Percent),
                     count?.Active ?? 0,
                     count?.HighPriority ?? 0,
                     count?.Overdue ?? 0,

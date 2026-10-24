@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { MailService } from '../../core/services/mail.service';
@@ -12,7 +14,7 @@ describe('MailListComponent', () => {
   });
 
   function create(folder: 'Inbox' | 'Sent' | 'Drafts' = 'Inbox'): ComponentFixture<MailListComponent> {
-    TestBed.configureTestingModule({ imports: [MailListComponent], providers: [{ provide: MailService, useValue: mail }] });
+    TestBed.configureTestingModule({ imports: [MailListComponent], providers: [{ provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Employee') })) }, { provide: MailService, useValue: mail }] });
     const fixture = TestBed.createComponent(MailListComponent);
     fixture.componentRef.setInput('folder', folder);
     fixture.detectChanges();

@@ -28,7 +28,12 @@ describe('TaskDetailsComponent', () => {
     stage: 'Upcoming',
     recipients: [{ userId: 9, fullName: 'Sara' }],
     createdAt: '2026-10-01T08:00:00Z',
-    updatedAt: '2026-10-01T08:00:00Z'
+    updatedAt: '2026-10-01T08:00:00Z',
+    projectId: 4,
+    projectName: 'Apollo',
+    firstReminderDays: 2,
+    secondReminderDays: 1,
+    overdueReminderFrequency: 'Daily'
   };
 
   let fixture: ComponentFixture<TaskDetailsComponent>;
@@ -39,7 +44,7 @@ describe('TaskDetailsComponent', () => {
   let deleteSpy: jasmine.Spy;
   let toast: { success: jasmine.Spy; error: jasmine.Spy };
 
-  function create(role: string, task: TaskDetails = details): void {
+  function create(role: string, task: TaskDetails = details, returnUrl: string | null = null): void {
     getByIdSpy = jasmine.createSpy('getById').and.returnValue(of(task));
     changeStatusSpy = jasmine.createSpy('changeStatus');
     updateSpy = jasmine.createSpy('update');
@@ -52,7 +57,7 @@ describe('TaskDetailsComponent', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: () => '7' } } }
+          useValue: { snapshot: { paramMap: { get: () => '7' }, queryParamMap: { get: (key: string) => (key === 'returnUrl' ? returnUrl : null) } } }
         },
         {
           provide: AuthService,
@@ -70,6 +75,114 @@ describe('TaskDetailsComponent', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
   }
+
+  describe('Back button', () => {
+    function backButton(): HTMLButtonElement {
+      return fixture.nativeElement.querySelector('[data-action="back"]');
+    }
+
+    it('returns to the project the user came from', () => {
+      create('Manager', details, '/projects/4');
+      const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl');
+
+      expect(backButton().textContent).toContain('Back to project');
+      backButton().click();
+
+      expect(navigate).toHaveBeenCalledWith('/projects/4');
+    });
+
+    it('returns to the task list and the board when they are the origin', () => {
+      create('Manager', details, '/tasks');
+      expect(backButton().textContent).toContain('Back to tasks');
+
+      TestBed.resetTestingModule();
+      create('Manager', details, '/board');
+      expect(backButton().textContent).toContain('Back to board');
+    });
+
+    it('falls back to the task list when opened directly or with an external location', () => {
+      for (const returnUrl of [null, '//evil.com', 'https://evil.com']) {
+        TestBed.resetTestingModule();
+        create('Manager', details, returnUrl);
+        const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl');
+
+        backButton().click();
+
+        expect(navigate).withContext(String(returnUrl)).toHaveBeenCalledWith('/tasks');
+      }
+    });
+  });
+
+  describe('project', () => {
+    it('shows the project name in the header and details', () => {
+      create('Manager');
+
+      expect(fixture.nativeElement.querySelector('[data-project]').textContent).toContain('Apollo');
+      expect(fixture.nativeElement.querySelector('[data-meta-project]').textContent).toContain('Apollo');
+    });
+
+    it('shows a dash for a legacy task without a project', () => {
+      create('Manager', { ...details, projectId: null, projectName: null });
+
+      expect(fixture.nativeElement.querySelector('[data-meta-project]').textContent.trim()).toBe('—');
+      expect(fixture.nativeElement.querySelector('[data-action="edit-task"]')).not.toBeNull();
+    });
+
+    it('shows the project read-only while editing and does not send it on save', () => {
+      create('Manager');
+      updateSpy.and.returnValue(of(details));
+
+      (fixture.nativeElement.querySelector('[data-action="edit-task"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-edit-project]').textContent).toContain('Apollo');
+      expect(fixture.nativeElement.querySelector('[data-edit-form] select[formcontrolname="projectId"]')).toBeNull();
+      component.saveEdit();
+      expect(Object.keys(updateSpy.calls.mostRecent().args[1])).not.toContain('projectId');
+    });
+  });
+
+  describe('copy', () => {
+    it('links to the pre-filled create form for someone who can create tasks', () => {
+      create('Manager');
+
+      const link = fixture.nativeElement.querySelector('[data-action="copy-task"]') as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('/tasks/new?copyFrom=7');
+    });
+
+    it('is hidden from an employee', () => {
+      create('Employee');
+
+      expect(fixture.nativeElement.querySelector('[data-action="copy-task"]')).toBeNull();
+    });
+  });
+
+  describe('edit form layout', () => {
+    it('groups the fields into Details and Schedule sections with an action bar', () => {
+      create('Manager');
+      (fixture.nativeElement.querySelector('[data-action="edit-task"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const form = fixture.nativeElement.querySelector('[data-edit-form]') as HTMLElement;
+      const sections = Array.from(form.querySelectorAll('.tf-section__title')).map((h) => h.textContent?.trim());
+      expect(sections).toEqual(['Details', 'Schedule']);
+      expect(form.querySelector('[data-edit-actions]')).not.toBeNull();
+      for (const field of ['title', 'description', 'priority', 'startDate', 'deadline', 'estimatedHours']) {
+        expect(form.querySelector(`[data-field="${field}"]`)).withContext(field).not.toBeNull();
+      }
+    });
+
+    it('puts the deadline error next to the deadline field and blocks saving', () => {
+      create('Manager');
+      (fixture.nativeElement.querySelector('[data-action="edit-task"]') as HTMLButtonElement).click();
+      component.editForm.patchValue({ startDate: '2026-10-10T10:00', deadline: '2026-10-09T10:00' });
+      fixture.detectChanges();
+
+      const error = fixture.nativeElement.querySelector('[data-error="deadline"]') as HTMLElement;
+      expect(error.closest('.tf-field')?.querySelector('#edit-deadline')).not.toBeNull();
+      expect((fixture.nativeElement.querySelector('[data-edit-form] button[type="submit"]') as HTMLButtonElement).disabled).toBeTrue();
+    });
+  });
 
   it('renders the task title, stage badge and recipient chips', () => {
     create('Manager');

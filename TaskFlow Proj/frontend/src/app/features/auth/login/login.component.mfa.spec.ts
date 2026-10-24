@@ -45,7 +45,7 @@ describe('LoginComponent two-step sign-in', () => {
   }
 
   function passwordStep(f: ComponentFixture<LoginComponent>): void {
-    f.componentInstance.form.setValue({ emailOrUsername: 'jo', password: 'secret' });
+    f.componentInstance.form.setValue({ emailOrUsername: 'jo@taskflow.com', password: 'secret' });
     f.componentInstance.submit();
     f.detectChanges();
   }
@@ -124,19 +124,11 @@ describe('LoginComponent two-step sign-in', () => {
     expect(el(fixture).querySelector('[role="alert"]')?.textContent).toContain('Too many wrong codes');
   });
 
-  it('switches to a backup code and back', () => {
+  it('offers no backup-code option on the second step', () => {
     const fixture = create();
     passwordStep(fixture);
 
-    click(fixture, 'toggle-backup');
-    expect(el(fixture).textContent).toContain('Enter one of your backup codes.');
-    expect((el(fixture).querySelector('[data-field="mfaCode"]') as HTMLInputElement).placeholder).toBe('XXXXX-XXXXX');
-
-    fixture.componentInstance.mfaForm.controls.code.setValue('ABCDE-FGHIJ');
-    click(fixture, 'verify-mfa');
-    expect(verifySpy).toHaveBeenCalledOnceWith('challenge-1', 'ABCDE-FGHIJ');
-
-    click(fixture, 'toggle-backup');
+    expect(el(fixture).querySelector('[data-action="toggle-backup"]')).toBeNull();
     expect(el(fixture).textContent).toContain('code from your authenticator app');
   });
 

@@ -8,7 +8,8 @@ import {
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
-import { BOARD_STATUSES, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
+import { BOARD_STATUSES, ProjectWithCount, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -47,6 +48,7 @@ export class KanbanComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly projectService = inject(ProjectService);
 
   readonly columns = signal<BoardColumn[]>([]);
   readonly loading = signal(true);
@@ -60,10 +62,18 @@ export class KanbanComponent implements OnInit {
   private readonly matchedCount = signal(0);
 
   readonly assignees = signal<TaskRecipient[]>([]);
+  readonly projects = signal<ProjectWithCount[]>([]);
+  readonly projectId = signal<number | null>(null);
   readonly assigneeUserId = signal<number | null>(null);
   readonly status = signal<TaskStatus | ''>('');
   readonly deadlineFrom = signal('');
   readonly deadlineTo = signal('');
+
+  /** Moving a card changes its status, which needs its own permission. */
+  readonly canMove = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksStatus);
+  });
 
   /** Only roles that see every task need the assignee filter; others see only their own tasks. */
   readonly canManage = computed(() => {
@@ -73,6 +83,7 @@ export class KanbanComponent implements OnInit {
 
   readonly hasFilters = computed(
     () =>
+      this.projectId() !== null ||
       this.assigneeUserId() !== null ||
       this.status() !== '' ||
       this.deadlineFrom() !== '' ||
@@ -89,6 +100,10 @@ export class KanbanComponent implements OnInit {
         next: (assignees) => this.assignees.set(assignees)
       });
     }
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects),
+      error: () => this.projects.set([])
+    });
     this.load();
   }
 
@@ -128,7 +143,12 @@ export class KanbanComponent implements OnInit {
   }
 
   open(task: TaskCard): void {
-    this.router.navigate(['/tasks', task.id]);
+    this.router.navigate(['/tasks', task.id], { queryParams: { returnUrl: '/board' } });
+  }
+
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
+    this.rebuild();
   }
 
   setAssignee(value: string): void {
@@ -152,6 +172,7 @@ export class KanbanComponent implements OnInit {
   }
 
   clearFilters(): void {
+    this.projectId.set(null);
     this.assigneeUserId.set(null);
     this.status.set('');
     this.deadlineFrom.set('');
@@ -212,6 +233,9 @@ export class KanbanComponent implements OnInit {
 
   /** Filters combine with AND semantics; deadline range is inclusive on both ends. */
   private matches(task: TaskCard): boolean {
+    if (this.projectId() !== null && task.projectId !== this.projectId()) {
+      return false;
+    }
     if (this.assigneeUserId() !== null && task.assignedToUserId !== this.assigneeUserId()) {
       return false;
     }

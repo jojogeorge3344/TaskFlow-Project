@@ -1,7 +1,7 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]" queryParamsHandling="preserve">
         <tf-icon name="arrow" />
         Back to task #{{ taskId }}
       </a>

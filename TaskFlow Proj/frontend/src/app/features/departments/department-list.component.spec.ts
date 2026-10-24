@@ -2,10 +2,12 @@ import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks } from '@angular/
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
 import { DepartmentWithCount } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { DepartmentListComponent } from './department-list.component';
 import { DepartmentMembersDialogComponent } from './department-members-dialog.component';
 
@@ -57,6 +59,7 @@ describe('DepartmentListComponent', () => {
       imports: [DepartmentListComponent],
       providers: [
         provideRouter([]),
+        { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Administrator') })) },
         {
           provide: DepartmentService,
           useValue: {
@@ -130,6 +133,15 @@ describe('DepartmentListComponent', () => {
     expect(dialog.open).toBeTrue();
     expect(dialog.querySelector('h2')?.textContent).toContain('Edit department');
     expect((dialog.querySelector('#department-name') as HTMLInputElement).value).toBe('Finance');
+  });
+
+  it('offers member management as an icon button with a tooltip, not a text link', () => {
+    const fixture = create();
+
+    const button = card(fixture, 'Engineering').querySelector('[data-action="members"]') as HTMLButtonElement;
+    expect(button.title).toBe('Manage members');
+    expect(button.textContent?.trim()).toBe('');
+    expect(button.querySelector('svg')).toBeTruthy();
   });
 
   it('opens the members dialog from a card and reloads the list when it saves', () => {

@@ -36,6 +36,9 @@ export class ManagerDashboardComponent implements OnInit {
 
   readonly user = this.authService.currentUser;
 
+  /** The filter bar is part of "use dashboard filters"; the analytics themselves need "view charts and reports". */
+  readonly canFilter = computed(() => this.user()?.permissions.includes(Permissions.DashboardFilters) ?? false);
+
   readonly filter = this.analytics.filter;
   readonly options = this.analytics.options;
   readonly data = this.analytics.data;
@@ -44,7 +47,7 @@ export class ManagerDashboardComponent implements OnInit {
   readonly today = this.analytics.today;
 
   /** Administrators hold the manager dashboard permission too but have no team of their own. */
-  readonly isAdministrator = computed(() => this.user()?.permissions.includes(Permissions.DashboardAdmin) ?? false);
+  readonly isAdministrator = computed(() => this.user()?.permissions.includes(Permissions.DashboardViewOrganization) ?? false);
 
   /** The manager has no one on their team yet, so no filter could ever match. */
   readonly noTeam = computed(() => !this.loading() && !this.error() && this.data()?.summary.teamSize === 0);

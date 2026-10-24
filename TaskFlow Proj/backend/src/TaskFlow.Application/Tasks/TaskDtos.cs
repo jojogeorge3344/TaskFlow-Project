@@ -1,3 +1,4 @@
+using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 
@@ -14,7 +15,9 @@ public record TaskCardDto(
     TaskPriority Priority,
     DateTime Deadline,
     TaskStatus Status,
-    bool IsOverdue);
+    bool IsOverdue,
+    int? ProjectId = null,
+    string? ProjectName = null);
 
 public record TaskDetailsDto(
     int Id,
@@ -33,7 +36,12 @@ public record TaskDetailsDto(
     string Stage,
     IReadOnlyCollection<TaskRecipientDto> Recipients,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    int? ProjectId = null,
+    string? ProjectName = null,
+    int FirstReminderDays = 2,
+    int SecondReminderDays = 1,
+    ReminderFrequency OverdueReminderFrequency = ReminderFrequency.Daily);
 
 /// <summary>A row on the paginated Task List (Screen 7): card fields plus creator, start date
 /// and estimated hours, with the deadline state derived at read time.</summary>
@@ -51,7 +59,9 @@ public record TaskListItemDto(
     decimal EstimatedHours,
     TaskStatus Status,
     string Stage,
-    bool IsOverdue);
+    bool IsOverdue,
+    int? ProjectId = null,
+    string? ProjectName = null);
 
 /// <summary>One page of results with the total count and page metadata (TDD §8.4).</summary>
 public record PagedResult<T>(IReadOnlyCollection<T> Items, int Total, int Page, int PageSize);

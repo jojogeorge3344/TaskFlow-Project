@@ -135,7 +135,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         if (projectId is not null)
         {
-            user.ProjectId = projectId;
+            db.UserProjectAllocations.Add(new TaskFlow.Domain.Entities.UserProjectAllocation { UserId = user.Id, ProjectId = projectId.Value, AllocationPercent = 100, PositionId = 1 });
             await db.SaveChangesAsync();
         }
 

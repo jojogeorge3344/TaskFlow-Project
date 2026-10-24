@@ -50,7 +50,26 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var user = await db.Users.SingleAsync(u => u.Username == username);
         if (projectId is not null)
         {
-            user.ProjectId = projectId;
+            db.UserProjectAllocations.Add(new UserProjectAllocation { UserId = user.Id, ProjectId = projectId.Value, AllocationPercent = 100, PositionId = 1 });
+            // Who counts as a person's manager is decided by department now: everyone on the project shares one department its managers manage.
+            var teamName = $"Team for project {projectId}";
+            var team = await db.Departments.FirstOrDefaultAsync(d => d.Name == teamName);
+            if (team is null)
+            {
+                team = new Department { Name = teamName, CreatedAt = DateTime.UtcNow };
+                db.Departments.Add(team);
+                await db.SaveChangesAsync();
+            }
+
+            if (role == SystemRoles.Manager)
+            {
+                db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = user.Id, DepartmentId = team.Id });
+            }
+            else
+            {
+                db.UserDepartments.Add(new UserDepartment { UserId = user.Id, DepartmentId = team.Id });
+            }
+
             await db.SaveChangesAsync();
         }
 

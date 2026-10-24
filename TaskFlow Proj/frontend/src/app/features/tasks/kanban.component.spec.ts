@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { AuthUser, UserRole } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { TaskCard } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { KanbanComponent } from './kanban.component';
 import { TaskService } from './task.service';
@@ -17,6 +18,8 @@ describe('KanbanComponent', () => {
     id: 1,
     taskCode: 'TSK-1',
     title: 'Design screen',
+    projectId: 10,
+    projectName: 'Atlas',
     assignedToUserId: 3,
     assignedToName: 'Joe',
     priority: 'High',
@@ -28,6 +31,8 @@ describe('KanbanComponent', () => {
     id: 2,
     taskCode: 'TSK-2',
     title: 'Build API',
+    projectId: 11,
+    projectName: 'Beacon',
     assignedToUserId: 3,
     assignedToName: 'Joe',
     priority: 'Medium',
@@ -39,6 +44,8 @@ describe('KanbanComponent', () => {
     id: 3,
     taskCode: 'TSK-3',
     title: 'Ship release',
+    projectId: 10,
+    projectName: 'Atlas',
     assignedToUserId: 3,
     assignedToName: 'Joe',
     priority: 'Low',
@@ -100,6 +107,16 @@ describe('KanbanComponent', () => {
           provide: TaskService,
           useValue: { getBoard: getBoardSpy, getAssignees: getAssigneesSpy, changeStatus: changeStatusSpy }
         },
+        {
+          provide: ProjectService,
+          useValue: {
+            getAll: () =>
+              of([
+                { id: 10, name: 'Atlas', createdAt: '2026-01-01T00:00:00Z', employeeCount: 2, managers: [] },
+                { id: 11, name: 'Beacon', createdAt: '2026-01-01T00:00:00Z', employeeCount: 1, managers: [] }
+              ])
+          }
+        },
         { provide: ToastService, useValue: toast },
         { provide: Router, useValue: { navigate: navigateSpy } },
         { provide: AuthService, useValue: fakeAuthService(userSignal.asReadonly()) }
@@ -127,7 +144,7 @@ describe('KanbanComponent', () => {
 
     component.open(todo);
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 1]);
+    expect(navigateSpy).toHaveBeenCalledWith(['/tasks', 1], { queryParams: { returnUrl: '/board' } });
   });
 
   it('dispatches a status change when a card is dropped on another column', () => {
@@ -218,6 +235,58 @@ describe('KanbanComponent', () => {
       const matched = component.columns().flatMap((column) => column.tasks);
       expect(matched.map((task) => task.id)).toEqual([4]);
       expect(el().querySelectorAll('.kanban__card').length).toBe(1);
+    });
+
+    it('offers every project with "All projects" as the default', () => {
+      const select = el().querySelector<HTMLSelectElement>('#board-filter-project')!;
+      const labels = Array.from(select.options).map((option) => option.textContent!.trim());
+
+      expect(labels).toEqual(['All projects', 'Atlas', 'Beacon']);
+      expect(component.projectId()).toBeNull();
+    });
+
+    it('narrows the board by project', () => {
+      component.setProject('10');
+      fixture.detectChanges();
+
+      const matched = component.columns().flatMap((column) => column.tasks);
+      expect(matched.map((task) => task.id).sort()).toEqual([1, 3]);
+    });
+
+    it('combines the project filter with status', () => {
+      component.setProject('10');
+      component.setStatus('Completed');
+      fixture.detectChanges();
+
+      const matched = component.columns().flatMap((column) => column.tasks);
+      expect(matched.map((task) => task.id)).toEqual([3]);
+    });
+
+    it('resets the project filter with Clear', () => {
+      component.setProject('11');
+      expect(component.hasFilters()).toBeTrue();
+
+      component.clearFilters();
+      fixture.detectChanges();
+
+      expect(component.projectId()).toBeNull();
+      expect(component.hasFilters()).toBeFalse();
+    });
+
+    it('shows the filtered-empty state for a project with no visible tasks', () => {
+      component.setProject('99');
+      fixture.detectChanges();
+
+      expect(component.filteredEmpty()).toBeTrue();
+      expect(el().querySelector('[data-testid="board-filtered-empty"]')).not.toBeNull();
+    });
+
+    it('shows the project name on each card', () => {
+      const names = Array.from(el().querySelectorAll('[data-field="card-project"]')).map((node) =>
+        node.textContent!.trim()
+      );
+
+      expect(names.sort()).toEqual(['Atlas', 'Atlas', 'Beacon', 'Beacon']);
     });
 
     it('narrows the board by status', () => {

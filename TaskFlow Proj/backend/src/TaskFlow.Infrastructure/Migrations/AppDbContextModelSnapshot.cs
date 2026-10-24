@@ -625,6 +625,58 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Permissions");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Position", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Positions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Member"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "QA"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Developer"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "DevOps"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "System Admin"
+                        });
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
                 {
                     b.Property<int>("Id")
@@ -950,9 +1002,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -975,9 +1024,6 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("ManagerId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("MfaEnabledAt")
                         .HasColumnType("TEXT");
@@ -1005,9 +1051,6 @@ namespace TaskFlow.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ProjectId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("RoleId")
                         .HasColumnType("INTEGER");
 
@@ -1026,14 +1069,8 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DepartmentId");
-
                     b.HasIndex("Email")
                         .IsUnique();
-
-                    b.HasIndex("ManagerId");
-
-                    b.HasIndex("ProjectId");
 
                     b.HasIndex("RoleId");
 
@@ -1041,6 +1078,50 @@ namespace TaskFlow.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserDepartment", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UserId", "DepartmentId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("UserDepartments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserProjectAllocation", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AllocationPercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsProjectManager")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PositionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UserId", "ProjectId");
+
+                    b.HasIndex("PositionId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("UserProjectAllocations", t =>
+                        {
+                            t.HasCheckConstraint("CK_UserProjectAllocations_AllocationPercent", "\"AllocationPercent\" BETWEEN 1 AND 100");
+                        });
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
@@ -1375,34 +1456,59 @@ namespace TaskFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
-                        .WithMany("Users")
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("TaskFlow.Domain.Entities.User", "Manager")
-                        .WithMany("Reports")
-                        .HasForeignKey("ManagerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
-                        .WithMany("Users")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserDepartment", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                        .WithMany("Memberships")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany("DepartmentMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Department");
 
-                    b.Navigation("Manager");
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserProjectAllocation", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Position", "Position")
+                        .WithMany("Allocations")
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
+                        .WithMany("Allocations")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany("ProjectAllocations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Position");
 
                     b.Navigation("Project");
 
-                    b.Navigation("Role");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
@@ -1414,7 +1520,7 @@ namespace TaskFlow.Infrastructure.Migrations
                 {
                     b.Navigation("ManagerLinks");
 
-                    b.Navigation("Users");
+                    b.Navigation("Memberships");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
@@ -1429,9 +1535,14 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Roles");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Position", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
                 {
-                    b.Navigation("Users");
+                    b.Navigation("Allocations");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Role", b =>
@@ -1443,15 +1554,17 @@ namespace TaskFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
+                    b.Navigation("DepartmentMemberships");
+
                     b.Navigation("ManagedDepartments");
 
                     b.Navigation("ManagerProjects");
 
                     b.Navigation("MfaBackupCodes");
 
-                    b.Navigation("RefreshTokens");
+                    b.Navigation("ProjectAllocations");
 
-                    b.Navigation("Reports");
+                    b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
         }

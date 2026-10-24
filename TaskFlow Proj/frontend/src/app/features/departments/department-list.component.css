@@ -94,7 +94,7 @@
 .department__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin-top: auto;
   padding-top: 0.75rem;
@@ -104,6 +104,15 @@
 .department__actions {
   display: flex;
   gap: 0.25rem;
+}
+
+.department__members-btn {
+  color: var(--tf-primary);
+}
+
+.department__members-btn:hover:not(:disabled) {
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary-hover);
 }
 
 .department--skeleton {

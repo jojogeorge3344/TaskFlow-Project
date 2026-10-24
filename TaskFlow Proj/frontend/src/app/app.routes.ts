@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, mfaSetupGuard, permissionGuard, securitySetupGuard } from './core/auth/auth.guard';
-import { Permissions } from './core/auth/permissions';
+import { DepartmentScreenPermissions, EmployeeScreenPermissions, Permissions } from './core/auth/permissions';
 
 /**
  * Authenticated screens are children of the shell route, so they get the header and side menu
@@ -58,14 +58,14 @@ export const routes: Routes = [
       {
         path: 'admin',
         canActivate: [permissionGuard],
-        data: { permissions: [Permissions.DashboardAdmin] },
+        data: { permissions: [Permissions.DashboardViewOrganization] },
         loadComponent: () =>
           import('./features/dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent)
       },
       {
         path: 'manager',
         canActivate: [permissionGuard],
-        data: { permissions: [Permissions.DashboardManager] },
+        data: { permissions: [Permissions.DashboardViewTeam] },
         loadComponent: () =>
           import('./features/dashboard/manager-dashboard.component').then((m) => m.ManagerDashboardComponent)
       },
@@ -83,16 +83,23 @@ export const routes: Routes = [
           import('./features/projects/project-list.component').then((m) => m.ProjectListComponent)
       },
       {
+        path: 'projects/:id',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.ProjectsView] },
+        loadComponent: () =>
+          import('./features/projects/project-detail.component').then((m) => m.ProjectDetailComponent)
+      },
+      {
         path: 'departments',
         canActivate: [permissionGuard],
-        data: { permissions: [Permissions.DepartmentsManage] },
+        data: { permissions: DepartmentScreenPermissions },
         loadComponent: () =>
           import('./features/departments/department-list.component').then((m) => m.DepartmentListComponent)
       },
       {
         path: 'employees',
         canActivate: [permissionGuard],
-        data: { permissions: [Permissions.EmployeesManage] },
+        data: { permissions: EmployeeScreenPermissions },
         loadComponent: () =>
           import('./features/employees/employee-list.component').then((m) => m.EmployeeListComponent)
       },
@@ -111,12 +118,15 @@ export const routes: Routes = [
           import('./features/reports/report.component').then((m) => m.ReportComponent)
       },
       {
-        // Every signed-in user has a mailbox.
         path: 'mail',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.MailRead] },
         loadComponent: () => import('./features/mail/mail.component').then((m) => m.MailComponent)
       },
       {
         path: 'notifications',
+        canActivate: [permissionGuard],
+        data: { permissions: [Permissions.NotificationsView] },
         loadComponent: () =>
           import('./features/notifications/notification-center.component').then(
             (m) => m.NotificationCenterComponent
@@ -139,7 +149,7 @@ export const routes: Routes = [
       {
         path: 'settings/tfa',
         canActivate: [permissionGuard],
-        data: { permissions: [Permissions.SettingsAi] },
+        data: { permissions: [Permissions.SettingsAiView] },
         loadComponent: () => import('./features/settings/tfa-settings.component').then((m) => m.TfaSettingsComponent)
       },
       {
@@ -153,6 +163,12 @@ export const routes: Routes = [
         // Every signed-in user maintains their own profile (Screen 19).
         path: 'profile',
         loadComponent: () => import('./features/profile/profile.component').then((m) => m.ProfileComponent)
+      },
+      {
+        // Opened from the Security tab on Profile; asks for an authenticator code when the change is submitted.
+        path: 'profile/change-password',
+        loadComponent: () =>
+          import('./features/profile/change-password.component').then((m) => m.ChangePasswordComponent)
       },
       {
         path: 'board',

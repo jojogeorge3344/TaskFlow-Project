@@ -37,12 +37,12 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.True(byName[SystemRoles.Administrator].GetProperty("isSystem").GetBoolean());
         Assert.True(byName[SystemRoles.Manager].GetProperty("isSystem").GetBoolean());
         Assert.True(byName[SystemRoles.Employee].GetProperty("isSystem").GetBoolean());
-        Assert.Equal(PermissionCatalog.All.Count, byName[SystemRoles.Administrator].GetProperty("permissionKeys").GetArrayLength());
-        Assert.Equal(0, byName[SystemRoles.Employee].GetProperty("permissionKeys").GetArrayLength());
+        Assert.Equal(PermissionCatalog.Stored.Count(), byName[SystemRoles.Administrator].GetProperty("permissionKeys").GetArrayLength());
+        Assert.Equal(PermissionCatalog.Stored.Count(permission => permission.GrantedToEmployee), byName[SystemRoles.Employee].GetProperty("permissionKeys").GetArrayLength());
         Assert.Equal(
             PermissionCatalog.All.Select(permission => permission.Key),
             catalog.EnumerateArray().Select(permission => permission.GetProperty("key").GetString()!));
-        Assert.False(catalog.EnumerateArray().Single(permission => permission.GetProperty("key").GetString() == PermissionKeys.RolesManage)
+        Assert.True(catalog.EnumerateArray().Single(permission => permission.GetProperty("key").GetString() == PermissionKeys.RolesManage)
             .GetProperty("isAssignable").GetBoolean());
     }
 
@@ -84,7 +84,10 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task EveryRoleEndpointIsForbiddenToACustomRoleEvenWithManyPermissions()
     {
-        var everythingAssignable = PermissionCatalog.All.Where(permission => permission.IsAssignable).Select(permission => permission.Key).ToArray();
+        var everythingAssignable = PermissionCatalog.All
+            .Where(permission => permission.IsAssignable && permission.Key != PermissionKeys.RolesManage)
+            .Select(permission => permission.Key)
+            .ToArray();
         var roleId = await AddRoleAsync("Almost Admin", everythingAssignable);
         var (client, token) = await SignInInRoleAsync("roles-denied-custom", roleId);
 
@@ -140,15 +143,19 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
-    public async Task RoleManagementCannotBeGivenToACustomRole()
+    public async Task RoleManagementCanBeGivenToACustomRoleButNeverChangesTheSystemRoles()
     {
-        var (client, token) = await SignInAsync("roles-nogrant", SystemRoles.Administrator);
+        var (client, token) = await SignInAsync("roles-grant", SystemRoles.Administrator);
 
-        var response = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Sneaky", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var response = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Delegated Admin", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var roleId = (await JsonOf(response)).GetProperty("id").GetInt32();
+        var (delegated, delegatedToken) = await SignInInRoleAsync("roles-delegated", roleId);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("only be held by the Administrator", (await JsonOf(response)).GetProperty("error").GetString());
-        Assert.False(await DbAsync(db => db.Roles.AnyAsync(role => role.Name == "Sneaky")));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await SendAsync(delegated, HttpMethod.Get, Roles, delegatedToken)).StatusCode);
+        var editSystem = await SendAsync(delegated, HttpMethod.Put, $"{Roles}/{SystemRoles.AdministratorId}", delegatedToken, new { name = "Hacked", permissionKeys = Array.Empty<string>() });
+        Assert.NotEqual(HttpStatusCode.OK, editSystem.StatusCode);
+        Assert.Equal(SystemRoles.Administrator, await DbAsync(db => db.Roles.Where(role => role.Id == SystemRoles.AdministratorId).Select(role => role.Name).SingleAsync()));
     }
 
     [Fact]
@@ -286,7 +293,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     [Fact]
     public async Task OnlyRoleManagersMayChangeARoleEvenWhenTheyMayManageEmployees()
     {
-        var peopleRoleId = await AddRoleAsync("People Managers", PermissionKeys.EmployeesManage, PermissionKeys.EmployeesView);
+        var peopleRoleId = await AddRoleAsync("People Managers", PermissionKeys.EmployeesCreate, PermissionKeys.EmployeesEdit, PermissionKeys.EmployeesView);
         var (client, token) = await SignInInRoleAsync("roles-people-mgr", peopleRoleId);
         await _factory.SeedUserAsync("roles-people-target", "roles-people-target@taskflow.com", Password, SystemRoles.Employee);
         var targetId = await DbAsync(db => db.Users.Where(user => user.Username == "roles-people-target").Select(user => user.Id).SingleAsync());

@@ -37,6 +37,77 @@ public class ManagerScopeTests
         Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
     }
 
+    private static void AddToProject(AnalyticsHarness harness, TaskFlow.Domain.Entities.User user, TaskFlow.Domain.Entities.Project project, bool manages = false)
+    {
+        harness.Db.UserProjectAllocations.Add(new TaskFlow.Domain.Entities.UserProjectAllocation
+        {
+            UserId = user.Id,
+            ProjectId = project.Id,
+            PositionId = 1,
+            AllocationPercent = 40,
+            IsProjectManager = manages
+        });
+        harness.Db.SaveChanges();
+    }
+
+    [Fact]
+    public async Task Team_IncludesActiveMembersOfProjectsTheManagerIsFlaggedOn()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        var project = harness.AddProject("Apollo");
+        var member = harness.AddUser("e1");
+        var inactive = harness.AddUser("e2", isActive: false);
+        var outsider = harness.AddUser("e3");
+        AddToProject(harness, manager, project, manages: true);
+        AddToProject(harness, member, project);
+        AddToProject(harness, inactive, project);
+
+        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.DoesNotContain(outsider.Id, await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Team_IgnoresProjectsTheManagerIsOnWithoutBeingFlagged()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        var project = harness.AddProject("Apollo");
+        var member = harness.AddUser("e1");
+        AddToProject(harness, manager, project, manages: false);
+        AddToProject(harness, member, project);
+
+        Assert.Empty(await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Team_CountsAProjectMemberOnceWhenTheyAreAlsoInAManagedDepartment()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        var department = harness.AddDepartment("Eng", manager);
+        var project = harness.AddProject("Apollo");
+        var member = harness.AddUser("e1", departmentId: department.Id);
+        AddToProject(harness, manager, project, manages: true);
+        AddToProject(harness, member, project);
+
+        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Tasks_IncludeTheTasksOfProjectMembers()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        var project = harness.AddProject("Apollo");
+        var member = harness.AddUser("e1");
+        AddToProject(harness, manager, project, manages: true);
+        AddToProject(harness, member, project);
+        var task = harness.AddTask(member);
+
+        Assert.Equal([task.Id], await TaskIdsAsync(harness, manager.Id));
+    }
+
     [Fact]
     public async Task Team_CountsAUserOnceWhenBothRelationsApply()
     {

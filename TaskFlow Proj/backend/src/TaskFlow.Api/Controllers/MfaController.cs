@@ -108,7 +108,7 @@ public class MfaController : ControllerBase
 
     /// <summary>Administrator reset for someone who lost their phone and their backup codes. Ends the user's sessions.</summary>
     [HttpPost("{id:int}/mfa/reset")]
-    [RequirePermission(PermissionKeys.EmployeesManage)]
+    [RequirePermission(PermissionKeys.EmployeesMfaReset)]
     public async Task<ActionResult> Reset(int id, CancellationToken cancellationToken)
     {
         return await _mfaService.ResetAsync(id, cancellationToken) ? NoContent() : NotFound();

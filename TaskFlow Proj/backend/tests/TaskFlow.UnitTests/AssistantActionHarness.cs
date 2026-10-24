@@ -30,6 +30,8 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
 
         Engineering = new Project { Name = "Engineering", CreatedAt = DateTime.UtcNow };
         Db.Projects.Add(Engineering);
+        EngineeringTeam = new Department { Name = "Engineering team", CreatedAt = DateTime.UtcNow };
+        Db.Departments.Add(EngineeringTeam);
         Db.SaveChanges();
 
         Admin = AddUser("admin", SystemRoles.Administrator);
@@ -43,6 +45,10 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
     public FixedTimeProvider Clock { get; }
     public RolePolicyAuthorizer Authorizer { get; } = new();
     public Project Engineering { get; }
+
+    /// <summary>The department of everyone on the Engineering project: its managers manage it and the rest belong to it, which is how
+    /// a person's manager is found now.</summary>
+    public Department EngineeringTeam { get; }
     public User Admin { get; }
     public User Ravi { get; }
     public User Asha { get; }
@@ -51,12 +57,23 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
     public User AddUser(string username, string role, int? projectId = null, bool isActive = true)
     {
         var user = Tracking.AddUser(username, role, isActive);
-        user.ProjectId = projectId;
-        Db.SaveChanges();
+        TestMemberships.Allocate(Db, user, projectId);
+        if (projectId == Engineering.Id)
+        {
+            if (role == SystemRoles.Manager)
+            {
+                Db.DepartmentManagers.Add(new DepartmentManager { ManagerUserId = user.Id, DepartmentId = EngineeringTeam.Id });
+                Db.SaveChanges();
+            }
+            else
+            {
+                TestMemberships.JoinDepartment(Db, user, EngineeringTeam.Id);
+            }
+        }
         return user;
     }
 
-    public UserService Users => new(Db, new PasswordHasher<User>());
+    public UserService Users => new(Db, new PasswordHasher<User>(), new UserAllocationService(Db));
 
     public MailService Mail => new(Db, Clock, new AppClock(Db, Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
 

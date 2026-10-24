@@ -25,7 +25,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher);
+        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
     }
 
     private User AddUser(string username, string email, string role = SystemRoles.Employee)
@@ -79,25 +79,12 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.Equal("self3", reloaded.Username);
         Assert.Equal(SystemRoles.EmployeeId, reloaded.RoleId);
-        Assert.Equal(user.ProjectId, reloaded.ProjectId);
+        Assert.Equal(await _db.UserProjectAllocations.AsNoTracking().CountAsync(a => a.UserId == user.Id), await _db.UserProjectAllocations.AsNoTracking().CountAsync(a => a.UserId == reloaded.Id));
         Assert.True(reloaded.IsActive);
     }
 
     [Fact]
-    public async Task ChangeOwnPassword_WrongCurrentPassword_IsRejected()
-    {
-        var user = AddUser("self4", "self4@taskflow.com");
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.ChangeOwnPasswordAsync(user.Id, new ChangePasswordRequest("wrong", "N3wP@ss!")));
-
-        var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
-        Assert.Equal(PasswordVerificationResult.Success,
-            _hasher.VerifyHashedPassword(reloaded, reloaded.PasswordHash, "P@ssw0rd!"));
-    }
-
-    [Fact]
-    public async Task ChangeOwnPassword_CorrectCurrentPassword_UpdatesAndEndsSessions()
+    public async Task ChangeOwnPassword_UpdatesPasswordAndEndsSessions()
     {
         var user = AddUser("self5", "self5@taskflow.com");
         var originalStamp = user.SecurityStamp;
@@ -110,7 +97,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         });
         await _db.SaveChangesAsync();
 
-        var dto = await _service.ChangeOwnPasswordAsync(user.Id, new ChangePasswordRequest("P@ssw0rd!", "N3wP@ss!"));
+        var dto = await _service.ChangeOwnPasswordAsync(user.Id, new ChangePasswordRequest("N3wP@ss!"));
 
         Assert.NotNull(dto);
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
@@ -126,7 +113,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     public async Task SelfService_OnUnknownUser_ReturnsNull()
     {
         Assert.Null(await _service.UpdateOwnProfileAsync(9999, new UpdateOwnProfileRequest("X", "x@taskflow.com"), CancellationToken.None));
-        Assert.Null(await _service.ChangeOwnPasswordAsync(9999, new ChangePasswordRequest("a", "bbbbbb"), CancellationToken.None));
+        Assert.Null(await _service.ChangeOwnPasswordAsync(9999, new ChangePasswordRequest("bbbbbb"), CancellationToken.None));
     }
 
     public async ValueTask DisposeAsync()

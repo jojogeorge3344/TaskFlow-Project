@@ -117,3 +117,98 @@
     grid-template-columns: minmax(0, 1fr) 18rem;
   }
 }
+/* ---------- Edit form ---------- */
+.edit-form {
+  display: grid;
+  gap: var(--tf-space-4);
+  margin-bottom: var(--tf-space-4);
+}
+
+.edit-form__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-4) var(--tf-space-5);
+}
+
+.edit-form__eyebrow {
+  display: block;
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.edit-form__title {
+  margin: 0.125rem 0 0;
+  font-size: 1.25rem;
+}
+
+.edit-form__project {
+  min-width: 0;
+  margin: 0;
+}
+
+.edit-form__project dt {
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.edit-form__project dd {
+  margin: 0.125rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.edit-form__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--tf-space-4);
+}
+
+.edit-form__narrow {
+  max-width: 16rem;
+}
+
+/* Save and Cancel stay in reach while a long form scrolls underneath. */
+.edit-form__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-surface);
+  box-shadow: 0 -4px 12px rgb(15 23 42 / 6%);
+}
+
+@media (min-width: 640px) {
+  .edit-form__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .edit-form__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 479.98px) {
+  .edit-form__narrow {
+    max-width: none;
+  }
+
+  .edit-form__actions .tf-btn {
+    flex: 1;
+  }
+}

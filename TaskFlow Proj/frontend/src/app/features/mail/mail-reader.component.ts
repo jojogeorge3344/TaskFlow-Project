@@ -1,4 +1,6 @@
-import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
+import { Component, effect, inject, input, output, signal, untracked, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
 import { MailAttachment, MailComposeMode, MailItemDetail, MailMessage } from '../../core/models';
@@ -17,6 +19,16 @@ import { displayName, formatSize, fullDate, saveBlob } from './mail-format';
   styleUrl: './mail-reader.component.css'
 })
 export class MailReaderComponent {
+  private readonly permissionAuth = inject(AuthService);
+  readonly canCompose = computed(() => {
+    this.permissionAuth.currentUser();
+    return this.permissionAuth.hasPermission(Permissions.MailCompose);
+  });
+  readonly canOrganize = computed(() => {
+    this.permissionAuth.currentUser();
+    return this.permissionAuth.hasPermission(Permissions.MailOrganize);
+  });
+
   private readonly mailService = inject(MailService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);

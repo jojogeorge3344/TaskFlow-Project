@@ -58,10 +58,25 @@ export class EmployeeListComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly busyId = signal<number | null>(null);
 
-  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  readonly canCreate = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.EmployeesCreate);
+  });
+
+  readonly canEdit = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.EmployeesEdit);
+  });
+
+  readonly canChangeStatus = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.EmployeesStatus);
+  });
+
+  /** Deleting an employee needs its own permission. */
   readonly canDelete = computed(() => {
     this.authService.currentUser();
-    return this.authService.hasPermission(Permissions.RolesManage);
+    return this.authService.hasPermission(Permissions.EmployeesDelete);
   });
 
   /** What is typed in the search box; `search` is the debounced value that is applied. */
@@ -136,7 +151,7 @@ export class EmployeeListComponent implements OnInit {
     this.departmentService.getAll().subscribe({
       next: (departments) => this.departments.set(departments)
     });
-    if (this.authService.hasPermission(Permissions.RolesManage)) {
+    if (this.authService.hasPermission(Permissions.RolesManage) || this.authService.hasPermission(Permissions.EmployeesRoleAssign)) {
       // Custom roles join the filter; the standard three stay if the list cannot be loaded.
       this.roleService.list().subscribe({
         next: (roles) => this.roles.set(roles.map((role) => role.name))
@@ -232,7 +247,7 @@ export class EmployeeListComponent implements OnInit {
   /** Whether the signed-in user may remove another user's MFA. */
   canResetMfa(): boolean {
     this.authService.currentUser();
-    return this.authService.hasPermission(Permissions.EmployeesManage);
+    return this.authService.hasPermission(Permissions.EmployeesMfaReset);
   }
 
   async resetMfa(employee: User): Promise<void> {

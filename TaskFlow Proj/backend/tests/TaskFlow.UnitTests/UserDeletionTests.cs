@@ -27,7 +27,7 @@ public class UserDeletionTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher);
+        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
     }
 
     private User AddUser(string username, int roleId = SystemRoles.EmployeeId, bool active = true, int? managerId = null)
@@ -39,7 +39,6 @@ public class UserDeletionTests : IAsyncDisposable
             Email = $"{username}@taskflow.com",
             RoleId = roleId,
             IsActive = active,
-            ManagerId = managerId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             SecurityStamp = "stamp-1"
@@ -47,6 +46,11 @@ public class UserDeletionTests : IAsyncDisposable
         user.PasswordHash = _hasher.HashPassword(user, "P@ssw0rd!");
         _db.Users.Add(user);
         _db.SaveChanges();
+        if (managerId is int manager)
+        {
+            TestMemberships.ReportTo(_db, user, manager);
+        }
+
         return user;
     }
 
@@ -204,20 +208,38 @@ public class UserDeletionTests : IAsyncDisposable
 
         await _service.DeleteAsync(manager.Id, admin.Id, default);
 
-        Assert.Null((await ReloadAsync(report.Id)).ManagerId);
+        Assert.Empty((await _service.GetByIdAsync(report.Id, default))!.Managers);
         Assert.False(await _db.ManagerProjects.AnyAsync(link => link.ManagerUserId == manager.Id));
     }
 
     [Fact]
-    public async Task Delete_ClearsTheDeletedEmployeesOwnManager()
+    public async Task Delete_TakesTheDeletedEmployeeOffTheirManagersReports()
     {
         var admin = AddUser("admin8", SystemRoles.AdministratorId);
         var manager = AddUser("mgr8", SystemRoles.ManagerId);
         var employee = AddUser("emp8", managerId: manager.Id);
+        Assert.Single((await _service.GetByIdAsync(manager.Id, default))!.Reports!);
 
         await _service.DeleteAsync(employee.Id, admin.Id, default);
 
-        Assert.Null((await ReloadAsync(employee.Id)).ManagerId);
+        Assert.Empty((await _service.GetByIdAsync(manager.Id, default))!.Reports!);
+    }
+
+    [Fact]
+    public async Task Delete_KeepsTheDeletedEmployeesProjectRowsButTheyNoLongerCount()
+    {
+        var admin = AddUser("admin9", SystemRoles.AdministratorId);
+        var employee = AddUser("emp9");
+        var project = new Project { Name = "Kept for history", CreatedAt = DateTime.UtcNow };
+        _db.Projects.Add(project);
+        _db.SaveChanges();
+        TestMemberships.Allocate(_db, employee, project.Id, 60);
+
+        await _service.DeleteAsync(employee.Id, admin.Id, default);
+
+        Assert.Equal(1, await _db.UserProjectAllocations.IgnoreQueryFilters().CountAsync(a => a.UserId == employee.Id));
+        Assert.Empty(await _db.UserProjectAllocations.Where(a => a.UserId == employee.Id).ToListAsync());
+        Assert.Equal(0, (await new ProjectService(_db, new UserAllocationService(_db)).GetAllAsync(default)).Single(p => p.Id == project.Id).EmployeeCount);
     }
 
     public async ValueTask DisposeAsync()

@@ -63,6 +63,14 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         return new TaskTrackingServiceHarness(connection, db);
     }
 
+    public Project AddProject(string? name = null)
+    {
+        var project = new Project { Name = name ?? $"Project {Guid.NewGuid():N}"[..20], CreatedAt = DateTime.UtcNow };
+        Db.Projects.Add(project);
+        Db.SaveChanges();
+        return project;
+    }
+
     public User AddUser(string username, string role = SystemRoles.Employee, bool isActive = true)
     {
         var user = new User

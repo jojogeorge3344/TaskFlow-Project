@@ -98,7 +98,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher);
+        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
     }
 
     private User AddUser(string username, string email, bool deleted = false)

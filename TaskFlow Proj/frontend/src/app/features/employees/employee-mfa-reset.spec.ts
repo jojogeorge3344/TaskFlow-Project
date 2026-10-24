@@ -14,6 +14,7 @@ import { fakeAuthService } from '../../testing/permissions';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeDetailsPanelComponent } from './employee-details-panel.component';
 import { EmployeeListComponent } from './employee-list.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 const withMfa: User = {
   id: 1,
@@ -27,7 +28,8 @@ const withMfa: User = {
   createdAt: '2026-09-05T00:00:00Z',
   lastLoginAt: null,
   mfaEnabled: true,
-  backupCodesRemaining: 7
+  backupCodesRemaining: 7,
+  ...NO_ALLOCATIONS
 };
 
 describe('EmployeeDetailsPanelComponent two-step status', () => {
@@ -106,7 +108,7 @@ describe('EmployeeListComponent MFA reset', () => {
   afterEach(() => document.querySelectorAll('dialog[open]').forEach((d) => (d as HTMLDialogElement).close()));
 
   it('does nothing when the confirmation is cancelled', fakeAsync(() => {
-    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesManage]);
+    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesMfaReset]);
     openDetails(fixture);
 
     (el(fixture).querySelector('[data-action="reset-mfa"]') as HTMLButtonElement).click();
@@ -118,7 +120,7 @@ describe('EmployeeListComponent MFA reset', () => {
   }));
 
   it('resets after confirmation, shows a toast and shows MFA as off', fakeAsync(() => {
-    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesManage]);
+    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesMfaReset]);
     const toast = spyOn(TestBed.inject(ToastService), 'success');
     openDetails(fixture);
 
@@ -137,7 +139,7 @@ describe('EmployeeListComponent MFA reset', () => {
 
   it('shows the server message when the reset fails', fakeAsync(() => {
     resetSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404, error: { error: 'Not found.' } })));
-    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesManage]);
+    const fixture = create([Permissions.EmployeesView, Permissions.EmployeesMfaReset]);
     const toast = spyOn(TestBed.inject(ToastService), 'error');
     openDetails(fixture);
 

@@ -11,8 +11,8 @@ describe('WorkloadComponent', () => {
     return {
       userId: 1,
       fullName: 'Joe Thomas',
-      projectId: 1,
-      projectName: 'Engineering',
+      projects: [{ projectId: 1, projectName: 'Engineering', positionId: 1, positionName: 'Member', percent: 100 }],
+      allocatedPercent: 100,
       activeTasks: 1,
       highPriorityTasks: 0,
       overdueTasks: 0,
@@ -22,8 +22,8 @@ describe('WorkloadComponent', () => {
   }
 
   const projects: ProjectWithCount[] = [
-    { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2 },
-    { id: 2, name: 'Sales', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 1 }
+    { id: 1, name: 'Engineering', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 2, managers: [] },
+    { id: 2, name: 'Sales', description: null, createdAt: '2026-01-01T00:00:00Z', employeeCount: 1, managers: [] }
   ];
 
   let getWorkloadSpy: jasmine.Spy;
@@ -43,7 +43,7 @@ describe('WorkloadComponent', () => {
     getWorkloadSpy = jasmine.createSpy('getWorkload').and.returnValue(
       of([
         employee({ userId: 1, fullName: 'Joe Thomas', activeTasks: 1 }),
-        employee({ userId: 2, fullName: 'Maya Manager', projectId: 2, projectName: 'Sales', activeTasks: 1 }),
+        employee({ userId: 2, fullName: 'Maya Manager', projects: [{ projectId: 2, projectName: 'Sales', positionId: 1, positionName: 'Member', percent: 60 }], allocatedPercent: 60, activeTasks: 1 }),
         employee({ userId: 3, fullName: 'Sam Overloaded', activeTasks: 4, overdueTasks: 1, highPriorityTasks: 2, completedTasks: 3 })
       ])
     );
@@ -69,6 +69,30 @@ describe('WorkloadComponent', () => {
     expect(el(fixture).querySelector('h1')?.textContent).toContain('Employee Workload');
     expect(el(fixture).textContent).toContain('3 employees');
     expect(getWorkloadSpy).toHaveBeenCalledWith(null);
+  });
+
+  it('shows every project of a person with its percentage, and the total allocated', () => {
+    getWorkloadSpy.and.returnValue(
+      of([
+        employee({
+          userId: 4,
+          fullName: 'Two Projects',
+          projects: [
+            { projectId: 1, projectName: 'Apollo', positionId: 3, positionName: 'QA', percent: 60 },
+            { projectId: 2, projectName: 'Zephyr', positionId: 4, positionName: 'Developer', percent: 40 }
+          ],
+          allocatedPercent: 100
+        }),
+        employee({ userId: 5, fullName: 'No Project', projects: [], allocatedPercent: 0 })
+      ])
+    );
+    const fixture = create();
+
+    const rows = el(fixture).querySelectorAll('tr.workload-row');
+    expect(rows[0].querySelector('[data-field="projects"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Apollo 60%, Zephyr 40%');
+    expect(rows[0].querySelector('[data-field="allocated"]')?.textContent?.trim()).toBe('100%');
+    expect(rows[1].querySelector('[data-field="projects"]')?.textContent?.trim()).toBe('—');
+    expect(rows[1].querySelector('[data-field="allocated"]')?.textContent?.trim()).toBe('0%');
   });
 
   it('filters the workload by project', () => {

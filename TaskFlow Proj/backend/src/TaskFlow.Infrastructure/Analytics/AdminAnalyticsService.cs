@@ -103,7 +103,7 @@ public class AdminAnalyticsService : IAdminAnalyticsService
 
         if (filter.DepartmentId is int departmentId)
         {
-            employees = employees.Where(user => user.DepartmentId == departmentId);
+            employees = employees.Where(user => user.DepartmentMemberships.Any(m => m.DepartmentId == departmentId));
         }
 
         if (filter.ManagerId is int managerId)
@@ -202,12 +202,18 @@ public class AdminAnalyticsService : IAdminAnalyticsService
         ResolvedAnalyticsFilter filter,
         CancellationToken cancellationToken)
     {
-        var users = _dbContext.Users.IgnoreQueryFilters();
+        // A person in several departments counts in each of them; a person in none falls in the unassigned bucket.
+        var memberships = _dbContext.UserDepartments.IgnoreQueryFilters();
         var perDepartment = await CountByAsync(
             tasks,
             filter.NowUtc,
             query => query
-                .Join(users, task => task.AssignedToUserId, user => user.Id, (task, user) => user.DepartmentId ?? NoKey)
+                .SelectMany(
+                    task => memberships
+                        .Where(membership => membership.UserId == task.AssignedToUserId)
+                        .Select(membership => (int?)membership.DepartmentId)
+                        .DefaultIfEmpty(),
+                    (task, departmentId) => departmentId ?? NoKey)
                 .GroupBy(departmentId => departmentId)
                 .Select(group => new KeyCount(group.Key, group.Count())),
             cancellationToken);
@@ -303,15 +309,14 @@ public class AdminAnalyticsService : IAdminAnalyticsService
             .Select(user => new { user.Id, user.FullName })
             .ToListAsync(cancellationToken);
 
-        var users = _dbContext.Users;
-        var pairs = users
-            .Where(user => user.ManagerId != null)
-            .Select(user => new { ManagerId = user.ManagerId!.Value, UserId = user.Id })
-            .Union(_dbContext.DepartmentManagers.Join(
-                users,
-                link => (int?)link.DepartmentId,
-                user => user.DepartmentId,
-                (link, user) => new { ManagerId = link.ManagerUserId, UserId = user.Id }));
+        // A manager's team is everyone in the departments they manage.
+        var pairs = _dbContext.DepartmentManagers
+            .Join(
+                _dbContext.UserDepartments,
+                link => link.DepartmentId,
+                membership => membership.DepartmentId,
+                (link, membership) => new { ManagerId = link.ManagerUserId, UserId = membership.UserId })
+            .Distinct();
 
         var teamTasks = await CountByAsync(
             tasks,

@@ -2,8 +2,23 @@ import { Permissions } from '../core/auth/permissions';
 
 /** The permissions each system role holds, as the API seeds them. For specs only. */
 const MANAGER_PERMISSIONS: string[] = [
-  Permissions.DashboardManager,
+  Permissions.DashboardViewTeam,
+  Permissions.DashboardAnalytics,
+  Permissions.DashboardFilters,
+  Permissions.TasksStatus,
+  Permissions.TasksCommentCreate,
+  Permissions.TasksActivityView,
+  Permissions.ReportsExport,
+  Permissions.MailRead,
+  Permissions.MailCompose,
+  Permissions.MailOrganize,
+  Permissions.MailAttachments,
+  Permissions.NotificationsView,
+  Permissions.NotificationsManage,
+  Permissions.AssistantChat,
+  Permissions.AssistantActions,
   Permissions.ProjectsView,
+  Permissions.DepartmentsView,
   Permissions.EmployeesView,
   Permissions.TasksViewAll,
   Permissions.TasksCreate,
@@ -24,7 +39,21 @@ export function systemPermissions(role: string): string[] {
     case 'Manager':
       return [...MANAGER_PERMISSIONS];
     default:
-      return [];
+      return [
+        Permissions.DashboardAnalytics,
+        Permissions.DashboardFilters,
+        Permissions.TasksStatus,
+        Permissions.TasksCommentCreate,
+        Permissions.TasksActivityView,
+        Permissions.MailRead,
+        Permissions.MailCompose,
+        Permissions.MailOrganize,
+        Permissions.MailAttachments,
+        Permissions.NotificationsView,
+        Permissions.NotificationsManage,
+        Permissions.AssistantChat,
+        Permissions.AssistantActions
+      ];
   }
 }
 

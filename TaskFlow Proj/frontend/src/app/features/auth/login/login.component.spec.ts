@@ -42,6 +42,14 @@ describe('LoginComponent', () => {
     expect(component.form.controls.password.touched).toBeTrue();
   });
 
+  it('does not call the API for a username that is not an email address', () => {
+    component.form.setValue({ emailOrUsername: 'admin', password: 'secret' });
+    component.submit();
+
+    httpMock.expectNone('/api/v1/auth/login');
+    expect(component.form.controls.emailOrUsername.hasError('email')).toBeTrue();
+  });
+
   it('logs in and navigates to the dashboard for the returned role', () => {
     component.form.setValue({ emailOrUsername: 'admin@taskflow.com', password: 'secret' });
     component.submit();
@@ -65,16 +73,16 @@ describe('LoginComponent', () => {
   });
 
   it('shows the generic error when credentials are rejected', () => {
-    component.form.setValue({ emailOrUsername: 'admin', password: 'wrong' });
+    component.form.setValue({ emailOrUsername: 'admin@taskflow.com', password: 'wrong' });
     component.submit();
 
     httpMock.expectOne('/api/v1/auth/login').flush({}, { status: 401, statusText: 'Unauthorized' });
 
-    expect(component.errorMessage()).toBe('Invalid email/username or password.');
+    expect(component.errorMessage()).toBe('Invalid email or password.');
 
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelector('.login__error')?.textContent)
-      .toContain('Invalid email/username or password.');
+      .toContain('Invalid email or password.');
   });
 
   it('shows no sign-out notice by default', () => {
@@ -89,6 +97,21 @@ describe('LoginComponent', () => {
 
     component.togglePassword();
     expect(component.showPassword()).toBeFalse();
+  });
+
+  it('shows the password toggle as an icon button inside the password field', () => {
+    const root = fixture.nativeElement as HTMLElement;
+    const toggle = root.querySelector('.login__password button[data-action="toggle-password"]') as HTMLButtonElement;
+
+    expect(toggle.querySelector('svg')).toBeTruthy();
+    expect(toggle.textContent?.trim()).toBe('');
+    expect(toggle.getAttribute('aria-label')).toBe('Show password');
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+    expect((root.querySelector('input[formcontrolname="password"]') as HTMLInputElement).type).toBe('text');
   });
 });
 

@@ -13,19 +13,128 @@ public class UserService : IUserService
 
     private readonly AppDbContext _dbContext;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IUserAllocationService _allocations;
 
-    public UserService(AppDbContext dbContext, IPasswordHasher<User> passwordHasher)
+    public UserService(AppDbContext dbContext, IPasswordHasher<User> passwordHasher, IUserAllocationService allocations)
     {
         _dbContext = dbContext;
         _passwordHasher = passwordHasher;
+        _allocations = allocations;
+    }
+
+    /// <summary>Loads users as DTOs. A user's managers are the managers of their departments plus the flagged managers of the
+    /// projects they are on, and a manager's reports are the people in the departments they manage plus the people on the
+    /// projects they manage; neither is stored on the user, so both are read in their own batched queries (a correlated
+    /// subquery per row cannot be translated on SQLite).</summary>
+    private async Task<List<UserDto>> LoadDtosAsync(IQueryable<User> users, CancellationToken cancellationToken)
+    {
+        var empty = (IReadOnlyList<UserManagerDto>)Array.Empty<UserManagerDto>();
+        var emptyReports = (IReadOnlyList<ManagerReportDto>)Array.Empty<ManagerReportDto>();
+
+        var dtos = await users.Select(u => new UserDto(
+            u.Id,
+            u.EmployeeCode,
+            u.FullName,
+            u.Username,
+            u.Email,
+            u.RoleId,
+            u.Role.Name,
+            u.IsActive,
+            u.CreatedAt,
+            u.UpdatedAt,
+            u.LastLoginAt,
+            u.ProjectAllocations
+                .OrderBy(a => a.Project.Name)
+                .Select(a => new ProjectAllocationDto(a.ProjectId, a.Project.Name, a.PositionId, a.Position.Name, a.AllocationPercent))
+                .ToList(),
+            u.DepartmentMemberships
+                .OrderBy(m => m.Department.Name)
+                .Select(m => new UserDepartmentDto(m.DepartmentId, m.Department.Name))
+                .ToList(),
+            empty,
+            u.ManagerProjects
+                .OrderBy(link => link.Project.Name)
+                .Select(link => new ManagerProjectDto(link.ProjectId, link.Project.Name))
+                .ToList(),
+            emptyReports,
+            u.MfaEnabledAt != null,
+            u.MfaBackupCodes.Count(code => code.UsedAt == null),
+            u.MobileNumber)).ToListAsync(cancellationToken);
+
+        if (dtos.Count == 0)
+        {
+            return dtos;
+        }
+
+        var ids = dtos.Select(dto => dto.Id).ToList();
+
+        var managerRows = await (
+            from membership in _dbContext.UserDepartments
+            join link in _dbContext.DepartmentManagers on membership.DepartmentId equals link.DepartmentId
+            join manager in _dbContext.Users on link.ManagerUserId equals manager.Id
+            where ids.Contains(membership.UserId) && manager.Id != membership.UserId
+            select new { membership.UserId, ManagerId = manager.Id, manager.FullName })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var projectManagerRows = await (
+            from member in _dbContext.UserProjectAllocations
+            join lead in _dbContext.UserProjectAllocations on member.ProjectId equals lead.ProjectId
+            join manager in _dbContext.Users on lead.UserId equals manager.Id
+            where lead.IsProjectManager && ids.Contains(member.UserId) && lead.UserId != member.UserId
+            select new { member.UserId, ManagerId = manager.Id, manager.FullName })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var managersByUser = managerRows
+            .Concat(projectManagerRows)
+            .DistinctBy(row => (row.UserId, row.ManagerId))
+            .GroupBy(row => row.UserId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<UserManagerDto>)group
+                    .OrderBy(row => row.FullName).ThenBy(row => row.ManagerId)
+                    .Select(row => new UserManagerDto(row.ManagerId, row.FullName))
+                    .ToList());
+
+        var reportRows = await (
+            from link in _dbContext.DepartmentManagers
+            join membership in _dbContext.UserDepartments on link.DepartmentId equals membership.DepartmentId
+            join report in _dbContext.Users on membership.UserId equals report.Id
+            where ids.Contains(link.ManagerUserId) && report.Id != link.ManagerUserId
+            select new { link.ManagerUserId, ReportId = report.Id, report.FullName })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var projectReportRows = await (
+            from lead in _dbContext.UserProjectAllocations
+            join member in _dbContext.UserProjectAllocations on lead.ProjectId equals member.ProjectId
+            join report in _dbContext.Users on member.UserId equals report.Id
+            where lead.IsProjectManager && ids.Contains(lead.UserId) && report.Id != lead.UserId
+            select new { ManagerUserId = lead.UserId, ReportId = report.Id, report.FullName })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var reportsByManager = reportRows
+            .Concat(projectReportRows)
+            .DistinctBy(row => (row.ManagerUserId, row.ReportId))
+            .GroupBy(row => row.ManagerUserId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ManagerReportDto>)group
+                    .OrderBy(row => row.FullName).ThenBy(row => row.ReportId)
+                    .Select(row => new ManagerReportDto(row.ReportId, row.FullName))
+                    .ToList());
+
+        return dtos
+            .Select(dto => dto with
+            {
+                Managers = managersByUser.GetValueOrDefault(dto.Id) ?? empty,
+                Reports = reportsByManager.GetValueOrDefault(dto.Id) ?? emptyReports
+            })
+            .ToList();
     }
 
     public async Task<IReadOnlyCollection<UserDto>> GetAllAsync(UserListFilter? filter, CancellationToken cancellationToken)
     {
         var query = _dbContext.Users
             .AsNoTracking()
-            .Include(u => u.Project)
-            .Include(u => u.Role)
             .Where(u => !u.IsDeleted)
             .AsQueryable();
 
@@ -42,7 +151,14 @@ public class UserService : IUserService
 
             if (filter.ProjectId.HasValue)
             {
-                query = query.Where(u => u.ProjectId == filter.ProjectId.Value);
+                var projectId = filter.ProjectId.Value;
+                query = query.Where(u => u.ProjectAllocations.Any(a => a.ProjectId == projectId));
+            }
+
+            if (filter.DepartmentId.HasValue)
+            {
+                var departmentId = filter.DepartmentId.Value;
+                query = query.Where(u => u.DepartmentMemberships.Any(m => m.DepartmentId == departmentId));
             }
 
             if (!string.IsNullOrWhiteSpace(filter.Role))
@@ -57,81 +173,13 @@ public class UserService : IUserService
             }
         }
 
-        var users = await query
-            .OrderBy(u => u.FullName)
-            .Select(u => new UserDto(
-                u.Id,
-                u.EmployeeCode,
-                u.FullName,
-                u.Username,
-                u.Email,
-                u.RoleId,
-                u.Role.Name,
-                u.IsActive,
-                u.CreatedAt,
-                u.UpdatedAt,
-                u.LastLoginAt,
-                u.ProjectId,
-                u.Project != null ? u.Project.Name : null,
-                u.DepartmentId,
-                u.Department != null ? u.Department.Name : null,
-                u.ManagerId,
-                u.Manager != null ? u.Manager.FullName : null,
-                u.ManagerProjects
-                    .OrderBy(link => link.Project.Name)
-                    .Select(link => new ManagerProjectDto(link.ProjectId, link.Project.Name))
-                    .ToList(),
-                u.Reports
-                    .OrderBy(report => report.FullName)
-                    .Select(report => new ManagerReportDto(report.Id, report.FullName))
-                    .ToList(),
-                u.MfaEnabledAt != null,
-                u.MfaBackupCodes.Count(code => code.UsedAt == null),
-                u.MobileNumber))
-            .ToListAsync(cancellationToken);
-
-        return users;
+        return await LoadDtosAsync(query.OrderBy(u => u.FullName), cancellationToken);
     }
 
     public async Task<UserDto?> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
-        var user = await _dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Project)
-            .Include(u => u.Role)
-            .Where(u => u.Id == id && !u.IsDeleted)
-            .Select(u => new UserDto(
-                u.Id,
-                u.EmployeeCode,
-                u.FullName,
-                u.Username,
-                u.Email,
-                u.RoleId,
-                u.Role.Name,
-                u.IsActive,
-                u.CreatedAt,
-                u.UpdatedAt,
-                u.LastLoginAt,
-                u.ProjectId,
-                u.Project != null ? u.Project.Name : null,
-                u.DepartmentId,
-                u.Department != null ? u.Department.Name : null,
-                u.ManagerId,
-                u.Manager != null ? u.Manager.FullName : null,
-                u.ManagerProjects
-                    .OrderBy(link => link.Project.Name)
-                    .Select(link => new ManagerProjectDto(link.ProjectId, link.Project.Name))
-                    .ToList(),
-                u.Reports
-                    .OrderBy(report => report.FullName)
-                    .Select(report => new ManagerReportDto(report.Id, report.FullName))
-                    .ToList(),
-                u.MfaEnabledAt != null,
-                u.MfaBackupCodes.Count(code => code.UsedAt == null),
-                u.MobileNumber))
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return user;
+        var users = await LoadDtosAsync(_dbContext.Users.AsNoTracking().Where(u => u.Id == id && !u.IsDeleted), cancellationToken);
+        return users.FirstOrDefault();
     }
 
     public async Task<UserDto?> GetOwnAsync(int id, CancellationToken cancellationToken)
@@ -159,24 +207,14 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email or username already exists.");
         }
 
-        if (request.ProjectId.HasValue)
+        if (request.ProjectAllocations is not null)
         {
-            var projectExists = await _dbContext.Projects
-                .AnyAsync(p => p.Id == request.ProjectId.Value && !p.IsDeleted, cancellationToken);
-            if (!projectExists)
-            {
-                throw new InvalidOperationException("Project does not exist.");
-            }
+            await _allocations.ValidateForUserAsync(request.ProjectAllocations, cancellationToken);
         }
 
-        if (request.DepartmentId.HasValue)
+        if (request.DepartmentIds is not null)
         {
-            var departmentExists = await _dbContext.Departments
-                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
-            if (!departmentExists)
-            {
-                throw new InvalidOperationException("Department does not exist.");
-            }
+            await _allocations.ValidateDepartmentsAsync(request.DepartmentIds, cancellationToken);
         }
 
         var role = await RequireRoleAsync(request.RoleId, cancellationToken);
@@ -190,14 +228,13 @@ public class UserService : IUserService
             RoleId = role.Id,
             Role = role,
             IsActive = request.IsActive,
-            ProjectId = request.ProjectId,
-            DepartmentId = request.DepartmentId,
             SecurityStamp = NewSecurityStamp(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+        await _allocations.StageForUserAsync(user, request.ProjectAllocations, request.DepartmentIds, cancellationToken);
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -207,7 +244,6 @@ public class UserService : IUserService
     public async Task<UserDto?> UpdateAsync(int id, UpdateUserRequest request, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -233,24 +269,14 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email or username already exists.");
         }
 
-        if (request.ProjectId.HasValue)
+        if (request.ProjectAllocations is not null)
         {
-            var projectExists = await _dbContext.Projects
-                .AnyAsync(p => p.Id == request.ProjectId.Value && !p.IsDeleted, cancellationToken);
-            if (!projectExists)
-            {
-                throw new InvalidOperationException("Project does not exist.");
-            }
+            await _allocations.ValidateForUserAsync(request.ProjectAllocations, cancellationToken);
         }
 
-        if (request.DepartmentId.HasValue)
+        if (request.DepartmentIds is not null)
         {
-            var departmentExists = await _dbContext.Departments
-                .AnyAsync(d => d.Id == request.DepartmentId.Value && !d.IsDeleted, cancellationToken);
-            if (!departmentExists)
-            {
-                throw new InvalidOperationException("Department does not exist.");
-            }
+            await _allocations.ValidateDepartmentsAsync(request.DepartmentIds, cancellationToken);
         }
 
         // An empty password keeps the current one; anything else must be a real password.
@@ -289,8 +315,7 @@ public class UserService : IUserService
         user.Email = email;
         user.RoleId = role.Id;
         user.Role = role;
-        user.ProjectId = request.ProjectId;
-        user.DepartmentId = request.DepartmentId;
+        await _allocations.StageForUserAsync(user, request.ProjectAllocations, request.DepartmentIds, cancellationToken);
         user.UpdatedAt = now;
 
         if (passwordChanged)
@@ -312,7 +337,6 @@ public class UserService : IUserService
     public async Task<UserDto?> UpdateStatusAsync(int id, UserStatusRequest request, CancellationToken cancellationToken)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -341,7 +365,6 @@ public class UserService : IUserService
     public async Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
@@ -385,33 +408,15 @@ public class UserService : IUserService
         return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
-    public async Task<bool> CheckOwnPasswordAsync(int id, string? password, CancellationToken cancellationToken = default)
-    {
-        var user = await _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
-
-        return user is not null
-            && !string.IsNullOrEmpty(password)
-            && _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Success;
-    }
-
     public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users
-            .Include(u => u.Project)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted, cancellationToken);
 
         if (user is null)
         {
             return null;
-        }
-
-        var verification = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword!);
-        if (verification != PasswordVerificationResult.Success)
-        {
-            throw new InvalidOperationException("Current password is incorrect.");
         }
 
         var now = DateTime.UtcNow;
@@ -425,81 +430,18 @@ public class UserService : IUserService
         return (await GetByIdAsync(user.Id, cancellationToken))!;
     }
 
-    public async Task<UserDto?> UpdateManagerAssignmentsAsync(int id, ManagerAssignmentRequest request, CancellationToken cancellationToken)
-    {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-        if (user is null)
-        {
-            return null;
-        }
-
-        var projectIds = request.ManagerProjectIds?.Distinct().ToList() ?? [];
-        if (projectIds.Count > 0)
-        {
-            if (user.RoleId != SystemRoles.ManagerId)
-            {
-                throw new InvalidOperationException("Only a Manager can be assigned projects.");
-            }
-
-            var existing = await _dbContext.Projects.CountAsync(p => projectIds.Contains(p.Id), cancellationToken);
-            if (existing != projectIds.Count)
-            {
-                throw new InvalidOperationException("One or more projects do not exist.");
-            }
-        }
-
-        if (request.ManagerId is int managerId)
-        {
-            if (managerId == id)
-            {
-                throw new InvalidOperationException("A user cannot be their own manager.");
-            }
-
-            var manager = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == managerId, cancellationToken);
-            if (manager is null || manager.RoleId != SystemRoles.ManagerId || !manager.IsActive)
-            {
-                throw new InvalidOperationException("The manager must be an active Manager.");
-            }
-
-            // Walking up from the chosen manager must never come back to this user.
-            var cursor = manager.ManagerId;
-            for (var steps = 0; cursor is int above && steps < 100; steps++)
-            {
-                if (above == id)
-                {
-                    throw new InvalidOperationException("That would make two people each other's manager.");
-                }
-
-                cursor = await _dbContext.Users.Where(u => u.Id == above).Select(u => u.ManagerId).FirstOrDefaultAsync(cancellationToken);
-            }
-        }
-
-        var links = await _dbContext.ManagerProjects.Where(link => link.ManagerUserId == id).ToListAsync(cancellationToken);
-        _dbContext.ManagerProjects.RemoveRange(links.Where(link => !projectIds.Contains(link.ProjectId)));
-        foreach (var projectId in projectIds.Where(projectId => links.All(link => link.ProjectId != projectId)))
-        {
-            _dbContext.ManagerProjects.Add(new ManagerProject { ManagerUserId = id, ProjectId = projectId });
-        }
-
-        user.ManagerId = request.ManagerId;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        return await GetByIdAsync(id, cancellationToken);
-    }
-
-    /// <summary>Clears the manager link of everyone who reports to this user and removes their project and department oversight.</summary>
+    /// <summary>Removes a manager's project and department oversight. Their reports follow, because a user's managers are
+    /// derived from the departments they manage and the projects they are flagged on.</summary>
     private async System.Threading.Tasks.Task ClearManagerDutiesAsync(int managerUserId, DateTime now, CancellationToken cancellationToken)
     {
-        var reports = await _dbContext.Users.Where(u => u.ManagerId == managerUserId).ToListAsync(cancellationToken);
-        foreach (var report in reports)
-        {
-            report.ManagerId = null;
-            report.UpdatedAt = now;
-        }
-
         _dbContext.ManagerProjects.RemoveRange(
             await _dbContext.ManagerProjects.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
+        foreach (var allocation in await _dbContext.UserProjectAllocations
+                     .Where(a => a.UserId == managerUserId && a.IsProjectManager)
+                     .ToListAsync(cancellationToken))
+        {
+            allocation.IsProjectManager = false;
+        }
         _dbContext.DepartmentManagers.RemoveRange(
             await _dbContext.DepartmentManagers.Where(link => link.ManagerUserId == managerUserId).ToListAsync(cancellationToken));
     }
@@ -542,7 +484,8 @@ public class UserService : IUserService
 
         // The email and username stay on the row, so they remain reserved and history is never ambiguous.
         await EndSessionsAsync(user, now, cancellationToken);
-        user.ManagerId = null;
+        // Allocations and memberships stay on the row, so reports keep a deleted person's projects; the soft-delete filters
+        // already keep them out of every total and list.
         user.IsActive = false;
         user.IsDeleted = true;
         user.UpdatedAt = now;

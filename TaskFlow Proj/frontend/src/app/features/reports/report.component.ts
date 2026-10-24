@@ -1,5 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { catchError, of } from 'rxjs';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import {
   ProjectWithCount,
@@ -30,6 +32,13 @@ export const REPORT_FILE_NAME = 'taskflow-report.csv';
   styleUrl: './report.component.css'
 })
 export class ReportComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+
+  readonly canExport = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.ReportsExport);
+  });
+
   private readonly reportService = inject(ReportService);
   private readonly projectService = inject(ProjectService);
   private readonly taskService = inject(TaskService);

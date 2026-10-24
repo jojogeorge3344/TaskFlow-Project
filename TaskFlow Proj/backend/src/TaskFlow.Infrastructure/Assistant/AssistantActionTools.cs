@@ -130,19 +130,21 @@ public class AssistantManagerResolver
             }
         }
 
-        var projectId = await _dbContext.Users
+        // A person's managers are the managers of the departments they belong to.
+        var departmentIds = await _dbContext.UserDepartments
             .AsNoTracking()
-            .Where(user => user.Id == caller.UserId)
-            .Select(user => user.ProjectId)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (projectId is null)
+            .Where(membership => membership.UserId == caller.UserId)
+            .Select(membership => membership.DepartmentId)
+            .ToListAsync(cancellationToken);
+        if (departmentIds.Count == 0)
         {
-            return new Result(null, [], "You are not in a project, so I cannot tell who your manager is.");
+            return new Result(null, [], "You are not in a department, so I cannot tell who your manager is.");
         }
 
         var managers = await _dbContext.Users
             .AsNoTracking()
-            .Where(user => user.ProjectId == projectId && user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId)
+            .Where(user => user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId
+                && user.ManagedDepartments.Any(link => departmentIds.Contains(link.DepartmentId)))
             .OrderBy(user => user.FullName)
             .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
             .ToListAsync(cancellationToken);
@@ -151,7 +153,7 @@ public class AssistantManagerResolver
         {
             1 => new Result(managers[0], managers, null),
             0 => new Result(null, [], "I could not find a manager for you."),
-            _ => new Result(null, managers, "There is more than one manager in your project.")
+            _ => new Result(null, managers, "There is more than one manager in your departments.")
         };
     }
 }

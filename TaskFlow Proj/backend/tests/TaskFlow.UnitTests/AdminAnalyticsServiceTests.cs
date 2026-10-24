@@ -293,9 +293,9 @@ public class AdminAnalyticsServiceTests
         var project = harness.AddProject("Alpha");
         harness.Db.ManagerProjects.Add(new TaskFlow.Domain.Entities.ManagerProject { ManagerUserId = mgr.Id, ProjectId = project.Id });
         harness.Db.SaveChanges();
-        var report = harness.AddUser("report", managerId: mgr.Id);
+        var report = harness.AddUser("report", departmentId: department.Id);
         var member = harness.AddUser("member", departmentId: department.Id);
-        var both = harness.AddUser("both", departmentId: department.Id, managerId: mgr.Id);
+        var both = harness.AddUser("both", departmentId: department.Id);
         harness.AddTask(report, TaskStatus.ToDo, deadline: Future);
         harness.AddTask(member, TaskStatus.Completed);
         harness.AddTask(both, TaskStatus.InProgress, deadline: Past);

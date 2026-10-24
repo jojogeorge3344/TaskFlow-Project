@@ -8,10 +8,11 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { isMfaChallenge } from '../../../core/auth/auth.models';
 import { AuthUser } from '../../../core/auth/auth.models';
 import { LegalFooterComponent } from '../../legal/legal-footer.component';
+import { LoginBackgroundComponent } from './login-background.component';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, LegalFooterComponent],
+  imports: [ReactiveFormsModule, RouterLink, LegalFooterComponent, LoginBackgroundComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -27,8 +28,6 @@ export class LoginComponent {
   readonly showPassword = signal(false);
   /** The challenge from the password step when the account has MFA on; null while the password step is showing. */
   readonly challenge = signal<string | null>(null);
-  /** Whether the second step takes a backup code instead of the 6-digit code from the app. */
-  readonly useBackupCode = signal(false);
   readonly mfaForm = this.formBuilder.group({
     code: ['', [Validators.required]]
   });
@@ -37,7 +36,7 @@ export class LoginComponent {
   private readonly returnUrl = this.safeReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   readonly form = this.formBuilder.group({
-    emailOrUsername: ['', [Validators.required]],
+    emailOrUsername: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
 
@@ -80,13 +79,13 @@ export class LoginComponent {
       },
       error: () => {
         this.submitting.set(false);
-        this.errorMessage.set('Invalid email/username or password.');
+        this.errorMessage.set('Invalid email or password.');
       }
     });
   }
 
 
-  /** Second step: the 6-digit code from the authenticator app, or a backup code. */
+  /** Second step: the 6-digit code from the authenticator app. */
   submitCode(): void {
     const challenge = this.challenge();
     if (challenge === null) {
@@ -121,23 +120,16 @@ export class LoginComponent {
     });
   }
 
-  toggleBackupCode(): void {
-    this.useBackupCode.update((on) => !on);
-    this.mfaForm.reset();
-    this.errorMessage.set(null);
-  }
-
   /** Back to the password step, for example after the sign-in expired or the wrong account was entered. */
   cancelMfa(): void {
     this.challenge.set(null);
-    this.useBackupCode.set(false);
     this.mfaForm.reset();
     this.errorMessage.set(null);
     this.form.controls.password.reset('');
   }
 
   private finishSignIn(user: AuthUser): void {
-    void this.router.navigateByUrl(this.returnUrl ?? dashboardRouteFor(user.role));
+    void this.router.navigateByUrl(this.returnUrl ?? dashboardRouteFor(user.role, user.permissions));
   }
 
   private safeReturnUrl(value: string | null): string | null {

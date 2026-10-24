@@ -26,7 +26,7 @@ public class DepartmentService : IDepartmentService
                 d.CreatedAt,
                 _dbContext.DepartmentManagers.Count(link => link.DepartmentId == d.Id
                     && _dbContext.Users.Any(u => u.Id == link.ManagerUserId)),
-                _dbContext.Users.Count(u => u.DepartmentId == d.Id && !u.IsDeleted)))
+                _dbContext.UserDepartments.Count(m => m.DepartmentId == d.Id)))
             .ToListAsync(cancellationToken);
         return departments;
     }
@@ -100,8 +100,8 @@ public class DepartmentService : IDepartmentService
         // Users has a soft-delete filter, so a link left behind by a deleted manager does not count as a member.
         var hasManagers = await _dbContext.DepartmentManagers
             .AnyAsync(link => link.DepartmentId == id && _dbContext.Users.Any(u => u.Id == link.ManagerUserId), cancellationToken);
-        var hasEmployees = await _dbContext.Users
-            .AnyAsync(u => u.DepartmentId == id && !u.IsDeleted, cancellationToken);
+        var hasEmployees = await _dbContext.UserDepartments
+            .AnyAsync(membership => membership.DepartmentId == id, cancellationToken);
         if (hasManagers || hasEmployees)
         {
             throw new InvalidOperationException("Department cannot be deleted because it still has members. Remove them first.");
@@ -134,7 +134,7 @@ public class DepartmentService : IDepartmentService
 
         var employees = await _dbContext.Users
             .AsNoTracking()
-            .Where(u => u.DepartmentId == departmentId)
+            .Where(u => u.DepartmentMemberships.Any(m => m.DepartmentId == departmentId))
             .OrderBy(u => u.FullName)
             .Select(u => new MemberRefDto(u.Id, u.FullName, u.Username, u.Email, u.IsActive))
             .ToListAsync(cancellationToken);
@@ -190,18 +190,14 @@ public class DepartmentService : IDepartmentService
             _dbContext.DepartmentManagers.Add(new DepartmentManager { DepartmentId = departmentId, ManagerUserId = managerId });
         }
 
-        // Employees live on User.DepartmentId: add the new ones, clear the ones removed.
-        var previousEmployees = await _dbContext.Users
-            .Where(u => u.DepartmentId == departmentId)
+        // A person may belong to several departments, so only this department's membership rows change.
+        var existingMemberships = await _dbContext.UserDepartments
+            .Where(membership => membership.DepartmentId == departmentId)
             .ToListAsync(cancellationToken);
-        foreach (var employee in previousEmployees.Where(u => !employeeIds.Contains(u.Id)))
+        _dbContext.UserDepartments.RemoveRange(existingMemberships.Where(membership => !employeeIds.Contains(membership.UserId)));
+        foreach (var employeeId in employeeIds.Where(id => existingMemberships.All(membership => membership.UserId != id)))
         {
-            employee.DepartmentId = null;
-        }
-        // employeeById already holds every requested user, so the added ones need no further query.
-        foreach (var employee in employeeById.Values)
-        {
-            employee.DepartmentId = departmentId;
+            _dbContext.UserDepartments.Add(new UserDepartment { DepartmentId = departmentId, UserId = employeeId });
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);

@@ -1,5 +1,5 @@
 import { AuthUser } from '../auth/auth.models';
-import { Permissions } from '../auth/permissions';
+import { DepartmentScreenPermissions, EmployeeScreenPermissions, Permissions } from '../auth/permissions';
 import { dashboardRouteFor } from '../auth/role-routes';
 import { IconName } from './icon.component';
 
@@ -30,7 +30,7 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
     ? [{ label: 'Employee Workload', icon: 'gauge', route: '/workload' }]
     : [];
 
-  const items: NavItem[] = [{ label: 'Dashboard', icon: 'home', route: dashboardRouteFor(user.role) }];
+  const items: NavItem[] = [{ label: 'Dashboard', icon: 'home', route: dashboardRouteFor(user.role, user.permissions) }];
 
   if (canViewAllTasks) {
     items.push({
@@ -45,27 +45,29 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
   }
 
   const management: NavItem[] = [];
-  if (has(Permissions.EmployeesManage)) {
+  if (EmployeeScreenPermissions.some(has)) {
     management.push({ label: 'Employee Management', icon: 'users', route: '/employees' });
   }
   if (has(Permissions.ProjectsView)) {
     management.push({ label: 'Project Management', icon: 'building', route: '/projects' });
   }
-  if (has(Permissions.DepartmentsManage)) {
+  if (DepartmentScreenPermissions.some(has)) {
     management.push({ label: 'Department Management', icon: 'building', route: '/departments' });
   }
   if (management.length > 0) {
     items.push({ label: 'TaskFlow Management', icon: 'tasks', children: management });
   }
 
-  items.push({
-    label: 'Communication Management',
-    icon: 'mail',
-    children: [
-      { label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' },
-      { label: 'Notifications', icon: 'bell', route: '/notifications' }
-    ]
-  });
+  const communication: NavItem[] = [];
+  if (has(Permissions.MailRead)) {
+    communication.push({ label: 'Mail', icon: 'mail', route: '/mail', badge: 'mail' });
+  }
+  if (has(Permissions.NotificationsView)) {
+    communication.push({ label: 'Notifications', icon: 'bell', route: '/notifications' });
+  }
+  if (communication.length > 0) {
+    items.push({ label: 'Communication Management', icon: 'mail', children: communication });
+  }
 
   if (!canViewAllTasks) {
     items.push({
@@ -86,7 +88,7 @@ export function buildNavigation(user: Pick<AuthUser, 'role' | 'permissions'> | n
   if (has(Permissions.SettingsApplication)) {
     settings.push({ label: 'Application Settings', icon: 'settings', route: '/settings/application' });
   }
-  if (has(Permissions.SettingsAi)) {
+  if (has(Permissions.SettingsAiView)) {
     settings.push({ label: 'TFA Settings', icon: 'sparkles', route: '/settings/tfa' });
   }
   if (has(Permissions.RolesManage)) {

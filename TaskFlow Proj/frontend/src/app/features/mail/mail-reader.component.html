@@ -6,7 +6,7 @@
 
     @if (detail(); as item) {
       <div class="reader__actions">
-        @if (canReply()) {
+        @if (canReply() && canCompose()) {
           <button type="button" class="tf-btn tf-btn--ghost" data-action="reply" (click)="startReply('Reply')">
             <tf-icon name="reply" /><span class="reader__label">Reply</span>
           </button>
@@ -14,13 +14,15 @@
             <tf-icon name="reply-all" /><span class="reader__label">Reply all</span>
           </button>
         }
-        @if (!item.isTrashed) {
+        @if (!item.isTrashed && canCompose()) {
           <button type="button" class="tf-btn tf-btn--ghost" data-action="forward" (click)="startReply('Forward')">
             <tf-icon name="forward" /><span class="reader__label">Forward</span>
           </button>
         }
         <span class="reader__spacer"></span>
-        @if (!item.isTrashed) {
+        @if (!canOrganize()) {
+          <!-- Reading only: no flags, trash or delete. -->
+        } @else if (!item.isTrashed) {
           <button
             type="button"
             class="tf-btn tf-btn--icon"

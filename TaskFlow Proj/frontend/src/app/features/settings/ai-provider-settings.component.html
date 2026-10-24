@@ -58,7 +58,7 @@
       <span class="tf-field__hint ai-settings__linked">Choosing a model selects its server, and choosing a server selects its model.</span>
 
       @if (selected(); as chosen) {
-        @if (canRemoveModel(chosen)) {
+        @if (mayRemoveModel() && canRemoveModel(chosen)) {
           <div class="tf-field ai-settings__picker">
             <button type="button" class="tf-btn tf-btn--ghost" data-action="remove-model" [disabled]="removing()" (click)="removeModel(chosen)">
               Remove this model from the list
@@ -140,6 +140,7 @@
           }
 
           <div class="ai-settings__test">
+            @if (canTest()) {
             <button
               type="button"
               class="tf-btn tf-btn--ghost"
@@ -149,6 +150,7 @@
             >
               {{ testing() === provider.kind ? 'Testing…' : 'Test connection' }}
             </button>
+            }
             @if (results()[provider.kind]; as result) {
               <span class="ai-settings__result" [class.is-ok]="result.ok" [attr.data-result]="result.ok ? 'ok' : (result.failureKind ?? 'failed')" role="status">
                 <tf-icon [name]="result.ok ? 'check' : 'alert'" />
@@ -159,11 +161,13 @@
         </form>
       }
 
-      <div class="tf-form-actions">
-        <button type="button" class="tf-btn tf-btn--primary" data-action="save-ai" [disabled]="saving()" (click)="save()">
-          {{ saving() ? 'Saving…' : 'Save TFA settings' }}
-        </button>
-      </div>
+      @if (canEdit()) {
+        <div class="tf-form-actions">
+          <button type="button" class="tf-btn tf-btn--primary" data-action="save-ai" [disabled]="saving()" (click)="save()">
+            {{ saving() ? 'Saving…' : 'Save TFA settings' }}
+          </button>
+        </div>
+      }
     }
   </section>
 }

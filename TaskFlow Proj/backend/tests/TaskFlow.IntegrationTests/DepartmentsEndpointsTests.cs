@@ -165,8 +165,9 @@ public class DepartmentsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(employee.Id, OnlyId(members.RootElement.GetProperty("employees")));
 
         using var assigned = await JsonAsync(client, $"/api/v1/users/{employee.Id}", admin);
-        Assert.Equal(id, assigned.RootElement.GetProperty("departmentId").GetInt32());
-        Assert.Equal(name, assigned.RootElement.GetProperty("departmentName").GetString());
+        var memberOf = Assert.Single(assigned.RootElement.GetProperty("departments").EnumerateArray());
+        Assert.Equal(id, memberOf.GetProperty("id").GetInt32());
+        Assert.Equal(name, memberOf.GetProperty("name").GetString());
 
         using var withMembers = await JsonAsync(client, Base, admin);
         var listed = withMembers.RootElement.EnumerateArray().Single(item => item.GetProperty("id").GetInt32() == id);
@@ -187,7 +188,7 @@ public class DepartmentsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(0, listedAfter.GetProperty("employeeCount").GetInt32());
 
         using var unassigned = await JsonAsync(client, $"/api/v1/users/{employee.Id}", admin);
-        Assert.Equal(JsonValueKind.Null, unassigned.RootElement.GetProperty("departmentId").ValueKind);
+        Assert.Empty(unassigned.RootElement.GetProperty("departments").EnumerateArray());
     }
 
     [Fact]
@@ -381,7 +382,9 @@ public class DepartmentsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(
             new[] { stays.Id, joins.Id }.Order(),
             body.RootElement.GetProperty("employees").EnumerateArray().Select(m => m.GetProperty("id").GetInt32()).Order());
-        Assert.Null((await UserAsync("dept-test-emp-swap-leaves")).DepartmentId);
+        var leaver = await UserAsync("dept-test-emp-swap-leaves");
+        using var check = _factory.Services.CreateScope();
+        Assert.False(await check.ServiceProvider.GetRequiredService<AppDbContext>().UserDepartments.AnyAsync(m => m.UserId == leaver.Id && m.DepartmentId == id));
     }
 
     // ------------------------------------------------------------------ helpers

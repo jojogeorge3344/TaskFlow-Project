@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { TaskComment } from '../../core/models';
 import { apiErrorMessage } from '../../shared/ui/api-error';
@@ -22,6 +23,12 @@ export class TaskDiscussionComponent implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly taskId = Number(this.route.snapshot.paramMap.get('id'));
+
+  /** Reading a discussion is open to anyone who can see the task; writing in it needs its own permission. */
+  get canComment(): boolean {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.TasksCommentCreate);
+  }
 
   readonly currentUserName = this.authService.currentUser()?.fullName ?? 'You';
   readonly comments = signal<TaskComment[]>([]);

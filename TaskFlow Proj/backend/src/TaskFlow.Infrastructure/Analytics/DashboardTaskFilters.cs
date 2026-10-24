@@ -36,7 +36,7 @@ public static class DashboardTaskFilters
             {
                 var departed = db.Users
                     .IgnoreQueryFilters()
-                    .Where(user => user.DepartmentId != null && db.Departments.Any(candidate => candidate.Id == user.DepartmentId))
+                    .Where(user => db.Departments.Any(candidate => user.DepartmentMemberships.Any(m => m.DepartmentId == candidate.Id)))
                     .Select(user => user.Id);
                 tasks = tasks.Where(task => !departed.Contains(task.AssignedToUserId));
             }
@@ -44,7 +44,7 @@ public static class DashboardTaskFilters
             {
                 var members = db.Users
                     .IgnoreQueryFilters()
-                    .Where(user => user.DepartmentId == department)
+                    .Where(user => user.DepartmentMemberships.Any(m => m.DepartmentId == department))
                     .Select(user => user.Id);
                 tasks = tasks.Where(task => members.Contains(task.AssignedToUserId));
             }
@@ -80,8 +80,7 @@ public static class DashboardTaskFilters
             .Select(link => link.DepartmentId);
 
         return db.Users
-            .Where(user => user.ManagerId == managerId
-                || (user.DepartmentId != null && managedDepartments.Contains(user.DepartmentId.Value)))
+            .Where(user => user.DepartmentMemberships.Any(m => managedDepartments.Contains(m.DepartmentId)))
             .Select(user => user.Id);
     }
 }

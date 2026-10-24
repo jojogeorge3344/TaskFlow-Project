@@ -12,5 +12,5 @@ public class Project
 
     public bool IsDeleted { get; set; }
 
-    public ICollection<User> Users { get; set; } = new List<User>();
+    public ICollection<UserProjectAllocation> Allocations { get; set; } = new List<UserProjectAllocation>();
 }

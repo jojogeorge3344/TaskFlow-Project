@@ -74,7 +74,7 @@ public class MfaSetupGateEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await _mfa.SeedAndLoginAsync(client, "gate-profile");
 
         var password = await MfaTestHarness.SendAsync(client, HttpMethod.Post, "/api/v1/users/me/password", token,
-            new { currentPassword = MfaTestHarness.Password, newPassword = "An0therP@ss" });
+            new { newPassword = "An0therP@ss" });
 
         Assert.Equal(HttpStatusCode.Forbidden, password.StatusCode);
     }

@@ -117,8 +117,7 @@ public class DashboardServiceTests
     private static User AddReport(DashboardServiceHarness harness, string username, User manager)
     {
         var user = harness.AddUser(username);
-        user.ManagerId = manager.Id;
-        harness.Db.SaveChanges();
+        TestMemberships.ReportTo(harness.Db, user, manager.Id);
         return user;
     }
 

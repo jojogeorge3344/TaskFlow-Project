@@ -1,6 +1,11 @@
-<dialog #dialog class="tf-modal" aria-labelledby="department-members-title" (cancel)="onCancelEvent($event)">
+<dialog #dialog class="tf-modal department-members" aria-labelledby="department-members-title" (cancel)="onCancelEvent($event)">
   <div class="tf-modal__head">
-    <h2 id="department-members-title">Manage members</h2>
+    <div>
+      <h2 id="department-members-title">Manage members</h2>
+      @if (department(); as current) {
+        <p class="department-members__subtitle">{{ current.name }}</p>
+      }
+    </div>
     <button type="button" class="tf-btn tf-btn--icon" aria-label="Close dialog" (click)="close()">
       <tf-icon name="x" />
     </button>
@@ -16,51 +21,72 @@
       @if (serverError()) {
         <div class="tf-alert" role="alert">{{ serverError() }}</div>
       }
-      <p class="tf-field__hint">
-        Tick everyone who belongs to {{ department()?.name }}. Saving replaces the department's current members.
-      </p>
 
-      <fieldset class="tf-field" data-field="managers">
-        <legend>Managers</legend>
-        @for (option of managerOptions(); track option.id) {
-          <label class="tf-check">
-            <input
-              type="checkbox"
-              [attr.data-user]="option.id"
-              [checked]="isManagerSelected(option.id)"
-              (change)="toggleManager(option.id, $any($event.target).checked)"
-            />
-            <span class="department-members__name">{{ option.fullName }}</span>
-            <span class="department-members__username">{{ '@' + option.username }}</span>
-            @if (option.inactive) {
-              <span class="tf-badge tf-badge--inactive">Inactive</span>
-            }
-          </label>
-        } @empty {
-          <span class="tf-field__hint">There are no active managers to pick from.</span>
-        }
-      </fieldset>
+      <div class="department-members__toolbar">
+        <div class="tf-search department-members__search">
+          <tf-icon name="search" />
+          <label for="dm-search" class="tf-sr-only">Search people</label>
+          <input
+            id="dm-search"
+            class="tf-input"
+            type="search"
+            placeholder="Search by name or username"
+            autocomplete="off"
+            [value]="query()"
+            (input)="query.set($any($event.target).value)"
+          />
+        </div>
+        <div class="department-members__sort">
+          <label for="dm-sort" class="tf-sr-only">Sort by</label>
+          <select id="dm-sort" class="tf-select" [value]="sort()" (change)="sort.set($any($event.target).value)">
+            <option value="name-asc">Name A to Z</option>
+            <option value="name-desc">Name Z to A</option>
+            <option value="selected">Selected first</option>
+            <option value="role">Role</option>
+          </select>
+        </div>
+      </div>
 
-      <fieldset class="tf-field" data-field="employees">
-        <legend>Employees</legend>
-        @for (option of employeeOptions(); track option.id) {
-          <label class="tf-check">
-            <input
-              type="checkbox"
-              [attr.data-user]="option.id"
-              [checked]="isEmployeeSelected(option.id)"
-              (change)="toggleEmployee(option.id, $any($event.target).checked)"
-            />
-            <span class="department-members__name">{{ option.fullName }}</span>
-            <span class="department-members__username">{{ '@' + option.username }}</span>
-            @if (option.inactive) {
-              <span class="tf-badge tf-badge--inactive">Inactive</span>
-            }
-          </label>
+      <div class="department-members__bar">
+        <span data-role="selected-count" aria-live="polite">{{ selectedCount() }} selected</span>
+        <span class="department-members__bar-actions">
+          <button type="button" class="tf-btn tf-btn--link" data-action="toggle-all" (click)="toggleAllVisible()" [disabled]="visibleOptions().length === 0">
+            {{ allVisibleSelected() ? 'Clear shown' : 'Select all shown' }}
+          </button>
+          <button type="button" class="tf-btn tf-btn--link" data-action="clear" (click)="clearSelection()" [disabled]="selectedCount() === 0">
+            Clear all
+          </button>
+        </span>
+      </div>
+
+      <ul class="department-members__list" data-field="members">
+        @for (option of visibleOptions(); track option.id) {
+          <li>
+            <label class="tf-check">
+              <input
+                type="checkbox"
+                [attr.data-user]="option.id"
+                [checked]="isSelected(option.id)"
+                (change)="toggle(option.id, $any($event.target).checked)"
+              />
+              <span class="department-members__identity">
+                <span class="department-members__name">{{ option.fullName }}</span>
+                <span class="department-members__username">{{ '@' + option.username }}</span>
+              </span>
+              <span class="tf-badge" [class.tf-badge--manager]="option.kind === 'manager'" [class.tf-badge--employee]="option.kind === 'employee'">
+                {{ option.kind === 'manager' ? 'Manager' : 'Employee' }}
+              </span>
+              @if (option.inactive) {
+                <span class="tf-badge tf-badge--inactive">Inactive</span>
+              }
+            </label>
+          </li>
         } @empty {
-          <span class="tf-field__hint">There are no active employees to pick from.</span>
+          <li class="tf-field__hint" data-empty>
+            {{ query().trim() ? 'No one matches "' + query().trim() + '".' : 'There are no active managers or employees to pick from.' }}
+          </li>
         }
-      </fieldset>
+      </ul>
     }
   </div>
 

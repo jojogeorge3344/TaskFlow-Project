@@ -1,4 +1,6 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { DepartmentWithCount } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
 import { IconComponent } from '../../core/layout/icon.component';
@@ -18,6 +20,17 @@ import { DepartmentMembersDialogComponent } from './department-members-dialog.co
 export class DepartmentListComponent implements OnInit {
   private readonly departmentService = inject(DepartmentService);
   private readonly toast = inject(ToastService);
+  private readonly authService = inject(AuthService);
+
+  readonly canCreate = computed(() => this.can(Permissions.DepartmentsCreate));
+  readonly canEdit = computed(() => this.can(Permissions.DepartmentsEdit));
+  readonly canDelete = computed(() => this.can(Permissions.DepartmentsDelete));
+  readonly canMembers = computed(() => this.can(Permissions.DepartmentsMembers));
+
+  private can(key: string): boolean {
+    this.authService.currentUser();
+    return this.authService.hasPermission(key);
+  }
   private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
   private readonly formDialog = viewChild.required(DepartmentFormDialogComponent);
   private readonly membersDialog = viewChild.required(DepartmentMembersDialogComponent);

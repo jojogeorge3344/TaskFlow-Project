@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { EMPTY, catchError, exhaustMap, filter, fromEvent, interval, merge } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { Permissions } from '../auth/permissions';
 import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
 import { ApplicationSettingsService } from '../services/application-settings.service';
@@ -34,6 +35,10 @@ export class ShellComponent {
 
   readonly layout = inject(LayoutService);
   readonly user = this.authService.currentUser;
+  readonly canSeeMail = computed(() => this.user()?.permissions.includes(Permissions.MailRead) ?? false);
+  readonly canSeeNotifications = computed(() => this.user()?.permissions.includes(Permissions.NotificationsView) ?? false);
+  readonly canUseAssistant = computed(() => this.user()?.permissions.includes(Permissions.AssistantChat) ?? false);
+
   readonly userInitials = computed(() => initials(this.user()?.fullName));
 
   /** The configured application name (Screen 20), kept by the settings service so a save
@@ -102,12 +107,21 @@ export class ShellComponent {
     return this.layout.collapsed() ? 'panel-open' : 'panel-close';
   });
 
+  /** Counts only for what the role may open; a role without Mail or Notifications never asks for them. */
+  private refreshBadges(): void {
+    if (this.canSeeNotifications()) {
+      this.notificationService.refreshUnreadCount();
+    }
+    if (this.canSeeMail()) {
+      this.mailService.refreshUnreadCount();
+    }
+  }
+
   constructor() {
     const destroyRef = inject(DestroyRef);
 
     // Show the badge as soon as the shell mounts, then keep it fresh.
-    this.notificationService.refreshUnreadCount();
-    this.mailService.refreshUnreadCount();
+    this.refreshBadges();
 
     // Load the brand name into the settings service's cached signal; on failure it stays
     // "TaskFlow", so a slow or broken settings endpoint never blocks the shell.
@@ -125,8 +139,7 @@ export class ShellComponent {
         this.currentUrl.set(event.urlAfterRedirects);
         this.expandGroupContaining(event.urlAfterRedirects.split(/[?#]/)[0]);
         this.layout.closeMobile();
-        this.notificationService.refreshUnreadCount();
-        this.mailService.refreshUnreadCount();
+        this.refreshBadges();
       });
 
     // Re-check the session periodically and whenever the tab becomes visible, so a user whose
@@ -149,8 +162,7 @@ export class ShellComponent {
     )
       .pipe(takeUntilDestroyed(destroyRef))
       .subscribe(() => {
-        this.notificationService.refreshUnreadCount();
-        this.mailService.refreshUnreadCount();
+        this.refreshBadges();
       });
   }
 

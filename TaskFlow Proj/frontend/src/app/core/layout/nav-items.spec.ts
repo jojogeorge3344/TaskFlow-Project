@@ -175,7 +175,7 @@ describe('buildNavigation', () => {
     it('shows nothing the role has no permission for', () => {
       const nav = navFor('Team Lead', [Permissions.TasksCreate]);
 
-      expect(nav.map((item) => item.label)).toEqual(['Dashboard', 'Communication Management', 'Task Management', 'My Profile']);
+      expect(nav.map((item) => item.label)).toEqual(['Dashboard', 'Task Management', 'My Profile']);
       expect(nav[0].route).toBe('/me');
       expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Board']);
     });
@@ -186,7 +186,8 @@ describe('buildNavigation', () => {
         Permissions.ReportsView,
         Permissions.WorkloadView,
         Permissions.SettingsReminders,
-        Permissions.ProjectsView
+        Permissions.ProjectsView,
+        Permissions.MailRead
       ]);
 
       expect(nav.map((item) => item.label)).toEqual([
@@ -203,10 +204,39 @@ describe('buildNavigation', () => {
       expect(child(nav, 'Settings').children!.map((item) => item.label)).toEqual(['Reminder Settings']);
     });
 
+    it('shows Mail and Notifications only to a role that holds them', () => {
+      const entries = (permissions: string[]) =>
+        navFor('Team Lead', permissions).find((item) => item.label === 'Communication Management')?.children?.map((item) => item.label);
+
+      expect(entries([])).toBeUndefined();
+      expect(entries([Permissions.MailRead])).toEqual(['Mail']);
+      expect(entries([Permissions.NotificationsView])).toEqual(['Notifications']);
+      expect(entries([Permissions.MailRead, Permissions.NotificationsView])).toEqual(['Mail', 'Notifications']);
+    });
+
     it('lists the workload under Task Management for a role that cannot see every task', () => {
       const nav = navFor('Planner', [Permissions.WorkloadView]);
 
       expect(child(nav, 'Task Management').children!.map((item) => item.label)).toEqual(['My Tasks', 'Employee Workload', 'Board']);
+    });
+
+    it('sends a custom role to the widest dashboard its scope allows', () => {
+      const dashboardOf = (permissions: string[]) => child(navFor('Auditor', permissions), 'Dashboard').route;
+
+      expect(dashboardOf([])).toBe('/me');
+      expect(dashboardOf([Permissions.DashboardViewTeam])).toBe('/manager');
+      expect(dashboardOf([Permissions.DashboardViewOrganization])).toBe('/admin');
+    });
+
+    it('opens Employee Management only for a role that can act on employees, not just see them', () => {
+      const labels = (permissions: string[]) =>
+        navFor('Auditor', permissions)
+          .flatMap((item) => item.children ?? [])
+          .map((item) => item.label);
+
+      expect(labels([Permissions.EmployeesView])).not.toContain('Employee Management');
+      expect(labels([Permissions.EmployeesView, Permissions.EmployeesEdit])).toContain('Employee Management');
+      expect(labels([Permissions.DepartmentsView, Permissions.DepartmentsMembers])).toContain('Department Management');
     });
 
     it('builds no menu without a user', () => {

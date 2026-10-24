@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { Permissions } from '../../core/auth/permissions';
+import { EmployeeScreenPermissions, Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
 import { ProjectWithCount } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';
@@ -9,11 +9,12 @@ import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { ProjectFormDialogComponent } from './project-form-dialog.component';
+import { ProjectTeamDialogComponent } from './project-team-dialog.component';
 
 @Component({
   selector: 'app-project-list',
   standalone: true,
-  imports: [RouterLink, IconComponent, ConfirmDialogComponent, ProjectFormDialogComponent],
+  imports: [RouterLink, IconComponent, ConfirmDialogComponent, ProjectFormDialogComponent, ProjectTeamDialogComponent],
   templateUrl: './project-list.component.html',
   styleUrl: './project-list.component.css'
 })
@@ -23,6 +24,7 @@ export class ProjectListComponent implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
   private readonly formDialog = viewChild.required(ProjectFormDialogComponent);
+  private readonly teamDialog = viewChild.required(ProjectTeamDialogComponent);
 
   readonly projects = signal<ProjectWithCount[]>([]);
   readonly loading = signal(true);
@@ -30,16 +32,31 @@ export class ProjectListComponent implements OnInit {
   readonly query = signal('');
   readonly deletingId = signal<number | null>(null);
 
-  /** Managers may open the screen read-only; only projects.manage unlocks adding, editing and deleting. */
+  /** Managers may open the screen read-only; only the create, edit, delete and members permissions unlock those actions. */
   readonly canManage = computed(() => {
     this.authService.currentUser();
-    return this.authService.hasPermission(Permissions.ProjectsManage);
+    return this.authService.hasPermission(Permissions.ProjectsCreate);
   });
 
-  /** The employee list screen is guarded by employees.manage, so only link to it when it opens. */
+  readonly canMembers = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.ProjectsMembers);
+  });
+
+  readonly canEdit = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.ProjectsEdit);
+  });
+
+  readonly canDelete = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.ProjectsDelete);
+  });
+
+  /** The employee list screen needs an employee action permission, so only link to it when it opens. */
   readonly canOpenEmployeeList = computed(() => {
     this.authService.currentUser();
-    return this.authService.hasPermission(Permissions.EmployeesManage);
+    return EmployeeScreenPermissions.some((key) => this.authService.hasPermission(key));
   });
 
   /** Client-side search over name and description. */
@@ -90,14 +107,22 @@ export class ProjectListComponent implements OnInit {
     this.formDialog().open(project);
   }
 
-  async delete(project: ProjectWithCount): Promise<void> {
-    if (project.employeeCount > 0) {
-      return;
-    }
+  /** The "Assign team" step: opened right after a project is created, and skippable. */
+  openAssignTeam(project: { id: number; name: string }): void {
+    this.teamDialog().open(project, true);
+  }
 
+  openTeam(project: ProjectWithCount): void {
+    this.teamDialog().open(project, false);
+  }
+
+  async delete(project: ProjectWithCount): Promise<void> {
     const confirmed = await this.confirmDialog().open({
       title: 'Delete project?',
-      message: `"${project.name}" will be permanently deleted.`,
+      message:
+        project.employeeCount > 0
+          ? `"${project.name}" will be permanently deleted and its ${project.employeeCount} ${this.employeeLabel(project.employeeCount)} will be taken off it.`
+          : `"${project.name}" will be permanently deleted.`,
       confirmLabel: 'Delete',
       variant: 'danger'
     });

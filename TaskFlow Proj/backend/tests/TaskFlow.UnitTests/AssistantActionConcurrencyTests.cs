@@ -46,7 +46,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
         return new AssistantActionService(
             db,
             mail,
-            new UserService(db, new PasswordHasher<User>()),
+            new UserService(db, new PasswordHasher<User>(), new UserAllocationService(db)),
             new RolePolicyAuthorizer(),
             new AssistantAuditLog(db, clock),
             new SendMailRequestValidator(),

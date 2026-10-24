@@ -83,9 +83,12 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
         bool isActive = true)
     {
         var user = _inner.AddUser(username, isActive, role);
-        user.DepartmentId = departmentId;
-        user.ManagerId = managerId;
-        Db.SaveChanges();
+        TestMemberships.JoinDepartment(Db, user, departmentId);
+        if (managerId is int manager)
+        {
+            TestMemberships.ReportTo(Db, user, manager);
+        }
+
         return user;
     }
 

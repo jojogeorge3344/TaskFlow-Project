@@ -32,7 +32,7 @@ public class AccessControlSeeder
         var existing = await _db.Permissions.ToDictionaryAsync(permission => permission.Key, cancellationToken);
         var created = new List<(Permission Permission, PermissionDefinition Definition)>();
 
-        foreach (var definition in PermissionCatalog.All)
+        foreach (var definition in PermissionCatalog.Stored)
         {
             if (existing.ContainsKey(definition.Key))
             {
@@ -65,16 +65,46 @@ public class AccessControlSeeder
             _db.RolePermissions.Add(new RolePermission { RoleId = SystemRoles.AdministratorId, PermissionId = permission.Id });
         }
 
-        foreach (var (permission, definition) in created)
+        if (created.Count > 0)
         {
-            if (definition.GrantedToManager)
-            {
-                _db.RolePermissions.Add(new RolePermission { RoleId = SystemRoles.ManagerId, PermissionId = permission.Id });
-            }
+            var roleIds = await _db.Roles.Select(role => role.Id).ToListAsync(cancellationToken);
+            var grantsByKey = (await _db.RolePermissions
+                    .Select(grant => new { grant.RoleId, grant.Permission.Key })
+                    .ToListAsync(cancellationToken))
+                .GroupBy(grant => grant.Key)
+                .ToDictionary(group => group.Key, group => group.Select(grant => grant.RoleId).ToList());
 
-            if (definition.GrantedToEmployee)
+            foreach (var (permission, definition) in created)
             {
-                _db.RolePermissions.Add(new RolePermission { RoleId = SystemRoles.EmployeeId, PermissionId = permission.Id });
+                var recipients = new HashSet<int>();
+
+                if (definition.GrantedToManager)
+                {
+                    recipients.Add(SystemRoles.ManagerId);
+                }
+
+                if (definition.GrantedToEmployee)
+                {
+                    recipients.Add(SystemRoles.EmployeeId);
+                }
+
+                // The feature used to be open to every signed-in user, so nobody who has it today may lose it.
+                if (definition.GrantToAllExistingRoles)
+                {
+                    recipients.UnionWith(roleIds);
+                }
+
+                // The feature used to be covered by another permission; whoever held that keeps this one.
+                if (definition.GrantFrom is not null && grantsByKey.TryGetValue(definition.GrantFrom, out var holders))
+                {
+                    recipients.UnionWith(holders);
+                }
+
+                recipients.Remove(SystemRoles.AdministratorId);
+                foreach (var roleId in recipients)
+                {
+                    _db.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permission.Id });
+                }
             }
         }
 

@@ -7,6 +7,7 @@ import { IconComponent } from '../../core/layout/icon.component';
 import { TaskDetails, TaskPriority, TaskStage, TaskStatus } from '../../core/models';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { backTarget } from '../../shared/ui/return-url';
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskService } from './task.service';
 
@@ -53,6 +54,9 @@ export class TaskDetailsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
 
+  /** Where Back goes: the screen the user came from (validated `returnUrl`), else the task list. */
+  readonly back = backTarget(this.route.snapshot.queryParamMap.get('returnUrl'));
+
   readonly task = signal<TaskDetails | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -78,15 +82,25 @@ export class TaskDetailsComponent implements OnInit {
     return this.authService.hasPermission(Permissions.TasksUpdate);
   });
 
+  readonly canViewActivity = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.TasksActivityView);
+  });
+
+  readonly canCreate = computed(() => {
+    this.authService.currentUser();
+    return this.authService.hasPermission(Permissions.TasksCreate);
+  });
+
   readonly canReassign = computed(() => {
     this.authService.currentUser();
     return this.authService.hasPermission(Permissions.TasksReassign);
   });
 
-  /** Deleting is Administrator-only. roles.manage is the permission only Administrators hold. */
+  /** Deleting a task needs its own permission. */
   readonly canDelete = computed(() => {
     this.authService.currentUser();
-    return this.authService.hasPermission(Permissions.RolesManage);
+    return this.authService.hasPermission(Permissions.TasksDelete);
   });
 
   ngOnInit(): void {
@@ -250,7 +264,7 @@ export class TaskDetailsComponent implements OnInit {
       });
   }
 
-  backToBoard(): void {
-    this.router.navigate(['/board']);
+  goBack(): void {
+    void this.router.navigateByUrl(this.back.url);
   }
 }

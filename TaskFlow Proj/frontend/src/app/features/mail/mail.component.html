@@ -1,9 +1,11 @@
 <section class="tf-page mail-page">
   <div class="mail" [class.mail--narrow]="narrow()" [attr.data-pane]="narrow() ? pane() : 'all'">
     <aside class="mail__folders" aria-label="Mail folders">
-      <button type="button" class="tf-btn tf-btn--primary mail__compose" data-action="compose" (click)="newMail()">
-        <tf-icon name="edit" /> Compose
-      </button>
+      @if (canCompose()) {
+        <button type="button" class="tf-btn tf-btn--primary mail__compose" data-action="compose" (click)="newMail()">
+          <tf-icon name="edit" /> Compose
+        </button>
+      }
       <nav>
         <ul class="mail__folder-list">
           @for (item of folders; track item.view) {
@@ -34,9 +36,11 @@
           <button type="button" class="tf-btn tf-btn--ghost" data-action="show-folders" (click)="foldersOpen.set(true)">
             <tf-icon name="menu" /> {{ currentFolderLabel() }}
           </button>
-          <button type="button" class="tf-btn tf-btn--primary" data-action="compose-narrow" (click)="newMail()">
-            <tf-icon name="edit" /> Compose
-          </button>
+          @if (canCompose()) {
+            <button type="button" class="tf-btn tf-btn--primary" data-action="compose-narrow" (click)="newMail()">
+              <tf-icon name="edit" /> Compose
+            </button>
+          }
         </div>
       }
       <app-mail-list [folder]="folder()" [selectedItemId]="itemId()" [refreshToken]="refreshToken()" (opened)="openItem($event)" (changed)="changed()" />

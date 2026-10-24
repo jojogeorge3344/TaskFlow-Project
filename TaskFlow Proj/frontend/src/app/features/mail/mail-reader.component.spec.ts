@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -18,7 +20,7 @@ describe('MailReaderComponent', () => {
   function create(): ComponentFixture<MailReaderComponent> {
     TestBed.configureTestingModule({
       imports: [MailReaderComponent],
-      providers: [provideRouter([]), { provide: MailService, useValue: mail }, { provide: ToastService, useValue: toast }]
+      providers: [provideRouter([]), { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Employee') })) }, { provide: MailService, useValue: mail }, { provide: ToastService, useValue: toast }]
     });
     const fixture = TestBed.createComponent(MailReaderComponent);
     fixture.componentRef.setInput('itemId', 1);

@@ -46,15 +46,8 @@ public class ChangePasswordRequestValidatorTests
     [Fact]
     public void Valid_request_passes()
     {
-        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", "N3wP@ss!"))
+        _validator.TestValidate(new ChangePasswordRequest("N3wP@ss!"))
             .ShouldNotHaveAnyValidationErrors();
-    }
-
-    [Fact]
-    public void Blank_current_password_is_invalid()
-    {
-        _validator.TestValidate(new ChangePasswordRequest("  ", "N3wP@ss!"))
-            .ShouldHaveValidationErrorFor(x => x.CurrentPassword);
     }
 
     [Theory]
@@ -63,7 +56,7 @@ public class ChangePasswordRequestValidatorTests
     [InlineData("abc")]
     public void Short_new_password_is_invalid(string? newPassword)
     {
-        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", newPassword))
+        _validator.TestValidate(new ChangePasswordRequest(newPassword))
             .ShouldHaveValidationErrorFor(x => x.NewPassword);
     }
 
@@ -72,7 +65,7 @@ public class ChangePasswordRequestValidatorTests
     {
         var tooLong = new string('x', ChangePasswordRequestValidator.MaxPasswordLength + 1);
 
-        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", tooLong))
+        _validator.TestValidate(new ChangePasswordRequest(tooLong))
             .ShouldHaveValidationErrorFor(x => x.NewPassword);
     }
 
@@ -81,7 +74,7 @@ public class ChangePasswordRequestValidatorTests
     {
         var atLimit = new string('x', ChangePasswordRequestValidator.MaxPasswordLength);
 
-        _validator.TestValidate(new ChangePasswordRequest("P@ssw0rd!", atLimit))
+        _validator.TestValidate(new ChangePasswordRequest(atLimit))
             .ShouldNotHaveAnyValidationErrors();
     }
 }

@@ -31,16 +31,18 @@ public class WorkloadServiceTests
         var byName = workload.ToDictionary(entry => entry.FullName);
 
         var aliceRow = byName["Alice Adams"];
-        Assert.Equal(engineering.Id, aliceRow.ProjectId);
-        Assert.Equal("Engineering", aliceRow.ProjectName);
+        var aliceProject = Assert.Single(aliceRow.Projects);
+        Assert.Equal(engineering.Id, aliceProject.ProjectId);
+        Assert.Equal("Engineering", aliceProject.ProjectName);
+        Assert.Equal(100, aliceRow.AllocatedPercent);
         Assert.Equal(2, aliceRow.ActiveTasks);
         Assert.Equal(2, aliceRow.HighPriorityTasks);
         Assert.Equal(1, aliceRow.OverdueTasks);
         Assert.Equal(1, aliceRow.CompletedTasks);
 
         var bobRow = byName["Bob Brown"];
-        Assert.Null(bobRow.ProjectId);
-        Assert.Null(bobRow.ProjectName);
+        Assert.Empty(bobRow.Projects);
+        Assert.Equal(0, bobRow.AllocatedPercent);
         Assert.Equal(1, bobRow.ActiveTasks);
         Assert.Equal(0, bobRow.HighPriorityTasks);
         Assert.Equal(0, bobRow.OverdueTasks);
