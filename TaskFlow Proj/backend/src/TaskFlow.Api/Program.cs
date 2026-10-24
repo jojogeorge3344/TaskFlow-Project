@@ -229,6 +229,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Outside development the signing key must be supplied (for example Jwt__Key); an empty key would only fail on the first sign-in.
+if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(app.Configuration["Jwt:Key"]))
+{
+    throw new InvalidOperationException("The JWT signing key is not set. Set the Jwt__Key environment variable (at least 32 characters) before starting the API.");
+}
+
 
 // The data folder must exist and be writable before the database, key ring or attachments are touched.
 var storageRoot = StorageRoot.Resolve(app.Services.GetRequiredService<IOptions<StorageOptions>>().Value.Root);
@@ -292,6 +298,16 @@ app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 
+// A published build can carry the compiled client in wwwroot; the API then serves it from the same origin. Without
+// wwwroot/index.html (development, tests) nothing below is added and behaviour is unchanged.
+var clientIndex = app.Environment.WebRootFileProvider.GetFileInfo("index.html");
+var serveClient = clientIndex.Exists;
+if (serveClient)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 app.UseCors(CorsPolicies.SpaClient);
 
 app.UseAuthentication();
@@ -299,6 +315,25 @@ app.UseMiddleware<TaskFlow.Api.Authentication.MfaSetupGateMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+
+if (serveClient)
+{
+    // Client-side routes (for example /admin) are answered with the client; anything under /api that no controller handled stays a 404.
+    app.MapFallback(async context =>
+    {
+        var isApi = context.Request.Path.StartsWithSegments("/api");
+        var isRead = HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method);
+        if (isApi || !isRead)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = "text/html; charset=utf-8";
+        context.Response.Headers.CacheControl = "no-cache";
+        await context.Response.SendFileAsync(clientIndex);
+    });
+}
 
 app.Run();
 

@@ -278,3 +278,39 @@ The browser asks for microphone permission the first time. After a page reload i
 page listen again; the TFA button then says "Click anywhere on the page to turn "Hey TF assistant" back on". A microphone
 error stops voice for that visit only and is never saved as your choice, so the next visit tries again. Voice uses the
 browser's speech recognition and speech output, and Chrome processes the audio on Google's servers. Typing always works.
+
+## Demo hosting (free, from this PC)
+
+For a demo you can run TaskFlow as one app on your own PC and give people a public HTTPS address, with no cloud account and no
+cost. The API serves the compiled client itself, so there is one address, one port and no cross-origin setup.
+
+**Needs:** the .NET SDK, Node.js, and [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+(`winget install --id Cloudflare.cloudflared`, then open a new terminal). No Cloudflare account is required.
+
+```powershell
+.\scripts\qa-run.ps1
+```
+
+The script builds the client, publishes the API, starts it in the `QA` environment, starts a Cloudflare quick tunnel and prints
+the public address (`https://<random>.trycloudflare.com`) with the demo sign-ins. Press **Ctrl+C** to stop both.
+
+| Option | Effect |
+|---|---|
+| `-NoTunnel` | Run on `http://localhost:5180` only, without a public address (`cloudflared` not needed). |
+| `-Port 5200` | Use another local port. |
+| `-SkipBuild` | Reuse the previous build; start faster. |
+| `-DisableMfa` | Skip the authenticator-app setup at sign-in. Only for a live demo: anyone with the address and the default passwords can then sign in. |
+| `-DataRoot D:\TaskFlowQA` | Keep the data somewhere else (default `%LOCALAPPDATA%\TaskFlowQA`). |
+
+**Good to know**
+
+- The `QA` environment turns the demo accounts on (`Seed:Enabled`), so the three sign-ins above work with password `123456`. By
+  default they must still set up an authenticator app on first sign-in (see *Two-step verification*). Share the address only
+  while you are presenting, then stop the script.
+- The public address **changes every time** you start the script, so links shared earlier stop working. The demo is only
+  reachable while this PC is on and the script is running.
+- Everything that must survive a restart is kept in `%LOCALAPPDATA%\TaskFlowQA`: `data\` (database, attachments, key ring),
+  `jwt.key` (the signing key, generated once, never committed) and `logs\`. Deleting `data\` resets the demo.
+- Outside Development the API refuses to start without a signing key (`Jwt__Key`, at least 32 characters). The script supplies
+  one; if you run the published app yourself, set it first.
+- The AI key ring is protected with Windows DPAPI, so it only decrypts for the same Windows account on the same PC.
