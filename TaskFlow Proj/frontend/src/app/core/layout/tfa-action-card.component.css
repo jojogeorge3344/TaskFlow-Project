@@ -115,14 +115,14 @@
 .tfa-btn--primary {
   background: var(--tf-primary);
   border-color: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
   flex: 1;
   justify-content: center;
 }
 
 .tfa-btn--primary:hover:not(:disabled) {
   background: var(--tf-primary-hover);
-  color: #fff;
+  color: var(--tf-on-primary);
 }
 
 .tfa-btn--quiet {

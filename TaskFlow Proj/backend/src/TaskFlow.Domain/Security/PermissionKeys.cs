@@ -24,6 +24,8 @@ public static class PermissionKeys
     public const string TasksReassign = "tasks.reassign";
     public const string TasksRecipients = "tasks.recipients.manage";
     public const string TasksCommentCreate = "tasks.comment.create";
+    public const string TasksCommentEdit = "tasks.comment.edit";
+    public const string TasksCommentDelete = "tasks.comment.delete";
     public const string TasksActivityView = "tasks.activity.view";
 
     // Projects

@@ -76,12 +76,44 @@ describe('TaskReassignComponent', () => {
     fixture.detectChanges();
   });
 
-  it('loads the task and only lists active employees other than the current assignee', () => {
+  it('loads the task and lists active users other than the current assignee', () => {
     expect(getByIdSpy).toHaveBeenCalledWith(7);
-    expect(getAllSpy).toHaveBeenCalledWith({ role: 'Employee', isActive: true });
+    expect(getAllSpy).toHaveBeenCalledWith({ isActive: true });
 
     const ids = component.eligibleEmployees().map((employee) => employee.id);
     expect(ids).toEqual([9]);
+  });
+
+  it('still offers the previous assignee after a reassignment, whatever their role', () => {
+    const previous: User = { ...employees[0], id: 4, fullName: 'Employee 2', role: 'Super Admin', roleId: 4 };
+    component.employees.set([employees[0], previous]);
+
+    expect(component.eligibleEmployees().map((employee) => employee.id)).toEqual([4]);
+  });
+
+
+  it('picks the new assignee from the cards and shows who will be notified', () => {
+    (fixture.nativeElement.querySelector('[data-user="9"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.selectedUserId()).toBe(9);
+    expect(fixture.nativeElement.querySelector('[data-user="9"]').getAttribute('aria-checked')).toBe('true');
+    expect(fixture.nativeElement.querySelector('[data-new-assignee]').textContent).toContain('Sara Dev');
+    const notified = fixture.nativeElement.querySelector('[data-notify-list]').textContent;
+    expect(notified).toContain('Sara Dev');
+    expect(notified).toContain('New assignee');
+    expect(notified).toContain('Previous assignee');
+  });
+
+  it('filters the people list by the search text', () => {
+    component.search.set('zzz');
+    fixture.detectChanges();
+
+    expect(component.visibleEmployees()).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('No one matches');
+
+    component.search.set('sara');
+    expect(component.visibleEmployees().map((employee) => employee.id)).toEqual([9]);
   });
 
   it('enables the submit action only when an assignee and reason are provided', () => {

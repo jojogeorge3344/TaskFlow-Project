@@ -127,23 +127,23 @@
 }
 
 .kanban__priority--low {
-  color: #2e7d32;
-  background: #e6f4e7;
+  color: var(--tf-success);
+  background: var(--tf-success-soft);
 }
 
 .kanban__priority--medium {
-  color: #8a5a00;
-  background: #fdf3d7;
+  color: var(--tf-warning);
+  background: var(--tf-warning-soft);
 }
 
 .kanban__priority--high {
-  color: #9a3b08;
-  background: #fdeade;
+  color: var(--tf-chip-orange-fg);
+  background: var(--tf-chip-orange-bg);
 }
 
 .kanban__priority--critical {
-  color: #b3261e;
-  background: #fde7e6;
+  color: var(--tf-danger-strong);
+  background: var(--tf-danger-soft);
 }
 
 .kanban__title {

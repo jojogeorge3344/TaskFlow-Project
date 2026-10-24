@@ -827,6 +827,7 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal?>("ActualHours")
+                        .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("AssignedToUserId")
@@ -961,6 +962,14 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<int>("TaskId")
                         .HasColumnType("INTEGER");

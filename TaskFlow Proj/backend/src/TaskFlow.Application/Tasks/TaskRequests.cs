@@ -37,6 +37,11 @@ public record ReassignTaskRequest(int NewAssigneeUserId, string Reason);
 
 public record AddCommentRequest(string Body);
 
+public record UpdateHoursEntryRequest(decimal Hours);
+
+/// <summary>Adds worked time to a task's running total.</summary>
+public record LogHoursRequest(decimal Hours);
+
 public record SetRecipientsRequest(IReadOnlyCollection<int> RecipientUserIds);
 
 /// <summary>Filters and paging for the paginated task list (TDD §8.4).</summary>

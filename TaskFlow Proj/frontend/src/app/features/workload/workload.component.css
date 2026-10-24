@@ -20,11 +20,11 @@
 }
 
 .workload-row--high {
-  background: #fffbeb;
+  background: var(--tf-warning-soft);
 }
 
 .workload-row--high:hover {
-  background: #fef3c7;
+  background: var(--tf-warning-soft);
 }
 
 .workload-cell--overdue {
@@ -69,7 +69,7 @@
   width: 0.75rem;
   height: 0.75rem;
   border-radius: var(--tf-radius-sm);
-  background: #fffbeb;
+  background: var(--tf-warning-soft);
   border: 1px solid var(--tf-warning);
 }
 

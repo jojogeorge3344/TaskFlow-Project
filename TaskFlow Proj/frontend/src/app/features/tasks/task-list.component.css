@@ -52,8 +52,8 @@
 }
 
 .priority--high {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--tf-chip-orange-bg);
+  color: var(--tf-chip-orange-fg);
 }
 
 .priority--critical {

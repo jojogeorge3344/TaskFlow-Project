@@ -27,8 +27,8 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         NotificationService = new NotificationService(db);
         ReminderSettings = new ReminderSettingsService(db, TimeProvider.System, Options.Create(new ApplicationOptions()));
         Clock = new AppClock(db, TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
-        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock));
-        CommentService = new TaskCommentService(db, ActivityService, TimeProvider.System);
+        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), new MailService(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
+        CommentService = new TaskCommentService(db, ActivityService, NotificationPublisher, TimeProvider.System);
     }
 
     public AppDbContext Db { get; }

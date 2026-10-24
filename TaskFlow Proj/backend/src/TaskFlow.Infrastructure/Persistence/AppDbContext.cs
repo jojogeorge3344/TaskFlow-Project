@@ -252,6 +252,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(task => task.Id);
             entity.Property(task => task.TaskCode).IsRequired().HasMaxLength(32);
             entity.Property(task => task.Title).IsRequired().HasMaxLength(200);
+            entity.Property(task => task.ActualHours).IsConcurrencyToken();
             entity.Property(task => task.Description).HasMaxLength(4000);
 
             entity.HasIndex(task => task.TaskCode).IsUnique();
@@ -348,6 +349,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         {
             entity.HasKey(comment => comment.Id);
             entity.Property(comment => comment.Body).IsRequired();
+            entity.Property(comment => comment.IsDeleted).HasDefaultValue(false);
 
             entity.HasIndex(comment => new { comment.TaskId, comment.CreatedAt });
 

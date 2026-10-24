@@ -20,6 +20,8 @@ export const Permissions = {
   TasksReassign: 'tasks.reassign',
   TasksRecipients: 'tasks.recipients.manage',
   TasksCommentCreate: 'tasks.comment.create',
+  TasksCommentEdit: 'tasks.comment.edit',
+  TasksCommentDelete: 'tasks.comment.delete',
   TasksActivityView: 'tasks.activity.view',
 
   // Projects

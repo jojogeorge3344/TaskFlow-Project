@@ -39,7 +39,7 @@
   place-items: center;
   border-radius: var(--tf-radius-lg);
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
 }
 
 .pd__desc {
@@ -284,8 +284,8 @@
 }
 
 .pd__badge--high {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--tf-chip-orange-bg);
+  color: var(--tf-chip-orange-fg);
 }
 
 .pd__badge--critical {

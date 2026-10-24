@@ -62,7 +62,9 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             inner.Clock,
             new ReminderSettingsService(inner.Db, inner.Clock, Options.Create(new ApplicationOptions())),
             appClock,
-            managerScope);
+            managerScope,
+            new MailService(inner.Db, inner.Clock, appClock),
+            NullLogger<TaskService>.Instance);
         return new AnalyticsHarness(
             inner,
             scope,

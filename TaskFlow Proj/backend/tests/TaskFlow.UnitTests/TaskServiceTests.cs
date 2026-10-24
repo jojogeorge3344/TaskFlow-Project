@@ -329,6 +329,46 @@ public class TaskServiceTests
     }
 
     [Fact]
+    public async Task ReassignAsync_NotifiesAndMailsNewAssigneePreviousAssigneeAndRecipients()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("tkras7", SystemRoles.Manager);
+        var oldAssignee = harness.AddUser("tkras8");
+        var newAssignee = harness.AddUser("tkras9");
+        var watcher = harness.AddUser("tkras10");
+        var outsider = harness.AddUser("tkras11");
+        var task = harness.AddTask(oldAssignee.Id, manager.Id, "Handover task");
+        harness.AddRecipient(task.Id, oldAssignee.Id);
+        harness.AddRecipient(task.Id, watcher.Id);
+
+        await harness.TaskService.ReassignAsync(
+            task.Id,
+            new ReassignTaskRequest(newAssignee.Id, "Moving to the new analyst"),
+            manager.Id,
+            SystemRoles.Manager,
+            CancellationToken.None);
+
+        foreach (var user in new[] { newAssignee, oldAssignee, watcher, manager })
+        {
+            var notification = Assert.Single(await harness.Db.Notifications.Where(n => n.UserId == user.Id).ToListAsync());
+            Assert.Equal(NotificationType.Reassigned, notification.Type);
+            Assert.Contains("Moving to the new analyst", notification.Message);
+        }
+
+        Assert.Empty(await harness.Db.Notifications.Where(n => n.UserId == outsider.Id).ToListAsync());
+
+        var mail = Assert.Single(await harness.Db.MailMessages.ToListAsync());
+        Assert.Equal("Task reassigned: Handover task", mail.Subject);
+        Assert.Contains("Moving to the new analyst", mail.Body);
+        foreach (var user in new[] { newAssignee, oldAssignee, watcher })
+        {
+            Assert.Single(await harness.Db.MailboxItems.Where(item => item.OwnerUserId == user.Id && item.Folder == MailFolder.Inbox).ToListAsync());
+        }
+
+        Assert.Empty(await harness.Db.MailboxItems.Where(item => item.OwnerUserId == outsider.Id).ToListAsync());
+    }
+
+    [Fact]
     public async Task ReassignAsync_Employee_Throws()
     {
         await using var harness = TaskTrackingServiceHarness.Create();

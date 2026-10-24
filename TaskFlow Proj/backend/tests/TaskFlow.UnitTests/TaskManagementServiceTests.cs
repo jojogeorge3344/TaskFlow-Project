@@ -317,7 +317,9 @@ public class TaskManagementServiceTests
         var assignee = harness.AddUser("tm-assignee5");
         var service = new TaskFlow.Infrastructure.Services.TaskService(
             harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System, harness.ReminderSettings, harness.Clock,
-            new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(harness.Db, harness.Clock));
+            new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(harness.Db, harness.Clock),
+            new TaskFlow.Infrastructure.Services.MailService(harness.Db, TimeProvider.System, harness.Clock),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskFlow.Infrastructure.Services.TaskService>.Instance);
 
         var request = new CreateTaskRequest(
             "Never persisted", null, assignee.Id, TaskPriority.Low,

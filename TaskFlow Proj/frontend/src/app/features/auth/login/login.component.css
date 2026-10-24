@@ -7,6 +7,24 @@
   gap: 1.5rem;
   padding: 1.5rem;
   background: #0f172a;
+  /* The login screen has its own fixed look, so it keeps the Default colours whichever theme is saved. */
+  color-scheme: light;
+  color: #0f172a;
+  --tf-primary: #2563eb;
+  --tf-primary-hover: #1d4ed8;
+  --tf-on-primary: #ffffff;
+  --tf-surface: #ffffff;
+  --tf-bg: #f1f5f9;
+  --tf-border: #e2e8f0;
+  --tf-text: #0f172a;
+  --tf-text-secondary: #475569;
+  --tf-muted: #64748b;
+  --tf-label: #334155;
+  --tf-field-bg: #f8fafc;
+  --tf-field-border: #e2e8f0;
+  --tf-danger: #dc2626;
+  --tf-danger-strong: #b91c1c;
+  --tf-danger-soft: #fee2e2;
 }
 
 /* Keep the card and footer above the fixed animated background. */

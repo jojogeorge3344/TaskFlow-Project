@@ -6,7 +6,15 @@
         Back to task #{{ taskId }}
       </a>
       <h1>Discussion</h1>
-      <p>Comments are chronological and immutable — they cannot be edited or deleted.</p>
+      <div class="discussion__chips">
+        @if (task(); as current) {
+          <span class="discussion__chip">{{ current.taskCode }}</span>
+          <span class="discussion__chip discussion__chip--blue">{{ current.title }}</span>
+        }
+        @if (!loading() && !error()) {
+          <span class="discussion__chip" data-comment-count>{{ comments().length }} {{ comments().length === 1 ? 'comment' : 'comments' }}</span>
+        }
+      </div>
     </div>
   </header>
 
@@ -22,54 +30,135 @@
       <div class="tf-skeleton discussion__skeleton"></div>
     </div>
   } @else {
-    <div class="discussion">
-      @if (comments().length === 0) {
-        <div class="tf-card tf-empty">
-          <tf-icon name="users" />
-          <strong>No comments yet</strong>
-          <p>Start the discussion about this task below.</p>
-        </div>
-      } @else {
-        <ol class="discussion__list">
-          @for (comment of comments(); track comment.id) {
-            <li class="discussion__item">
-              <span class="tf-avatar" aria-hidden="true">{{ initials(comment.authorName) }}</span>
-              <div class="discussion__body">
-                <header class="discussion__meta">
-                  <span class="discussion__author">{{ comment.authorName }}</span>
-                  <time class="discussion__time" [attr.datetime]="comment.createdAt">
-                    {{ timeLabel(comment.createdAt) }}
-                  </time>
-                </header>
-                <p class="discussion__text">{{ comment.body }}</p>
-              </div>
-            </li>
+    <div class="discussion__layout">
+      <div class="discussion__main">
+        <div class="discussion__thread">
+          @if (comments().length === 0) {
+            <div class="tf-empty discussion__empty">
+              <tf-icon name="users" />
+              <strong>No comments yet</strong>
+              <p>Start the discussion about this task below.</p>
+            </div>
+          } @else {
+            @for (group of dayGroups(); track group.label) {
+              <div class="discussion__day">{{ group.label }}</div>
+              @for (comment of group.comments; track comment.id) {
+                <article class="discussion__item" [class.is-mine]="isMine(comment)">
+                  <span class="tf-avatar" aria-hidden="true">{{ initials(comment.authorName) }}</span>
+                  <div class="discussion__body">
+                    <header class="discussion__meta">
+                      <span class="discussion__author">{{ comment.authorName }}</span>
+                      @if (isMine(comment)) {
+                        <span class="discussion__you">You</span>
+                      }
+                      <time class="discussion__time" [attr.datetime]="comment.createdAt">{{ clockLabel(comment.createdAt) }}</time>
+                      @if (comment.editedAt && editingId() !== comment.id) {
+                        <span class="discussion__edited" data-edited>(edited)</span>
+                      }
+                    </header>
+                    @if (editingId() === comment.id) {
+                      <textarea
+                        class="tf-input tf-textarea"
+                        rows="3"
+                        maxlength="1000"
+                        aria-label="Edit comment"
+                        data-edit-body
+                        [value]="editBody()"
+                        (input)="editBody.set($any($event.target).value)"
+                      ></textarea>
+                      <div class="discussion__row-actions">
+                        <button type="button" class="tf-btn tf-btn--ghost" data-action="cancel-edit" (click)="cancelEdit()">Cancel</button>
+                        <button
+                          type="button"
+                          class="tf-btn tf-btn--primary"
+                          data-action="save-edit"
+                          [disabled]="editBody().trim() === '' || saving()"
+                          (click)="saveEdit(comment)"
+                        >
+                          {{ saving() ? 'Saving…' : 'Save' }}
+                        </button>
+                      </div>
+                    } @else {
+                      <p class="discussion__text">{{ comment.body }}</p>
+                      @if (canEdit(comment) || canDelete(comment)) {
+                        <div class="discussion__row-actions">
+                          @if (canEdit(comment)) {
+                            <button type="button" class="tf-btn tf-btn--ghost" data-action="edit" (click)="startEdit(comment)">
+                              <tf-icon name="edit" />
+                              Edit
+                            </button>
+                          }
+                          @if (canDelete(comment)) {
+                            <button type="button" class="tf-btn tf-btn--ghost discussion__danger" data-action="delete" (click)="remove(comment)">
+                              <tf-icon name="trash" />
+                              Delete
+                            </button>
+                          }
+                        </div>
+                      }
+                    }
+                  </div>
+                </article>
+              }
+            }
           }
-        </ol>
-      }
-
-      @if (canComment) {
-      <form class="tf-card discussion__composer" (ngSubmit)="post()">
-        <label for="discussion-body" class="discussion__label">Add a comment</label>
-        <textarea
-          id="discussion-body"
-          class="tf-input tf-textarea"
-          rows="3"
-          maxlength="1000"
-          placeholder="Share an update, question or handoff note…"
-          [value]="body()"
-          (input)="body.set($any($event.target).value)"
-        ></textarea>
-        <div class="discussion__actions">
-          <span class="discussion__hint">
-            {{ body() === '' ? 'Commenting as ' + currentUserName : '' }}
-          </span>
-          <button type="submit" class="tf-btn tf-btn--primary" [disabled]="body().trim() === '' || posting()">
-            {{ posting() ? 'Posting…' : 'Post comment' }}
-          </button>
         </div>
-      </form>
+
+        @if (canComment) {
+          <form class="discussion__composer" (ngSubmit)="post()">
+            <span class="tf-avatar" aria-hidden="true">{{ initials(currentUserName) }}</span>
+            <div class="discussion__composer-box">
+              <label for="discussion-body" class="discussion__label">Add a comment</label>
+              <textarea
+                id="discussion-body"
+                class="tf-input tf-textarea"
+                rows="3"
+                maxlength="1000"
+                placeholder="Share an update, question or handoff note…"
+                [value]="body()"
+                (input)="body.set($any($event.target).value)"
+              ></textarea>
+              <div class="discussion__actions">
+                <span class="discussion__hint">{{ body().length }} / 1000 · Everyone on the task is notified</span>
+                <button type="submit" class="tf-btn tf-btn--primary" [disabled]="body().trim() === '' || posting()">
+                  {{ posting() ? 'Posting…' : 'Post comment' }}
+                </button>
+              </div>
+            </div>
+          </form>
+        }
+      </div>
+
+      @if (task(); as current) {
+        <aside class="discussion__rail">
+          <section class="discussion__panel" aria-labelledby="discussion-notified">
+            <h2 id="discussion-notified" class="discussion__eyebrow">Who is notified</h2>
+            <ul class="discussion__people" data-notified>
+              <li>
+                <span class="tf-avatar" aria-hidden="true">{{ initials(current.assignedToName) }}</span>
+                <span><strong>{{ current.assignedToName || 'Unassigned' }}</strong><small>Assignee</small></span>
+              </li>
+              @for (recipient of otherRecipients(current); track recipient.userId) {
+                <li>
+                  <span class="tf-avatar" aria-hidden="true">{{ initials(recipient.fullName) }}</span>
+                  <span><strong>{{ recipient.fullName }}</strong><small>Recipient</small></span>
+                </li>
+              }
+            </ul>
+          </section>
+
+          <section class="discussion__panel" aria-labelledby="discussion-task">
+            <h2 id="discussion-task" class="discussion__eyebrow">Task</h2>
+            <dl class="discussion__facts">
+              <div><dt>Status</dt><dd>{{ current.status }}</dd></div>
+              <div><dt>Priority</dt><dd>{{ current.priority }}</dd></div>
+              <div><dt>Deadline</dt><dd>{{ dateLabel(current.deadline) }}</dd></div>
+            </dl>
+          </section>
+        </aside>
       }
     </div>
   }
+
+  <tf-confirm-dialog />
 </section>

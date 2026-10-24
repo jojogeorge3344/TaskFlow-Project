@@ -6,5 +6,6 @@ public enum NotificationType
     Reassigned,
     DeadlineReminder,
     Overdue,
-    System
+    System,
+    TaskComment
 }

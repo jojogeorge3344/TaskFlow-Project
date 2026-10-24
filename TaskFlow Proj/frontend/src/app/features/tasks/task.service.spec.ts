@@ -266,6 +266,26 @@ describe('TaskService', () => {
     expect((sent as TaskComment).body).toBe('Agreed');
   });
 
+  it('updates a comment', () => {
+    let sent: unknown;
+
+    service.updateComment(7, 2, { body: 'Revised' }).subscribe((value) => (sent = value));
+
+    const request = http.expectOne('/api/v1/tasks/7/comments/2');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ body: 'Revised' });
+    request.flush({ id: 2, body: 'Revised', authorUserId: 3, authorName: 'Joe', createdAt: '2026-10-03T08:00:00Z', editedAt: '2026-10-04T08:00:00Z' });
+    expect((sent as TaskComment).body).toBe('Revised');
+  });
+
+  it('deletes a comment', () => {
+    service.deleteComment(7, 2).subscribe();
+
+    const request = http.expectOne('/api/v1/tasks/7/comments/2');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null);
+  });
+
   it('loads activity with query params', () => {
     const entries: ActivityEntry[] = [
       {

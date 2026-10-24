@@ -4,11 +4,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { Permissions } from '../../core/auth/permissions';
 import { IconComponent } from '../../core/layout/icon.component';
-import { TaskDetails, TaskPriority, TaskStage, TaskStatus } from '../../core/models';
+import { ActivityEntry, TaskComment, TaskDetails, TaskPriority, TaskStage, TaskStatus } from '../../core/models';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { initials } from '../../shared/ui/initials';
 import { backTarget } from '../../shared/ui/return-url';
 import { ToastService } from '../../shared/ui/toast.service';
+import { ActivityEventMeta, eventMeta } from './activity-meta';
 import { TaskService } from './task.service';
 
 const STAGE_LABELS: Record<TaskStage, string> = {
@@ -43,7 +45,7 @@ function toInputDate(iso: string): string {
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, IconComponent, ConfirmDialogComponent],
   templateUrl: './task-details.component.html',
-  styleUrl: './task-details.component.css'
+  styleUrls: ['./task-details.component.css', './task-details-tabs.component.css']
 })
 export class TaskDetailsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -64,6 +66,10 @@ export class TaskDetailsComponent implements OnInit {
   readonly saving = signal(false);
   readonly changingStatus = signal<TaskStatus | null>(null);
   readonly deleting = signal(false);
+  readonly comments = signal<TaskComment[]>([]);
+  readonly commentsLoading = signal(true);
+  readonly loggingHours = signal(false);
+  readonly hoursToLog = signal('');
 
   readonly editForm = this.fb.group(
     {
@@ -81,6 +87,13 @@ export class TaskDetailsComponent implements OnInit {
   readonly canEdit = computed(() => {
     this.authService.currentUser();
     return this.authService.hasPermission(Permissions.TasksUpdate);
+  });
+
+  /** Whoever may edit tasks, or the employee the task is assigned to, can log worked hours on it. */
+  readonly canLogHours = computed(() => {
+    const user = this.authService.currentUser();
+    const task = this.task();
+    return this.canEdit() || (!!user && !!task && task.assignedToUserId === user.id);
   });
 
   readonly canViewActivity = computed(() => {
@@ -104,6 +117,12 @@ export class TaskDetailsComponent implements OnInit {
     return this.authService.hasPermission(Permissions.TasksDelete);
   });
 
+  /** Remaining = estimated - worked; a task with no worked hours yet has all its estimate left. */
+  readonly remainingHours = computed(() => {
+    const task = this.task();
+    return task ? task.estimatedHours - (task.actualHours ?? 0) : null;
+  });
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.load(id);
@@ -121,12 +140,106 @@ export class TaskDetailsComponent implements OnInit {
       next: (details) => {
         this.task.set(details);
         this.loading.set(false);
+        this.loadComments(taskId);
+        this.loadActivity(taskId);
       },
       error: (err: unknown) => {
         this.error.set(apiErrorMessage(err, 'Could not load the task.'));
         this.loading.set(false);
       }
     });
+  }
+
+  readonly activeTab = signal<'discussion' | 'activity' | 'reassign'>('discussion');
+  readonly activity = signal<ActivityEntry[]>([]);
+  readonly activityLoading = signal(false);
+
+  /** The three newest comments (the API lists them oldest first). */
+  readonly latestComments = computed(() => this.comments().slice(-3));
+
+  /** The four newest activity entries, newest first. */
+  readonly latestActivity = computed(() => this.activity().slice(0, 4));
+
+  setTab(tab: 'discussion' | 'activity' | 'reassign'): void {
+    this.activeTab.set(tab);
+  }
+
+  activityMeta(type: string): ActivityEventMeta {
+    return eventMeta(type);
+  }
+
+  private loadActivity(taskId: number): void {
+    if (!this.canViewActivity()) {
+      this.activity.set([]);
+      return;
+    }
+    this.activityLoading.set(true);
+    this.taskService.getActivity(taskId).subscribe({
+      next: (entries) => {
+        this.activity.set(
+          [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id - a.id)
+        );
+        this.activityLoading.set(false);
+      },
+      error: () => {
+        this.activity.set([]);
+        this.activityLoading.set(false);
+      }
+    });
+  }
+
+  private loadComments(taskId: number): void {
+    this.commentsLoading.set(true);
+    this.taskService.getComments(taskId).subscribe({
+      next: (comments) => {
+        this.comments.set(comments);
+        this.commentsLoading.set(false);
+      },
+      error: () => {
+        this.comments.set([]);
+        this.commentsLoading.set(false);
+      }
+    });
+  }
+
+  initialsOf(name: string | null | undefined): string {
+    return initials(name);
+  }
+
+  timeLabel(iso: string): string {
+    return new Date(iso).toLocaleString();
+  }
+
+  /** Adds the entered hours to the task's worked total; the backend records a HoursLogged activity entry. */
+  logHours(): void {
+    const task = this.task();
+    const hours = Number(this.hoursToLog());
+    if (!task || this.loggingHours()) {
+      return;
+    }
+    if (!Number.isFinite(hours) || hours <= 0) {
+      this.toast.error('Enter the hours worked (greater than 0).');
+      return;
+    }
+
+    this.loggingHours.set(true);
+    this.taskService
+      .logHours(task.id, hours)
+      .subscribe({
+        next: (updated) => {
+          this.loggingHours.set(false);
+          this.hoursToLog.set('');
+          this.task.set(updated);
+          if (this.editing()) {
+            this.editForm.patchValue({ actualHours: updated.actualHours ?? null });
+          }
+          this.toast.success(`${hours}h logged`);
+        },
+        error: (err: unknown) => {
+          this.loggingHours.set(false);
+          this.toast.error(apiErrorMessage(err, 'Could not log the hours.'));
+        }
+      });
   }
 
   async deleteTask(): Promise<void> {
@@ -165,6 +278,63 @@ export class TaskDetailsComponent implements OnInit {
 
   stageClass(stage: TaskStage): string {
     return `tf-chip tf-chip--${stage.toLowerCase()}`;
+  }
+
+  readonly priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
+
+  descriptionLength(): number {
+    return (this.editForm.controls.description.value ?? '').length;
+  }
+
+  setPriority(priority: TaskPriority): void {
+    this.editForm.controls.priority.setValue(priority);
+    this.editForm.controls.priority.markAsDirty();
+  }
+
+  /** The stepper buttons move a number field by `delta`, never below 0. */
+  stepHours(field: 'estimatedHours' | 'actualHours', delta: number): void {
+    const control = this.editForm.controls[field];
+    const next = Math.max(0, Math.round(((control.value ?? 0) + delta) * 100) / 100);
+    control.setValue(next);
+    control.markAsDirty();
+    control.markAsTouched();
+  }
+
+  /** Worked against estimated hours, as typed in the form right now. */
+  effort(): { worked: number; estimated: number; percent: number; over: boolean; label: string } {
+    const worked = Number(this.editForm.controls.actualHours.value ?? 0) || 0;
+    const estimated = Number(this.editForm.controls.estimatedHours.value ?? 0) || 0;
+    const percent = estimated > 0 ? Math.min(100, Math.round((worked / estimated) * 100)) : 0;
+    const remaining = Math.round((estimated - worked) * 100) / 100;
+    const over = estimated > 0 && worked > estimated;
+    const label = over ? `${Math.abs(remaining)}h over estimate` : `${remaining}h remaining · ${percent}%`;
+    return { worked, estimated, percent, over, label };
+  }
+
+  /** How long the task runs and how far through it today is, from the dates typed in the form right now. */
+  scheduleSummary(): { length: string; due: string; late: boolean; percent: number } | null {
+    const start = new Date(this.editForm.controls.startDate.value ?? '').getTime();
+    const end = new Date(this.editForm.controls.deadline.value ?? '').getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      return null;
+    }
+
+    const hourMs = 3_600_000;
+    const totalHours = Math.round((end - start) / hourMs);
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    const length = [days ? `${days} day${days === 1 ? '' : 's'}` : '', hours ? `${hours} hour${hours === 1 ? '' : 's'}` : '']
+      .filter(Boolean)
+      .join(', ') + ' long';
+
+    const now = Date.now();
+    const leftHours = Math.round((end - now) / hourMs);
+    const late = leftHours < 0;
+    const span = Math.abs(leftHours);
+    const spanText = span >= 48 ? `${Math.round(span / 24)} days` : span >= 1 ? `${span} hour${span === 1 ? '' : 's'}` : 'less than an hour';
+    const due = late ? `Overdue by ${spanText}` : `Due in ${spanText}`;
+    const percent = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
+    return { length, due, late, percent };
   }
 
   priorityLabel(priority: string): string {
@@ -243,7 +413,8 @@ export class TaskDetailsComponent implements OnInit {
     const deadline = new Date(value.deadline ?? new Date());
 
     this.saving.set(true);
-    const actualHours = value.actualHours ?? null;
+    // A cleared field means "no worked hours": send 0, since the backend ignores null.
+    const actualHours = value.actualHours ?? 0;
     this.taskService
       .update(task.id, {
         title: value.title?.trim() ?? '',

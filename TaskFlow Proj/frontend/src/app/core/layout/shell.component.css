@@ -115,7 +115,7 @@
   place-items: center;
   border-radius: var(--tf-radius);
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
   font-weight: 700;
 }
 
@@ -155,7 +155,7 @@
 
 .nav__item--active {
   background: var(--tf-primary);
-  color: #fff;
+  color: var(--tf-on-primary);
   font-weight: 600;
 }
 

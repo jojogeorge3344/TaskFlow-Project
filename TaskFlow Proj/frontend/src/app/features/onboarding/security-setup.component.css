@@ -484,7 +484,7 @@
 
 .setup-btn--primary {
   background: var(--tf-primary);
-  color: #ffffff;
+  color: var(--tf-on-primary)fff;
 }
 
 .setup-btn--primary:hover:not(:disabled) {
