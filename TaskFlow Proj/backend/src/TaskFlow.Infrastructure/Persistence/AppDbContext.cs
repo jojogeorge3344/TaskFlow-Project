@@ -252,6 +252,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(task => task.Id);
             entity.Property(task => task.TaskCode).IsRequired().HasMaxLength(32);
             entity.Property(task => task.Title).IsRequired().HasMaxLength(200);
+            entity.Property(task => task.ActualHours).IsConcurrencyToken();
             entity.Property(task => task.Description).HasMaxLength(4000);
 
             entity.HasIndex(task => task.TaskCode).IsUnique();

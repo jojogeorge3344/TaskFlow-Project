@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Dashboard.Analytics;
@@ -508,8 +509,8 @@ public class TaskService : ITaskService
         if (request.ActualHours.HasValue && task.ActualHours != request.ActualHours.Value)
         {
             hoursChangedFrom = task.ActualHours ?? 0;
-            var oldHours = task.ActualHours?.ToString() ?? "0";
-            var newHours = request.ActualHours.Value.ToString();
+            var oldHours = FormatHours(task.ActualHours ?? 0);
+            var newHours = FormatHours(request.ActualHours.Value);
             task.ActualHours = request.ActualHours.Value;
             await _activityService.AppendAsync(
                 taskId,
@@ -577,20 +578,31 @@ public class TaskService : ITaskService
             taskId,
             TaskActivityEventType.HoursLogged,
             currentUserId,
-            $"Worked hours logged: {total}h (total)",
-            previous.ToString(),
-            total.ToString(),
+            $"Worked hours logged: {FormatHours(total)}h (total)",
+            FormatHours(previous),
+            FormatHours(total),
             cancellationToken);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("The task's worked hours changed while you were saving. Please try again.");
+        }
+
         await NotifyHoursChangedAsync(task, recipients, previous, total, currentUserId, cancellationToken);
 
         return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
     }
 
-    /// <summary>Tells the assignee and recipients (except the person who made the change) that worked hours were
+    /// <summary>Tells the assignee and recipients (including the person who made the change, as a confirmation) that worked hours were
     /// added, updated or cleared, by notification and internal mail. Best effort: a failure is logged and never
     /// undoes the saved change.</summary>
+    /// <summary>Hours are stored in activity text and parsed back invariantly, so they are always written invariantly.</summary>
+    private static string FormatHours(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
     private async Task NotifyHoursChangedAsync(
         TaskEntity task,
         IReadOnlyCollection<TaskRecipientDto> recipients,
@@ -617,12 +629,13 @@ public class TaskService : ITaskService
                 .FirstOrDefaultAsync(cancellationToken) ?? "A teammate";
 
             var action = newHours == 0
-                ? $"cleared the worked hours (was {oldHours}h)"
+                ? $"cleared the worked hours (was {FormatHours(oldHours)}h)"
                 : newHours > oldHours
-                    ? $"added {newHours - oldHours}h of worked time (was {oldHours}h)"
-                    : $"updated the worked hours (was {oldHours}h)";
+                    ? $"added {FormatHours(newHours - oldHours)}h of worked time (was {FormatHours(oldHours)}h)"
+                    : $"updated the worked hours (was {FormatHours(oldHours)}h)";
             var remaining = task.EstimatedHours - newHours;
-            var summary = $"Total worked now: {newHours}h of {task.EstimatedHours}h estimated ({remaining}h remaining).";
+            var remainingText = remaining >= 0 ? $"{FormatHours(remaining)}h remaining" : $"over by {FormatHours(-remaining)}h";
+            var summary = $"Total worked now: {FormatHours(newHours)}h of {FormatHours(task.EstimatedHours)}h estimated ({remainingText}).";
             var message = $"{actorName} {action} on task {task.Title}. {summary}";
 
             foreach (var userId in targetIds)

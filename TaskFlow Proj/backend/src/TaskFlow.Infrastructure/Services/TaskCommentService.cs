@@ -247,7 +247,15 @@ public class TaskCommentService : ITaskCommentService
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _dbContext.ChangeTracker.Clear();
+            // Detach only the mail rows queued above; other tracked state belongs to the caller.
+            foreach (var entry in _dbContext.ChangeTracker.Entries()
+                         .Where(entry => entry.State == EntityState.Added
+                             && entry.Entity is MailMessage or MailRecipient or MailboxItem)
+                         .ToList())
+            {
+                entry.State = EntityState.Detached;
+            }
+
             _logger.LogWarning(exception, "Could not notify members of task {TaskId} about a discussion change.", task.Id);
         }
     }

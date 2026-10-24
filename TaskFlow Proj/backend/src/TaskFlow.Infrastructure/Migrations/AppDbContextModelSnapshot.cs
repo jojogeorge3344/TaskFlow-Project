@@ -827,6 +827,7 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal?>("ActualHours")
+                        .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("AssignedToUserId")

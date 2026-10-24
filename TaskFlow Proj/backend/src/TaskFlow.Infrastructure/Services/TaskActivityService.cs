@@ -98,9 +98,9 @@ public class TaskActivityService : ITaskActivityService
 
     public Task<bool> UpdateHoursEntryAsync(int taskId, int entryId, decimal hours, int actorUserId, CancellationToken cancellationToken)
     {
-        if (hours <= 0)
+        if (hours <= 0 || hours > 24)
         {
-            throw new InvalidOperationException("Hours must be greater than 0.");
+            throw new InvalidOperationException("Hours must be greater than 0 and at most 24 per entry.");
         }
 
         return ChangeHoursEntryAsync(taskId, entryId, hours, actorUserId, cancellationToken);
