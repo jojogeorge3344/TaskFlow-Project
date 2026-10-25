@@ -1,14 +1,15 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import {
   CdkDrag,
   CdkDragDrop,
   CdkDropList,
-  CdkDropListGroup,
-  moveItemInArray,
-  transferArrayItem
+  CdkDropListGroup
 } from '@angular/cdk/drag-drop';
 import { Router } from '@angular/router';
-import { BOARD_STATUSES, TaskCard, TaskStatus } from '../../core/models';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
+import { BOARD_STATUSES, ProjectWithCount, TaskCard, TaskRecipient, TaskStatus } from '../../core/models';
+import { ProjectService } from '../../core/services/project.service';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
@@ -22,10 +23,18 @@ interface BoardColumn {
 const STATUS_LABELS: Record<TaskStatus, string> = {
   ToDo: 'To Do',
   InProgress: 'In Progress',
+  InQA: 'In QA',
   Blocked: 'Blocked',
   Completed: 'Completed',
   Cancelled: 'Cancelled'
 };
+
+/** Local YYYY-MM-DD key so date-input filters compare in the user's timezone. */
+function localDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
 
 @Component({
   selector: 'app-kanban',
@@ -38,12 +47,69 @@ export class KanbanComponent implements OnInit {
   private readonly taskService = inject(TaskService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  private readonly projectService = inject(ProjectService);
 
   readonly columns = signal<BoardColumn[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
+  readonly statuses = BOARD_STATUSES;
+  readonly statusLabels = STATUS_LABELS;
+
+  /** Every task the board may show; filters narrow it into `columns`. */
+  private readonly tasks = signal<TaskCard[]>([]);
+  private readonly matchedCount = signal(0);
+
+  readonly assignees = signal<TaskRecipient[]>([]);
+  readonly projects = signal<ProjectWithCount[]>([]);
+  readonly projectId = signal<number | null>(null);
+  readonly assigneeUserId = signal<number | null>(null);
+  readonly status = signal<TaskStatus | ''>('');
+  readonly deadlineFrom = signal('');
+  readonly deadlineTo = signal('');
+
+  /** Moving a card changes its status, which needs its own permission. */
+  readonly canMove = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksStatus);
+  });
+
+  /** The filter row (project, assignee, status, deadline) is its own permission. */
+  readonly canFilter = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.BoardFilters);
+  });
+
+  /** Only roles that see every task need the assignee filter; others see only their own tasks. */
+  readonly canManage = computed(() => {
+    this.auth.currentUser();
+    return this.auth.hasPermission(Permissions.TasksViewAll);
+  });
+
+  readonly hasFilters = computed(
+    () =>
+      this.projectId() !== null ||
+      this.assigneeUserId() !== null ||
+      this.status() !== '' ||
+      this.deadlineFrom() !== '' ||
+      this.deadlineTo() !== ''
+  );
+
+  readonly filteredEmpty = computed(
+    () => !this.loading() && !this.error() && this.hasFilters() && this.tasks().length > 0 && this.matchedCount() === 0
+  );
+
   ngOnInit(): void {
+    if (this.canManage()) {
+      this.taskService.getAssignees().subscribe({
+        next: (assignees) => this.assignees.set(assignees)
+      });
+    }
+    this.projectService.getAll().subscribe({
+      next: (projects) => this.projects.set(projects),
+      error: () => this.projects.set([])
+    });
     this.load();
   }
 
@@ -53,11 +119,13 @@ export class KanbanComponent implements OnInit {
 
     this.taskService.getBoard().subscribe({
       next: (tasks) => {
-        this.columns.set(this.group(tasks));
+        this.tasks.set(tasks);
+        this.rebuild();
         this.loading.set(false);
       },
       error: () => {
-        this.columns.set(this.group([]));
+        this.tasks.set([]);
+        this.rebuild();
         this.error.set('Could not load the board. Try again.');
         this.loading.set(false);
       }
@@ -81,13 +149,46 @@ export class KanbanComponent implements OnInit {
   }
 
   open(task: TaskCard): void {
-    this.router.navigate(['/tasks', task.id]);
+    this.router.navigate(['/tasks', task.id], { queryParams: { returnUrl: '/board' } });
+  }
+
+  setProject(value: string): void {
+    this.projectId.set(value ? Number(value) : null);
+    this.rebuild();
+  }
+
+  setAssignee(value: string): void {
+    this.assigneeUserId.set(value ? Number(value) : null);
+    this.rebuild();
+  }
+
+  setStatus(value: string): void {
+    this.status.set(value as TaskStatus | '');
+    this.rebuild();
+  }
+
+  setDeadlineFrom(value: string): void {
+    this.deadlineFrom.set(value);
+    this.rebuild();
+  }
+
+  setDeadlineTo(value: string): void {
+    this.deadlineTo.set(value);
+    this.rebuild();
+  }
+
+  clearFilters(): void {
+    this.projectId.set(null);
+    this.assigneeUserId.set(null);
+    this.status.set('');
+    this.deadlineFrom.set('');
+    this.deadlineTo.set('');
+    this.rebuild();
   }
 
   drop(event: CdkDragDrop<TaskCard[]>, targetStatus: TaskStatus): void {
     if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-      this.refresh(event.container.data);
+      // Columns are deadline-ordered and rebuilt from the task list, so in-column order is not user-editable.
       return;
     }
 
@@ -98,53 +199,64 @@ export class KanbanComponent implements OnInit {
     }
 
     const card = event.item.data as TaskCard;
-    const previousIndex = event.previousIndex;
+    if (source.status !== card.status) {
+      return;
+    }
 
-    transferArrayItem(source.tasks, target.tasks, event.previousIndex, event.currentIndex);
-    this.refresh(target.tasks);
-
-    this.commitStatusChange(card, source.status, target.status, previousIndex);
+    this.commitStatusChange(card, source.status, targetStatus);
   }
 
-  private commitStatusChange(card: TaskCard, from: TaskStatus, to: TaskStatus, previousIndex: number): void {
+  private commitStatusChange(card: TaskCard, from: TaskStatus, to: TaskStatus): void {
+    this.updateLocalStatus(card, to);
+
     this.taskService.changeStatus(card.id, { status: to }).subscribe({
       next: () => {
         this.toast.success(`${card.taskCode} moved to ${STATUS_LABELS[to]}`);
       },
       error: (error: unknown) => {
+        this.updateLocalStatus(card, from);
         this.toast.error(apiErrorMessage(error, `Could not move ${card.taskCode}.`));
-        this.rollback(card, from, to, previousIndex);
       }
     });
   }
 
-  /** Confirmed 4xx responses roll the card back to its original column and position. */
-  private rollback(card: TaskCard, from: TaskStatus, to: TaskStatus, previousIndex: number): void {
-    this.columns.update((columns) =>
-      columns.map((column) => {
-        if (column.status === to) {
-          return { ...column, tasks: column.tasks.filter((candidate) => candidate.id !== card.id) };
-        }
-        if (column.status === from) {
-          const copy = [...column.tasks];
-          copy.splice(Math.min(previousIndex, copy.length), 0, card);
-          return { ...column, tasks: copy };
-        }
-        return column;
-      })
+  /** Optimistic status move; confirmed failures move the card back and re-group. */
+  private updateLocalStatus(card: TaskCard, status: TaskStatus): void {
+    this.tasks.update((tasks) => tasks.map((task) => (task.id === card.id ? { ...task, status } : task)));
+    this.rebuild();
+  }
+
+  private rebuild(): void {
+    const matched = this.tasks().filter((task) => this.matches(task));
+    this.matchedCount.set(matched.length);
+    this.columns.set(
+      BOARD_STATUSES.map((status) => ({
+        status,
+        tasks: matched.filter((task) => task.status === status)
+      }))
     );
   }
 
-  /** Force change detection on the array the drop mutated. */
-  private refresh(tasks: TaskCard[]): void {
-    this.columns.update((columns) => columns.map((column) => ({ ...column, tasks: [...column.tasks] })));
-    void tasks;
-  }
-
-  private group(tasks: TaskCard[]): BoardColumn[] {
-    return BOARD_STATUSES.map((status) => ({
-      status,
-      tasks: tasks.filter((task) => task.status === status)
-    }));
+  /** Filters combine with AND semantics; deadline range is inclusive on both ends. */
+  private matches(task: TaskCard): boolean {
+    if (this.projectId() !== null && task.projectId !== this.projectId()) {
+      return false;
+    }
+    if (this.assigneeUserId() !== null && task.assignedToUserId !== this.assigneeUserId()) {
+      return false;
+    }
+    if (this.status() !== '' && task.status !== this.status()) {
+      return false;
+    }
+    const day = localDateKey(new Date(task.deadline));
+    const from = this.deadlineFrom();
+    if (from !== '' && day < from) {
+      return false;
+    }
+    const to = this.deadlineTo();
+    if (to !== '' && day > to) {
+      return false;
+    }
+    return true;
   }
 }

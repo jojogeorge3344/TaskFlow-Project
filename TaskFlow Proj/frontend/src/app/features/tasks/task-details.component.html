@@ -1,26 +1,41 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <button type="button" class="tf-btn tf-btn--ghost tf-back" (click)="backToBoard()">
+      <button type="button" class="tf-btn tf-btn--ghost tf-back" (click)="goBack()" data-action="back">
         <tf-icon name="arrow" />
-        Back to board
+        {{ back.label }}
       </button>
       <h1>{{ loading() || error() ? 'Task details' : task()?.title }}</h1>
       @if (task(); as current) {
         <p class="tf-page-subtitle">
           <span class="tf-chip tf-chip--muted">{{ current.taskCode }}</span>
+          <span class="tf-chip tf-chip--muted" data-project>Project: {{ current.projectName || '—' }}</span>
           <span class="tf-chip" [class]="stageClass(current.stage)">{{ stageLabel(current.stage) }}</span>
         </p>
       }
     </div>
 
-    @if (isManager() && task(); as current) {
+    @if ((canEdit() || canDelete() || canCreate()) && task(); as current) {
       <div class="tf-page-actions">
-        <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks', current.id, 'reassign']">
-          <tf-icon name="users" />
-          Reassign
-        </a>
-        @if (!editing()) {
+        @if (canCreate()) {
+          <a class="tf-btn tf-btn--ghost" [routerLink]="['/tasks/new']" [queryParams]="{ copyFrom: current.id }" data-action="copy-task">
+            <tf-icon name="copy" />
+            Copy
+          </a>
+        }
+        @if (canDelete()) {
+          <button
+            type="button"
+            class="tf-btn tf-btn--ghost tf-btn--danger"
+            data-action="delete-task"
+            [disabled]="deleting()"
+            (click)="deleteTask()"
+          >
+            <tf-icon name="trash" />
+            Delete
+          </button>
+        }
+        @if (canEdit() && !editing()) {
           <button type="button" class="tf-btn tf-btn--primary" (click)="startEdit()" data-action="edit-task">
             <tf-icon name="edit" />
             Edit task
@@ -43,83 +58,201 @@
   } @else {
     @if (task(); as current) {
       @if (editing()) {
-        <form class="tf-card tf-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
-        <h2 class="tf-card-title">Edit {{ current.taskCode }}</h2>
+      <form class="ef" [formGroup]="editForm" (ngSubmit)="saveEdit()" novalidate data-edit-form>
+        <header class="ef__head">
+          <div class="ef__head-main">
+            <span class="ef__eyebrow">Editing task</span>
+            <div class="ef__title-row">
+              <h2 class="ef__title">{{ current.title }}</h2>
+              <span class="ef__chip ef__chip--code">{{ current.taskCode }}</span>
+              <span class="ef__chip ef__chip--project" data-edit-project>{{ current.projectName || '—' }}</span>
+              <span class="ef__chip" [class]="stageClass(current.stage)">{{ stageLabel(current.stage) }}</span>
+            </div>
+            <p class="ef__meta">Last updated {{ dateLabel(current.updatedAt) }} · Created by {{ current.createdByName }}</p>
+          </div>
+        </header>
 
-        <div class="tf-field">
-          <label for="edit-title">Title</label>
-          <input
-            id="edit-title"
-            class="tf-input"
-            type="text"
-            formControlName="title"
-            data-field="title"
-            autocomplete="off"
-          />
-          @if (editForm.controls.title.invalid && editForm.controls.title.touched) {
-            <p class="tf-field__error">Title is required.</p>
-          }
-        </div>
-
-        <div class="tf-field">
-          <label for="edit-description">Description</label>
-          <textarea
-            id="edit-description"
-            class="tf-input"
-            rows="4"
-            formControlName="description"
-            data-field="description"
-          ></textarea>
-        </div>
-
-        <div class="tf-form-row">
-          <div class="tf-field">
-            <label for="edit-priority">Priority</label>
-            <select id="edit-priority" class="tf-input" formControlName="priority" data-field="priority">
-              @for (priority of ['Low', 'Medium', 'High', 'Critical']; track priority) {
-                <option [value]="priority">{{ priorityLabel(priority) }}</option>
-              }
-            </select>
+        <section class="ef__card" aria-labelledby="edit-details-title">
+          <div class="ef__card-head">
+            <span class="ef__icon ef__icon--blue" aria-hidden="true"><tf-icon name="edit" /></span>
+            <div>
+              <h3 id="edit-details-title" class="tf-section__title ef__card-title">Details</h3>
+              <p class="ef__card-hint">What the task is about</p>
+            </div>
           </div>
 
           <div class="tf-field">
-            <label for="edit-hours">Estimated hours</label>
+            <label for="edit-title">Title</label>
             <input
-              id="edit-hours"
-              class="tf-input"
-              type="number"
-              min="0.5"
-              step="0.5"
-              formControlName="estimatedHours"
-              data-field="estimatedHours"
+              id="edit-title"
+              class="tf-input ef__input--lg"
+              type="text"
+              formControlName="title"
+              data-field="title"
+              autocomplete="off"
+              [class.is-invalid]="editForm.controls.title.invalid && editForm.controls.title.touched"
             />
-            @if (editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched) {
-              <p class="tf-field__error">Enter at least 0.5 hours.</p>
+            @if (editForm.controls.title.invalid && editForm.controls.title.touched) {
+              <p class="tf-field__error">Title is required.</p>
             }
           </div>
-        </div>
-
-        <div class="tf-form-row">
-          <div class="tf-field">
-            <label for="edit-start">Start date</label>
-            <input id="edit-start" class="tf-input" type="datetime-local" formControlName="startDate" data-field="startDate" />
-          </div>
 
           <div class="tf-field">
-            <label for="edit-deadline">Deadline</label>
-            <input id="edit-deadline" class="tf-input" type="datetime-local" formControlName="deadline" data-field="deadline" />
+            <div class="ef__label-row">
+              <label for="edit-description">Description</label>
+              <span class="ef__counter">{{ descriptionLength() }} chars</span>
+            </div>
+            <textarea
+              id="edit-description"
+              class="tf-input tf-textarea"
+              rows="4"
+              formControlName="description"
+              data-field="description"
+            ></textarea>
           </div>
-        </div>
 
-        @if (editForm.errors?.['deadlineBeforeStart']) {
-          <p class="tf-field__error">Deadline must be after the start date.</p>
-        }
+          <fieldset class="ef__priority" data-field="priority">
+            <legend>Priority</legend>
+            <div class="ef__segments">
+              @for (priority of priorities; track priority) {
+                <button
+                  type="button"
+                  class="ef__segment"
+                  [class.is-active]="editForm.controls.priority.value === priority"
+                  [attr.data-priority]="priority"
+                  [attr.aria-pressed]="editForm.controls.priority.value === priority"
+                  (click)="setPriority(priority)"
+                >
+                  <span class="ef__dot" [attr.data-priority]="priority" aria-hidden="true"></span>
+                  {{ priorityLabel(priority) }}
+                </button>
+              }
+            </div>
+          </fieldset>
+        </section>
 
-        <div class="tf-form-actions">
-          <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelEdit()">Cancel</button>
-          <button type="submit" class="tf-btn tf-btn--primary" [disabled]="editForm.invalid || saving()">
-            {{ saving() ? 'Saving…' : 'Save changes' }}
-          </button>
+        <section class="ef__card" aria-labelledby="edit-schedule-title">
+          <div class="ef__card-head">
+            <span class="ef__icon ef__icon--violet" aria-hidden="true"><tf-icon name="clock" /></span>
+            <div>
+              <h3 id="edit-schedule-title" class="tf-section__title ef__card-title">Schedule</h3>
+              <p class="ef__card-hint">When it starts and when it is due</p>
+            </div>
+          </div>
+
+          <div class="ef__grid">
+            <div class="tf-field">
+              <label for="edit-start">Start date</label>
+              <input id="edit-start" class="tf-input" type="datetime-local" formControlName="startDate" data-field="startDate" />
+            </div>
+
+            <div class="tf-field">
+              <label for="edit-deadline">Deadline</label>
+              <input
+                id="edit-deadline"
+                class="tf-input"
+                type="datetime-local"
+                formControlName="deadline"
+                data-field="deadline"
+                [class.is-invalid]="editForm.errors?.['deadlineBeforeStart']"
+              />
+              @if (editForm.errors?.['deadlineBeforeStart']) {
+                <p class="tf-field__error" data-error="deadline">Deadline must be after the start date.</p>
+              }
+            </div>
+          </div>
+
+          @if (scheduleSummary(); as schedule) {
+            <div class="ef__panel" data-schedule-summary>
+              <div class="ef__panel-row">
+                <span class="ef__panel-strong">{{ schedule.length }}</span>
+                <span class="ef__panel-state" [class.is-late]="schedule.late">{{ schedule.due }}</span>
+              </div>
+              <div class="ef__track" role="presentation">
+                <div class="ef__track-fill" [style.width.%]="schedule.percent"></div>
+                <span class="ef__track-knob" [style.left.%]="schedule.percent"></span>
+              </div>
+              <div class="ef__panel-row ef__panel-row--small">
+                <span>Start</span>
+                <span>Deadline</span>
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="ef__card" aria-labelledby="edit-effort-title">
+          <div class="ef__card-head">
+            <span class="ef__icon ef__icon--green" aria-hidden="true"><tf-icon name="gauge" /></span>
+            <div>
+              <h3 id="edit-effort-title" class="tf-section__title ef__card-title">Effort</h3>
+              <p class="ef__card-hint">Estimated against hours actually worked</p>
+            </div>
+          </div>
+
+          <div class="ef__grid">
+            <div class="tf-field">
+              <label for="edit-hours">Estimated hours</label>
+              <div class="ef__stepper">
+                <button type="button" aria-label="Decrease estimated hours" (click)="stepHours('estimatedHours', -0.5)">−</button>
+                <input
+                  id="edit-hours"
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  formControlName="estimatedHours"
+                  data-field="estimatedHours"
+                  [class.is-invalid]="editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched"
+                />
+                <span class="ef__unit">h</span>
+                <button type="button" aria-label="Increase estimated hours" (click)="stepHours('estimatedHours', 0.5)">+</button>
+              </div>
+              @if (editForm.controls.estimatedHours.invalid && editForm.controls.estimatedHours.touched) {
+                <p class="tf-field__error">Enter at least 0.5 hours.</p>
+              }
+            </div>
+
+            <div class="tf-field">
+              <label for="edit-actual-hours">Worked hours</label>
+              <div class="ef__stepper">
+                <button type="button" aria-label="Decrease worked hours" (click)="stepHours('actualHours', -0.5)">−</button>
+                <input
+                  id="edit-actual-hours"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  formControlName="actualHours"
+                  data-field="actualHours"
+                />
+                <span class="ef__unit">h</span>
+                <button type="button" aria-label="Increase worked hours" (click)="stepHours('actualHours', 0.5)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ef__panel" data-effort-summary>
+            <div class="ef__panel-row">
+              <span><span class="ef__panel-big">{{ effort().worked }}h</span> of {{ effort().estimated }}h worked</span>
+              <span class="ef__panel-state" [class.is-late]="effort().over">{{ effort().label }}</span>
+            </div>
+            <div class="ef__bar" role="presentation">
+              <div class="ef__bar-fill" [class.is-over]="effort().over" [style.width.%]="effort().percent"></div>
+            </div>
+          </div>
+        </section>
+
+        <div class="ef__actions" data-edit-actions>
+          <span class="ef__dirty">
+            @if (editForm.dirty) {
+              <span class="ef__dirty-dot" aria-hidden="true"></span>
+              You have unsaved changes
+            }
+          </span>
+          <div class="ef__buttons">
+            <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelEdit()">Cancel</button>
+            <button type="submit" class="tf-btn tf-btn--primary" [disabled]="editForm.invalid || saving()">
+              {{ saving() ? 'Saving…' : 'Save changes' }}
+            </button>
+          </div>
         </div>
       </form>
     }
@@ -133,6 +266,10 @@
         }
 
         <dl class="tf-details__meta">
+          <div>
+            <dt>Project</dt>
+            <dd data-meta-project>{{ current.projectName || '—' }}</dd>
+          </div>
           <div>
             <dt>Assignee</dt>
             <dd>{{ current.assignedToName || 'Unassigned' }}</dd>
@@ -158,6 +295,10 @@
             <dd>{{ current.estimatedHours }}h</dd>
           </div>
           <div>
+            <dt>Worked hours</dt>
+            <dd>{{ current.actualHours != null && current.actualHours !== undefined ? current.actualHours + 'h' : '—' }}</dd>
+          </div>
+          <div>
             <dt>Status</dt>
             <dd>{{ current.status }}</dd>
           </div>
@@ -177,30 +318,190 @@
         }
       </div>
 
-      <aside class="tf-card tf-side">
-        <h3 class="tf-side__title">Links</h3>
-        <ul class="tf-side__links">
-          <li>
-            <a [routerLink]="['/tasks', current.id, 'discussion']">
-              <tf-icon name="users" />
-              Discussion
-            </a>
-          </li>
-          <li>
-            <a [routerLink]="['/tasks', current.id, 'activity']">
+      <section class="tf-tabs" aria-label="Task sections">
+        <div class="tf-tabs__bar" role="tablist" aria-label="Task sections">
+          <button
+            type="button"
+            role="tab"
+            class="tf-tabs__tab"
+            id="tab-discussion"
+            aria-controls="panel-discussion"
+            data-tab="discussion"
+            [attr.aria-selected]="activeTab() === 'discussion'"
+            (click)="setTab('discussion')"
+          >
+            <tf-icon name="reply" />
+            Discussion
+            @if (!commentsLoading()) {
+              <span class="tf-tabs__count" data-comment-count>{{ comments().length }}</span>
+            }
+          </button>
+          @if (canViewActivity()) {
+            <button
+              type="button"
+              role="tab"
+              class="tf-tabs__tab"
+              id="tab-activity"
+              aria-controls="panel-activity"
+              data-tab="activity"
+              [attr.aria-selected]="activeTab() === 'activity'"
+              (click)="setTab('activity')"
+            >
               <tf-icon name="chart" />
               Activity history
-            </a>
-          </li>
-          @if (isManager()) {
-            <li>
-              <a [routerLink]="['/tasks', current.id, 'reassign']">
-                <tf-icon name="users" />
-                Reassign task
-              </a>
-            </li>
+              @if (activity().length > 0) {
+                <span class="tf-tabs__count">{{ activity().length }}</span>
+              }
+            </button>
           }
-        </ul>
+          @if (canReassign()) {
+            <button
+              type="button"
+              role="tab"
+              class="tf-tabs__tab"
+              id="tab-reassign"
+              aria-controls="panel-reassign"
+              data-tab="reassign"
+              [attr.aria-selected]="activeTab() === 'reassign'"
+              (click)="setTab('reassign')"
+            >
+              <tf-icon name="users" />
+              Reassign task
+            </button>
+          }
+        </div>
+
+        <div class="tf-tabs__panel">
+          @if (activeTab() === 'discussion') {
+            <div role="tabpanel" id="panel-discussion" aria-labelledby="tab-discussion" data-comments>
+              <div class="tf-tabs__head">
+                <h3 class="tf-tabs__title">Latest comments</h3>
+                <a class="tf-tabs__link" [routerLink]="['/tasks', current.id, 'discussion']" queryParamsHandling="preserve">Open full discussion →</a>
+              </div>
+              @if (commentsLoading()) {
+                <p class="tf-tabs__empty">Loading comments…</p>
+              } @else if (comments().length === 0) {
+                <p class="tf-tabs__empty" data-no-comments>No comments yet</p>
+              } @else {
+                <ul class="tf-comments__list">
+                  @for (comment of latestComments(); track comment.id) {
+                    <li class="tf-comments__item">
+                      <span class="tf-avatar" aria-hidden="true">{{ initialsOf(comment.authorName) }}</span>
+                      <div class="tf-comments__bubble">
+                        <div class="tf-comments__meta">
+                          <strong>{{ comment.authorName }}</strong>
+                          <time [attr.datetime]="comment.createdAt">{{ timeLabel(comment.createdAt) }}</time>
+                          @if (comment.editedAt) {
+                            <small data-edited>(edited)</small>
+                          }
+                        </div>
+                        <p>{{ comment.body }}</p>
+                      </div>
+                    </li>
+                  }
+                </ul>
+                @if (comments().length > latestComments().length) {
+                  <p class="tf-tabs__more">Showing the latest {{ latestComments().length }} of {{ comments().length }}.</p>
+                }
+              }
+            </div>
+          }
+
+          @if (activeTab() === 'activity' && canViewActivity()) {
+            <div role="tabpanel" id="panel-activity" aria-labelledby="tab-activity" data-activity-panel>
+              <div class="tf-tabs__head">
+                <h3 class="tf-tabs__title">Recent activity</h3>
+                <a class="tf-tabs__link" [routerLink]="['/tasks', current.id, 'activity']" queryParamsHandling="preserve">Open full history →</a>
+              </div>
+              @if (activityLoading()) {
+                <p class="tf-tabs__empty">Loading activity…</p>
+              } @else if (activity().length === 0) {
+                <p class="tf-tabs__empty" data-no-activity>No activity yet</p>
+              } @else {
+                <ol class="tf-activity__list">
+                  @for (entry of latestActivity(); track entry.id) {
+                    <li class="tf-activity__item">
+                      <span class="tf-activity__node" [attr.data-tone]="activityMeta(entry.eventType).tone" aria-hidden="true">
+                        <tf-icon [name]="activityMeta(entry.eventType).icon" />
+                      </span>
+                      <div class="tf-activity__card">
+                        <div class="tf-activity__head">
+                          <span class="tf-activity__chip" [attr.data-tone]="activityMeta(entry.eventType).tone">{{ activityMeta(entry.eventType).label }}</span>
+                          <time [attr.datetime]="entry.createdAt">{{ timeLabel(entry.createdAt) }}</time>
+                        </div>
+                        <p>{{ entry.message }}</p>
+                      </div>
+                    </li>
+                  }
+                </ol>
+              }
+            </div>
+          }
+
+          @if (activeTab() === 'reassign' && canReassign()) {
+            <div role="tabpanel" id="panel-reassign" aria-labelledby="tab-reassign" data-reassign-panel>
+              <div class="tf-tabs__head">
+                <h3 class="tf-tabs__title">Reassign this task</h3>
+                <a class="tf-tabs__link" [routerLink]="['/tasks', current.id, 'reassign']" queryParamsHandling="preserve">Open full screen →</a>
+              </div>
+              <div class="tf-reassign__flow">
+                <div class="tf-reassign__card">
+                  <span class="tf-avatar" aria-hidden="true">{{ initialsOf(current.assignedToName) }}</span>
+                  <div>
+                    <small>Current assignee</small>
+                    <strong>{{ current.assignedToName || 'Unassigned' }}</strong>
+                  </div>
+                </div>
+                <span class="tf-reassign__arrow" aria-hidden="true"><tf-icon name="arrow" /></span>
+                <div class="tf-reassign__card tf-reassign__card--empty">
+                  <span class="tf-avatar tf-reassign__avatar--empty" aria-hidden="true">?</span>
+                  <div>
+                    <small>New assignee</small>
+                    <strong>Not chosen yet</strong>
+                  </div>
+                </div>
+              </div>
+              <a class="tf-btn tf-btn--primary tf-reassign__cta" [routerLink]="['/tasks', current.id, 'reassign']" queryParamsHandling="preserve">
+                <tf-icon name="users" />
+                Choose new assignee
+              </a>
+            </div>
+          }
+        </div>
+      </section>
+
+      @if (canLogHours() || allowedNext(current.status).length > 0) {
+      <aside class="tf-card tf-side">
+        @if (canLogHours()) {
+          <h3 class="tf-side__title">Time tracking</h3>
+          <dl class="tf-side__time" data-time-tracking>
+            <div><dt>Estimated</dt><dd>{{ current.estimatedHours }}h</dd></div>
+            <div><dt>Worked</dt><dd data-worked>{{ current.actualHours ?? 0 }}h</dd></div>
+            <div><dt>Remaining</dt><dd data-remaining>{{ remainingHours() }}h</dd></div>
+          </dl>
+          <form class="tf-side__log" (submit)="$event.preventDefault(); logHours()">
+            <label for="log-hours">Log worked hours</label>
+            <input
+              id="log-hours"
+              class="tf-input"
+              type="number"
+              min="0.5"
+              step="0.5"
+              placeholder="e.g. 3"
+              data-field="logHours"
+              [value]="hoursToLog()"
+              (input)="hoursToLog.set($any($event.target).value)"
+            />
+            <button type="submit" class="tf-btn tf-btn--primary" data-action="log-hours" [disabled]="loggingHours()">
+              {{ loggingHours() ? 'Logging…' : 'Log hours' }}
+            </button>
+          </form>
+          @if (canViewActivity()) {
+            <a [routerLink]="['/tasks', current.id, 'activity']" [queryParams]="{ eventType: 'HoursLogged' }" queryParamsHandling="merge" data-link="time-history">
+              View hours in activity history
+            </a>
+          }
+        }
 
         @if (allowedNext(current.status).length > 0) {
           <h3 class="tf-side__title">Move to</h3>
@@ -219,7 +520,10 @@
           </div>
         }
       </aside>
+      }
     </div>
     }
   }
 </section>
+
+<tf-confirm-dialog />

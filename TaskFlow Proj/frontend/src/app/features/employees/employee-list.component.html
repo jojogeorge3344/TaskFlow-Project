@@ -10,10 +10,12 @@
         }
       </p>
     </div>
-    <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
-      <tf-icon name="plus" />
-      Add employee
-    </button>
+    @if (canCreate()) {
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+        <tf-icon name="plus" />
+        Add employee
+      </button>
+    }
   </header>
 
   <div class="tf-card tf-toolbar" role="search" aria-label="Filter employees">
@@ -33,11 +35,11 @@
       </div>
     </div>
     <div class="tf-field">
-      <label for="emp-filter-department">Department</label>
-      <select id="emp-filter-department" class="tf-select" (change)="setDepartment($any($event.target).value)">
-        <option value="" [selected]="departmentId() === null">All departments</option>
-        @for (department of departments(); track department.id) {
-          <option [value]="department.id" [selected]="department.id === departmentId()">{{ department.name }}</option>
+      <label for="emp-filter-project">Project</label>
+      <select id="emp-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+        <option value="" [selected]="projectId() === null">All projects</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
         }
       </select>
     </div>
@@ -45,7 +47,7 @@
       <label for="emp-filter-role">Role</label>
       <select id="emp-filter-role" class="tf-select" (change)="setRole($any($event.target).value)">
         <option value="" [selected]="role() === ''">All roles</option>
-        @for (option of roles; track option) {
+        @for (option of roles(); track option) {
           <option [value]="option" [selected]="option === role()">{{ option }}</option>
         }
       </select>
@@ -82,7 +84,7 @@
         } @else {
           <strong>No employees yet</strong>
           <p>Add the first employee to get started.</p>
-          <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add employee</button>
+          @if (canCreate()) { <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add employee</button> }
         }
       </div>
     } @else {
@@ -92,7 +94,8 @@
             <tr>
               <th scope="col">Employee</th>
               <th scope="col">Email</th>
-              <th scope="col">Department</th>
+              <th scope="col">Projects</th>
+              <th scope="col">Departments</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
               <th scope="col"><span class="tf-sr-only">Actions</span></th>
@@ -104,6 +107,7 @@
                 <tr class="skeleton-row" aria-hidden="true">
                   <td class="cell-person"><span class="tf-skeleton" style="width: 10rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 12rem"></span></td>
+                  <td><span class="tf-skeleton" style="width: 6rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 6rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 5rem"></span></td>
                   <td><span class="tf-skeleton" style="width: 4rem"></span></td>
@@ -125,15 +129,28 @@
                     </div>
                   </td>
                   <td data-label="Email" class="cell-email">{{ employee.email }}</td>
-                  <td data-label="Department">
-                    @if (employee.departmentName) {
-                      {{ employee.departmentName }}
-                    } @else {
+                  <td data-label="Projects" data-cell="projects">
+                    @for (allocation of employee.projectAllocations; track allocation.projectId) {
+                      <div class="project-line">
+                        {{ allocation.projectName }} <strong>{{ allocation.percent }}%</strong>
+                        <span class="project-line__position">{{ allocation.positionName }}</span>
+                      </div>
+                    } @empty {
+                      <span class="unassigned">Unassigned</span>
+                    }
+                    @if (employee.projectAllocations.length > 1) {
+                      <div class="project-line project-line--total" data-total>{{ employee.totalAllocatedPercent }}% total</div>
+                    }
+                  </td>
+                  <td data-label="Departments" data-cell="departments">
+                    @for (department of employee.departments; track department.id; let last = $last) {
+                      {{ department.name }}{{ last ? '' : ', ' }}
+                    } @empty {
                       <span class="unassigned">Unassigned</span>
                     }
                   </td>
                   <td data-label="Role">
-                    <span [class]="'tf-badge tf-badge--' + employee.role.toLowerCase()">{{ employee.role }}</span>
+                    <span [class]="roleBadgeClass(employee.role)">{{ employee.role }}</span>
                   </td>
                   <td data-label="Status">
                     <span class="tf-badge" [class.tf-badge--active]="employee.isActive" [class.tf-badge--inactive]="!employee.isActive">
@@ -142,6 +159,7 @@
                   </td>
                   <td class="cell-actions">
                     <div class="actions">
+                      @if (canEdit()) {
                       <button
                         type="button"
                         class="tf-btn tf-btn--icon"
@@ -152,6 +170,8 @@
                       >
                         <tf-icon name="edit" />
                       </button>
+                      }
+                      @if (canChangeStatus()) {
                       <button
                         type="button"
                         class="tf-btn tf-btn--icon"
@@ -164,6 +184,20 @@
                       >
                         <tf-icon name="power" />
                       </button>
+                      }
+                      @if (canDeleteEmployee(employee)) {
+                        <button
+                          type="button"
+                          class="tf-btn tf-btn--icon tf-btn--danger"
+                          data-action="delete"
+                          [attr.aria-label]="'Delete ' + employee.fullName"
+                          title="Delete"
+                          [disabled]="busyId() === employee.id"
+                          (click)="deleteEmployee(employee)"
+                        >
+                          <tf-icon name="trash" />
+                        </button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -179,11 +213,17 @@
 <tf-drawer [open]="panel() !== null" [title]="panelTitle()" (closed)="closePanel()">
   @switch (panel()?.mode) {
     @case ('create') {
-      <app-employee-form-panel [departments]="departments()" (saved)="onSaved()" (cancelled)="closePanel()" />
+      <app-employee-form-panel
+        [projects]="projects()"
+        [departments]="departments()"
+        (saved)="onSaved()"
+        (cancelled)="closePanel()"
+      />
     }
     @case ('edit') {
       <app-employee-form-panel
         [employee]="$any(panel()).employee"
+        [projects]="projects()"
         [departments]="departments()"
         (saved)="onSaved()"
         (cancelled)="closePanel()"
@@ -192,7 +232,9 @@
     @case ('details') {
       <app-employee-details-panel
         [employee]="$any(panel()).employee"
+        [canResetMfa]="canResetMfa()"
         (edit)="openEdit($any(panel()).employee)"
+        (resetMfa)="resetMfa($any(panel()).employee)"
         (closed)="closePanel()"
       />
     }

@@ -26,6 +26,15 @@ public interface ITaskService
     /// throws when the caller lacks scope or the edit violates task rules.</summary>
     Task<TaskDetailsDto?> UpdateAsync(int taskId, UpdateTaskRequest request, int currentUserId, string currentUserRole, CancellationToken cancellationToken);
 
+    /// <summary>Adds worked hours to a task's total. Allowed for the task's assignee or anyone who may edit tasks, so an
+    /// employee can track time on their own work without edit rights. Returns null when not found; throws on
+    /// unauthorized access or invalid hours.</summary>
+    Task<TaskDetailsDto?> LogHoursAsync(int taskId, LogHoursRequest request, int currentUserId, string currentUserRole, CancellationToken cancellationToken);
+
+    /// <summary>Soft-deletes a task and records who did it in its activity history. Returns false when the task
+    /// does not exist or is already deleted. Administrator-only; the caller enforces that.</summary>
+    Task<bool> DeleteAsync(int taskId, int currentUserId, CancellationToken cancellationToken);
+
     /// <summary>Changes a task's status enforcing the allowed transitions. Returns null when
     /// not found; throws on unauthorized access or a disallowed transition.</summary>
     Task<TaskCardDto?> ChangeStatusAsync(int taskId, UpdateTaskStatusRequest request, int currentUserId, string currentUserRole, CancellationToken cancellationToken);

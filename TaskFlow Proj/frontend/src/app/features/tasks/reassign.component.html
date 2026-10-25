@@ -1,16 +1,16 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]" queryParamsHandling="preserve">
         <tf-icon name="arrow" />
         Back to task #{{ taskId }}
       </a>
       <h1>Reassign task</h1>
       @if (task(); as current) {
-        <p>
-          {{ current.taskCode }} · {{ current.title }} · currently assigned to
-          {{ current.assignedToName || 'no one' }}
-        </p>
+        <div class="reassign__chips">
+          <span class="reassign__chip">{{ current.taskCode }}</span>
+          <span class="reassign__chip reassign__chip--blue">{{ current.title }}</span>
+        </div>
       }
     </div>
   </header>
@@ -28,48 +28,137 @@
     </div>
   } @else {
     @if (task(); as current) {
-      <form class="tf-card reassign" (ngSubmit)="confirm()">
-      <div class="tf-field">
-        <label for="reassign-user">New assignee</label>
-        <select
-          id="reassign-user"
-          class="tf-input"
-          data-field="assignee"
-          [value]="selectedUserId() ?? ''"
-          (change)="onAssigneeChange($any($event.target).value)"
-        >
-          <option value="">Select an active employee…</option>
-          @for (employee of eligibleEmployees(); track employee.id) {
-            <option [value]="employee.id">{{ employee.fullName }} ({{ employee.employeeCode || employee.username }})</option>
-          }
-        </select>
-        @if (eligibleEmployees().length === 0) {
-          <p class="tf-field__hint">There are no other active employees to assign this task to.</p>
-        }
-      </div>
+      <form class="reassign" (ngSubmit)="confirm()">
+        <div class="reassign__main">
+          <section class="reassign__card" aria-labelledby="reassign-who">
+            <div>
+              <h2 id="reassign-who" class="reassign__card-title">1 · Who takes over?</h2>
+              <p class="reassign__hint">Any active user except the current assignee.</p>
+            </div>
 
-      <div class="tf-field">
-        <label for="reassign-reason">Reason</label>
-        <textarea
-          id="reassign-reason"
-          class="tf-input tf-textarea"
-          rows="3"
-          maxlength="500"
-          placeholder="Why is this task moving to a new assignee?"
-          data-field="reason"
-          [value]="reason()"
-          (input)="reason.set($any($event.target).value)"
-        ></textarea>
-        <p class="tf-field__hint">The reason is recorded in the activity history and shared with the new assignee.</p>
-      </div>
+            <div class="reassign__flow">
+              <div class="reassign__person-card">
+                <span class="reassign__avatar reassign__avatar--lg">{{ initialsOf(current.assignedToName) }}</span>
+                <div>
+                  <p class="reassign__eyebrow">Current</p>
+                  <strong>{{ current.assignedToName || 'No one' }}</strong>
+                </div>
+              </div>
+              <span class="reassign__arrow" aria-hidden="true"><tf-icon name="arrow" /></span>
+              <div class="reassign__person-card" [class.is-filled]="selectedEmployee()" data-new-assignee>
+                @if (selectedEmployee(); as chosen) {
+                  <span class="reassign__avatar reassign__avatar--lg">{{ initialsOf(chosen.fullName) }}</span>
+                  <div>
+                    <p class="reassign__eyebrow">New</p>
+                    <strong>{{ chosen.fullName }}</strong>
+                  </div>
+                } @else {
+                  <span class="reassign__avatar reassign__avatar--lg reassign__avatar--empty">?</span>
+                  <div>
+                    <p class="reassign__eyebrow">New</p>
+                    <strong class="reassign__muted">Not chosen yet</strong>
+                  </div>
+                }
+              </div>
+            </div>
 
-      <div class="reassign__actions">
-        <button type="button" class="tf-btn tf-btn--ghost" (click)="cancel()">Cancel</button>
-        <button type="submit" class="tf-btn tf-btn--primary" [disabled]="!canSubmit() || submitting()" data-action="reassign">
-          <tf-icon name="users" />
-          {{ submitting() ? 'Reassigning…' : 'Reassign' }}
-        </button>
-      </div>
+            <div class="reassign__search">
+              <tf-icon name="search" />
+              <input
+                type="search"
+                class="tf-input"
+                placeholder="Search people…"
+                aria-label="Search people"
+                autocomplete="off"
+                [value]="search()"
+                (input)="search.set($any($event.target).value)"
+              />
+            </div>
+
+            <div class="reassign__list" role="radiogroup" aria-label="New assignee" data-field="assignee">
+              @for (employee of visibleEmployees(); track employee.id) {
+                <button
+                  type="button"
+                  role="radio"
+                  class="reassign__pick"
+                  [attr.aria-checked]="selectedUserId() === employee.id"
+                  [attr.data-user]="employee.id"
+                  (click)="onAssigneeChange(employee.id)"
+                >
+                  <span class="reassign__avatar">{{ initialsOf(employee.fullName) }}</span>
+                  <span class="reassign__pick-text">
+                    <strong>{{ employee.fullName }}</strong>
+                    <small>{{ employee.role }} · {{ employee.employeeCode || employee.username }}</small>
+                  </span>
+                  <span class="reassign__tick" aria-hidden="true"><tf-icon name="check" /></span>
+                </button>
+              }
+            </div>
+            @if (eligibleEmployees().length === 0) {
+              <p class="reassign__hint">There are no other active users to assign this task to.</p>
+            } @else if (visibleEmployees().length === 0) {
+              <p class="reassign__hint">No one matches “{{ search() }}”.</p>
+            }
+          </section>
+
+          <section class="reassign__card" aria-labelledby="reassign-why">
+            <div>
+              <h2 id="reassign-why" class="reassign__card-title">2 · Why is it moving?</h2>
+              <p class="reassign__hint">Required. It is recorded in the activity history and shown to everyone notified.</p>
+            </div>
+            <div class="tf-field">
+              <label for="reassign-reason">Reason</label>
+              <textarea
+                id="reassign-reason"
+                class="tf-input tf-textarea"
+                rows="3"
+                maxlength="500"
+                placeholder="Why is this task moving to a new assignee?"
+                data-field="reason"
+                [value]="reason()"
+                (input)="reason.set($any($event.target).value)"
+              ></textarea>
+            </div>
+          </section>
+
+          <div class="reassign__actions">
+            <span class="reassign__summary">
+              @if (selectedEmployee(); as chosen) {
+                Reassigning to <strong>{{ chosen.fullName }}</strong>
+              } @else {
+                Choose a new assignee to continue
+              }
+            </span>
+            <div class="reassign__buttons">
+              <button type="button" class="tf-btn tf-btn--ghost" (click)="cancel()">Cancel</button>
+              <button type="submit" class="tf-btn tf-btn--primary" [disabled]="!canSubmit() || submitting()" data-action="reassign">
+                <tf-icon name="users" />
+                {{ submitting() ? 'Reassigning…' : 'Reassign' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="reassign__rail">
+          <section class="reassign__card" aria-labelledby="reassign-next">
+            <h2 id="reassign-next" class="reassign__eyebrow">What happens next</h2>
+            <p class="reassign__notice">
+              <tf-icon name="bell" />
+              <span>A notification and an Inbox mail go to everyone below, and to you.</span>
+            </p>
+            <ul class="reassign__notify" data-notify-list>
+              @for (person of notifyList(); track person.key) {
+                <li>
+                  <span class="reassign__avatar">{{ initialsOf(person.name) }}</span>
+                  <span class="reassign__pick-text">
+                    <strong>{{ person.name }}</strong>
+                    <small>{{ person.role }}</small>
+                  </span>
+                </li>
+              }
+            </ul>
+          </section>
+        </aside>
       </form>
     }
   }

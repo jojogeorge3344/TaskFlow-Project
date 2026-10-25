@@ -52,8 +52,8 @@
 }
 
 .priority--high {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--tf-chip-orange-bg);
+  color: var(--tf-chip-orange-fg);
 }
 
 .priority--critical {
@@ -89,4 +89,14 @@
   .skeleton-row td:nth-child(n + 3) {
     display: none;
   }
+}
+
+.drill-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3) var(--tf-space-4);
+  background: var(--tf-primary-soft);
 }

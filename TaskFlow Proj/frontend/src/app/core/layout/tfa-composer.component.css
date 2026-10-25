@@ -1,0 +1,244 @@
+:host {
+  display: block;
+  background: var(--tf-surface);
+}
+
+.tfa-suggest {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tfa-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 999px;
+  background: var(--tf-surface-alt);
+  color: var(--tf-text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.tfa-chip:hover {
+  border-color: var(--tf-primary);
+  color: var(--tf-primary);
+  background: var(--tf-primary-soft);
+}
+
+.tfa-chip:focus-visible {
+  outline: 3px solid var(--tf-focus-ring);
+  outline-offset: 1px;
+}
+
+.tfa-composer {
+  padding: 0.625rem 0.875rem 0.75rem;
+}
+
+.tfa-listening {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.75rem;
+  background: var(--tf-violet-soft);
+  color: var(--tf-violet);
+  font-size: 0.78125rem;
+  font-weight: 600;
+}
+
+/* Waiting for the wake phrase: calm, no animation. The waves are only for a command being taken. */
+.tfa-listening--standby {
+  background: var(--tf-surface-alt);
+  color: var(--tf-text-secondary);
+}
+
+.tfa-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: 0 0.25rem;
+  border-radius: 50%;
+  background: var(--tf-violet);
+  opacity: 0.7;
+}
+
+.tfa-listening--idle {
+  background: var(--tf-surface-alt);
+  color: var(--tf-text-secondary);
+}
+
+.tfa-listening__text {
+  flex: 1;
+}
+
+.tfa-listening__toggle {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tfa-wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 1rem;
+}
+
+.tfa-wave i {
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: tfa-wave 1s infinite ease-in-out;
+}
+
+.tfa-wave i:nth-child(1),
+.tfa-wave i:nth-child(5) {
+  height: 6px;
+}
+
+.tfa-wave i:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.tfa-wave i:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.tfa-wave i:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+@keyframes tfa-wave {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 16px;
+  }
+}
+
+.tfa-voice-reason {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--tf-warning);
+}
+
+.tfa-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.375rem 0.375rem 0.375rem 0.75rem;
+  border: 1px solid var(--tf-border-strong);
+  border-radius: 1rem;
+  background: var(--tf-surface-alt);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tfa-input-row:focus-within {
+  border-color: var(--tf-primary);
+  box-shadow: var(--tf-focus-ring);
+  background: var(--tf-surface);
+}
+
+.tfa-textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 6rem;
+  padding: 0.4375rem 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--tf-text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.tfa-textarea::placeholder {
+  color: var(--tf-subtle);
+}
+
+.tfa-round {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.75rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.tfa-round:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tfa-round--mic {
+  background: var(--tf-surface);
+  color: var(--tf-muted);
+  border: 1px solid var(--tf-border);
+}
+
+.tfa-round--mic:hover:not(:disabled) {
+  color: var(--tf-primary);
+  border-color: var(--tf-primary);
+}
+
+.tfa-round--mic.is-on {
+  background: var(--tf-violet);
+  border-color: var(--tf-violet);
+  color: #fff;
+  animation: tfa-pulse 1.6s infinite;
+}
+
+.tfa-round--send {
+  background: var(--tf-primary);
+  color: var(--tf-on-primary);
+}
+
+.tfa-round--send:hover:not(:disabled) {
+  background: var(--tf-primary-hover);
+}
+
+.tfa-round:focus-visible {
+  outline: 3px solid var(--tf-focus-ring);
+  outline-offset: 1px;
+}
+
+@keyframes tfa-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(109, 40, 217, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(109, 40, 217, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(109, 40, 217, 0);
+  }
+}
+
+.tfa-foot {
+  margin-top: 0.4375rem;
+  text-align: center;
+  font-size: 0.65625rem;
+  color: var(--tf-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tfa-wave i,
+  .tfa-round--mic.is-on {
+    animation: none;
+  }
+}

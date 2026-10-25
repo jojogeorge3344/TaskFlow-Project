@@ -1,3 +1,3 @@
-- admin@taskflow.local / Admin@123 → /admin
-- manager@taskflow.local / Manager@123 → /manager
-- employee@taskflow.local / Employee@123 → /me
+- admin@taskflow.com / 123456 → /admin
+- manager@taskflow.com / 123456 → /manager
+- employee@taskflow.com / 123456 → /me

@@ -1,0 +1,195 @@
+<section class="profile">
+  <header class="profile-hero" data-section="hero">
+    <span class="profile-hero__avatar" aria-hidden="true" data-field="avatar">{{ avatar() }}</span>
+
+    <div class="profile-hero__main">
+      @if (profile(); as user) {
+        <h1 class="profile-hero__title">{{ user.fullName }}</h1>
+        <p class="profile-hero__sub">&#64;{{ user.username }} &middot; {{ user.email }}</p>
+        <ul class="profile-chips" aria-label="Account summary">
+          <li class="profile-chip" data-chip="role">{{ user.role }}</li>
+          <li class="profile-chip" [class.profile-chip--ok]="user.isActive" [class.profile-chip--off]="!user.isActive" data-chip="status">
+            {{ user.isActive ? 'Active' : 'Inactive' }}
+          </li>
+          @for (allocation of user.projectAllocations; track allocation.projectId) {
+            <li class="profile-chip" data-chip="project">{{ allocationLabel(allocation) }}</li>
+          }
+          <li class="profile-chip" data-chip="mfa" [class.profile-chip--ok]="user.mfaEnabled">
+            {{ user.mfaEnabled ? 'Two-step on' : 'Two-step off' }}
+          </li>
+          @if (user.lastLoginAt) {
+            <li class="profile-chip" data-chip="last-login">Last sign-in {{ user.lastLoginAt | date: 'medium' }}</li>
+          }
+        </ul>
+      } @else {
+        <h1 class="profile-hero__title">My profile</h1>
+        <p class="profile-hero__sub">Your details and security settings.</p>
+      }
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-card">
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ loadError() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+      </div>
+    </div>
+  } @else if (loading()) {
+    <div class="pcard" aria-busy="true">
+      <span class="tf-skeleton profile-form__skeleton"></span>
+      <span class="tf-skeleton profile-form__skeleton"></span>
+      <span class="tf-skeleton profile-form__skeleton"></span>
+    </div>
+  } @else {
+    <div class="profile-layout">
+      <div class="profile-col" data-column="left">
+        <section class="pcard profile-card--account">
+          <div class="pcard__head">
+            <span class="pcard__icon" aria-hidden="true"><tf-icon name="shield" /></span>
+            <div>
+              <h2 class="pcard__title">Account details</h2>
+              <p class="pcard__sub">Your role, project and status are managed by an administrator.</p>
+            </div>
+          </div>
+
+          <dl class="profile-readonly">
+            @for (field of readonlyFields(); track field.label) {
+              <div>
+                <dt>{{ field.label }}</dt>
+                <dd [attr.data-field]="'readonly-' + field.label">
+                  @if (field.values.length > 1) {
+                    <ul class="profile-list">
+                      @for (value of field.values; track $index) {
+                        <li>{{ value }}</li>
+                      }
+                    </ul>
+                  } @else if (field.values.length === 1) {
+                    <span>{{ field.values[0] }}</span>
+                  } @else {
+                    <span>—</span>
+                  }
+                  @if (field.note) {
+                    <span class="profile-readonly__note">{{ field.note }}</span>
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+      </div>
+
+      <div class="profile-col" data-column="right">
+        <form class="pcard profile-card--personal" [formGroup]="form" (ngSubmit)="save()" novalidate>
+          <div class="pcard__head">
+            <span class="pcard__icon" aria-hidden="true"><tf-icon name="user" /></span>
+            <div>
+              <h2 class="pcard__title">Personal information</h2>
+              <p class="pcard__sub">Update the name and email other people see.</p>
+            </div>
+          </div>
+
+          @if (saveError()) {
+            <div class="tf-alert" role="alert">
+              <tf-icon name="alert" />
+              <span>{{ saveError() }}</span>
+            </div>
+          }
+
+          <div class="pcard__body">
+            <div class="tf-field">
+              <label for="profile-full-name">Full name <span class="tf-field__required" aria-hidden="true">*</span></label>
+              <input
+                id="profile-full-name"
+                class="tf-input"
+                formControlName="fullName"
+                data-field="fullName"
+                autocomplete="name"
+                [class.is-invalid]="!!fieldError('fullName')"
+                [attr.aria-invalid]="!!fieldError('fullName')"
+                [attr.aria-describedby]="fieldError('fullName') ? 'profile-full-name-error' : null"
+              />
+              @if (fieldError('fullName'); as message) {
+                <span id="profile-full-name-error" class="tf-field__error" data-error="fullName">{{ message }}</span>
+              }
+            </div>
+
+            <div class="tf-field tf-field--wide">
+              <label for="profile-email">Email address <span class="tf-field__required" aria-hidden="true">*</span></label>
+              <div class="tf-input-group">
+                <input
+                  id="profile-email"
+                  class="tf-input"
+                  type="text"
+                  appEmailLocalPart
+                  formControlName="email"
+                  data-field="email"
+                  autocomplete="off"
+                  autocapitalize="none"
+                  spellcheck="false"
+                  [class.is-invalid]="!!fieldError('email')"
+                  [attr.aria-invalid]="!!fieldError('email')"
+                  [attr.aria-describedby]="fieldError('email') ? 'profile-email-suffix profile-email-error' : 'profile-email-suffix'"
+                />
+                <span id="profile-email-suffix" class="tf-input-group__suffix" data-email-suffix>{{ emailSuffix }}</span>
+              </div>
+              @if (fieldError('email'); as message) {
+                <span id="profile-email-error" class="tf-field__error" data-error="email">{{ message }}</span>
+              }
+            </div>
+
+            <div class="tf-field">
+              <label for="profile-mobile">Mobile number</label>
+              <input
+                id="profile-mobile"
+                class="tf-input"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="+919876543210"
+                formControlName="mobileNumber"
+                data-field="mobileNumber"
+                [class.is-invalid]="!!fieldError('mobileNumber')"
+                [attr.aria-invalid]="!!fieldError('mobileNumber')"
+              />
+              @if (fieldError('mobileNumber'); as message) {
+                <span class="tf-field__error" data-error="mobileNumber">{{ message }}</span>
+              } @else {
+                <span class="tf-field__hint">{{ mobileHint }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="pcard__actions">
+            @if (savedAt()) {
+              <span class="pcard__status" role="status" data-status="saved">
+                <tf-icon name="check" />
+                Saved
+              </span>
+            }
+            <button type="submit" class="tf-btn tf-btn--primary" data-action="save" [disabled]="saving()">
+              {{ saving() ? 'Saving…' : 'Save changes' }}
+            </button>
+          </div>
+        </form>
+
+        <section class="pcard profile-card--password" data-section="security">
+          <div class="pcard__head">
+            <span class="pcard__icon" aria-hidden="true"><tf-icon name="lock" /></span>
+            <div>
+              <h2 class="pcard__title">Password</h2>
+              <p class="pcard__sub">Changing your password asks for a code from your authenticator app, and signs you out everywhere afterwards.</p>
+            </div>
+          </div>
+          <div class="pcard__actions">
+            <a class="tf-btn tf-btn--primary" routerLink="/profile/change-password" data-action="open-change-password">
+              <tf-icon name="lock" /> Change password
+            </a>
+          </div>
+        </section>
+      </div>
+    </div>
+  }
+</section>

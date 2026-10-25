@@ -1,0 +1,94 @@
+.department-members {
+  width: min(34rem, calc(100% - 2rem));
+}
+
+.department-members__subtitle {
+  margin: 0.125rem 0 0;
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+}
+
+.department-members__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 11rem;
+  gap: var(--tf-space-2);
+}
+
+@media (max-width: 575.98px) {
+  .department-members__toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.department-members__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  color: var(--tf-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.department-members__bar-actions {
+  display: inline-flex;
+  gap: var(--tf-space-4);
+}
+
+.department-members__list {
+  display: grid;
+  gap: var(--tf-space-2);
+  max-height: 18rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.department-members__identity {
+  display: grid;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.department-members__name {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.department-members__username {
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+}
+
+/* Each person is a selectable row, matching the pill pickers used in the employee panel. */
+.tf-check {
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-2) var(--tf-space-3);
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius);
+  background: var(--tf-surface);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tf-check:hover {
+  border-color: var(--tf-border-strong);
+  background: var(--tf-surface-alt);
+}
+
+.tf-check:has(input:checked) {
+  border-color: var(--tf-primary);
+  background: var(--tf-primary-soft);
+}
+
+.tf-check:has(input:focus-visible) {
+  box-shadow: var(--tf-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-check {
+    transition: none;
+  }
+}

@@ -1,0 +1,80 @@
+/* Project and employee filters plus their reset. */
+.workload-toolbar {
+  grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 1fr) auto;
+  justify-content: start;
+}
+
+.workload-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.workload-row__name {
+  font-weight: 600;
+}
+
+.workload-badge--high {
+  margin-left: var(--tf-space-2);
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
+}
+
+.workload-row--high {
+  background: var(--tf-warning-soft);
+}
+
+.workload-row--high:hover {
+  background: var(--tf-warning-soft);
+}
+
+.workload-cell--overdue {
+  color: var(--tf-danger-strong);
+  font-weight: 600;
+}
+
+.workload-bar-cell {
+  min-width: 8rem;
+}
+
+.workload-bar {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--tf-bg);
+  overflow: hidden;
+}
+
+.workload-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tf-primary);
+}
+
+.workload-row--high .workload-bar__fill {
+  background: var(--tf-warning);
+}
+
+.workload-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  margin: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-top: 1px solid var(--tf-border);
+  color: var(--tf-muted);
+  font-size: 0.8125rem;
+}
+
+.workload-legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--tf-radius-sm);
+  background: var(--tf-warning-soft);
+  border: 1px solid var(--tf-warning);
+}
+
+@media (max-width: 767.98px) {
+  .workload-toolbar {
+    grid-template-columns: 1fr;
+  }
+}

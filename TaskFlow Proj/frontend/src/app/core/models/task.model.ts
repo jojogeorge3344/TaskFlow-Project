@@ -1,8 +1,10 @@
-export type TaskStatus = 'ToDo' | 'InProgress' | 'Blocked' | 'Completed' | 'Cancelled';
+import { AnalyticsBasis, DrillBucket, DrillDeadlineBucket } from './analytics.model';
+
+export type TaskStatus = 'ToDo' | 'InProgress' | 'InQA' | 'Blocked' | 'Completed' | 'Cancelled';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TaskStage = 'Upcoming' | 'DueToday' | 'Overdue' | 'Completed';
 
-export const BOARD_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'Blocked', 'Completed'];
+export const BOARD_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'InQA', 'Blocked', 'Completed'];
 
 export interface TaskCard {
   id: number;
@@ -14,6 +16,8 @@ export interface TaskCard {
   deadline: string;
   status: TaskStatus;
   isOverdue: boolean;
+  projectId?: number | null;
+  projectName?: string | null;
 }
 
 export interface TaskRecipient {
@@ -34,11 +38,18 @@ export interface TaskDetails {
   startDate: string;
   deadline: string;
   estimatedHours: number;
+  actualHours?: number | null;
   status: TaskStatus;
   stage: TaskStage;
   recipients: TaskRecipient[];
   createdAt: string;
   updatedAt: string;
+  /** null for legacy tasks created before projects were required. */
+  projectId: number | null;
+  projectName: string | null;
+  firstReminderDays: number;
+  secondReminderDays: number;
+  overdueReminderFrequency: ReminderFrequency;
 }
 
 export interface TaskComment {
@@ -47,6 +58,7 @@ export interface TaskComment {
   authorUserId: number;
   authorName: string;
   createdAt: string;
+  editedAt?: string | null;
 }
 
 export interface ActivityEntry {
@@ -67,6 +79,7 @@ export interface UpdateTaskRequest {
   startDate: string;
   deadline: string;
   estimatedHours: number;
+  actualHours?: number | null;
 }
 
 export interface UpdateTaskStatusRequest {
@@ -88,7 +101,7 @@ export interface SetRecipientsRequest {
 
 export type ReminderFrequency = 'Daily' | 'Weekly';
 
-export const TASK_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'Blocked', 'Completed', 'Cancelled'];
+export const TASK_STATUSES: TaskStatus[] = ['ToDo', 'InProgress', 'InQA', 'Blocked', 'Completed', 'Cancelled'];
 export const TASK_PRIORITIES: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 /** A row on the paginated Task List (Screen 7); stage and overdue are derived server-side. */
@@ -107,6 +120,8 @@ export interface TaskListItem {
   status: TaskStatus;
   stage: TaskStage;
   isOverdue: boolean;
+  projectId: number | null;
+  projectName: string | null;
 }
 
 export interface PagedResult<T> {
@@ -125,12 +140,23 @@ export interface TaskListFilter {
   search?: string | null;
   page?: number;
   pageSize?: number;
+  bucket?: DrillBucket | null;
+  deadlineBucket?: DrillDeadlineBucket | null;
+  departmentId?: number | null;
+  projectId?: number | null;
+  employeeId?: number | null;
+  managerId?: number | null;
+  from?: string | null;
+  to?: string | null;
+  basis?: AnalyticsBasis | null;
 }
 
 export interface CreateTaskRequest {
   title: string;
   description: string | null;
   assignedToUserId: number;
+  /** The project the task belongs to. Required. */
+  projectId: number;
   priority: TaskPriority;
   startDate: string;
   deadline: string;

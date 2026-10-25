@@ -1,0 +1,105 @@
+@if (!assistant.panelOpen()) {
+  <button type="button" class="tfa-fab" data-action="open-tfa" aria-label="Open TFA assistant" (click)="assistant.open()">
+    <span class="tfa-fab__badge"><tf-icon name="sparkles" /></span>
+    TFA
+    <span class="tfa-fab__hint" data-voice-hint>
+      @if (voice.reason(); as reason) {
+        {{ reason }}
+      } @else if (voice.capturing()) {
+        Listening… say your command
+      } @else if (voice.listening()) {
+        say "Hey TF assistant"
+      } @else {
+        voice is off
+      }
+    </span>
+    @if (voice.heard(); as heard) {
+      @if (voice.listening()) {
+        <span class="tfa-fab__heard" data-voice-heard>Heard: “{{ heard }}”</span>
+      }
+    }
+  </button>
+}
+
+<aside
+  class="tfa"
+  [class.tfa--open]="assistant.panelOpen()"
+  role="dialog"
+  aria-label="TFA assistant"
+  [attr.inert]="assistant.panelOpen() ? null : ''"
+  [attr.aria-hidden]="assistant.panelOpen() ? null : 'true'"
+  data-panel="tfa"
+>
+  <app-tfa-header />
+
+  @if (assistant.needsCloudNotice()) {
+    <div class="tfa__notice" role="status" data-notice="cloud">
+      <tf-icon name="alert" />
+      <span>
+        <b>{{ assistant.selected()?.displayName }} is a cloud provider.</b>
+        Your message and related task details are sent to it.
+      </span>
+      <button type="button" class="tfa__notice-btn" data-action="acknowledge-cloud" (click)="acknowledge()">I understand</button>
+      @if (assistant.heldMessage()) {
+        <button type="button" class="tfa__notice-btn tfa__notice-btn--quiet" data-action="keep-local" (click)="keepLocal()">Cancel</button>
+      }
+    </div>
+  }
+
+  <section #feed class="tfa__feed" aria-live="polite" data-feed>
+    @if (!assistant.providersLoaded()) {
+      <p class="tfa__muted">Loading…</p>
+    } @else if (!assistant.available()) {
+      <div class="tfa__empty" data-state="unavailable">
+        <tf-icon name="alert" />
+        <strong>TFA is not available yet</strong>
+        <p>An administrator needs to choose an AI model in TFA Settings.</p>
+      </div>
+    } @else {
+      @if (assistant.messages().length === 0 && !assistant.sending()) {
+        <div class="tfa__welcome" data-welcome>
+          <span class="tfa__mini"><tf-icon name="sparkles" /></span>
+          <div class="tfa__welcome-bubble">
+            Hi, I'm TFA. I can explain how TaskFlow works, tell you what is coming up and what to do first, and draft mail for you to review.
+          </div>
+        </div>
+      }
+
+      @for (message of assistant.messages(); track message.id) {
+        <app-tfa-message [message]="message" />
+      }
+
+      @if (assistant.sending()) {
+        <div class="tfa__welcome" data-state="thinking">
+          <span class="tfa__mini"><tf-icon name="sparkles" /></span>
+          <div class="tfa__welcome-bubble"><span class="tfa__typing"><i></i><i></i><i></i></span></div>
+        </div>
+      }
+
+      @if (assistant.failed(); as failed) {
+        <div class="tfa__welcome" data-state="failure">
+          <span class="tfa__mini tfa__mini--warn"><tf-icon name="alert" /></span>
+          <div class="tfa__welcome-bubble tfa__welcome-bubble--warn">
+            <strong class="tfa__failure-title" data-failure-kind>{{ failed.failure.kind }}</strong>
+            <span data-failure-message>{{ failed.failure.message }}</span>
+            <div class="tfa__swap">
+              <button type="button" class="tfa__chip" data-action="retry" (click)="assistant.retry()">Retry</button>
+              @for (option of failed.failure.alternatives; track option.kind) {
+                <button type="button" class="tfa__chip" [attr.data-action]="'use-' + option.kind" (click)="useProvider(option.kind)">
+                  Use {{ option.displayName }}
+                  <span class="tfa__pill" [class.tfa__pill--local]="option.locality === 'Local'" [class.tfa__pill--cloud]="option.locality === 'Cloud'">
+                    {{ option.locality }}
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </section>
+
+  @if (assistant.available()) {
+    <app-tfa-composer [(draft)]="draft" />
+  }
+</aside>

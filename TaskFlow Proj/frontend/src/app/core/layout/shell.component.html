@@ -2,12 +2,49 @@
   <aside id="tf-sidebar" class="sidebar" aria-label="Primary navigation">
     <div class="brand">
       <span class="brand__logo" aria-hidden="true">TF</span>
-      <span class="brand__name">TaskFlow</span>
+      <span class="brand__name">{{ appName() }}</span>
     </div>
 
     <nav class="nav" aria-label="Primary">
       @for (item of navItems(); track item.label) {
-        @if (item.route) {
+        @if (item.children) {
+          <div class="nav__group">
+            <button
+              type="button"
+              class="nav__item nav__parent"
+              [attr.aria-expanded]="isGroupOpen(item)"
+              [attr.aria-controls]="groupDomId(item)"
+              (click)="toggleGroup(item.label)"
+            >
+              <tf-icon [name]="item.icon" />
+              <span class="nav__text">{{ item.label }}</span>
+              <tf-icon name="chevron" class="nav__chevron" />
+              <span class="nav__tip tf-tooltip">{{ item.label }}</span>
+            </button>
+            @if (isGroupOpen(item)) {
+              <div class="nav__children" [id]="groupDomId(item)">
+                @for (child of item.children; track child.label) {
+                  <a
+                    class="nav__item nav__item--child"
+                    [routerLink]="child.route"
+                    routerLinkActive="nav__item--active"
+                    ariaCurrentWhenActive="page"
+                    (click)="layout.closeMobile()"
+                  >
+                    <tf-icon [name]="child.icon" />
+                    <span class="nav__text">{{ child.label }}</span>
+                    @if (child.badge === 'mail' && mailUnreadCount() > 0) {
+                      <span class="nav__badge" data-badge="mail" [attr.aria-label]="mailUnreadCount() + ' unread mails'">
+                        {{ mailUnreadCount() > 99 ? '99+' : mailUnreadCount() }}
+                      </span>
+                    }
+                    <span class="nav__tip tf-tooltip">{{ child.label }}</span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        } @else if (item.route) {
           <a
             class="nav__item"
             [routerLink]="item.route"
@@ -17,6 +54,11 @@
           >
             <tf-icon [name]="item.icon" />
             <span class="nav__text">{{ item.label }}</span>
+            @if (item.badge === 'mail' && mailUnreadCount() > 0) {
+              <span class="nav__badge" data-badge="mail" [attr.aria-label]="mailUnreadCount() + ' unread mails'">
+                {{ mailUnreadCount() > 99 ? '99+' : mailUnreadCount() }}
+              </span>
+            }
             <span class="nav__tip tf-tooltip">{{ item.label }}</span>
           </a>
         } @else {
@@ -31,13 +73,15 @@
     </nav>
 
     <div class="account">
-      <span class="account__avatar tf-avatar" aria-hidden="true">{{ userInitials() }}</span>
-      @if (user(); as currentUser) {
-        <div class="account__who">
-          <div class="account__name">{{ currentUser.fullName }}</div>
-          <div class="account__role">{{ currentUser.role }}</div>
-        </div>
-      }
+      <a class="account__link" routerLink="/profile" aria-label="My profile" title="My profile" data-action="profile">
+        <span class="account__avatar tf-avatar" aria-hidden="true">{{ userInitials() }}</span>
+        @if (user(); as currentUser) {
+          <div class="account__who">
+            <div class="account__name">{{ currentUser.fullName }}</div>
+            <div class="account__role">{{ currentUser.role }}</div>
+          </div>
+        }
+      </a>
       <button type="button" class="account__signout" aria-label="Sign out" title="Sign out" (click)="logout()">
         <tf-icon name="logout" />
       </button>
@@ -60,9 +104,11 @@
     >
       <tf-icon [name]="toggleIcon()" />
     </button>
-    <span class="header__brand">TaskFlow</span>
+    <span class="header__brand">{{ appName() }}</span>
     <span class="header__title">{{ pageTitle() }}</span>
     <span class="header__spacer"></span>
+    <app-theme-menu />
+    @if (canSeeNotifications()) {
     <a
       class="header__bell"
       routerLink="/notifications"
@@ -75,13 +121,18 @@
         <span class="header__dot" data-dot aria-hidden="true"></span>
       }
     </a>
+    }
   </header>
 
   <main class="content">
     <div class="content__inner">
       <router-outlet />
+      <app-legal-footer variant="surface" />
     </div>
   </main>
 </div>
 
+@if (canUseAssistant()) {
+  <app-tfa-panel />
+}
 <tf-toast-host />

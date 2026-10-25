@@ -1,3 +1,4 @@
+import { FormsModule } from '@angular/forms';
 import { Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
@@ -5,13 +6,14 @@ import { TaskDetails, User } from '../../core/models';
 import { UserService } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
+import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskService } from './task.service';
 
 @Component({
   selector: 'app-task-reassign',
   standalone: true,
-  imports: [RouterLink, IconComponent, ConfirmDialogComponent],
+  imports: [FormsModule, RouterLink, IconComponent, ConfirmDialogComponent],
   templateUrl: './reassign.component.html',
   styleUrl: './reassign.component.css'
 })
@@ -33,6 +35,7 @@ export class TaskReassignComponent implements OnInit {
   readonly selectedUserId = signal<number | null>(null);
   readonly reason = signal('');
   readonly submitting = signal(false);
+  readonly search = signal('');
 
   readonly canSubmit = computed(() => this.selectedUserId() !== null && this.reason().trim().length > 0);
 
@@ -41,6 +44,46 @@ export class TaskReassignComponent implements OnInit {
       (employee) => employee.isActive && employee.id !== this.task()?.assignedToUserId
     )
   );
+
+  readonly visibleEmployees = computed(() => {
+    const term = this.search().trim().toLowerCase();
+    return this.eligibleEmployees().filter(
+      (employee) =>
+        !term ||
+        employee.fullName.toLowerCase().includes(term) ||
+        employee.username.toLowerCase().includes(term) ||
+        employee.role.toLowerCase().includes(term)
+    );
+  });
+
+  readonly selectedEmployee = computed(
+    () => this.employees().find((employee) => employee.id === this.selectedUserId()) ?? null
+  );
+
+  /** Everyone who is told about the reassignment: the new and previous assignee, then the task's other recipients. */
+  readonly notifyList = computed(() => {
+    const task = this.task();
+    const chosen = this.selectedEmployee();
+    const people: { key: string; name: string; role: string }[] = [];
+    if (chosen) {
+      people.push({ key: `u${chosen.id}`, name: chosen.fullName, role: 'New assignee' });
+    }
+    if (task) {
+      if (task.assignedToName) {
+        people.push({ key: `u${task.assignedToUserId}`, name: task.assignedToName, role: 'Previous assignee' });
+      }
+      for (const recipient of task.recipients) {
+        if (recipient.userId !== task.assignedToUserId && recipient.userId !== chosen?.id) {
+          people.push({ key: `u${recipient.userId}`, name: recipient.fullName, role: 'Also notified' });
+        }
+      }
+    }
+    return people;
+  });
+
+  initialsOf(name: string | null | undefined): string {
+    return initials(name);
+  }
 
   ngOnInit(): void {
     this.loadTask();
@@ -66,7 +109,7 @@ export class TaskReassignComponent implements OnInit {
   private loadEmployees(): void {
     this.employeesLoading.set(true);
 
-    this.userService.getAll({ role: 'Employee', isActive: true }).subscribe({
+    this.userService.getAll({ isActive: true }).subscribe({
       next: (employees) => {
         this.employees.set(employees);
         this.employeesLoading.set(false);
@@ -110,7 +153,7 @@ export class TaskReassignComponent implements OnInit {
             next: () => {
               this.submitting.set(false);
               this.toast.success('Task reassigned');
-              this.router.navigate(['/tasks', task.id]);
+              this.router.navigate(['/tasks', task.id], { queryParamsHandling: 'preserve' });
             },
             error: (err: unknown) => {
               this.submitting.set(false);
@@ -121,6 +164,6 @@ export class TaskReassignComponent implements OnInit {
   }
 
   cancel(): void {
-    this.router.navigate(['/tasks', this.taskId]);
+    this.router.navigate(['/tasks', this.taskId], { queryParamsHandling: 'preserve' });
   }
 }

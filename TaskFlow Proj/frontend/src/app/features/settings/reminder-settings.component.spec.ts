@@ -13,7 +13,7 @@ describe('ReminderSettingsComponent', () => {
     defaultFirstDays: 3,
     defaultSecondDays: 1,
     defaultOverdueFrequency: 'Weekly',
-    emailEnabled: true,
+    mailEnabled: true,
     timezone: 'Asia/Kolkata'
   };
 
@@ -63,14 +63,14 @@ describe('ReminderSettingsComponent', () => {
     expect(getSpy).toHaveBeenCalled();
     expect(checkbox(fixture, 'enabled').checked).toBeTrue();
     expect(checkbox(fixture, 'deadlineDayEnabled').checked).toBeFalse();
-    expect(checkbox(fixture, 'emailEnabled').checked).toBeTrue();
+    expect(checkbox(fixture, 'mailEnabled').checked).toBeTrue();
     expect(fixture.componentInstance.form.getRawValue()).toEqual({
       enabled: true,
       deadlineDayEnabled: false,
       defaultFirstDays: 3,
       defaultSecondDays: 1,
       defaultOverdueFrequency: 'Weekly',
-      emailEnabled: true
+      mailEnabled: true
     });
     expect(select(fixture, 'settings-first-reminder').selectedOptions[0].textContent?.trim()).toBe('3 days before the deadline');
 
@@ -101,7 +101,7 @@ describe('ReminderSettingsComponent', () => {
       defaultFirstDays: 3,
       defaultSecondDays: 0,
       defaultOverdueFrequency: 'Daily',
-      emailEnabled: true
+      mailEnabled: true
     });
     expect(toast.success).toHaveBeenCalledWith('Reminder settings saved');
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
@@ -115,7 +115,7 @@ describe('ReminderSettingsComponent', () => {
     submit(fixture);
     expect(el(fixture).querySelector('[data-status="saved"]')).not.toBeNull();
 
-    fixture.componentInstance.form.controls.emailEnabled.setValue(false);
+    fixture.componentInstance.form.controls.mailEnabled.setValue(false);
     fixture.detectChanges();
 
     expect(el(fixture).querySelector('[data-status="saved"]')).toBeNull();
@@ -177,5 +177,13 @@ describe('ReminderSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(checkbox(fixture, 'timezone').value).toBe('Asia/Kolkata');
+  });
+
+  it('offers delivering reminders to Mail', () => {
+    const fixture = create();
+
+    const toggle = checkbox(fixture, 'mailEnabled');
+    expect(toggle.closest('label')?.textContent).toContain('Also deliver reminders to Mail');
+    expect(toggle.checked).toBeTrue();
   });
 });

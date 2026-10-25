@@ -15,7 +15,7 @@
         <tf-icon name="kanban" />
         Board view
       </a>
-      @if (canManage()) {
+      @if (canCreate()) {
         <a class="tf-btn tf-btn--primary" routerLink="/tasks/new" data-action="create">
           <tf-icon name="plus" />
           Create task
@@ -47,6 +47,17 @@
           <option value="" [selected]="assignedToUserId() === null">All employees</option>
           @for (assignee of assignees(); track assignee.userId) {
             <option [value]="assignee.userId" [selected]="assignee.userId === assignedToUserId()">{{ assignee.fullName }}</option>
+          }
+        </select>
+      </div>
+    }
+    @if (projects().length > 0) {
+      <div class="tf-field">
+        <label for="task-filter-project">Project</label>
+        <select id="task-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+          <option value="" [selected]="projectId() === null">All projects</option>
+          @for (project of projects(); track project.id) {
+            <option [value]="project.id" [selected]="project.id === projectId()">{{ project.name }}</option>
           }
         </select>
       </div>
@@ -97,6 +108,15 @@
     </button>
   </div>
 
+  @if (drill(); as drillDown) {
+    <div class="tf-card drill-banner" role="status" data-drill>
+      <span>Opened from the dashboard: {{ drillDown.summary }}</span>
+      <button type="button" class="tf-btn tf-btn--ghost tf-btn--sm" data-action="clear-drill" (click)="clearDrill()">
+        Show all tasks
+      </button>
+    </div>
+  }
+
   <div class="tf-card">
     @if (error()) {
       <div class="tf-empty" role="alert">
@@ -112,7 +132,7 @@
           <strong>No tasks match these filters</strong>
           <p>Try a different search or clear the filters.</p>
           <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">Clear filters</button>
-        } @else if (canManage()) {
+        } @else if (canCreate()) {
           <strong>No tasks yet</strong>
           <p>Create the first task and assign it to an employee.</p>
           <a class="tf-btn tf-btn--primary" routerLink="/tasks/new">Create task</a>
@@ -128,6 +148,7 @@
             <tr>
               <th scope="col">Code</th>
               <th scope="col">Title</th>
+              <th scope="col">Project</th>
               <th scope="col">Assignee</th>
               <th scope="col">Creator</th>
               <th scope="col">Priority</th>
@@ -135,14 +156,20 @@
               <th scope="col">Deadline</th>
               <th scope="col">Est. hours</th>
               <th scope="col">Status</th>
+              @if (canCreate() || canDelete()) {
+                <th scope="col"><span class="tf-sr-only">Actions</span></th>
+              }
             </tr>
           </thead>
           <tbody>
             @if (loading()) {
               @for (row of [1, 2, 3, 4, 5]; track row) {
                 <tr class="skeleton-row" aria-hidden="true">
-                  @for (cell of [5, 12, 8, 8, 4, 5, 5, 3, 5]; track $index) {
+                  @for (cell of [5, 12, 7, 8, 8, 4, 5, 5, 3, 5]; track $index) {
                     <td><span class="tf-skeleton" [style.width.rem]="cell"></span></td>
+                  }
+                  @if (canCreate() || canDelete()) {
+                    <td></td>
                   }
                 </tr>
               }
@@ -151,8 +178,9 @@
                 <tr class="task-row" [class.task-row--overdue]="task.isOverdue">
                   <td data-label="Code" class="cell-code">{{ task.taskCode }}</td>
                   <td data-label="Title" class="cell-title">
-                    <a [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
+                    <a [routerLink]="['/tasks', task.id]" [queryParams]="{ returnUrl: '/tasks' }">{{ task.title }}</a>
                   </td>
+                  <td data-label="Project" data-project>{{ task.projectName || '—' }}</td>
                   <td data-label="Assignee">{{ task.assignedToName }}</td>
                   <td data-label="Creator">{{ task.createdByName }}</td>
                   <td data-label="Priority"><span [class]="priorityClass(task.priority)">{{ task.priority }}</span></td>
@@ -165,6 +193,35 @@
                   </td>
                   <td data-label="Est. hours">{{ task.estimatedHours }}</td>
                   <td data-label="Status">{{ statusLabels[task.status] }}</td>
+                  @if (canCreate() || canDelete()) {
+                    <td class="cell-actions">
+                      @if (canCreate()) {
+                        <a
+                          class="tf-btn tf-btn--icon"
+                          data-action="copy"
+                          routerLink="/tasks/new"
+                          [queryParams]="{ copyFrom: task.id }"
+                          [attr.aria-label]="'Copy ' + task.taskCode"
+                          title="Copy task"
+                        >
+                          <tf-icon name="copy" />
+                        </a>
+                      }
+                      @if (canDelete()) {
+                      <button
+                        type="button"
+                        class="tf-btn tf-btn--icon tf-btn--danger"
+                        data-action="delete"
+                        [attr.aria-label]="'Delete ' + task.taskCode"
+                        title="Delete"
+                        [disabled]="deletingId() === task.id"
+                        (click)="deleteTask(task)"
+                      >
+                        <tf-icon name="trash" />
+                      </button>
+                      }
+                    </td>
+                  }
                 </tr>
               }
             }
@@ -192,3 +249,5 @@
     }
   </div>
 </section>
+
+<tf-confirm-dialog />

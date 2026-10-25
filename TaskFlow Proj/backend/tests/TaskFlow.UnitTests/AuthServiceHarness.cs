@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using TaskFlow.Domain.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -38,13 +39,16 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         var passwordHasher = new PasswordHasher<User>();
         var tokenService = new JwtTokenService(
             Options.Create(new JwtOptions { Issuer = "TaskFlow", Key = new string('k', 64) }),
             TimeProvider.System);
 
-        var service = new AuthService(db, tokenService, passwordHasher, TimeProvider.System);
+        var mfaProtector = new TaskFlow.Infrastructure.Services.MfaSecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TimeProvider.System);
+        var mfaService = new TaskFlow.Application.Mfa.MfaService(db, passwordHasher, mfaProtector, new TaskFlow.Infrastructure.Services.NotificationPublisher(db, TimeProvider.System), Options.Create(new TaskFlow.Application.Mfa.MfaOptions()), TimeProvider.System);
+        var service = new AuthService(db, tokenService, passwordHasher, TimeProvider.System, mfaService, mfaProtector, Options.Create(new TaskFlow.Application.Mfa.MfaOptions()));
 
         return new AuthServiceHarness(connection, db, service, passwordHasher);
     }
@@ -54,14 +58,14 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
         string email,
         string password,
         bool isActive = true,
-        Role role = Role.Employee)
+        string role = SystemRoles.Employee)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
             Email = email,
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

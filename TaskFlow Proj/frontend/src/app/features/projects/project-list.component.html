@@ -1,0 +1,161 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Project Management</h1>
+      <p>{{ loading() && projects().length === 0 ? 'Loading projects…' : countLabel() }}</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">
+        <tf-icon name="plus" />
+        Add project
+      </button>
+    }
+  </header>
+
+  <div class="project-tools" role="search">
+    <div class="tf-search project-tools__search">
+      <tf-icon name="search" />
+      <label for="project-search" class="tf-sr-only">Search projects</label>
+      <input
+        id="project-search"
+        class="tf-input"
+        type="search"
+        placeholder="Search by name or description"
+        autocomplete="off"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="tf-card tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <strong>Something went wrong</strong>
+      <p>{{ error() }}</p>
+      <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="project-grid" aria-busy="true">
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <div class="tf-card project project--skeleton" aria-hidden="true">
+          <span class="tf-skeleton" style="width: 60%"></span>
+          <span class="tf-skeleton" style="width: 90%"></span>
+          <span class="tf-skeleton" style="width: 30%"></span>
+        </div>
+      }
+    </div>
+  } @else if (projects().length === 0) {
+    <div class="tf-card tf-empty">
+      <tf-icon name="building" />
+      <strong>No projects yet</strong>
+      <p>Add the first project to start organising employees.</p>
+      @if (canManage()) {
+        <button type="button" class="tf-btn tf-btn--primary" (click)="openCreate()">Add project</button>
+      }
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="tf-card tf-empty">
+      <tf-icon name="search" />
+      <strong>No projects match "{{ query().trim() }}"</strong>
+      <button type="button" class="tf-btn tf-btn--ghost" (click)="query.set('')">Clear search</button>
+    </div>
+  } @else {
+    <div class="project-grid">
+      @for (project of filtered(); track project.id) {
+        <article class="tf-card project project--clickable">
+          <div class="project__top">
+            <span class="project__icon" aria-hidden="true"><tf-icon name="building" /></span>
+            <div class="project__heading">
+              <h2 class="project__name">
+                <a class="project__link" data-action="open" [routerLink]="['/projects', project.id]">{{ project.name }}</a>
+              </h2>
+              @if (project.description) {
+                <p class="project__desc">{{ project.description }}</p>
+              } @else {
+                <p class="project__desc project__desc--none">No description</p>
+              }
+            </div>
+          </div>
+
+          <div class="project__count">
+            <strong>{{ project.employeeCount }}</strong>
+            <span>{{ employeeLabel(project.employeeCount) }}</span>
+          </div>
+
+          <div class="project__managers" data-field="managers">
+            <span class="project__managers-label">{{ project.managers.length === 1 ? 'Manager' : 'Managers' }}</span>
+            @if (project.managers.length > 0) {
+              <ul class="tf-chips">
+                @for (name of project.managers; track name) {
+                  <li class="tf-pill">{{ name }}</li>
+                }
+              </ul>
+            } @else {
+              <span class="project__desc--none">No manager yet</span>
+            }
+          </div>
+
+          <div class="project__foot">
+            @if (canOpenEmployeeList()) {
+              <a
+                class="tf-btn tf-btn--link"
+                routerLink="/employees"
+                [queryParams]="{ projectId: project.id }"
+                [attr.aria-label]="'View employees in ' + project.name"
+              >
+                View employees
+                <tf-icon name="arrow" />
+              </a>
+            }
+            @if (canMembers() || canEdit() || canDelete()) {
+              <div class="project__actions">
+                @if (canMembers()) {
+                <button
+                  type="button"
+                  class="tf-btn tf-btn--icon"
+                  data-action="team"
+                  [attr.aria-label]="'Manage team of ' + project.name"
+                  title="Team"
+                  (click)="openTeam(project)"
+                >
+                  <tf-icon name="users" />
+                </button>
+                }
+                @if (canEdit()) {
+                <button
+                  type="button"
+                  class="tf-btn tf-btn--icon"
+                  data-action="edit"
+                  [attr.aria-label]="'Edit ' + project.name"
+                  title="Edit"
+                  (click)="openEdit(project)"
+                >
+                  <tf-icon name="edit" />
+                </button>
+                }
+                @if (canDelete()) {
+                <button
+                  type="button"
+                  class="tf-btn tf-btn--icon tf-btn--danger"
+                  data-action="delete"
+                  [attr.aria-label]="'Delete ' + project.name"
+                  title="Delete"
+                  [disabled]="deletingId() === project.id"
+                  (click)="delete(project)"
+                >
+                  <tf-icon name="trash" />
+                </button>
+                }
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<app-project-form-dialog (saved)="load()" (created)="openAssignTeam($event)" />
+<app-project-team-dialog (saved)="load()" />
+<tf-confirm-dialog />

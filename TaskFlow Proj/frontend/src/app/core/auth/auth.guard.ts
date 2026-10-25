@@ -1,26 +1,59 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { UserRole } from './auth.models';
 import { AuthService } from './auth.service';
 import { dashboardRouteFor } from './role-routes';
 
-export const authGuard: CanActivateFn = () => {
+/** Lets a signed-in user through. Anyone else goes to the login screen, which brings them back to the page they
+ * asked for (for example the reset link in an administrator's mail) once they have signed in. */
+export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.currentUser() !== null ? true : router.createUrlTree(['/login']);
+  if (authService.currentUser() !== null) {
+    return true;
+  }
+
+  const returnUrl = state?.url;
+  return router.createUrlTree(['/login'], returnUrl && returnUrl !== '/' ? { queryParams: { returnUrl } } : {});
 };
 
-export const roleGuard: CanActivateFn = (route) => {
+/** Keeps a user who has not set up two-step verification on the setup screen. Everything else in the app waits until they have. */
+export const mfaSetupGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const allowedRoles = (route.data['roles'] as UserRole[] | undefined) ?? [];
+  return authService.currentUser()?.mfaSetupRequired ? router.createUrlTree(['/security-setup']) : true;
+};
+
+/** The setup screen is only for people who still have to use it; anyone else goes to their dashboard. */
+export const securitySetupGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
   const user = authService.currentUser();
 
   if (user === null) {
     return router.createUrlTree(['/login']);
   }
 
-  return allowedRoles.includes(user.role) ? true : router.createUrlTree([dashboardRouteFor(user.role)]);
+  return user.mfaSetupRequired ? true : router.createUrlTree([dashboardRouteFor(user.role, user.permissions)]);
+};
+
+/**
+ * Allows the route when the user's role holds at least one of the permissions in `data.permissions`; otherwise sends the
+ * user to their own dashboard. This only hides screens: the API checks every request again.
+ */
+export const permissionGuard: CanActivateFn = (route) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const required = (route.data['permissions'] as string[] | undefined) ?? [];
+  const user = authService.currentUser();
+
+  if (user === null) {
+    return router.createUrlTree(['/login']);
+  }
+
+  return required.some((key) => user.permissions.includes(key))
+    ? true
+    : router.createUrlTree([dashboardRouteFor(user.role, user.permissions)]);
 };

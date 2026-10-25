@@ -1,0 +1,137 @@
+:host {
+  display: block;
+}
+
+.ai-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-4);
+  max-width: 48rem;
+}
+
+.ai-settings__head h2 {
+  margin: 0 0 var(--tf-space-1);
+  font-size: 1.125rem;
+}
+
+.ai-settings__head p {
+  margin: 0;
+  color: var(--tf-text-secondary);
+  font-size: 0.875rem;
+}
+
+.ai-settings__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-5);
+}
+
+.ai-settings__skeleton {
+  display: block;
+  height: 2.5rem;
+}
+
+.ai-settings__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+}
+
+.ai-settings__title h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ai-settings__pill {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ai-settings__pill--local {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+.ai-settings__pill--cloud {
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary);
+}
+
+.ai-settings__status {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tf-muted);
+}
+
+.ai-settings__status.is-ready {
+  color: var(--tf-success);
+}
+
+.ai-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-settings__toggle input {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--tf-primary);
+}
+
+.ai-settings__small {
+  align-self: flex-start;
+  margin-top: var(--tf-space-1);
+}
+
+.ai-settings__test {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--tf-space-3);
+  padding-top: var(--tf-space-3);
+  border-top: 1px solid var(--tf-border);
+}
+
+.ai-settings__result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  font-size: 0.8125rem;
+  color: var(--tf-warning);
+}
+
+.ai-settings__result.is-ok {
+  color: var(--tf-success);
+}
+
+.ai-settings__pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--tf-space-3);
+}
+
+.ai-settings__picker {
+  max-width: 28rem;
+}
+
+.ai-settings__linked {
+  margin-top: calc(var(--tf-space-2) * -1);
+}
+
+.ai-settings__using {
+  margin: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-radius: var(--tf-radius-md, 0.5rem);
+  background: var(--tf-primary-soft, var(--tf-surface-alt));
+  font-size: 0.875rem;
+}

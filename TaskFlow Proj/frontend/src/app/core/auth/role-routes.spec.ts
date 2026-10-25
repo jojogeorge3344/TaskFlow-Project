@@ -1,20 +1,19 @@
-import { UserRole } from './auth.models';
-import { dashboardRouteFor, ROLE_ROUTES } from './role-routes';
+import { dashboardRouteFor, DEFAULT_ROUTE, ROLE_ROUTES } from './role-routes';
 
 describe('role routes', () => {
-  it('maps every role to its dashboard route', () => {
-    const expected: Record<UserRole, string> = {
-      Administrator: '/admin',
-      Manager: '/manager',
-      Employee: '/me'
-    };
-
-    expect(ROLE_ROUTES).toEqual(expected);
+  it('gives the Administrator and the Manager their own dashboards', () => {
+    expect(ROLE_ROUTES).toEqual({ Administrator: '/admin', Manager: '/manager' });
   });
 
-  it('resolves the dashboard route for each role', () => {
+  it('resolves the dashboard route for each system role', () => {
     expect(dashboardRouteFor('Administrator')).toBe('/admin');
     expect(dashboardRouteFor('Manager')).toBe('/manager');
     expect(dashboardRouteFor('Employee')).toBe('/me');
+  });
+
+  it('sends every custom role to the personal dashboard', () => {
+    expect(DEFAULT_ROUTE).toBe('/me');
+    expect(dashboardRouteFor('Team Lead')).toBe('/me');
+    expect(dashboardRouteFor('')).toBe('/me');
   });
 });

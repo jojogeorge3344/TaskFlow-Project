@@ -10,5 +10,11 @@ public enum TaskActivityEventType
     PriorityChanged,
     Completed,
     CommentAdded,
-    Administrative
+    Administrative,
+    HoursLogged,
+    TimeLogged,
+    /// <summary>Appended last: the value is stored as text, so existing rows keep their meaning.</summary>
+    Deleted,
+    CommentEdited,
+    CommentDeleted
 }

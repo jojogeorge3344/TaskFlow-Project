@@ -28,6 +28,7 @@ internal sealed class SettingsTestDatabase : IAsyncDisposable
 
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         return new SettingsTestDatabase(connection, db);
     }
@@ -61,6 +62,12 @@ internal sealed class SettingsTestDatabase : IAsyncDisposable
             NullLogger<AppClock>.Instance);
 
     public ReminderSettingsService ReminderSettings(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
+        new(
+            Db,
+            timeProvider ?? TimeProvider.System,
+            Options.Create(new ApplicationOptions { Timezone = configuredTimezone }));
+
+    public ApplicationSettingsService ApplicationSettings(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
         new(
             Db,
             timeProvider ?? TimeProvider.System,

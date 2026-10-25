@@ -1,0 +1,173 @@
+@if (visible()) {
+  <section class="ai-settings" data-section="ai-assistant" aria-labelledby="ai-settings-title">
+    <header class="ai-settings__head">
+      <h2 id="ai-settings-title">Model and server</h2>
+      <p>
+        Choose the model TFA answers with, and the server it runs on. Only the model you choose and save here is offered in the TFA window.
+        <strong>Ollama</strong> runs on your own server and is free. <strong>Google Gemini</strong> has a free
+        tier with limits. <strong>OpenAI GPT has no free tier</strong>: it only works with a paid API key. Gemini and OpenAI are cloud services:
+        a user's question and related task details are sent to them.
+      </p>
+    </header>
+
+    @if (loadError()) {
+      <div class="tf-alert" role="alert">
+        <tf-icon name="alert" />
+        <span>{{ loadError() }}</span>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry-ai" (click)="load()">Retry</button>
+      </div>
+    } @else if (loading()) {
+      <div class="tf-card ai-settings__card" aria-busy="true">
+        <span class="tf-skeleton ai-settings__skeleton"></span>
+        <span class="tf-skeleton ai-settings__skeleton"></span>
+      </div>
+    } @else {
+      @if (saveError()) {
+        <div class="tf-alert" role="alert" data-error="ai-save">
+          <tf-icon name="alert" />
+          <span>{{ saveError() }}</span>
+        </div>
+      }
+
+      <div class="ai-settings__pickers">
+        <div class="tf-field">
+          <label for="ai-model-select">Model</label>
+          <select id="ai-model-select" class="tf-select" data-field="model-select" (change)="chooseModel($any($event.target).value)">
+            @for (option of providers(); track option.kind) {
+              <optgroup [label]="option.displayName">
+                @for (model of modelChoices(option); track model) {
+                  <option [value]="modelOption(option.kind, model)" [selected]="isChosenModel(option.kind, model)">{{ model }}</option>
+                }
+                <option [value]="modelOption(option.kind, addModelValue)" [selected]="isChosenModel(option.kind, addModelValue)">Add new model…</option>
+              </optgroup>
+            }
+          </select>
+        </div>
+
+        <div class="tf-field">
+          <label for="ai-server-select">Server</label>
+          <select id="ai-server-select" class="tf-select" data-field="server-select" (change)="selectKind($any($event.target).value)">
+            @for (option of providers(); track option.kind) {
+              <option [value]="option.kind" [selected]="option.kind === selected()?.kind">
+                {{ option.displayName }} · {{ serverLabel(option) }}
+              </option>
+            }
+          </select>
+        </div>
+      </div>
+      <span class="tf-field__hint ai-settings__linked">Choosing a model selects its server, and choosing a server selects its model.</span>
+
+      @if (selected(); as chosen) {
+        @if (mayRemoveModel() && canRemoveModel(chosen)) {
+          <div class="tf-field ai-settings__picker">
+            <button type="button" class="tf-btn tf-btn--ghost" data-action="remove-model" [disabled]="removing()" (click)="removeModel(chosen)">
+              Remove this model from the list
+            </button>
+            <span class="tf-field__hint">You added it, and it is not the one saved for {{ chosen.displayName }}. Removing reloads the screen, so save any other change first.</span>
+          </div>
+        }
+        @if (isAddingModel(chosen.kind)) {
+          <div class="tf-field ai-settings__picker" [formGroup]="form(chosen.kind)">
+            <label for="ai-new-model">New model name</label>
+            <input
+              id="ai-new-model"
+              class="tf-input"
+              formControlName="newModel"
+              data-field="newModel"
+              placeholder="For example phi3:mini"
+              [class.is-invalid]="form(chosen.kind).errors?.['newModel'] && form(chosen.kind).controls.newModel.touched"
+            />
+            @if (form(chosen.kind).errors?.['newModel'] && form(chosen.kind).controls.newModel.touched) {
+              <span class="tf-field__error" data-error="newModel">Type the model name (100 characters at most).</span>
+            }
+            <span class="tf-field__hint">It is saved to the list, and offered from then on.</span>
+          </div>
+        }
+      }
+
+      @if (selected(); as provider) {
+        <p class="ai-settings__using" data-using>
+          {{ needsSave() ? 'After you save, TFA will use' : 'TFA uses' }}
+          <strong>{{ chosenModelName(provider) }}</strong> on <strong>{{ provider.displayName }}</strong>.
+          Only this model is offered in the TFA window.
+        </p>
+
+        <form class="tf-card ai-settings__card" [formGroup]="form(provider.kind)" [attr.data-provider]="provider.kind" (ngSubmit)="save()" novalidate>
+          <div class="ai-settings__title">
+            <h3>{{ provider.displayName }}</h3>
+            <span class="ai-settings__pill" [class.ai-settings__pill--local]="provider.locality === 'Local'" [class.ai-settings__pill--cloud]="provider.locality === 'Cloud'">
+              {{ provider.locality }}
+            </span>
+            <span class="ai-settings__status" [class.is-ready]="isReady(provider)" data-status="configured">
+              {{ statusText(provider) }}
+            </span>
+          </div>
+
+          @if (provider.kind === 'Ollama') {
+            <div class="tf-field">
+              <label for="ollama-url">Server address</label>
+              <input id="ollama-url" class="tf-input" formControlName="baseUrl" data-field="baseUrl" placeholder="http://localhost:11434" [class.is-invalid]="form(provider.kind).controls.baseUrl.invalid" />
+              @if (form(provider.kind).controls.baseUrl.invalid) {
+                <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
+              }
+              <span class="tf-field__hint">Install Ollama and pull the model above (for example <code>ollama pull llama3.2:3b</code>, or run <code>scripts/setup-ai.ps1</code>).</span>
+            </div>
+          } @else {
+            <div class="tf-field">
+              <label [for]="'key-' + provider.kind">API key</label>
+              <input
+                [id]="'key-' + provider.kind"
+                class="tf-input"
+                type="password"
+                autocomplete="new-password"
+                spellcheck="false"
+                formControlName="apiKey"
+                data-field="apiKey"
+                [placeholder]="provider.keySet ? '••••••••••••' : 'Paste the API key'"
+              />
+              @if (form(provider.kind).controls.apiKey.invalid) {
+                <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
+              }
+              <span class="tf-field__hint" data-hint="key">{{ keyStatus(provider) }}</span>
+              @if (provider.keySet) {
+                @if (isClearing(provider.kind)) {
+                  <button type="button" class="tf-btn tf-btn--ghost ai-settings__small" data-action="keep-key" (click)="keepKey(provider.kind)">Keep the key</button>
+                } @else {
+                  <button type="button" class="tf-btn tf-btn--ghost ai-settings__small" data-action="clear-key" (click)="clearKey(provider.kind)">Remove the key</button>
+                }
+              }
+            </div>
+          }
+
+          <div class="ai-settings__test">
+            @if (canTest()) {
+            <button
+              type="button"
+              class="tf-btn tf-btn--ghost"
+              data-action="test-connection"
+              [title]="needsSave() ? 'Your unsaved changes are saved first, then the connection is tested.' : ''"
+              (click)="test(provider.kind)"
+            >
+              {{ testing() === provider.kind ? 'Testing…' : 'Test connection' }}
+            </button>
+            }
+            @if (results()[provider.kind]; as result) {
+              <span class="ai-settings__result" [class.is-ok]="result.ok" [attr.data-result]="result.ok ? 'ok' : (result.failureKind ?? 'failed')" role="status">
+                <tf-icon [name]="result.ok ? 'check' : 'alert'" />
+                {{ result.message }}
+              </span>
+            }
+          </div>
+        </form>
+      }
+
+      @if (canEdit()) {
+        <div class="tf-form-actions">
+          <button type="button" class="tf-btn tf-btn--primary" data-action="save-ai" [disabled]="saving()" (click)="save()">
+            {{ saving() ? 'Saving…' : 'Save TFA settings' }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+}

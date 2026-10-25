@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard;
+using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
@@ -15,11 +16,13 @@ public class DashboardService : IDashboardService
 
     private readonly AppDbContext _dbContext;
     private readonly IAppClock _clock;
+    private readonly IManagerDashboardScope _managerScope;
 
-    public DashboardService(AppDbContext dbContext, IAppClock clock)
+    public DashboardService(AppDbContext dbContext, IAppClock clock, IManagerDashboardScope managerScope)
     {
         _dbContext = dbContext;
         _clock = clock;
+        _managerScope = managerScope;
     }
 
     public async Task<AdminDashboardDto> GetAdminStatsAsync(CancellationToken cancellationToken)
@@ -28,7 +31,7 @@ public class DashboardService : IDashboardService
 
         var totalEmployees = await _dbContext.Users.CountAsync(cancellationToken);
         var activeEmployees = await _dbContext.Users.CountAsync(user => user.IsActive, cancellationToken);
-        var totalDepartments = await _dbContext.Departments.CountAsync(cancellationToken);
+        var totalProjects = await _dbContext.Projects.CountAsync(cancellationToken);
 
         var tasks = ActiveTasks();
 
@@ -42,20 +45,20 @@ public class DashboardService : IDashboardService
         return new AdminDashboardDto(
             totalEmployees,
             activeEmployees,
-            totalDepartments,
+            totalProjects,
             totalTasks,
             pendingTasks,
             completedTasks,
             overdueTasks);
     }
 
-    public async Task<ManagerDashboardDto> GetManagerStatsAsync(CancellationToken cancellationToken)
+    public async Task<ManagerDashboardDto> GetManagerStatsAsync(int managerId, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
         var (today, tomorrow) = await TodayBoundsAsync(cancellationToken);
         var upcomingHorizon = await DayStartUtcAsync(UpcomingDeadlineWindowDays + 1, cancellationToken);
 
-        var tasks = ActiveTasks();
+        var tasks = _managerScope.TeamTasks(ActiveTasks(), managerId);
         var openTasks = tasks.Where(IsOpen());
 
         var totalTasks = await tasks.CountAsync(cancellationToken);
@@ -95,7 +98,9 @@ public class DashboardService : IDashboardService
             task => task.Deadline >= today && task.Deadline < tomorrow,
             cancellationToken);
         var overdueTasks = await openAssigned.CountAsync(IsOverdue(now), cancellationToken);
-        var inProgressTasks = await assigned.CountAsync(task => task.Status == TaskStatus.InProgress, cancellationToken);
+        var inProgressTasks = await assigned.CountAsync(
+            task => task.Status == TaskStatus.InProgress || task.Status == TaskStatus.InQA,
+            cancellationToken);
         var completedTasks = await assigned.CountAsync(task => task.Status == TaskStatus.Completed, cancellationToken);
 
         return new EmployeeDashboardDto(

@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { systemPermissions } from '../../testing/permissions';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { AuthResponse } from './auth.models';
@@ -15,9 +16,10 @@ describe('AuthService', () => {
       id: 1,
       fullName: 'System Administrator',
       username: 'admin',
-      email: 'admin@taskflow.local',
+      email: 'admin@taskflow.com',
       role: 'Administrator',
-      employeeCode: 'ADM-001'
+      employeeCode: 'ADM-001',
+      permissions: systemPermissions('Administrator')
     }
   };
 
@@ -65,6 +67,19 @@ describe('AuthService', () => {
     expect(result).toBeNull();
     expect(service.currentUser()).toBeNull();
     expect(service.getAccessToken()).toBeNull();
+  });
+
+  it('checkSession picks up permissions an administrator changed on the role', () => {
+    service.login({ emailOrUsername: 'admin', password: 'secret' }).subscribe();
+    httpMock.expectOne('/api/v1/auth/login').flush(response);
+
+    service.checkSession().subscribe();
+    httpMock
+      .expectOne('/api/v1/auth/me')
+      .flush({ ...response.user, role: 'Team Lead', permissions: ['dashboard.view.team'] });
+
+    expect(service.currentUser()?.permissions).toEqual(['dashboard.view.team']);
+    expect(service.currentUser()?.role).toBe('Team Lead');
   });
 
   it('logout posts and clears the session', () => {

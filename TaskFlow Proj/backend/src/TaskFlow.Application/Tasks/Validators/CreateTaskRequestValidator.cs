@@ -19,6 +19,10 @@ public class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
             .GreaterThan(0)
             .WithMessage("An assigned employee is required.");
 
+        RuleFor(task => task.ProjectId)
+            .GreaterThan(0)
+            .WithMessage("A project is required.");
+
         RuleFor(task => task.Priority)
             .IsInEnum();
 

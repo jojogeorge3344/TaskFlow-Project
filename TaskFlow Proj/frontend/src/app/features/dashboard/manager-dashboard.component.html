@@ -1,57 +1,82 @@
-<section class="dashboard">
+<section class="dashboard analytics">
   <header class="dashboard__header">
     <h1 class="dashboard__title">Manager Dashboard</h1>
     <p class="dashboard__welcome">
       Welcome back@if (user(); as currentUser) {, {{ currentUser.fullName }}}
     </p>
+    <p class="dashboard__subtitle">Team analytics &middot; {{ rangeLabel() }} by {{ basisLabel() }}</p>
   </header>
 
-  @if (loading()) {
-    <p class="dashboard__status">Loading dashboard&hellip;</p>
-  } @else if (error()) {
-    <div class="dashboard__error">
-      <span>{{ error() }}</span>
-      <button type="button" (click)="load()">Retry</button>
-    </div>
-  } @else {
-    @if (stats(); as data) {
-    <div class="stat-grid">
-      <article class="stat-card">
-        <span class="stat-card__label">Assigned Tasks</span>
-        <span class="stat-card__value">{{ data.totalTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Pending Tasks</span>
-        <span class="stat-card__value">{{ data.pendingTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Due Today</span>
-        <span class="stat-card__value">{{ data.tasksDueToday }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Upcoming Deadlines</span>
-        <span class="stat-card__value">{{ data.upcomingDeadlines }}</span>
-      </article>
-      <article class="stat-card stat-card--overdue">
-        <span class="stat-card__label">Overdue Tasks</span>
-        <span class="stat-card__value">{{ data.overdueTasks }}</span>
-      </article>
-      <article class="stat-card">
-        <span class="stat-card__label">Completed Tasks</span>
-        <span class="stat-card__value">{{ data.completedTasks }}</span>
-      </article>
-    </div>
-
-    <section class="dashboard__section">
-      <h2 class="dashboard__section-title">Task progress</h2>
-      <div class="progress" role="progressbar" [attr.aria-valuenow]="completionRate()" aria-valuemin="0" aria-valuemax="100">
-        <div class="progress__bar" [style.width.%]="completionRate()"></div>
-      </div>
-      <div class="progress__legend">
-        <span>{{ data.completedTasks }} of {{ data.totalTasks }} tasks completed</span>
-        <span>{{ completionRate() }}%</span>
-      </div>
-    </section>
-    }
+  @if (canFilter()) {
+    <tf-dashboard-filter-bar
+      [filter]="filter()"
+      [options]="options()"
+      [today]="today()"
+      [showDepartment]="false"
+      [showManager]="false"
+      (filterChange)="onFilterChange($event)"
+      (reset)="reset()"
+    />
   }
+
+  @if (error()) {
+    <div class="dashboard__error analytics-state" role="alert">
+      <span>{{ error() }}</span>
+      <button type="button" data-action="retry" (click)="retry()">Retry</button>
+    </div>
+  }
+
+  @if (noTeam()) {
+    <div class="tf-card analytics-state" role="status" data-no-team>
+      @if (isAdministrator()) {
+        <span data-admin-note>
+          <strong>This dashboard shows one manager's team.</strong> Organisation-wide figures are on the
+          <a routerLink="/admin">Administrator Dashboard</a>.
+        </span>
+      } @else {
+        <span>
+          <strong>You have no team yet.</strong> Ask an administrator to assign departments or direct reports to you.
+        </span>
+      }
+    </div>
+  } @else if (isEmpty()) {
+    <div class="tf-card analytics-state" role="status" data-empty>
+      <span><strong>No team tasks match these filters.</strong> Try a wider date range or reset the filters.</span>
+    </div>
+  }
+
+  @let summary = data()?.summary;
+  <div class="analytics-cards" aria-label="Summary">
+    <tf-kpi-card label="Team tasks" [value]="summary?.totalTasks ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Completed" [value]="summary?.tasks?.completed ?? 0" tone="good" [loading]="loading()" />
+    <tf-kpi-card label="In progress" [value]="summary?.tasks?.inProgress ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Pending" [value]="summary?.tasks?.pending ?? 0" [loading]="loading()" />
+    <tf-kpi-card label="Overdue" [value]="summary?.tasks?.overdue ?? 0" tone="bad" [loading]="loading()" />
+    <tf-kpi-card label="Completion" [value]="(summary?.completionPercent ?? 0) + '%'" tone="good" [loading]="loading()" />
+  </div>
+
+  <div class="analytics-grid">
+    <tf-team-attention [attention]="data()?.attention ?? null" [loading]="loading()" (drill)="openTasks($event)" />
+    <tf-team-task-analytics
+      [status]="data()?.tasksByStatus ?? null"
+      [priorities]="data()?.tasksByPriority ?? []"
+      [loading]="loading()"
+      (drill)="openTasks($event)"
+    />
+  </div>
+
+  <div class="analytics-grid">
+    <tf-project-analytics
+      style="grid-column: 1 / -1"
+      [projects]="data()?.byProject ?? []"
+      [loading]="loading()"
+      (drill)="openTasks($event)"
+    />
+    <tf-team-employee-analytics
+      style="grid-column: 1 / -1"
+      [employees]="data()?.byEmployee ?? []"
+      [loading]="loading()"
+      (drill)="openTasks($event)"
+    />
+  </div>
 </section>

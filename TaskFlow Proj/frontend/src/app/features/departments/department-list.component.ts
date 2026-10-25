@@ -1,25 +1,39 @@
 import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { IconComponent } from '../../core/layout/icon.component';
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { DepartmentWithCount } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { DepartmentFormDialogComponent } from './department-form-dialog.component';
+import { DepartmentMembersDialogComponent } from './department-members-dialog.component';
 
 @Component({
   selector: 'app-department-list',
   standalone: true,
-  imports: [RouterLink, IconComponent, ConfirmDialogComponent, DepartmentFormDialogComponent],
+  imports: [IconComponent, ConfirmDialogComponent, DepartmentFormDialogComponent, DepartmentMembersDialogComponent],
   templateUrl: './department-list.component.html',
   styleUrl: './department-list.component.css'
 })
 export class DepartmentListComponent implements OnInit {
   private readonly departmentService = inject(DepartmentService);
   private readonly toast = inject(ToastService);
+  private readonly authService = inject(AuthService);
+
+  readonly canCreate = computed(() => this.can(Permissions.DepartmentsCreate));
+  readonly canEdit = computed(() => this.can(Permissions.DepartmentsEdit));
+  readonly canDelete = computed(() => this.can(Permissions.DepartmentsDelete));
+  readonly canMembers = computed(() => this.can(Permissions.DepartmentsMembers));
+
+  private can(key: string): boolean {
+    this.authService.currentUser();
+    return this.authService.hasPermission(key);
+  }
   private readonly confirmDialog = viewChild.required(ConfirmDialogComponent);
   private readonly formDialog = viewChild.required(DepartmentFormDialogComponent);
+  private readonly membersDialog = viewChild.required(DepartmentMembersDialogComponent);
 
   readonly departments = signal<DepartmentWithCount[]>([]);
   readonly loading = signal(true);
@@ -27,16 +41,13 @@ export class DepartmentListComponent implements OnInit {
   readonly query = signal('');
   readonly deletingId = signal<number | null>(null);
 
-  /** Client-side search over name and description. */
+  /** Client-side search over the name. */
   readonly filtered = computed(() => {
     const term = this.query().trim().toLowerCase();
     if (!term) {
       return this.departments();
     }
-    return this.departments().filter(
-      (department) =>
-        department.name.toLowerCase().includes(term) || (department.description ?? '').toLowerCase().includes(term)
-    );
+    return this.departments().filter((department) => department.name.toLowerCase().includes(term));
   });
 
   readonly countLabel = computed(() => {
@@ -63,6 +74,14 @@ export class DepartmentListComponent implements OnInit {
     });
   }
 
+  hasMembers(department: DepartmentWithCount): boolean {
+    return department.managerCount > 0 || department.employeeCount > 0;
+  }
+
+  managerLabel(count: number): string {
+    return count === 1 ? 'manager' : 'managers';
+  }
+
   employeeLabel(count: number): string {
     return count === 1 ? 'employee' : 'employees';
   }
@@ -75,8 +94,12 @@ export class DepartmentListComponent implements OnInit {
     this.formDialog().open(department);
   }
 
+  openMembers(department: DepartmentWithCount): void {
+    this.membersDialog().open(department);
+  }
+
   async delete(department: DepartmentWithCount): Promise<void> {
-    if (department.employeeCount > 0) {
+    if (this.hasMembers(department)) {
       return;
     }
 
@@ -91,7 +114,7 @@ export class DepartmentListComponent implements OnInit {
     }
 
     this.deletingId.set(department.id);
-    this.departmentService.delete(department.id).subscribe({
+    this.departmentService.remove(department.id).subscribe({
       next: () => {
         this.deletingId.set(null);
         this.toast.success(`${department.name} deleted`);

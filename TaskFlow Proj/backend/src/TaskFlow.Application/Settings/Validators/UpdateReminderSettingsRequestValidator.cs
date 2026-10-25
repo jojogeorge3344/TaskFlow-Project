@@ -10,7 +10,7 @@ public class UpdateReminderSettingsRequestValidator : AbstractValidator<UpdateRe
     {
         RuleFor(settings => settings.Enabled).NotNull();
         RuleFor(settings => settings.DeadlineDayEnabled).NotNull();
-        RuleFor(settings => settings.EmailEnabled).NotNull();
+        RuleFor(settings => settings.MailEnabled).NotNull();
 
         RuleFor(settings => settings.DefaultFirstDays)
             .NotNull()

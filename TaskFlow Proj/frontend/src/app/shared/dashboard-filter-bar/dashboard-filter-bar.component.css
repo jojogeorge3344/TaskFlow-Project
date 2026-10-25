@@ -1,0 +1,39 @@
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-3);
+  align-items: flex-end;
+  padding: var(--tf-space-3);
+}
+
+.filter-bar__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-1);
+  width: 100%;
+}
+
+.chip {
+  background: var(--tf-surface);
+  border: 1px solid var(--tf-border);
+  border-radius: 99px;
+  color: var(--tf-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.25rem 0.75rem;
+}
+
+.chip--on {
+  background: var(--tf-primary);
+  border-color: var(--tf-primary);
+  color: var(--tf-on-primary)fff;
+}
+
+.filter-bar__reset {
+  margin-left: auto;
+}
+
+.filter-bar__error {
+  width: 100%;
+  margin: 0;
+}

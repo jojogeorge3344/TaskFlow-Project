@@ -1,119 +1,336 @@
 <form class="employee-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
   <div class="tf-drawer__body">
+    <header class="tf-identity" data-role="identity">
+      @if (employee(); as current) {
+        <span class="tf-avatar tf-avatar--lg tf-avatar--brand" aria-hidden="true">{{ headerInitials() }}</span>
+        <div class="tf-identity__text">
+          <div class="tf-identity__name">{{ current.fullName }}</div>
+          <div class="tf-identity__sub">{{ current.email }}</div>
+          <div class="tf-identity__pills">
+            <span class="tf-pill">{{ headerRoleName() }}</span>
+            <span class="tf-pill" [class.tf-pill--success]="current.isActive" [class.tf-pill--muted]="!current.isActive">
+              {{ current.isActive ? 'Active' : 'Inactive' }}
+            </span>
+            @if (current.employeeCode) {
+              <span class="tf-pill tf-pill--violet">{{ current.employeeCode }}</span>
+            }
+          </div>
+        </div>
+      } @else {
+        <span class="tf-avatar tf-avatar--lg tf-avatar--brand" aria-hidden="true"><tf-icon name="user" /></span>
+        <div class="tf-identity__text">
+          <div class="tf-identity__name">New employee</div>
+          <div class="tf-identity__sub">Fill in the details below to add them to TaskFlow.</div>
+        </div>
+      }
+    </header>
+
     @if (serverError()) {
       <div class="tf-alert" role="alert">{{ serverError() }}</div>
     }
 
-    <div class="tf-field">
-      <label for="emp-name">Full name <span class="tf-field__required" aria-hidden="true">*</span></label>
-      <input
-        id="emp-name"
-        class="tf-input"
-        formControlName="fullName"
-        autocomplete="name"
-        [class.is-invalid]="showError('fullName')"
-        [attr.aria-invalid]="showError('fullName')"
-        aria-describedby="emp-name-error"
-      />
-      @if (showError('fullName')) {
-        <span id="emp-name-error" class="tf-field__error">Full name is required.</span>
-      }
-    </div>
-
-    <div class="tf-form-grid">
-      <div class="tf-field">
-        <label for="emp-code">Employee code</label>
-        <input id="emp-code" class="tf-input" formControlName="employeeCode" placeholder="EMP-050" />
+    <section class="tf-section" aria-labelledby="emp-sec-personal">
+      <div class="tf-section__head">
+        <h3 class="tf-section__title" id="emp-sec-personal">Personal details</h3>
+        <span class="tf-section__hint"><span class="tf-field__required" aria-hidden="true">*</span> required</span>
       </div>
+
       <div class="tf-field">
-        <label for="emp-username">Username <span class="tf-field__required" aria-hidden="true">*</span></label>
-        <input
-          id="emp-username"
-          class="tf-input"
-          formControlName="username"
-          autocomplete="off"
-          [class.is-invalid]="showError('username')"
-          [attr.aria-invalid]="showError('username')"
-          aria-describedby="emp-username-error"
-        />
-        @if (showError('username')) {
-          <span id="emp-username-error" class="tf-field__error">Username is required.</span>
+        <label for="emp-name">Full name <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <div class="tf-control">
+          <tf-icon name="user" />
+          <input
+            id="emp-name"
+            class="tf-input"
+            formControlName="fullName"
+            autocomplete="name"
+            [class.is-invalid]="showError('fullName')"
+            [attr.aria-invalid]="showError('fullName')"
+            aria-describedby="emp-name-error"
+          />
+        </div>
+        @if (showError('fullName')) {
+          <span id="emp-name-error" class="tf-field__error">Full name is required.</span>
         }
       </div>
-    </div>
 
-    <div class="tf-field">
-      <label for="emp-email">Email <span class="tf-field__required" aria-hidden="true">*</span></label>
-      <input
-        id="emp-email"
-        class="tf-input"
-        type="email"
-        formControlName="email"
-        autocomplete="off"
-        [class.is-invalid]="showError('email')"
-        [attr.aria-invalid]="showError('email')"
-        aria-describedby="emp-email-error"
-      />
-      @if (showError('email')) {
-        <span id="emp-email-error" class="tf-field__error">
-          {{ form.controls.email.hasError('required') ? 'Email is required.' : 'Enter a valid email address.' }}
-        </span>
-      }
-    </div>
-
-    <div class="tf-form-grid">
-      <div class="tf-field">
-        <label for="emp-role">Role</label>
-        <select id="emp-role" class="tf-select" formControlName="role">
-          @for (role of roles; track role) {
-            <option [value]="role">{{ role }}</option>
+      <div class="tf-form-grid">
+        <div class="tf-field">
+          <label for="emp-code">Employee code</label>
+          <input id="emp-code" class="tf-input" formControlName="employeeCode" placeholder="EMP-050" />
+        </div>
+        <div class="tf-field">
+          <label for="emp-username">Username <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <input
+            id="emp-username"
+            class="tf-input"
+            formControlName="username"
+            autocomplete="off"
+            [class.is-invalid]="showError('username')"
+            [attr.aria-invalid]="showError('username')"
+            aria-describedby="emp-username-error"
+          />
+          @if (showError('username')) {
+            <span id="emp-username-error" class="tf-field__error">Username is required.</span>
           }
-        </select>
+        </div>
       </div>
-      <div class="tf-field">
-        <label for="emp-department">Department</label>
-        <select id="emp-department" class="tf-select" formControlName="departmentId">
-          <option [ngValue]="null">Unassigned</option>
-          @for (department of departments(); track department.id) {
-            <option [ngValue]="department.id">{{ department.name }}</option>
-          }
-        </select>
-      </div>
-    </div>
 
-    <div class="tf-form-grid">
       <div class="tf-field">
-        <label for="emp-password">
-          @if (isCreate()) {
-            Temporary password <span class="tf-field__required" aria-hidden="true">*</span>
-          } @else {
-            New password
-          }
-        </label>
-        <input
-          id="emp-password"
-          class="tf-input"
-          type="password"
-          formControlName="password"
-          autocomplete="new-password"
-          [placeholder]="isCreate() ? '' : 'Leave blank to keep'"
-          [class.is-invalid]="showError('password')"
-          [attr.aria-invalid]="showError('password')"
-          aria-describedby="emp-password-error emp-password-hint"
-        />
-        @if (showError('password')) {
-          <span id="emp-password-error" class="tf-field__error">
+        <label for="emp-email">Email <span class="tf-field__required" aria-hidden="true">*</span></label>
+        <div class="tf-input-group">
+          <input
+            id="emp-email"
+            class="tf-input"
+            type="text"
+            appEmailLocalPart
+            formControlName="email"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            [class.is-invalid]="showError('email')"
+            [attr.aria-invalid]="showError('email')"
+            aria-describedby="emp-email-suffix emp-email-error"
+          />
+          <span id="emp-email-suffix" class="tf-input-group__suffix" data-email-suffix>{{ emailSuffix }}</span>
+        </div>
+        @if (showError('email')) {
+          <span id="emp-email-error" class="tf-field__error">
             {{
-              form.controls.password.hasError('blank')
-                ? 'Password cannot be only spaces.'
-                : form.controls.password.hasError('minlength')
-                  ? 'Use at least ' + minPasswordLength + ' characters.'
-                  : 'Password is required.'
+              form.controls.email.hasError('required')
+                ? 'Email is required.'
+                : 'Use letters, digits, dot, underscore or hyphen before ' + emailSuffix + '.'
             }}
           </span>
         }
       </div>
+    </section>
+
+    <section class="tf-section" aria-labelledby="emp-sec-team">
+      <div class="tf-section__head">
+        <h3 class="tf-section__title" id="emp-sec-team">Role and team</h3>
+        <span class="tf-section__hint">Who they work with</span>
+      </div>
+
+      <div class="tf-field">
+        <label for="emp-role">Role</label>
+        @if (canChangeRole()) {
+          <select id="emp-role" class="tf-select" formControlName="roleId">
+            @for (role of roles(); track role.id) {
+              <option [ngValue]="role.id">{{ role.name }}</option>
+            }
+          </select>
+          @if (roleLoadFailed()) {
+            <span class="tf-field__hint">Custom roles could not be loaded. Only the standard roles are listed.</span>
+          }
+        } @else {
+          <input id="emp-role" class="tf-input" [value]="currentRoleName()" readonly aria-describedby="emp-role-hint" />
+          <span id="emp-role-hint" class="tf-field__hint">Changing a role needs the assign roles permission.</span>
+        }
+      </div>
+
       @if (isCreate()) {
+      <fieldset class="tf-field" data-field="departments">
+        <legend>Departments</legend>
+        <div class="tf-options">
+          @for (department of departments(); track department.id) {
+            <label class="tf-option">
+              <input
+                type="checkbox"
+                [attr.data-department]="department.id"
+                [checked]="isDepartmentChosen(department.id)"
+                (change)="toggleDepartment(department.id, $any($event.target).checked)"
+              />
+              <span>{{ department.name }}</span>
+            </label>
+          } @empty {
+            <span class="tf-field__hint">There are no departments yet.</span>
+          }
+        </div>
+      </fieldset>
+      } @else {
+        <div class="tf-field" data-view="departments">
+          <span class="tf-label">Departments</span>
+          @if (employee()!.departments.length > 0) {
+            <ul class="tf-chips">
+              @for (department of employee()!.departments; track department.id) {
+                <li class="tf-pill tf-pill--muted">{{ department.name }}</li>
+              }
+            </ul>
+          } @else {
+            <span class="tf-field__hint">Not in any department.</span>
+          }
+        </div>
+      }
+
+      <div class="tf-field" data-field="managers">
+        <span class="tf-label">Managers</span>
+        @if (derivedManagers().length > 0) {
+          <ul class="tf-chips" data-list="managers">
+            @for (manager of derivedManagers(); track manager.id) {
+              <li class="tf-person-chip">
+                <span class="tf-avatar" aria-hidden="true">{{ initialsOf(manager.fullName) }}</span>
+                {{ manager.fullName }}
+              </li>
+            }
+          </ul>
+        } @else {
+          <span class="tf-field__hint">None. A person's managers are the managers of their departments.</span>
+        }
+      </div>
+
+      @if (managedProjects().length > 0) {
+        <div class="tf-field" data-view="manager-projects">
+          <span class="tf-label">Projects this manager manages</span>
+          <ul class="tf-chips">
+            @for (project of managedProjects(); track project.id) {
+              <li class="tf-pill">{{ project.name }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
+
+    <section class="tf-section" aria-labelledby="emp-sec-projects">
+      <div class="tf-section__head">
+        <h3 class="tf-section__title" id="emp-sec-projects">Project allocation</h3>
+        <span class="tf-section__hint">{{ isCreate() ? 'At most ' + maxPercent + '% in total' : 'View only' }}</span>
+      </div>
+
+      @if (!isCreate()) {
+        <div class="tf-field" data-view="project-allocations">
+          <div class="tf-alloc-bar" aria-hidden="true">
+            @for (segment of allocationSegments(); track segment.key) {
+              <i [class]="segment.className" [style.width.%]="segment.width"></i>
+            }
+          </div>
+          <div class="allocation-summary" data-allocation-summary>
+            {{ totalPercent() }}% allocated, {{ remainingPercent() }}% remaining
+          </div>
+          <ul class="alloc-view">
+            @for (allocation of employee()!.projectAllocations; track allocation.projectId; let index = $index) {
+              <li class="alloc-view__row">
+                <span [class]="'allocation-row__dot tf-alloc-' + (index % 5)" aria-hidden="true"></span>
+                <span class="alloc-view__project">{{ allocation.projectName }}</span>
+                <span class="alloc-view__position">{{ allocation.positionName }}</span>
+                <span class="alloc-view__percent">{{ allocation.percent }}%</span>
+              </li>
+            } @empty {
+              <li class="tf-field__hint">Not assigned to any project.</li>
+            }
+          </ul>
+          <span class="tf-field__hint">Projects are assigned in Project management.</span>
+        </div>
+      } @else {
+      <fieldset class="tf-field allocation-editor" data-field="project-allocations">
+        <legend class="tf-sr-only">Projects</legend>
+        <div class="tf-alloc-bar" [class.is-over]="overAllocated()" aria-hidden="true">
+          @for (segment of allocationSegments(); track segment.key) {
+            <i [class]="segment.className" [style.width.%]="segment.width"></i>
+          }
+        </div>
+        <div class="allocation-summary" data-allocation-summary [class.is-over]="overAllocated()" aria-live="polite">
+          {{ totalPercent() }}% allocated, {{ overAllocated() ? 0 : remainingPercent() }}% remaining
+        </div>
+        @if (allocationError() && (overAllocated() || submitted())) {
+          <span class="tf-field__error" data-allocation-error>{{ allocationError() }}</span>
+        }
+
+        <div class="tf-alloc-rows">
+          @for (row of rows(); track row.key; let index = $index) {
+            <div class="allocation-row" [attr.data-row]="index">
+              <span [class]="'allocation-row__dot tf-alloc-' + (index % 5)" aria-hidden="true"></span>
+              <select
+                class="tf-select"
+                [attr.aria-label]="'Project ' + (index + 1)"
+                [class.is-invalid]="submitted() && row.projectId === null"
+                (change)="updateRow(row.key, { projectId: $any($event.target).value === '' ? null : +$any($event.target).value })"
+              >
+                <option value="" [selected]="row.projectId === null">Choose a project</option>
+                @for (project of projects(); track project.id) {
+                  @if (!isProjectTaken(project.id, row.key)) {
+                    <option [value]="project.id" [selected]="row.projectId === project.id">{{ project.name }}</option>
+                  }
+                }
+              </select>
+              <app-position-combobox
+                class="allocation-row__position"
+                [positions]="positions()"
+                [positionId]="row.positionId"
+                [label]="'Position for project ' + (index + 1)"
+                [invalid]="submitted() && row.positionId === null"
+                (chosen)="updateRow(row.key, { positionId: $event?.id ?? null })"
+                (created)="onPositionCreated($event)"
+              />
+              <span class="allocation-row__percent-wrap">
+                <input
+                  class="tf-input allocation-row__percent"
+                  type="number"
+                  min="1"
+                  [max]="maxPercent"
+                  step="1"
+                  inputmode="numeric"
+                  [attr.aria-label]="'Percentage for project ' + (index + 1)"
+                  [value]="row.percent ?? ''"
+                  (input)="setRowPercent(row.key, $any($event.target).value)"
+                />
+              </span>
+              <button type="button" class="tf-btn tf-btn--icon" [attr.aria-label]="'Remove project ' + (index + 1)" (click)="removeRow(row.key)">
+                <tf-icon name="x" />
+              </button>
+            </div>
+          } @empty {
+            <span class="tf-field__hint">Not assigned to any project.</span>
+          }
+        </div>
+
+        <button type="button" class="tf-btn tf-btn--ghost tf-btn--add" data-action="add-project" (click)="addRow()" [disabled]="projects().length === 0">
+          <tf-icon name="plus" />
+          Add project
+        </button>
+      </fieldset>
+      }
+    </section>
+
+    @if (isCreate()) {
+    <section class="tf-section" aria-labelledby="emp-sec-security">
+      <div class="tf-section__head">
+        <h3 class="tf-section__title" id="emp-sec-security">Sign-in and security</h3>
+      </div>
+
+      <div class="tf-form-grid">
+        <div class="tf-field">
+          <label for="emp-password">Temporary password <span class="tf-field__required" aria-hidden="true">*</span></label>
+          <div class="tf-password">
+            <input
+              id="emp-password"
+              class="tf-input"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="new-password"
+              [class.is-invalid]="showError('password')"
+              [attr.aria-invalid]="showError('password')"
+              aria-describedby="emp-password-error"
+            />
+            <button type="button" class="tf-password__toggle" data-action="toggle-password" [attr.aria-pressed]="showPassword()" (click)="showPassword.set(!showPassword())">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          <div class="tf-meter" data-role="password-strength" aria-hidden="true">
+            @for (step of strengthSteps; track step) {
+              <i [class.is-on]="step < passwordStrength()"></i>
+            }
+          </div>
+          @if (showError('password')) {
+            <span id="emp-password-error" class="tf-field__error">
+              {{
+                form.controls.password.hasError('minlength')
+                  ? 'Use at least ' + minPasswordLength + ' characters.'
+                  : 'Password is required.'
+              }}
+            </span>
+          }
+        </div>
         <div class="tf-field">
           <label for="emp-status">Status</label>
           <select id="emp-status" class="tf-select" formControlName="isActive">
@@ -121,18 +338,22 @@
             <option [ngValue]="false">Inactive</option>
           </select>
         </div>
-      }
-    </div>
-    @if (!isCreate()) {
-      <span id="emp-password-hint" class="tf-field__hint">
-        Changing the username, password or role signs this employee out. They must sign in again.
-      </span>
+      </div>
+    </section>
+    } @else {
+      <div id="emp-signout-notice" class="tf-notice" role="note">
+        <tf-icon name="alert" />
+        <span>Changing the username or role signs this employee out. They must sign in again.</span>
+      </div>
     }
   </div>
 
   <div class="tf-drawer__foot">
+    @if (employee()?.updatedAt; as updatedAt) {
+      <span class="tf-drawer__foot-note" data-role="updated-at">Last updated {{ updatedAt | date: 'mediumDate' }}</span>
+    }
     <button type="button" class="tf-btn tf-btn--ghost" (click)="cancelled.emit()">Cancel</button>
-    <button type="submit" class="tf-btn tf-btn--primary" [disabled]="saving()">
+    <button type="submit" class="tf-btn tf-btn--primary" [disabled]="saving() || (isCreate() && overAllocated())">
       {{ saving() ? 'Saving…' : isCreate() ? 'Add employee' : 'Save changes' }}
     </button>
   </div>

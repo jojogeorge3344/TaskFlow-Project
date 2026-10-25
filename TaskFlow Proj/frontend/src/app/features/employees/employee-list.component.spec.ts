@@ -1,18 +1,29 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
+import { Permissions } from '../../core/auth/permissions';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { ComponentFixture, TestBed, fakeAsync, flush, flushMicrotasks, tick } from '@angular/core/testing';
 import { AuthService } from '../../core/auth/auth.service';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { DepartmentWithCount, User } from '../../core/models';
+import { DepartmentWithCount, ProjectWithCount, User } from '../../core/models';
 import { DepartmentService } from '../../core/services/department.service';
+import { PositionService } from '../../core/services/position.service';
+import { ProjectService } from '../../core/services/project.service';
+import { RoleService } from '../../core/services/role.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeListComponent, SEARCH_DEBOUNCE_MS } from './employee-list.component';
+import { NO_ALLOCATIONS, withProject } from '../../testing/users';
 
 describe('EmployeeListComponent', () => {
+  const projects: ProjectWithCount[] = [
+    { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 2, managers: [] },
+    { id: 3, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 1, managers: [] }
+  ];
+
   const departments: DepartmentWithCount[] = [
-    { id: 1, name: 'Engineering', description: null, createdAt: '2026-09-01', employeeCount: 2 },
-    { id: 3, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 1 }
+    { id: 5, name: 'Human Resources', description: null, createdAt: '2026-09-01', managerCount: 0, employeeCount: 2 }
   ];
 
   function user(overrides: Partial<User>): User {
@@ -21,34 +32,47 @@ describe('EmployeeListComponent', () => {
       employeeCode: 'EMP-001',
       fullName: 'Rahul Menon',
       username: 'rahul.m',
-      email: 'rahul.menon@taskflow.local',
+      email: 'rahul.menon@taskflow.com',
       role: 'Employee',
+      roleId: 3,
       isActive: true,
       createdAt: '2026-09-05T00:00:00Z',
       lastLoginAt: null,
-      departmentId: 1,
-      departmentName: 'Engineering',
+      ...withProject(1, 'Engineering'),
+      departments: [],
+      managers: [],
       ...overrides
     };
   }
 
   const employees: User[] = [
     user({ id: 1 }),
-    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', departmentId: null, departmentName: null })
+    user({ id: 2, fullName: 'Anupama Nair', username: 'anupama.n', role: 'Manager', ...NO_ALLOCATIONS })
   ];
 
   let getAllSpy: jasmine.Spy;
+  let departmentsGetAllSpy: jasmine.Spy;
   let updateStatusSpy: jasmine.Spy;
+  let deleteSpy: jasmine.Spy;
+  const currentUser = signal<{ id: number; permissions: string[] } | null>(null);
   let queryParams: Record<string, string>;
 
   function configure(): void {
+    // Specs that do not care who is signed in act as someone who may do everything on the screen.
+    if (currentUser() === null) {
+      currentUser.set({ id: 999, permissions: systemPermissions('Administrator') });
+    }
+
     TestBed.configureTestingModule({
       imports: [EmployeeListComponent],
       providers: [
         provideRouter([]),
-        { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy } },
-        { provide: DepartmentService, useValue: { getAll: () => of(departments) } },
-        { provide: AuthService, useValue: { currentUser: signal(null).asReadonly(), clearSession: () => undefined } },
+        { provide: UserService, useValue: { getAll: getAllSpy, updateStatus: updateStatusSpy, delete: deleteSpy } },
+        { provide: ProjectService, useValue: { getAll: () => of(projects) } },
+        { provide: PositionService, useValue: { getAll: () => of([]), getOrCreate: () => of({ id: 1, name: 'Member' }) } },
+        { provide: DepartmentService, useValue: { getAll: departmentsGetAllSpy } },
+        { provide: AuthService, useValue: fakeAuthService(currentUser, { clearSession: () => undefined }) },
+        { provide: RoleService, useValue: { assignable: () => of([]) } },
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } }
       ]
     });
@@ -72,7 +96,112 @@ describe('EmployeeListComponent', () => {
   beforeEach(() => {
     queryParams = {};
     getAllSpy = jasmine.createSpy('getAll').and.returnValue(of(employees));
+    departmentsGetAllSpy = jasmine.createSpy('getAll').and.returnValue(of(departments));
     updateStatusSpy = jasmine.createSpy('updateStatus').and.returnValue(of(employees[0]));
+    deleteSpy = jasmine.createSpy('delete').and.returnValue(of(undefined));
+    currentUser.set(null);
+  });
+
+  describe('projects and departments', () => {
+    it('shows every project with its percentage and position, the total, and every department', () => {
+      currentUser.set({ id: 2, permissions: systemPermissions('Administrator') });
+      getAllSpy.and.returnValue(
+        of([
+          user({
+            id: 1,
+            projectAllocations: [
+              { projectId: 1, projectName: 'Apollo', positionId: 3, positionName: 'QA', percent: 60 },
+              { projectId: 2, projectName: 'Zephyr', positionId: 4, positionName: 'Developer', percent: 40 }
+            ],
+            totalAllocatedPercent: 100,
+            remainingPercent: 0,
+            departments: [{ id: 5, name: 'Finance' }, { id: 6, name: 'Human Resources' }]
+          }),
+          user({ id: 2, fullName: 'Solo Project' }),
+          user({ id: 3, fullName: 'Nobody', ...NO_ALLOCATIONS })
+        ])
+      );
+      configure();
+      const fixture = create();
+
+      const cells = (row: number, name: string) =>
+        (el(fixture).querySelectorAll('tr.employee-row')[row].querySelector(`[data-cell="${name}"]`)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+      expect(cells(0, 'projects')).toBe('Apollo 60%QA Zephyr 40%Developer100% total');
+      expect(cells(0, 'departments')).toBe('Finance, Human Resources');
+      expect(cells(1, 'projects')).toBe('Engineering 100%Member');
+      expect(cells(2, 'projects')).toBe('Unassigned');
+      expect(cells(2, 'departments')).toBe('Unassigned');
+    });
+  });
+
+  describe('delete', () => {
+    it('is not offered to a Manager, even one who can edit employees', () => {
+      currentUser.set({ id: 50, permissions: [Permissions.EmployeesView, Permissions.EmployeesEdit] });
+      configure();
+      const fixture = create();
+
+      expect(el(fixture).querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('is offered to an Administrator on every row except their own', () => {
+      currentUser.set({ id: 2, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+
+      const rows = Array.from(el(fixture).querySelectorAll('tr.employee-row'));
+      expect(rows[0].querySelector('[data-action="delete"]')).not.toBeNull();
+      expect(rows[1].querySelector('[data-action="delete"]')).toBeNull();
+    });
+
+    it('does nothing when the confirmation is cancelled', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const dialog = el(fixture).querySelector('dialog') as HTMLDialogElement;
+      expect(dialog.open).toBeTrue();
+      expect(dialog.textContent).toContain('Rahul Menon');
+      (dialog.querySelector('[data-action="cancel"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    }));
+
+    it('deletes after confirmation, shows a toast and reloads the list', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      configure();
+      const fixture = create();
+      const toastSpy = spyOn(TestBed.inject(ToastService), 'success');
+      getAllSpy.calls.reset();
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(deleteSpy).toHaveBeenCalledWith(1);
+      expect(toastSpy).toHaveBeenCalledWith('Rahul Menon deleted');
+      expect(getAllSpy).toHaveBeenCalled();
+    }));
+
+    it('shows the server message when the delete is rejected', fakeAsync(() => {
+      currentUser.set({ id: 99, permissions: systemPermissions('Administrator') });
+      deleteSpy.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'Rahul Menon still has 2 unfinished tasks.' } }))
+      );
+      configure();
+      const fixture = create();
+      const errorSpy = spyOn(TestBed.inject(ToastService), 'error');
+
+      (el(fixture).querySelector('tr.employee-row [data-action="delete"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      (el(fixture).querySelector('dialog [data-action="confirm"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+
+      expect(errorSpy).toHaveBeenCalledWith('Rahul Menon still has 2 unfinished tasks.');
+    }));
   });
 
   afterEach(() => closeOpenDialogs());
@@ -117,26 +246,26 @@ describe('EmployeeListComponent', () => {
     expect(getAllSpy).toHaveBeenCalledOnceWith({ isActive: false });
   });
 
-  it('pre-filters by the departmentId query parameter', () => {
-    queryParams = { departmentId: '3' };
+  it('pre-filters by the projectId query parameter', () => {
+    queryParams = { projectId: '3' };
     configure();
     const fixture = create();
 
-    expect(getAllSpy).toHaveBeenCalledWith({ departmentId: 3 });
-    const select = el(fixture).querySelector('#emp-filter-department') as HTMLSelectElement;
+    expect(getAllSpy).toHaveBeenCalledWith({ projectId: 3 });
+    const select = el(fixture).querySelector('#emp-filter-project') as HTMLSelectElement;
     expect(select.value).toBe('3');
   });
 
-  it('writes the department filter back to the URL', () => {
+  it('writes the project filter back to the URL', () => {
     configure();
     const fixture = create();
     const navigateSpy = TestBed.inject(Router).navigate as jasmine.Spy;
 
-    fixture.componentInstance.setDepartment('1');
+    fixture.componentInstance.setProject('1');
 
     expect(navigateSpy).toHaveBeenCalledWith(
       [],
-      jasmine.objectContaining({ queryParams: { departmentId: 1 }, replaceUrl: true })
+      jasmine.objectContaining({ queryParams: { projectId: 1 }, replaceUrl: true })
     );
   });
 
@@ -197,6 +326,22 @@ describe('EmployeeListComponent', () => {
 
     expect(el(fixture).querySelector('.tf-drawer h2')?.textContent).toContain('Employee details');
     expect(el(fixture).querySelector('.tf-drawer')?.textContent).toContain('EMP-001');
+  }));
+
+  it('loads the departments and offers them as checkboxes in the add form', fakeAsync(() => {
+    configure();
+    const fixture = create();
+
+    expect(departmentsGetAllSpy).toHaveBeenCalled();
+
+    (el(fixture).querySelector('.tf-page-header .tf-btn--primary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    flush();
+
+    const options = Array.from(el(fixture).querySelectorAll('[data-department]')).map((box) =>
+      (box.closest('label')?.textContent ?? '').trim()
+    );
+    expect(options).toEqual(['Human Resources']);
   }));
 
   it('does not deactivate when the confirmation is cancelled', fakeAsync(() => {

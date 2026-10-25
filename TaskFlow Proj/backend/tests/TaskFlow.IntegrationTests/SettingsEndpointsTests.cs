@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -19,9 +20,9 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Theory]
-    [InlineData("set-get-manager", Role.Manager)]
-    [InlineData("set-get-admin", Role.Administrator)]
-    public async Task Get_ReturnsCurrentSettings_ForManagerAndAdmin(string username, Role role)
+    [InlineData("set-get-manager", SystemRoles.Manager)]
+    [InlineData("set-get-admin", SystemRoles.Administrator)]
+    public async Task Get_ReturnsCurrentSettings_ForManagerAndAdmin(string username, string role)
     {
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, username, role);
@@ -33,7 +34,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var root = document.RootElement;
         Assert.True(root.TryGetProperty("enabled", out _));
         Assert.True(root.TryGetProperty("deadlineDayEnabled", out _));
-        Assert.True(root.TryGetProperty("emailEnabled", out _));
+        Assert.True(root.TryGetProperty("mailEnabled", out _));
         Assert.InRange(root.GetProperty("defaultFirstDays").GetInt32(), 1, 30);
         Assert.InRange(root.GetProperty("defaultSecondDays").GetInt32(), 0, 30);
         Assert.Contains(root.GetProperty("defaultOverdueFrequency").GetString(), new[] { "Daily", "Weekly" });
@@ -44,7 +45,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_PersistsAndReturnsSavedValues_AndIgnoresTimezone()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-put-manager", Role.Manager);
+        var token = await LoginAsync(client, "set-put-manager", SystemRoles.Manager);
         var before = await GetTimezoneAsync(client, token);
 
         var save = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
@@ -54,7 +55,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 3,
             defaultSecondDays = 1,
             defaultOverdueFrequency = "Weekly",
-            emailEnabled = true,
+            mailEnabled = false,
             timezone = "America/New_York"
         }));
         Assert.Equal(HttpStatusCode.OK, save.StatusCode);
@@ -67,7 +68,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             Assert.Equal(3, root.GetProperty("defaultFirstDays").GetInt32());
             Assert.Equal(1, root.GetProperty("defaultSecondDays").GetInt32());
             Assert.Equal("Weekly", root.GetProperty("defaultOverdueFrequency").GetString());
-            Assert.True(root.GetProperty("emailEnabled").GetBoolean());
+            Assert.False(root.GetProperty("mailEnabled").GetBoolean());
             Assert.Equal(before, root.GetProperty("timezone").GetString());
         }
 
@@ -80,7 +81,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_InvalidValues_Returns400WithFieldErrors_AndChangesNothing()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-invalid-admin", Role.Administrator);
+        var token = await LoginAsync(client, "set-invalid-admin", SystemRoles.Administrator);
         var before = await (await SendAsync(client, HttpMethod.Get, Url, token)).Content.ReadAsStringAsync();
 
         var outOfRange = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
@@ -90,7 +91,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 45,
             defaultSecondDays = 1,
             defaultOverdueFrequency = "Daily",
-            emailEnabled = false
+            mailEnabled = false
         }));
         Assert.Equal(HttpStatusCode.BadRequest, outOfRange.StatusCode);
 
@@ -106,7 +107,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
             defaultFirstDays = 1,
             defaultSecondDays = 2,
             defaultOverdueFrequency = "Daily",
-            emailEnabled = false
+            mailEnabled = false
         }));
         Assert.Equal(HttpStatusCode.BadRequest, wrongOrder.StatusCode);
 
@@ -123,7 +124,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Put_MissingFields_Returns400_AndDoesNotSwitchRemindersOff()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-partial-manager", Role.Manager);
+        var token = await LoginAsync(client, "set-partial-manager", SystemRoles.Manager);
 
         var response = await SendAsync(client, HttpMethod.Put, Url, token, JsonContent.Create(new
         {
@@ -148,7 +149,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Employee_IsForbidden()
     {
         var client = _factory.CreateClient();
-        var token = await LoginAsync(client, "set-employee", Role.Employee);
+        var token = await LoginAsync(client, "set-employee", SystemRoles.Employee);
 
         var get = await SendAsync(client, HttpMethod.Get, Url, token);
         var put = await SendAsync(client, HttpMethod.Put, Url, token, DefaultsBody());
@@ -174,7 +175,7 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         defaultFirstDays = 2,
         defaultSecondDays = 1,
         defaultOverdueFrequency = "Daily",
-        emailEnabled = false
+        mailEnabled = true
     });
 
     private static async Task<string?> GetTimezoneAsync(HttpClient client, string token)
@@ -184,10 +185,10 @@ public class SettingsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("timezone").GetString();
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { emailOrUsername = username, password });
         response.EnsureSuccessStatusCode();

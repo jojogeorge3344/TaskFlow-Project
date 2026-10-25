@@ -63,7 +63,8 @@ public class ReminderSchedulerService : BackgroundService
         }
     }
 
-    private async System.Threading.Tasks.Task RunPassAsync(CancellationToken stoppingToken)
+    /// <summary>One scheduler pass. Errors are logged and swallowed, so a failed pass never stops the scheduler.</summary>
+    public async System.Threading.Tasks.Task RunPassAsync(CancellationToken stoppingToken)
     {
         try
         {

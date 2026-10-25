@@ -1,10 +1,15 @@
+import { provideHttpClient } from '@angular/common/http';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { NavigationEnd, Router, provideRouter } from '@angular/router';
+import { filter, firstValueFrom, of, take } from 'rxjs';
 import { AuthUser, UserRole } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { MailService } from '../services/mail.service';
 import { NotificationService } from '../services/notification.service';
+import { ApplicationSettingsService } from '../services/application-settings.service';
 import { SIDEBAR_COLLAPSED_KEY, WIDE_VIEWPORT_QUERY } from './layout.service';
 import { SESSION_CHECK_INTERVAL_MS, ShellComponent } from './shell.component';
 
@@ -17,15 +22,20 @@ describe('ShellComponent', () => {
   const checkSessionSpy = jasmine.createSpy('checkSession');
   const unreadCountSignal = signal(0);
   const refreshUnreadCountSpy = jasmine.createSpy('refreshUnreadCount');
+  const mailUnreadSignal = signal(0);
+  const refreshMailCountSpy = jasmine.createSpy('refreshMailCount');
+  const getAppSettingsSpy = jasmine.createSpy('get');
+  const appNameSignal = signal('TaskFlow');
 
   function asUser(role: UserRole): void {
     userSignal.set({
       id: 1,
       fullName: 'Test User',
       username: 'test',
-      email: 'test@taskflow.local',
+      email: 'test@taskflow.com',
       role,
-      employeeCode: null
+      employeeCode: null,
+      permissions: systemPermissions(role)
     });
   }
 
@@ -49,6 +59,20 @@ describe('ShellComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  function parentButton(fixture: ComponentFixture<ShellComponent>, label: string): HTMLButtonElement {
+    return Array.from(el(fixture).querySelectorAll('.nav__parent')).find(
+      (node) => node.querySelector('.nav__text')?.textContent?.trim() === label
+    ) as HTMLButtonElement;
+  }
+
+  function expandParent(fixture: ComponentFixture<ShellComponent>, label: string): void {
+    const parent = parentButton(fixture, label);
+    if (parent.getAttribute('aria-expanded') !== 'true') {
+      parent.click();
+      fixture.detectChanges();
+    }
+  }
+
   function toggleButton(fixture: ComponentFixture<ShellComponent>): HTMLButtonElement {
     return el(fixture).querySelector('.header__toggle') as HTMLButtonElement;
   }
@@ -62,6 +86,13 @@ describe('ShellComponent', () => {
     checkSessionSpy.and.returnValue(of({}));
     unreadCountSignal.set(0);
     refreshUnreadCountSpy.calls.reset();
+    mailUnreadSignal.set(0);
+    refreshMailCountSpy.calls.reset();
+    getAppSettingsSpy.calls.reset();
+    getAppSettingsSpy.and.returnValue(
+      of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Medium', inAppNotificationsEnabled: true })
+    );
+    appNameSignal.set('TaskFlow');
 
     await TestBed.configureTestingModule({
       imports: [ShellComponent],
@@ -72,13 +103,23 @@ describe('ShellComponent', () => {
           { path: 'notifications', component: PageStubComponent },
           { path: 'settings/reminders', component: PageStubComponent }
         ]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: AuthService,
-          useValue: { currentUser: userSignal.asReadonly(), logout: logoutSpy, checkSession: checkSessionSpy }
+          useValue: fakeAuthService(userSignal.asReadonly(), { logout: logoutSpy, checkSession: checkSessionSpy })
         },
         {
           provide: NotificationService,
           useValue: { unreadCount: unreadCountSignal.asReadonly(), refreshUnreadCount: refreshUnreadCountSpy }
+        },
+        {
+          provide: MailService,
+          useValue: { unreadCount: mailUnreadSignal.asReadonly(), refreshUnreadCount: refreshMailCountSpy }
+        },
+        {
+          provide: ApplicationSettingsService,
+          useValue: { get: getAppSettingsSpy, appName: appNameSignal.asReadonly() }
         }
       ]
     }).compileComponents();
@@ -92,6 +133,9 @@ describe('ShellComponent', () => {
     mockViewport(true);
     asUser('Administrator');
     const fixture = createComponent();
+    ['TaskFlow Monitoring', 'TaskFlow Management', 'Communication Management', 'Settings'].forEach((label) =>
+      expandParent(fixture, label)
+    );
 
     const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
     const labels = links.map((link) => link.querySelector('.nav__text')?.textContent?.trim());
@@ -99,10 +143,19 @@ describe('ShellComponent', () => {
     expect(labels).toEqual([
       'Dashboard',
       'Task Management',
+      'Employee Workload',
+      'Board',
       'Employee Management',
+      'Project Management',
       'Department Management',
+      'Mail',
       'Notifications',
-      'Reminder Settings'
+      'Reports',
+      'Reminder Settings',
+      'Application Settings',
+      'TFA Settings',
+      'Role Configuration',
+      'My Profile'
     ]);
     expect(links.every((link) => link.querySelector('svg.tf-icon') !== null)).toBeTrue();
 
@@ -111,16 +164,175 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
   });
 
+  it('starts all parent modules minimized and reveals children on expand', () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+
+    const parents = Array.from(el(fixture).querySelectorAll('.nav__parent'));
+    expect(parents.map((node) => node.querySelector('.nav__text')?.textContent?.trim())).toEqual([
+      'TaskFlow Monitoring',
+      'TaskFlow Management',
+      'Communication Management',
+      'Settings'
+    ]);
+    expect(parents.every((node) => node.getAttribute('aria-expanded') === 'false')).toBeTrue();
+    expect(el(fixture).querySelector('.nav__item--child')).toBeNull();
+
+    const groups = Array.from(el(fixture).querySelectorAll('.nav__group'));
+    const childrenOf = (index: number) => {
+      (parents[index] as HTMLButtonElement).click();
+      fixture.detectChanges();
+      return Array.from(groups[index].querySelectorAll('.nav__item--child .nav__text')).map(
+        (node) => node.textContent?.trim()
+      );
+    };
+    expect(childrenOf(0)).toEqual(['Task Management', 'Employee Workload', 'Board']);
+    expect(childrenOf(1)).toEqual(['Employee Management', 'Project Management', 'Department Management']);
+    expect(childrenOf(2)).toEqual(['Mail', 'Notifications']);
+    expect(childrenOf(3)).toEqual(['Reminder Settings', 'Application Settings', 'TFA Settings', 'Role Configuration']);
+  });
+
+  it('collapses and expands a parent module group', () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+
+    const settings = parentButton(fixture, 'Settings');
+    expect(settings.getAttribute('aria-controls')).toBe('nav-group-settings');
+    expect(settings.getAttribute('aria-expanded')).toBe('false');
+    expect(el(fixture).querySelector('#nav-group-settings')).toBeNull();
+
+    settings.click();
+    fixture.detectChanges();
+
+    expect(settings.getAttribute('aria-expanded')).toBe('true');
+    expect(el(fixture).querySelector('#nav-group-settings')).not.toBeNull();
+
+    settings.click();
+    fixture.detectChanges();
+
+    expect(settings.getAttribute('aria-expanded')).toBe('false');
+    expect(el(fixture).querySelector('#nav-group-settings')).toBeNull();
+  });
+
+  it('wraps long parent and child labels instead of truncating them', () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+
+    const parentLabel = Array.from(el(fixture).querySelectorAll('.nav__parent .nav__text')).find(
+      (node) => node.textContent?.trim() === 'Communication Management'
+    )!;
+    const style = getComputedStyle(parentLabel);
+    expect(style.whiteSpace).toBe('normal');
+    expect(style.textOverflow).toBe('clip');
+
+    expandParent(fixture, 'TaskFlow Monitoring');
+    const childLabel = el(fixture).querySelector('.nav__item--child .nav__text')!;
+    const childStyle = getComputedStyle(childLabel);
+    expect(childStyle.whiteSpace).toBe('normal');
+    expect(childStyle.textOverflow).toBe('clip');
+  });
+
+  it('collapses a parent group even while a child route is active', async () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+    await TestBed.inject(Router).navigateByUrl('/settings/reminders');
+    fixture.detectChanges();
+
+    const settings = parentButton(fixture, 'Settings');
+    expect(settings.getAttribute('aria-expanded')).toBe('true');
+
+    settings.click();
+    fixture.detectChanges();
+
+    expect(settings.getAttribute('aria-expanded')).toBe('false');
+    expect(el(fixture).querySelector('#nav-group-settings')).toBeNull();
+  });
+
+  it('re-expands a manually collapsed group on the next navigation', async () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/settings/reminders');
+    fixture.detectChanges();
+
+    const settings = () => parentButton(fixture, 'Settings');
+    settings().click();
+    fixture.detectChanges();
+    expect(settings().getAttribute('aria-expanded')).toBe('false');
+
+    await router.navigateByUrl('/employees');
+    fixture.detectChanges();
+    expect(settings().getAttribute('aria-expanded')).toBe('false');
+
+    await router.navigateByUrl('/settings/reminders');
+    fixture.detectChanges();
+    expect(settings().getAttribute('aria-expanded')).toBe('true');
+    expect(el(fixture).querySelector('#nav-group-settings')).not.toBeNull();
+  });
+
+  it('navigates to a sub-module when its child entry is clicked', async () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+    const router = TestBed.inject(Router);
+    const arrived = firstValueFrom(
+      router.events.pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        take(1)
+      )
+    );
+
+    expandParent(fixture, 'TaskFlow Management');
+    const child = Array.from(el(fixture).querySelectorAll('.nav__item--child')).find(
+      (node) => node.querySelector('.nav__text')?.textContent?.trim() === 'Employee Management'
+    ) as HTMLAnchorElement;
+
+    child.click();
+    fixture.detectChanges();
+    await arrived;
+    // RouterLinkActive applies the active class inside a queued microtask; flush it.
+    await new Promise<void>((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    expect(router.url).toBe('/employees');
+    expect(el(fixture).querySelector('.routed')).toBeTruthy();
+    expect(child.classList).toContain('nav__item--active');
+    expect(child.getAttribute('aria-current')).toBe('page');
+    expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Employee Management');
+  });
+
+  it('shows the sub-module label in the header title for a grouped route', async () => {
+    mockViewport(true);
+    asUser('Administrator');
+    const fixture = createComponent();
+
+    await TestBed.inject(Router).navigateByUrl('/settings/reminders');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('.header__title')?.textContent).toContain('Reminder Settings');
+  });
+
   it('limits the employee navigation menu to their own links', () => {
     mockViewport(true);
     asUser('Employee');
     const fixture = createComponent();
 
+    expect(Array.from(el(fixture).querySelectorAll('a.nav__item .nav__text')).map((node) => node.textContent?.trim()))
+      .toEqual(['Dashboard', 'My Profile']);
+
+    expandParent(fixture, 'Communication Management');
+    expandParent(fixture, 'Task Management');
+
     const links = Array.from(el(fixture).querySelectorAll('a.nav__item .nav__text')).map((node) =>
       node.textContent?.trim()
     );
 
-    expect(links).toEqual(['Dashboard', 'My Tasks', 'Notifications']);
+    expect(links).toEqual(['Dashboard', 'Mail', 'Notifications', 'My Tasks', 'Board', 'My Profile']);
     expect(el(fixture).querySelector('.nav__item--disabled')).toBeNull();
     expect(el(fixture).textContent).not.toContain('Employee Management');
     expect(el(fixture).textContent).not.toContain('Reminder Settings');
@@ -132,6 +344,10 @@ describe('ShellComponent', () => {
     const fixture = createComponent();
 
     await TestBed.inject(Router).navigateByUrl('/employees');
+    // The group expands after navigation, so the child links (and their active state)
+    // are created in the following change detection; flush RouterLinkActive's microtask.
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => setTimeout(resolve));
     fixture.detectChanges();
 
     const active = el(fixture).querySelector('a.nav__item--active')!;
@@ -236,6 +452,30 @@ describe('ShellComponent', () => {
     expect(el(fixture).querySelector('.account__role')?.textContent).toContain('Manager');
   });
 
+  it('shows the brand name from the settings service and refreshes it when the service updates', () => {
+    mockViewport(true);
+    asUser('Manager');
+    appNameSignal.set('Acme Tasks');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('.brand__name')?.textContent?.trim()).toBe('Acme Tasks');
+    expect(el(fixture).querySelector('.header__brand')?.textContent?.trim()).toBe('Acme Tasks');
+
+    appNameSignal.set('Renamed Corp');
+    fixture.detectChanges();
+
+    expect(el(fixture).querySelector('.brand__name')?.textContent?.trim()).toBe('Renamed Corp');
+    expect(el(fixture).querySelector('.header__brand')?.textContent?.trim()).toBe('Renamed Corp');
+  });
+
+  it('shows the theme menu in the header', () => {
+    mockViewport(true);
+    asUser('Manager');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('header.header app-theme-menu .theme-menu__button')).not.toBeNull();
+  });
+
   it('shows the notification bell linking to the center and hides the dot when there are none', () => {
     mockViewport(true);
     asUser('Manager');
@@ -268,6 +508,7 @@ describe('ShellComponent', () => {
     refreshUnreadCountSpy.calls.reset();
     tick(SESSION_CHECK_INTERVAL_MS);
     expect(refreshUnreadCountSpy).toHaveBeenCalledTimes(1);
+    expect(refreshMailCountSpy).toHaveBeenCalled();
 
     discardPeriodicTasks();
   }));
@@ -288,8 +529,10 @@ describe('ShellComponent', () => {
     asUser('Manager');
     const fixture = createComponent();
 
-    const links = Array.from(el(fixture).querySelectorAll('a.nav__item'));
-    const settings = links.find((link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Reminder Settings');
+    expandParent(fixture, 'Settings');
+    const settings = Array.from(el(fixture).querySelectorAll('a.nav__item')).find(
+      (link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Reminder Settings'
+    );
     expect(settings?.getAttribute('href')).toBe('/settings/reminders');
 
     await TestBed.inject(Router).navigateByUrl('/settings/reminders');
@@ -325,5 +568,40 @@ describe('ShellComponent', () => {
 
     expect(logoutSpy).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalledWith('/login');
+  });
+
+  for (const role of ['Administrator', 'Manager', 'Employee'] as const) {
+    it(`shows the Mail entry with its unread badge to ${role}s`, () => {
+      mockViewport(true);
+      asUser(role);
+      mailUnreadSignal.set(4);
+      const fixture = createComponent();
+      expandParent(fixture, 'Communication Management');
+
+      const mail = Array.from(el(fixture).querySelectorAll('a.nav__item')).find(
+        (link) => link.querySelector('.nav__text')?.textContent?.trim() === 'Mail'
+      );
+      expect(mail?.getAttribute('href')).toBe('/mail');
+      expect(mail?.querySelector('[data-badge="mail"]')?.textContent?.trim()).toBe('4');
+      expect(refreshMailCountSpy).toHaveBeenCalled();
+    });
+  }
+
+  it('hides the Mail badge when nothing is unread', () => {
+    mockViewport(true);
+    asUser('Employee');
+    const fixture = createComponent();
+    expandParent(fixture, 'Communication Management');
+
+    expect(el(fixture).querySelector('[data-badge="mail"]')).toBeNull();
+  });
+
+  it('offers the TFA assistant to every signed-in user', () => {
+    mockViewport(true);
+    asUser('Employee');
+    const fixture = createComponent();
+
+    expect(el(fixture).querySelector('[data-action="open-tfa"]')).not.toBeNull();
+    expect(el(fixture).querySelector('[data-panel="tfa"]')).not.toBeNull();
   });
 });

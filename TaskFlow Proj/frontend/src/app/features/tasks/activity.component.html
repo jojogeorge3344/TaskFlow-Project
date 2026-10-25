@@ -1,52 +1,70 @@
 <section class="tf-page">
   <header class="tf-page-header">
     <div>
-      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]">
+      <a class="tf-btn tf-btn--ghost tf-back" [routerLink]="['/tasks', taskId]" queryParamsHandling="preserve">
         <tf-icon name="arrow" />
         Back to task #{{ taskId }}
       </a>
       <h1>Activity history</h1>
-      <p>Append-only log of every change on this task, oldest first.</p>
+      <p>Everything that happened on this task, newest first.</p>
     </div>
+    @if (!loading() && !error()) {
+      <span class="activity__count" data-event-count>{{ entries().length }} {{ entries().length === 1 ? 'event' : 'events' }}</span>
+    }
   </header>
 
-  <form class="tf-card activity__filters" (ngSubmit)="load()">
-    <div class="tf-field">
-      <label for="activity-event">Event type</label>
-      <select id="activity-event" class="tf-input" [value]="eventType()" (change)="eventType.set($any($event.target).value)">
-        <option value="">All events</option>
-        @for (type of eventTypes(); track type) {
-          <option [value]="type">{{ type }}</option>
+  <form class="activity__filters" (ngSubmit)="load()">
+    <div class="activity__pills" role="group" aria-label="Event type">
+      <button type="button" class="activity__pill" [attr.aria-pressed]="eventType() === ''" data-pill="all" (click)="clearType()">All</button>
+      @for (type of commonTypes; track type) {
+        <button
+          type="button"
+          class="activity__pill"
+          [attr.aria-pressed]="eventType() === type"
+          [attr.data-pill]="type"
+          (click)="pickType(type)"
+        >
+          {{ eventMeta(type).label }}
+        </button>
+      }
+      <select
+        class="tf-input activity__other"
+        aria-label="Other event types"
+        id="activity-event"
+        [value]="otherTypes().includes(eventType()) ? eventType() : ''"
+        (change)="selectOther($any($event.target).value)"
+      >
+        <option value="">Other events</option>
+        @for (type of otherTypes(); track type) {
+          <option [value]="type">{{ eventMeta(type).label }}</option>
         }
       </select>
     </div>
 
-    <div class="tf-field">
-      <label for="activity-search">Search</label>
-      <input
-        id="activity-search"
-        class="tf-input"
-        type="search"
-        placeholder="Search messages…"
-        autocomplete="off"
-        [value]="search()"
-        (input)="search.set($any($event.target).value)"
-      />
-    </div>
-
-    <div class="tf-field">
-      <label for="activity-from">From</label>
-      <input id="activity-from" class="tf-input" type="date" [value]="from()" (change)="from.set($any($event.target).value)" />
-    </div>
-
-    <div class="tf-field">
-      <label for="activity-to">To</label>
-      <input id="activity-to" class="tf-input" type="date" [value]="to()" (change)="to.set($any($event.target).value)" />
-    </div>
-
-    <div class="activity__filter-actions">
-      <button type="button" class="tf-btn tf-btn--ghost" (click)="clearFilters()">Clear</button>
-      <button type="submit" class="tf-btn tf-btn--primary">Apply</button>
+    <div class="activity__row">
+      <div class="activity__search">
+        <tf-icon name="search" />
+        <input
+          id="activity-search"
+          class="tf-input"
+          type="search"
+          placeholder="Search activity…"
+          aria-label="Search activity"
+          autocomplete="off"
+          [value]="search()"
+          (input)="search.set($any($event.target).value)"
+        />
+      </div>
+      <div class="activity__dates">
+        <label for="activity-from">From</label>
+        <input id="activity-from" class="tf-input" type="date" [value]="from()" (change)="from.set($any($event.target).value)" />
+        <label for="activity-to">To</label>
+        <input id="activity-to" class="tf-input" type="date" [value]="to()" (change)="to.set($any($event.target).value)" />
+      </div>
+      <div class="activity__filter-actions">
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="clearFilters()">Clear</button>
+        <button type="submit" class="tf-btn tf-btn--primary">Apply</button>
+      </div>
     </div>
   </form>
 
@@ -65,26 +83,71 @@
       <p>No activity matches the current filters.</p>
     </div>
   } @else {
-    <ol class="activity__list">
-      @for (entry of entries(); track entry.id) {
-        <li class="activity__item">
-          <span class="activity__dot" aria-hidden="true"></span>
-          <div class="activity__card">
-            <header class="activity__head">
-              <span class="tf-chip tf-chip--muted">{{ entry.eventType }}</span>
-              <time class="activity__time" [attr.datetime]="entry.createdAt">{{ timeLabel(entry.createdAt) }}</time>
-            </header>
-            <p class="activity__message">{{ entry.message }}</p>
-            @if (changeLabel(entry)) {
-              <p class="activity__change">{{ changeLabel(entry) }}</p>
-            }
-            <footer class="activity__actor">
-              <tf-icon name="users" />
-              {{ entry.actorName || `User #${entry.actorUserId}` }}
-            </footer>
-          </div>
-        </li>
-      }
-    </ol>
+    @for (group of dayGroups(); track group.label) {
+      <div class="activity__day">{{ group.label }}</div>
+      <ol class="activity__list">
+        @for (entry of group.entries; track entry.id) {
+          <li class="activity__item">
+            <span class="activity__node" [attr.data-tone]="eventMeta(entry.eventType).tone" aria-hidden="true">
+              <tf-icon [name]="eventMeta(entry.eventType).icon" />
+            </span>
+            <div class="activity__card">
+              <header class="activity__head">
+                <span class="activity__chip" [attr.data-tone]="eventMeta(entry.eventType).tone">{{ eventMeta(entry.eventType).label }}</span>
+                <time class="activity__time" [attr.datetime]="entry.createdAt">{{ clockLabel(entry.createdAt) }}</time>
+              </header>
+              <p class="activity__message">{{ entry.message }}</p>
+              @if (entry.oldValue || entry.newValue) {
+                <p class="activity__diff" data-diff>
+                  @if (entry.oldValue) {
+                    <span class="activity__old" [class.is-plain]="!entry.newValue">{{ entry.oldValue }}</span>
+                  }
+                  @if (entry.oldValue && entry.newValue) {
+                    <span aria-hidden="true">→</span>
+                  }
+                  @if (entry.newValue) {
+                    <span class="activity__new" [class.is-plain]="!entry.oldValue">{{ entry.newValue }}</span>
+                  }
+                </p>
+              }
+              <footer class="activity__foot">
+                <span class="activity__avatar" aria-hidden="true">{{ initialsOf(entry.actorName) }}</span>
+                <span class="activity__actor">{{ entry.actorName || 'User #' + entry.actorUserId }}</span>
+                @if (canManageHours(entry)) {
+                  @if (editingId() === entry.id) {
+                    <span class="activity__edit">
+                      <label class="activity__edit-label" [for]="'hours-' + entry.id">Hours added by this entry</label>
+                      <input
+                        [id]="'hours-' + entry.id"
+                        class="tf-input"
+                        type="number"
+                        min="0.25"
+                        step="0.25"
+                        data-edit-hours
+                        [value]="editHours()"
+                        (input)="editHours.set($any($event.target).value)"
+                      />
+                      <button type="button" class="tf-btn tf-btn--ghost" data-action="cancel-hours" (click)="cancelEditHours()">Cancel</button>
+                      <button type="button" class="tf-btn tf-btn--primary" data-action="save-hours" [disabled]="saving()" (click)="saveHours(entry)">
+                        {{ saving() ? 'Saving…' : 'Save' }}
+                      </button>
+                    </span>
+                  } @else {
+                    <span class="activity__edit">
+                      @if (entryHours(entry) > 0) {
+                        <button type="button" class="tf-btn tf-btn--ghost" data-action="edit-hours" (click)="startEditHours(entry)">Edit hours</button>
+                      }
+                      <button type="button" class="tf-btn tf-btn--ghost activity__danger" data-action="delete-hours" (click)="deleteHours(entry)">Delete</button>
+                    </span>
+                  }
+                }
+              </footer>
+            </div>
+          </li>
+        }
+      </ol>
+    }
   }
+
+  <tf-confirm-dialog />
 </section>

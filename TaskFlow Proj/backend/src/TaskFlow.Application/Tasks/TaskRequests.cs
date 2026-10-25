@@ -1,10 +1,13 @@
+using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Domain.Rules;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
 using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
 
 namespace TaskFlow.Application.Tasks;
 
-/// <summary>A new task. Omitted (null) reminder fields take the configured reminder defaults (Screen 13).</summary>
+/// <summary>A new task. Omitted (null) reminder fields take the configured reminder defaults (Screen 13).
+/// A project is mandatory: an omitted ProjectId (0) is rejected.</summary>
 public record CreateTaskRequest(
     string Title,
     string? Description,
@@ -16,7 +19,8 @@ public record CreateTaskRequest(
     IReadOnlyCollection<int>? AdditionalRecipientUserIds = null,
     int? FirstReminderDays = null,
     int? SecondReminderDays = null,
-    ReminderFrequency? OverdueReminderFrequency = null);
+    ReminderFrequency? OverdueReminderFrequency = null,
+    int ProjectId = 0);
 
 public record UpdateTaskRequest(
     string Title,
@@ -24,13 +28,19 @@ public record UpdateTaskRequest(
     TaskPriority Priority,
     DateTime StartDate,
     DateTime Deadline,
-    decimal EstimatedHours);
+    decimal EstimatedHours,
+    decimal? ActualHours = null);
 
 public record UpdateTaskStatusRequest(TaskStatus Status);
 
 public record ReassignTaskRequest(int NewAssigneeUserId, string Reason);
 
 public record AddCommentRequest(string Body);
+
+public record UpdateHoursEntryRequest(decimal Hours);
+
+/// <summary>Adds worked time to a task's running total.</summary>
+public record LogHoursRequest(decimal Hours);
 
 public record SetRecipientsRequest(IReadOnlyCollection<int> RecipientUserIds);
 
@@ -43,4 +53,22 @@ public record TaskListFilter(
     DateTime? DeadlineTo = null,
     string? Search = null,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    TaskBucketFilter? Bucket = null,
+    DeadlineBucket? DeadlineBucket = null,
+    int? DepartmentId = null,
+    int? ProjectId = null,
+    int? EmployeeId = null,
+    int? ManagerId = null,
+    DateOnly? From = null,
+    DateOnly? To = null,
+    AnalyticsDateBasis Basis = AnalyticsDateBasis.Created);
+
+public enum TaskBucketFilter
+{
+    All,
+    Pending,
+    InProgress,
+    Completed,
+    Overdue
+}

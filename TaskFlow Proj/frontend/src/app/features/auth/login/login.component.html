@@ -1,4 +1,6 @@
 <section class="login">
+  <app-login-background />
+  @if (challenge() === null) {
   <form class="login__card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <header class="login__header">
       <div class="login__logo" aria-hidden="true">TF</div>
@@ -11,15 +13,18 @@
     }
 
     <label class="login__field">
-      <span class="login__label">Email or username</span>
+      <span class="login__label">Email</span>
       <input
-        type="text"
+        type="email"
         formControlName="emailOrUsername"
         autocomplete="username"
+        inputmode="email"
         [attr.aria-invalid]="form.controls.emailOrUsername.invalid && form.controls.emailOrUsername.touched"
       />
       @if (form.controls.emailOrUsername.touched && form.controls.emailOrUsername.hasError('required')) {
-        <span class="login__hint">Email or username is required.</span>
+        <span class="login__hint">Email is required.</span>
+      } @else if (form.controls.emailOrUsername.touched && form.controls.emailOrUsername.hasError('email')) {
+        <span class="login__hint">Enter a valid email address.</span>
       }
     </label>
 
@@ -31,8 +36,26 @@
           formControlName="password"
           autocomplete="current-password"
         />
-        <button type="button" class="login__toggle" (click)="togglePassword()">
-          {{ showPassword() ? 'Hide' : 'Show' }}
+        <button
+          type="button"
+          class="login__toggle"
+          data-action="toggle-password"
+          [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+          [attr.aria-pressed]="showPassword()"
+          (click)="togglePassword()"
+        >
+          @if (showPassword()) {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3l18 18" />
+              <path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c5.5 0 9 5.5 10 7-.5.8-1.7 2.4-3.4 3.8M6.5 6.6C4.1 8.2 2.5 10.5 2 12c1 1.5 4.5 7 10 7 1.7 0 3.2-.5 4.5-1.2" />
+              <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          }
         </button>
       </span>
       @if (form.controls.password.touched && form.controls.password.hasError('required')) {
@@ -47,5 +70,50 @@
     <button type="submit" class="login__submit" [disabled]="submitting()">
       {{ submitting() ? 'Signing in…' : 'Sign in' }}
     </button>
+
+    <p class="login__forgot">
+      <a class="login__forgot-link" routerLink="/account-recovery">Forgot password?</a>
+    </p>
   </form>
+  } @else {
+  <form class="login__card" [formGroup]="mfaForm" (ngSubmit)="submitCode()" novalidate data-step="mfa">
+    <header class="login__header">
+      <div class="login__logo" aria-hidden="true">TF</div>
+      <h1 class="login__title">Two-step verification</h1>
+      <p class="login__subtitle">Enter the 6-digit code from your authenticator app.</p>
+    </header>
+
+    <label class="login__field">
+      <span class="login__label">Authentication code</span>
+      <input
+        type="text"
+        formControlName="code"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+        placeholder="123456"
+        data-field="mfaCode"
+        [attr.aria-invalid]="mfaForm.controls.code.invalid && mfaForm.controls.code.touched"
+      />
+      @if (mfaForm.controls.code.touched && mfaForm.controls.code.hasError('required')) {
+        <span class="login__hint" data-error="mfaCode">Enter the code to continue.</span>
+      }
+    </label>
+
+    @if (errorMessage(); as message) {
+      <p class="login__error" role="alert">{{ message }}</p>
+    }
+
+    <button type="submit" class="login__submit" data-action="verify-mfa" [disabled]="submitting()">
+      {{ submitting() ? 'Verifying…' : 'Verify' }}
+    </button>
+
+    <p class="login__forgot">
+      <button type="button" class="login__forgot-link login__linkbutton" data-action="cancel-mfa" (click)="cancelMfa()">
+        ← Back to sign in
+      </button>
+    </p>
+  </form>
+  }
+  <app-legal-footer variant="dark" />
 </section>

@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -57,49 +58,50 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         var clock = new FakeTimeProvider(now ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
         var appClock = new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
-        var service = new DashboardService(db, appClock);
+        var service = new DashboardService(db, appClock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, appClock));
 
         return new DashboardServiceHarness(connection, db, service, clock);
     }
 
-    public Department AddDepartment(string name)
+    public Project AddProject(string name)
     {
-        var department = new Department
+        var project = new Project
         {
             Name = name,
             CreatedAt = Clock.UtcNow.UtcDateTime
         };
 
-        Db.Departments.Add(department);
+        Db.Projects.Add(project);
         Db.SaveChanges();
 
-        return department;
+        return project;
     }
 
     public User AddUser(
         string username,
         bool isActive = true,
-        Role role = Role.Employee,
-        int? departmentId = null)
+        string role = SystemRoles.Employee,
+        int? projectId = null)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
-            Email = $"{username}@taskflow.local",
+            Email = $"{username}@taskflow.com",
             PasswordHash = "hash",
-            Role = role,
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
-            DepartmentId = departmentId,
             CreatedAt = Clock.UtcNow.UtcDateTime,
             UpdatedAt = Clock.UtcNow.UtcDateTime
         };
 
         Db.Users.Add(user);
         Db.SaveChanges();
+        TestMemberships.Allocate(Db, user, projectId);
 
         return user;
     }
@@ -109,7 +111,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
         DateTime deadline,
         TaskStatus status,
         int? createdByUserId = null,
-        int? departmentId = null,
+        int? projectId = null,
         bool isDeleted = false)
     {
         var task = new TaskEntity
@@ -118,7 +120,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
             Title = "Task",
             AssignedToUserId = assignedToUserId,
             CreatedByUserId = createdByUserId ?? assignedToUserId,
-            DepartmentId = departmentId,
+            ProjectId = projectId,
             Priority = TaskPriority.Medium,
             StartDate = Clock.UtcNow.UtcDateTime,
             Deadline = deadline,

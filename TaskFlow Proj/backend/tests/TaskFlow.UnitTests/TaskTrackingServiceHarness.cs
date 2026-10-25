@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using TaskFlow.Domain.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Domain.Entities;
@@ -26,8 +27,8 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         NotificationService = new NotificationService(db);
         ReminderSettings = new ReminderSettingsService(db, TimeProvider.System, Options.Create(new ApplicationOptions()));
         Clock = new AppClock(db, TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
-        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock);
-        CommentService = new TaskCommentService(db, ActivityService, TimeProvider.System);
+        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), new MailService(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
+        CommentService = new TaskCommentService(db, ActivityService, NotificationPublisher, TimeProvider.System);
     }
 
     public AppDbContext Db { get; }
@@ -57,18 +58,27 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
 
         var db = new AppDbContext(options);
         db.Database.EnsureCreated();
+        TestAccessControl.Seed(db);
 
         return new TaskTrackingServiceHarness(connection, db);
     }
 
-    public User AddUser(string username, Role role = Role.Employee, bool isActive = true)
+    public Project AddProject(string? name = null)
+    {
+        var project = new Project { Name = name ?? $"Project {Guid.NewGuid():N}"[..20], CreatedAt = DateTime.UtcNow };
+        Db.Projects.Add(project);
+        Db.SaveChanges();
+        return project;
+    }
+
+    public User AddUser(string username, string role = SystemRoles.Employee, bool isActive = true)
     {
         var user = new User
         {
             FullName = $"{username} full name",
             Username = username,
-            Email = $"{username}@taskflow.local",
-            Role = role,
+            Email = $"{username}@taskflow.com",
+            RoleId = TestAccessControl.IdFor(role),
             IsActive = isActive,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -113,6 +123,27 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
     public void AddRecipient(int taskId, int userId)
     {
         Db.TaskRecipients.Add(new TaskRecipient { TaskId = taskId, UserId = userId });
+        Db.SaveChanges();
+    }
+
+    public void SetSetting(string key, string value)
+    {
+        var existing = Db.ApplicationSettings.SingleOrDefault(setting => setting.Key == key);
+        if (existing is null)
+        {
+            Db.ApplicationSettings.Add(new ApplicationSetting
+            {
+                Key = key,
+                Value = value,
+                Category = "Test",
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Value = value;
+        }
+
         Db.SaveChanges();
     }
 

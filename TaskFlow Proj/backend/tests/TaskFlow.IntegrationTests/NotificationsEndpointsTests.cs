@@ -1,4 +1,5 @@
 using System.Net;
+using TaskFlow.Domain.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -25,7 +26,7 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Get_ReturnsPagedShape_OnlyCallersRows_NewestFirst()
     {
         var client = _factory.CreateClient();
-        var owner = await SeedAndLoginAsync(client, "ntf-list-owner", Role.Employee);
+        var owner = await SeedAndLoginAsync(client, "ntf-list-owner", SystemRoles.Employee);
         var other = await SeedUserAsync("ntf-list-other");
         var task = await CreateTaskAsync("Notification task", owner.Id, owner.Id);
 
@@ -59,7 +60,7 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task Get_AppliesTypeAndReadFilters()
     {
         var client = _factory.CreateClient();
-        var owner = await SeedAndLoginAsync(client, "ntf-filter-owner", Role.Employee);
+        var owner = await SeedAndLoginAsync(client, "ntf-filter-owner", SystemRoles.Employee);
 
         await SeedNotificationAsync(owner.Id, null, NotificationType.TaskAssigned, "assigned");
         await SeedNotificationAsync(owner.Id, null, NotificationType.Reassigned, "reassigned", isRead: true);
@@ -85,7 +86,7 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task UnreadCount_CountsOnlyOwnedUnread()
     {
         var client = _factory.CreateClient();
-        var owner = await SeedAndLoginAsync(client, "ntf-count-owner", Role.Employee);
+        var owner = await SeedAndLoginAsync(client, "ntf-count-owner", SystemRoles.Employee);
         var other = await SeedUserAsync("ntf-count-other");
 
         await SeedNotificationAsync(owner.Id, null, NotificationType.System, "one");
@@ -104,8 +105,8 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task MarkRead_PersistsAndIsScopedToOwner()
     {
         var client = _factory.CreateClient();
-        var owner = await SeedAndLoginAsync(client, "ntf-mark-owner", Role.Employee);
-        var otherUser = await SeedAndLoginAsync(client, "ntf-mark-other", Role.Employee);
+        var owner = await SeedAndLoginAsync(client, "ntf-mark-owner", SystemRoles.Employee);
+        var otherUser = await SeedAndLoginAsync(client, "ntf-mark-other", SystemRoles.Employee);
 
         var notificationId = await SeedNotificationAsync(owner.Id, null, NotificationType.System, "mine");
 
@@ -124,8 +125,8 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task MarkAllRead_ZeroesOwnedCountOnly()
     {
         var client = _factory.CreateClient();
-        var owner = await SeedAndLoginAsync(client, "ntf-all-owner", Role.Employee);
-        var other = await SeedAndLoginAsync(client, "ntf-all-other", Role.Employee);
+        var owner = await SeedAndLoginAsync(client, "ntf-all-owner", SystemRoles.Employee);
+        var other = await SeedAndLoginAsync(client, "ntf-all-other", SystemRoles.Employee);
 
         await SeedNotificationAsync(owner.Id, null, NotificationType.System, "a");
         await SeedNotificationAsync(owner.Id, null, NotificationType.System, "b");
@@ -165,10 +166,10 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("count").GetInt32();
     }
 
-    private async Task<string> LoginAsync(HttpClient client, string username, Role role)
+    private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, role);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, role);
 
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new
         {
@@ -182,7 +183,7 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return document.RootElement.GetProperty("accessToken").GetString()!;
     }
 
-    private async Task<(string Token, int Id)> SeedAndLoginAsync(HttpClient client, string username, Role role)
+    private async Task<(string Token, int Id)> SeedAndLoginAsync(HttpClient client, string username, string role)
     {
         var token = await LoginAsync(client, username, role);
         var id = await GetUserIdAsync(username);
@@ -192,7 +193,7 @@ public class NotificationsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private async Task<Domain.Entities.User> SeedUserAsync(string username)
     {
         const string password = "P@ssw0rd!";
-        await _factory.SeedUserAsync(username, $"{username}@taskflow.local", password, Role.Employee);
+        await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, SystemRoles.Employee);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

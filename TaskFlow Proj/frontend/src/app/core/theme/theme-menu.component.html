@@ -1,0 +1,30 @@
+<button
+  type="button"
+  class="theme-menu__button"
+  aria-haspopup="listbox"
+  [attr.aria-expanded]="open()"
+  aria-controls="tf-theme-list"
+  aria-label="Theme"
+  (click)="toggle()"
+>
+  <span class="theme-menu__swatch" [attr.data-swatch]="theme()" aria-hidden="true"></span>
+  <span class="theme-menu__label">{{ label() }}</span>
+</button>
+@if (open()) {
+  <ul id="tf-theme-list" class="theme-menu__list" role="listbox" aria-label="Theme">
+    @for (entry of themes; track entry.name; let i = $index) {
+      <li
+        role="option"
+        tabindex="0"
+        class="theme-menu__option"
+        [attr.data-theme-option]="entry.name"
+        [attr.aria-selected]="entry.name === theme()"
+        (click)="choose(entry.name)"
+        (keydown)="onOptionKey($event, entry.name, i)"
+      >
+        <span class="theme-menu__swatch" [attr.data-swatch]="entry.name" aria-hidden="true"></span>
+        {{ entry.label }}
+      </li>
+    }
+  </ul>
+}

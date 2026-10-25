@@ -1,0 +1,139 @@
+<section class="tf-page">
+  <header class="tf-page-header">
+    <div>
+      <h1>Task Reports</h1>
+      <p>
+        @if (loading() && summary() === null) {
+          Loading report…
+        } @else {
+          Task allocation and completion for the selected filters.
+        }
+      </p>
+    </div>
+    <div class="tf-page-actions">
+      @if (canExport()) {
+        <button
+          type="button"
+          class="tf-btn tf-btn--primary"
+          [disabled]="exporting() || loading()"
+          (click)="exportCsv()"
+          data-action="export"
+        >
+          <tf-icon name="download" />
+          {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <div class="tf-card tf-toolbar report-toolbar" role="search" aria-label="Filter reports">
+    <div class="tf-field">
+      <label for="report-filter-from">Deadline from</label>
+      <input
+        id="report-filter-from"
+        class="tf-input"
+        type="date"
+        [value]="deadlineFrom()"
+        [max]="deadlineTo() || null"
+        (change)="setDeadlineFrom($any($event.target).value)"
+      />
+    </div>
+    <div class="tf-field">
+      <label for="report-filter-to">Deadline to</label>
+      <input
+        id="report-filter-to"
+        class="tf-input"
+        type="date"
+        [value]="deadlineTo()"
+        [min]="deadlineFrom() || null"
+        (change)="setDeadlineTo($any($event.target).value)"
+      />
+    </div>
+    <div class="tf-field">
+      <label for="report-filter-employee">Employee</label>
+      <select id="report-filter-employee" class="tf-select" (change)="setAssignee($any($event.target).value)">
+        <option value="" [selected]="assignedToUserId() === null">All employees</option>
+        @for (assignee of assignees(); track assignee.userId) {
+          <option [value]="assignee.userId" [selected]="assignee.userId === assignedToUserId()">
+            {{ assignee.fullName }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="report-filter-project">Project</label>
+      <select id="report-filter-project" class="tf-select" (change)="setProject($any($event.target).value)">
+        <option value="" [selected]="projectId() === null">All projects</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id" [selected]="project.id === projectId()">
+            {{ project.name }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="report-filter-status">Status</label>
+      <select id="report-filter-status" class="tf-select" (change)="setStatus($any($event.target).value)">
+        <option value="" [selected]="status() === ''">All statuses</option>
+        @for (option of statuses; track option) {
+          <option [value]="option" [selected]="option === status()">{{ option }}</option>
+        }
+      </select>
+    </div>
+    <div class="tf-field">
+      <label for="report-filter-priority">Priority</label>
+      <select id="report-filter-priority" class="tf-select" (change)="setPriority($any($event.target).value)">
+        <option value="" [selected]="priority() === ''">All priorities</option>
+        @for (option of priorities; track option) {
+          <option [value]="option" [selected]="option === priority()">{{ option }}</option>
+        }
+      </select>
+    </div>
+    <button type="button" class="tf-btn tf-btn--ghost" (click)="resetFilters()">
+      <tf-icon name="reset" />
+      Reset
+    </button>
+  </div>
+
+  <div class="tf-card">
+    @if (error()) {
+      <div class="tf-empty" role="alert">
+        <tf-icon name="alert" />
+        <strong>Something went wrong</strong>
+        <p>{{ error() }}</p>
+        <button type="button" class="tf-btn tf-btn--ghost" (click)="load()">Retry</button>
+      </div>
+    } @else {
+      @if (summary(); as data) {
+      <div class="report-totals">
+        <article class="stat-card">
+          <span class="stat-card__label">Total Tasks</span>
+          <span class="stat-card__value">{{ data.totalTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Completed</span>
+          <span class="stat-card__value">{{ data.completedTasks }}</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">Pending</span>
+          <span class="stat-card__value">{{ data.pendingTasks }}</span>
+        </article>
+        <article class="stat-card stat-card--overdue">
+          <span class="stat-card__label">Overdue</span>
+          <span class="stat-card__value">{{ data.overdueTasks }}</span>
+        </article>
+      </div>
+
+      <div class="report-completion">
+        <h2 class="report-completion__title">Completion summary</h2>
+        <div class="progress" role="img" [attr.aria-label]="completionRate() + '% of tasks completed'">
+          <span class="progress__bar" [style.width.%]="completionRate()"></span>
+        </div>
+        <p class="report-completion__legend">
+          {{ data.completedTasks }} of {{ data.totalTasks }} completed · {{ completionRate() }}%
+        </p>
+      </div>
+      }
+    }
+  </div>
+</section>

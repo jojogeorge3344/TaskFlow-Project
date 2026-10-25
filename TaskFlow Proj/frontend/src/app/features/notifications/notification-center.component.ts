@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { Permissions } from '../../core/auth/permissions';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/layout/icon.component';
@@ -33,6 +35,12 @@ type ReadState = '' | 'unread' | 'read';
   styleUrl: './notification-center.component.css'
 })
 export class NotificationCenterComponent implements OnInit {
+  private readonly permissionAuth = inject(AuthService);
+  readonly canManage = computed(() => {
+    this.permissionAuth.currentUser();
+    return this.permissionAuth.hasPermission(Permissions.NotificationsManage);
+  });
+
   private readonly notificationService = inject(NotificationService);
 
   readonly types = NOTIFICATION_TYPES;

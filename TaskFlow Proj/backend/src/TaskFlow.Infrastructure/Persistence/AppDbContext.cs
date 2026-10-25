@@ -15,7 +15,20 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<PasswordResetGrant> PasswordResetGrants => Set<PasswordResetGrant>();
+    public DbSet<MfaBackupCode> MfaBackupCodes => Set<MfaBackupCode>();
+
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ManagerProject> ManagerProjects => Set<ManagerProject>();
     public DbSet<Department> Departments => Set<Department>();
+    public DbSet<DepartmentManager> DepartmentManagers => Set<DepartmentManager>();
+    public DbSet<Position> Positions => Set<Position>();
+    public DbSet<UserProjectAllocation> UserProjectAllocations => Set<UserProjectAllocation>();
+    public DbSet<UserDepartment> UserDepartments => Set<UserDepartment>();
     public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
     public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
@@ -23,6 +36,16 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ReminderHistory> ReminderHistory => Set<ReminderHistory>();
     public DbSet<ApplicationSetting> ApplicationSettings => Set<ApplicationSetting>();
+    public DbSet<MailMessage> MailMessages => Set<MailMessage>();
+    public DbSet<MailRecipient> MailRecipients => Set<MailRecipient>();
+    public DbSet<MailboxItem> MailboxItems => Set<MailboxItem>();
+    public DbSet<MailAttachment> MailAttachments => Set<MailAttachment>();
+    public DbSet<AiProviderConfig> AiProviderConfigs => Set<AiProviderConfig>();
+    public DbSet<AiModel> AiModels => Set<AiModel>();
+    public DbSet<AssistantConversation> AssistantConversations => Set<AssistantConversation>();
+    public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
+    public DbSet<AssistantPendingAction> AssistantPendingActions => Set<AssistantPendingAction>();
+    public DbSet<AssistantAudit> AssistantAudits => Set<AssistantAudit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,25 +53,49 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         modelBuilder.Entity<User>(entity =>
         {
+            // A code or counter change must win a race exactly once, so two parallel requests cannot spend the same code.
+            entity.Property(user => user.MfaLastUsedStep).IsConcurrencyToken();
+            entity.Property(user => user.MfaFailedAttempts).IsConcurrencyToken();
+
             entity.HasKey(user => user.Id);
             entity.Property(user => user.EmployeeCode).HasMaxLength(32);
             entity.Property(user => user.FullName).IsRequired().HasMaxLength(200);
             entity.Property(user => user.Username).IsRequired().HasMaxLength(100);
             entity.Property(user => user.Email).IsRequired().HasMaxLength(256);
+            entity.Property(user => user.MobileNumber).HasMaxLength(20);
+            entity.Property(user => user.MfaSecretProtected).HasMaxLength(512);
             entity.Property(user => user.PasswordHash).IsRequired();
             entity.Property(user => user.SecurityStamp).IsRequired().HasMaxLength(64);
-            entity.Property(user => user.Role).HasConversion<string>().HasMaxLength(32);
+
+            entity
+                .HasOne(user => user.Role)
+                .WithMany(role => role.Users)
+                .HasForeignKey(user => user.RoleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(user => user.Username).IsUnique();
             entity.HasIndex(user => user.Email).IsUnique();
 
             entity.HasQueryFilter(user => !user.IsDeleted);
+        });
+
+        modelBuilder.Entity<ManagerProject>(entity =>
+        {
+            entity.HasKey(link => new { link.ManagerUserId, link.ProjectId });
 
             entity
-                .HasOne(user => user.Department)
-                .WithMany(department => department.Users)
-                .HasForeignKey(user => user.DepartmentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(link => link.Manager)
+                .WithMany(manager => manager.ManagerProjects)
+                .HasForeignKey(link => link.ManagerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Project)
+                .WithMany()
+                .HasForeignKey(link => link.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.ProjectId);
         });
 
         modelBuilder.Entity<Department>(entity =>
@@ -57,9 +104,147 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(department => department.Name).IsRequired().HasMaxLength(200);
             entity.Property(department => department.Description).HasMaxLength(500);
 
-            entity.HasIndex(department => department.Name).IsUnique();
+            // A soft-deleted department keeps its name, so only live rows compete for it.
+            entity.HasIndex(department => department.Name).IsUnique().HasFilter("\"IsDeleted\" = 0");
 
             entity.HasQueryFilter(department => !department.IsDeleted);
+        });
+
+        modelBuilder.Entity<DepartmentManager>(entity =>
+        {
+            entity.HasKey(link => new { link.ManagerUserId, link.DepartmentId });
+
+            entity
+                .HasOne(link => link.Manager)
+                .WithMany(manager => manager.ManagedDepartments)
+                .HasForeignKey(link => link.ManagerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Department)
+                .WithMany(department => department.ManagerLinks)
+                .HasForeignKey(link => link.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.DepartmentId);
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.HasKey(position => position.Id);
+
+            // NOCASE makes the unique index reject "qa" when "QA" exists.
+            entity.Property(position => position.Name).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+            entity.HasIndex(position => position.Name).IsUnique();
+
+            entity.HasData(
+                new Position { Id = 1, Name = "Member" },
+                new Position { Id = 2, Name = "Manager" },
+                new Position { Id = 3, Name = "QA" },
+                new Position { Id = 4, Name = "Developer" },
+                new Position { Id = 5, Name = "DevOps" },
+                new Position { Id = 6, Name = "System Admin" });
+        });
+
+        modelBuilder.Entity<UserProjectAllocation>(entity =>
+        {
+            entity.HasKey(allocation => new { allocation.UserId, allocation.ProjectId });
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_UserProjectAllocations_AllocationPercent",
+                "\"AllocationPercent\" BETWEEN 1 AND 100"));
+
+            entity
+                .HasOne(allocation => allocation.User)
+                .WithMany(user => user.ProjectAllocations)
+                .HasForeignKey(allocation => allocation.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(allocation => allocation.Project)
+                .WithMany(project => project.Allocations)
+                .HasForeignKey(allocation => allocation.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(allocation => allocation.Position)
+                .WithMany(position => position.Allocations)
+                .HasForeignKey(allocation => allocation.PositionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(allocation => allocation.ProjectId);
+            entity.HasIndex(allocation => allocation.PositionId);
+
+            // A soft-deleted user or project takes its allocations out of every query.
+            entity.HasQueryFilter(allocation => !allocation.User.IsDeleted && !allocation.Project.IsDeleted);
+        });
+
+        modelBuilder.Entity<UserDepartment>(entity =>
+        {
+            entity.HasKey(link => new { link.UserId, link.DepartmentId });
+
+            entity
+                .HasOne(link => link.User)
+                .WithMany(user => user.DepartmentMemberships)
+                .HasForeignKey(link => link.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(link => link.Department)
+                .WithMany(department => department.Memberships)
+                .HasForeignKey(link => link.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(link => link.DepartmentId);
+
+            entity.HasQueryFilter(link => !link.User.IsDeleted && !link.Department.IsDeleted);
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(role => role.Id);
+            // NOCASE makes the unique index reject "team lead" when "Team Lead" exists.
+            entity.Property(role => role.Name).IsRequired().HasMaxLength(100).UseCollation("NOCASE");
+            entity.HasIndex(role => role.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(permission => permission.Id);
+            entity.Property(permission => permission.Key).IsRequired().HasMaxLength(100);
+            entity.Property(permission => permission.Name).IsRequired().HasMaxLength(200);
+            entity.Property(permission => permission.Description).IsRequired().HasMaxLength(500);
+            entity.Property(permission => permission.Group).IsRequired().HasMaxLength(100);
+            entity.HasIndex(permission => permission.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(grant => new { grant.RoleId, grant.PermissionId });
+
+            entity
+                .HasOne(grant => grant.Role)
+                .WithMany(role => role.Permissions)
+                .HasForeignKey(grant => grant.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(grant => grant.Permission)
+                .WithMany(permission => permission.Roles)
+                .HasForeignKey(grant => grant.PermissionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.HasKey(project => project.Id);
+            entity.Property(project => project.Name).IsRequired().HasMaxLength(200);
+            entity.Property(project => project.Description).HasMaxLength(500);
+
+            // A soft-deleted project keeps its name, so only live rows compete for it.
+            entity.HasIndex(project => project.Name).IsUnique().HasFilter("\"IsDeleted\" = 0");
+
+            entity.HasQueryFilter(project => !project.IsDeleted);
         });
 
         modelBuilder.Entity<Domain.Entities.Task>(entity =>
@@ -67,6 +252,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(task => task.Id);
             entity.Property(task => task.TaskCode).IsRequired().HasMaxLength(32);
             entity.Property(task => task.Title).IsRequired().HasMaxLength(200);
+            entity.Property(task => task.ActualHours).IsConcurrencyToken();
             entity.Property(task => task.Description).HasMaxLength(4000);
 
             entity.HasIndex(task => task.TaskCode).IsUnique();
@@ -86,9 +272,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity
-                .HasOne(task => task.Department)
+                .HasOne(task => task.Project)
                 .WithMany()
-                .HasForeignKey(task => task.DepartmentId)
+                .HasForeignKey(task => task.ProjectId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -128,10 +314,42 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<MfaBackupCode>(entity =>
+        {
+            entity.HasKey(code => code.Id);
+            entity.Property(code => code.UsedAt).IsConcurrencyToken();
+            entity.Property(code => code.CodeHash).IsRequired().HasMaxLength(64);
+
+            entity.HasIndex(code => new { code.UserId, code.CodeHash });
+
+            entity
+                .HasOne(code => code.User)
+                .WithMany(user => user.MfaBackupCodes)
+                .HasForeignKey(code => code.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetGrant>(entity =>
+        {
+            entity.HasKey(grant => grant.Id);
+            entity.Property(grant => grant.UsedAt).IsConcurrencyToken();
+            entity.Property(grant => grant.TokenHash).IsRequired().HasMaxLength(64);
+
+            entity.HasIndex(grant => grant.TokenHash);
+            entity.HasIndex(grant => new { grant.UserId, grant.UsedAt });
+
+            entity
+                .HasOne(grant => grant.User)
+                .WithMany()
+                .HasForeignKey(grant => grant.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<TaskComment>(entity =>
         {
             entity.HasKey(comment => comment.Id);
             entity.Property(comment => comment.Body).IsRequired();
+            entity.Property(comment => comment.IsDeleted).HasDefaultValue(false);
 
             entity.HasIndex(comment => new { comment.TaskId, comment.CreatedAt });
 
@@ -226,6 +444,173 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.Property(setting => setting.Category).IsRequired().HasMaxLength(64);
 
             entity.HasIndex(setting => setting.Key).IsUnique();
+        });
+
+        modelBuilder.Entity<MailMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Subject).IsRequired().HasMaxLength(200);
+            entity.Property(message => message.Body).IsRequired().HasMaxLength(20000);
+            entity.Property(message => message.DraftTo).HasMaxLength(4000);
+            entity.Property(message => message.DraftCc).HasMaxLength(4000);
+
+            entity.HasIndex(message => message.ConversationId);
+
+            // A reminder event yields at most one mail, however often the scheduler runs.
+            entity.HasIndex(message => message.ReminderHistoryId)
+                .IsUnique()
+                .HasFilter("\"ReminderHistoryId\" IS NOT NULL");
+
+            entity
+                .HasOne(message => message.ParentMessage)
+                .WithMany()
+                .HasForeignKey(message => message.ParentMessageId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(message => message.SenderUser)
+                .WithMany()
+                .HasForeignKey(message => message.SenderUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(message => message.Task)
+                .WithMany()
+                .HasForeignKey(message => message.TaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne(message => message.ReminderHistory)
+                .WithMany()
+                .HasForeignKey(message => message.ReminderHistoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailRecipient>(entity =>
+        {
+            entity.HasKey(recipient => recipient.Id);
+            entity.Property(recipient => recipient.Kind).HasConversion<string>().HasMaxLength(8);
+            entity.HasIndex(recipient => new { recipient.MessageId, recipient.UserId }).IsUnique();
+
+            entity
+                .HasOne(recipient => recipient.Message)
+                .WithMany(message => message.Recipients)
+                .HasForeignKey(recipient => recipient.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(recipient => recipient.User)
+                .WithMany()
+                .HasForeignKey(recipient => recipient.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailboxItem>(entity =>
+        {
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Folder).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(item => new { item.MessageId, item.OwnerUserId, item.Folder }).IsUnique();
+            entity.HasIndex(item => new { item.OwnerUserId, item.Folder, item.PurgedAt, item.TrashedAt, item.SortAt });
+
+            entity
+                .HasOne(item => item.Message)
+                .WithMany()
+                .HasForeignKey(item => item.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(item => item.OwnerUser)
+                .WithMany()
+                .HasForeignKey(item => item.OwnerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MailAttachment>(entity =>
+        {
+            entity.HasKey(attachment => attachment.Id);
+            entity.Property(attachment => attachment.FileName).IsRequired().HasMaxLength(255);
+            entity.Property(attachment => attachment.ContentType).IsRequired().HasMaxLength(128);
+            entity.HasIndex(attachment => attachment.MessageId);
+
+            entity
+                .HasOne(attachment => attachment.Message)
+                .WithMany(message => message.Attachments)
+                .HasForeignKey(attachment => attachment.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(attachment => attachment.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(attachment => attachment.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AiProviderConfig>(entity =>
+        {
+            entity.HasKey(config => config.Id);
+            entity.Property(config => config.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.ModelName).IsRequired().HasMaxLength(100);
+            entity.Property(config => config.BaseUrl).HasMaxLength(300);
+            entity.Property(config => config.KeyLast4).HasMaxLength(4);
+            entity.HasIndex(config => config.Kind).IsUnique();
+        });
+
+        modelBuilder.Entity<AiModel>(entity =>
+        {
+            entity.HasKey(model => model.Id);
+            entity.Property(model => model.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(model => model.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(model => new { model.Kind, model.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<AssistantConversation>(entity =>
+        {
+            entity.HasKey(conversation => conversation.Id);
+            entity.HasIndex(conversation => conversation.UserId);
+
+            entity
+                .HasOne(conversation => conversation.User)
+                .WithMany()
+                .HasForeignKey(conversation => conversation.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantMessage>(entity =>
+        {
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Role).HasConversion<string>().HasMaxLength(16);
+            entity.Property(message => message.ProviderKind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(message => message.Content).IsRequired();
+            entity.HasIndex(message => message.ConversationId);
+
+            entity
+                .HasOne(message => message.Conversation)
+                .WithMany(conversation => conversation.Messages)
+                .HasForeignKey(message => message.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantPendingAction>(entity =>
+        {
+            entity.HasKey(action => action.Id);
+            entity.Property(action => action.Kind).HasConversion<string>().HasMaxLength(32);
+            entity.Property(action => action.Status).HasConversion<string>().HasMaxLength(16);
+            entity.Property(action => action.PayloadJson).IsRequired();
+            entity.HasIndex(action => action.UserId);
+
+            entity
+                .HasOne(action => action.User)
+                .WithMany()
+                .HasForeignKey(action => action.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantAudit>(entity =>
+        {
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.Kind).HasConversion<string>().HasMaxLength(32);
+            entity.Property(audit => audit.Outcome).IsRequired().HasMaxLength(32);
+            entity.HasIndex(audit => new { audit.UserId, audit.At });
         });
     }
 }

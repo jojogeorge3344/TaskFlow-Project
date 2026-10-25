@@ -9,5 +9,13 @@ public interface IApplicationDbContext
 
     DbSet<RefreshToken> RefreshTokens { get; }
 
+    DbSet<PasswordResetGrant> PasswordResetGrants { get; }
+
+    DbSet<MfaBackupCode> MfaBackupCodes { get; }
+
+    DbSet<Role> Roles { get; }
+
+    DbSet<RolePermission> RolePermissions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

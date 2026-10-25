@@ -1,0 +1,366 @@
+:host {
+  display: block;
+}
+
+.legal {
+  min-height: 100vh;
+  background: var(--tf-bg, #f8fafc);
+  color: var(--tf-text, #0f172a);
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.legal__header {
+  width: min(72rem, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.legal__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legal__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, var(--tf-primary, #2563eb), #1d4ed8);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.legal__brand-name {
+  font-weight: 600;
+  color: var(--tf-text, #0f172a);
+}
+
+.legal__back {
+  color: var(--tf-primary, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.legal__back:hover,
+.legal__back:focus-visible {
+  text-decoration: underline;
+}
+
+.legal__main {
+  width: min(72rem, 100%);
+  background: #fff;
+  border: 1px solid var(--tf-border, #e2e8f0);
+  border-radius: 0.75rem;
+  box-shadow: var(--tf-shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.04));
+  padding: clamp(1.25rem, 4vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.legal__doc-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.legal__title {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.legal__summary {
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.125rem);
+  color: var(--tf-text-muted, #475569);
+}
+
+.legal__meta {
+  margin: 0;
+  color: var(--tf-text-muted, #475569);
+  font-size: 0.95rem;
+}
+
+.legal__toc {
+  border: 1px solid var(--tf-border, #e2e8f0);
+  border-radius: 0.75rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  background: var(--tf-surface-subtle, #f8fafc);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.legal__toc-title {
+  margin: 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tf-text-muted, #475569);
+}
+
+.legal__toc-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.5rem 1.5rem;
+}
+
+.legal__toc-link {
+  color: var(--tf-primary, #2563eb);
+  text-decoration: none;
+}
+
+.legal__toc-link:hover,
+.legal__toc-link:focus-visible {
+  text-decoration: underline;
+}
+
+.legal__article {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.legal__section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 72ch;
+}
+
+.legal__section-heading {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.6vw, 1.8rem);
+  line-height: 1.2;
+}
+
+.legal__paragraph {
+  margin: 0;
+  line-height: 1.8;
+  color: var(--tf-text, #0f172a);
+  max-width: 72ch;
+}
+
+.legal__note {
+  border-left: 3px solid var(--tf-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.05);
+  padding: 0.9rem 1.2rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  line-height: 1.7;
+  max-width: 72ch;
+}
+
+.legal__list {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  line-height: 1.8;
+  max-width: 72ch;
+}
+
+.legal__list-item {
+  margin: 0;
+}
+
+.legal__table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.legal__table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--tf-border, #e2e8f0);
+  min-width: 40rem;
+}
+
+.legal__table-caption {
+  text-align: left;
+  padding: 0 0 0.75rem 0;
+  color: var(--tf-text-muted, #475569);
+}
+
+.legal__table-head {
+  text-align: left;
+  background: var(--tf-surface-subtle, #f8fafc);
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--tf-border, #e2e8f0);
+  font-weight: 600;
+}
+
+.legal__table-cell {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--tf-border, #e2e8f0);
+  vertical-align: top;
+  line-height: 1.7;
+}
+
+.legal__footer {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--tf-border, #e2e8f0);
+}
+
+.legal__footer-line {
+  margin: 0;
+  color: var(--tf-text-muted, #475569);
+}
+
+@media (max-width: 640px) {
+  .legal {
+    padding: 1.25rem 0.75rem 2rem;
+  }
+
+  .legal__main {
+    border-radius: 0.6rem;
+  }
+
+  .legal__toc-list {
+    grid-template-columns: 1fr;
+  }
+
+  .legal__table {
+    min-width: 32rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .legal {
+    padding: 1rem 0.6rem 1.75rem;
+  }
+
+  .legal__main {
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+
+  .legal__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .legal__brand-name {
+    font-size: 0.95rem;
+  }
+
+  .legal__title {
+    font-size: 1.6rem;
+  }
+
+  .legal__section {
+    max-width: 100%;
+  }
+
+  .legal__paragraph,
+  .legal__list,
+  .legal__note {
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .legal__table-wrap {
+    margin: 0 -0.25rem;
+    padding: 0 0.25rem;
+  }
+
+  .legal__table {
+    min-width: 28rem;
+  }
+}
+
+@media print {
+  :host {
+    background: #fff;
+  }
+
+  .legal {
+    min-height: auto;
+    background: #fff;
+    color: #000;
+    padding: 0;
+    gap: 1rem;
+  }
+
+  .legal__header {
+    width: 100%;
+  }
+
+  .legal__back {
+    display: none;
+  }
+
+  .legal__main {
+    width: 100%;
+    max-width: 100%;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    gap: 1.5rem;
+  }
+
+  .legal__toc {
+    border: 1px solid #999;
+    background: #fff;
+    break-inside: avoid;
+  }
+
+  .legal__toc-link {
+    color: #000;
+    text-decoration: none;
+  }
+
+  .legal__section {
+    break-inside: avoid-page;
+  }
+
+  .legal__section-heading {
+    break-after: avoid;
+  }
+
+  .legal__paragraph,
+  .legal__list-item {
+    color: #000;
+  }
+
+  .legal__note {
+    border-left-color: #000;
+    background: #fff;
+  }
+
+  .legal__table {
+    border-color: #999;
+    min-width: 100%;
+  }
+
+  .legal__table-head,
+  .legal__table-cell {
+    border-color: #999;
+    background: #fff;
+    color: #000;
+  }
+
+  .legal__footer {
+    border-top-color: #999;
+  }
+
+  .legal__footer-line {
+    color: #000;
+  }
+}

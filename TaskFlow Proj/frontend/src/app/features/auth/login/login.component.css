@@ -1,10 +1,36 @@
 .login {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1.5rem;
   padding: 1.5rem;
   background: #0f172a;
+  /* The login screen has its own fixed look, so it keeps the Default colours whichever theme is saved. */
+  color-scheme: light;
+  color: #0f172a;
+  --tf-primary: #2563eb;
+  --tf-primary-hover: #1d4ed8;
+  --tf-on-primary: #ffffff;
+  --tf-surface: #ffffff;
+  --tf-bg: #f1f5f9;
+  --tf-border: #e2e8f0;
+  --tf-text: #0f172a;
+  --tf-text-secondary: #475569;
+  --tf-muted: #64748b;
+  --tf-label: #334155;
+  --tf-field-bg: #f8fafc;
+  --tf-field-border: #e2e8f0;
+  --tf-danger: #dc2626;
+  --tf-danger-strong: #b91c1c;
+  --tf-danger-soft: #fee2e2;
+}
+
+/* Keep the card and footer above the fixed animated background. */
+.login > *:not(app-login-background) {
+  position: relative;
+  z-index: 1;
 }
 
 .login__card {
@@ -15,7 +41,8 @@
   gap: 1rem;
   padding: 2rem;
   border-radius: 1rem;
-  background: #ffffff;
+  border: 1px solid #c7d6ee;
+  background: #e8eff9;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35);
 }
 
@@ -61,9 +88,11 @@
 
 .login__field input {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.625rem 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #b6c6e0;
   border-radius: 0.5rem;
+  background: #ffffff;
   font-size: 0.9375rem;
 }
 
@@ -73,18 +102,38 @@
 }
 
 .login__password {
-  display: flex;
-  gap: 0.5rem;
+  position: relative;
+  display: block;
+}
+
+.login__password input {
+  padding-right: 2.75rem;
 }
 
 .login__toggle {
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-  padding: 0 0.75rem;
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
-  font-size: 0.8125rem;
-  color: #334155;
+}
+
+.login__toggle:hover {
+  color: #0f172a;
+}
+
+.login__toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
 }
 
 .login__hint {
@@ -124,4 +173,28 @@
   background: #eff6ff;
   color: #1d4ed8;
   font-size: 0.8125rem;
+}
+
+.login__forgot {
+  margin: 0;
+  text-align: center;
+}
+
+.login__forgot-link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.login__forgot-link:hover {
+  text-decoration: underline;
+}
+
+.login__linkbutton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
 }

@@ -1,0 +1,51 @@
+<div class="tfa-card" [attr.data-action-card]="action().id" [attr.data-status]="action().status">
+  <div class="tfa-card__head">
+    <tf-icon name="mail" />
+    {{ action().title }}
+    @if (action().status === 'Pending') {
+      <span class="tfa-card__sp">Expires in 10 minutes</span>
+    }
+  </div>
+
+  @if (editing()) {
+    <div class="tfa-edit" data-editor>
+      <label>To (email addresses)<input class="tfa-input" data-field="to" [value]="editTo()" (input)="onInput('to', $event)" /></label>
+      <label>Subject<input class="tfa-input" data-field="subject" [value]="editSubject()" (input)="onInput('subject', $event)" /></label>
+      <label>Message<textarea class="tfa-input" rows="5" data-field="body" [value]="editBody()" (input)="onInput('body', $event)"></textarea></label>
+      @if (editError()) {
+        <p class="tfa-edit__error" role="alert" data-error="edit">{{ editError() }}</p>
+      }
+      <div class="tfa-card__actions">
+        <button type="button" class="tfa-btn tfa-btn--primary" data-action="save-edit" [disabled]="saving()" (click)="saveEdit()">
+          {{ saving() ? 'Saving…' : 'Save changes' }}
+        </button>
+        <button type="button" class="tfa-btn tfa-btn--quiet" data-action="stop-edit" (click)="stopEdit()">Back</button>
+      </div>
+    </div>
+  } @else {
+    @for (field of action().fields; track field.label) {
+      <div class="tfa-field">
+        <span>{{ field.label }}</span>
+        <span>{{ field.value }}</span>
+      </div>
+    }
+    @if (action().body) {
+      <div class="tfa-card__body" data-body>{{ action().body }}</div>
+    }
+
+    @if (action().status === 'Pending') {
+      <div class="tfa-card__actions">
+        <button type="button" class="tfa-btn tfa-btn--primary" data-action="confirm-action" (click)="confirm()">
+          <tf-icon name="check" /> {{ confirmLabel() }}
+        </button>
+        @if (action().canEdit) {
+          <button type="button" class="tfa-btn" data-action="edit-action" (click)="startEdit()">Edit</button>
+        }
+        <button type="button" class="tfa-btn tfa-btn--quiet" data-action="cancel-action" (click)="cancel()">Cancel</button>
+      </div>
+      <p class="tfa-card__safe"><tf-icon name="lock" /> Nothing happens until you confirm.</p>
+    } @else {
+      <p class="tfa-card__status" [attr.data-status-label]="action().status">{{ statusLabel() }}</p>
+    }
+  }
+</div>

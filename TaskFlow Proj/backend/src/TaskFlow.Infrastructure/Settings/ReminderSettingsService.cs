@@ -19,7 +19,7 @@ public class ReminderSettingsService : IReminderSettingsService
         SettingKeys.ReminderDefaultFirstDays,
         SettingKeys.ReminderDefaultSecondDays,
         SettingKeys.ReminderDefaultOverdueFrequency,
-        SettingKeys.NotificationEmailEnabled
+        SettingKeys.NotificationMailEnabled
     ];
 
     private readonly AppDbContext _dbContext;
@@ -46,7 +46,7 @@ public class ReminderSettingsService : IReminderSettingsService
             ReadInt(values, SettingKeys.ReminderDefaultFirstDays, SettingKeys.DefaultFirstDays),
             ReadInt(values, SettingKeys.ReminderDefaultSecondDays, SettingKeys.DefaultSecondDays),
             ReadFrequency(values),
-            ReadBool(values, SettingKeys.NotificationEmailEnabled, SettingKeys.DefaultEmailEnabled),
+            ReadBool(values, SettingKeys.NotificationMailEnabled, SettingKeys.DefaultMailEnabled),
             values.TryGetValue(SettingKeys.ApplicationTimezone, out var timezone) && !string.IsNullOrWhiteSpace(timezone)
                 ? timezone
                 : _options.Timezone);
@@ -63,7 +63,7 @@ public class ReminderSettingsService : IReminderSettingsService
             || request.DefaultFirstDays is not { } firstDays
             || request.DefaultSecondDays is not { } secondDays
             || request.DefaultOverdueFrequency is not { } overdueFrequency
-            || request.EmailEnabled is not { } emailEnabled)
+            || request.MailEnabled is not { } mailEnabled)
         {
             throw new ArgumentException("Every reminder setting must be provided.", nameof(request));
         }
@@ -92,7 +92,7 @@ public class ReminderSettingsService : IReminderSettingsService
         Set(SettingKeys.ReminderDefaultFirstDays, SettingsInitializer.Format(firstDays), SettingKeys.ReminderCategory);
         Set(SettingKeys.ReminderDefaultSecondDays, SettingsInitializer.Format(secondDays), SettingKeys.ReminderCategory);
         Set(SettingKeys.ReminderDefaultOverdueFrequency, overdueFrequency.ToString(), SettingKeys.ReminderCategory);
-        Set(SettingKeys.NotificationEmailEnabled, SettingsInitializer.Format(emailEnabled), SettingKeys.NotificationCategory);
+        Set(SettingKeys.NotificationMailEnabled, SettingsInitializer.Format(mailEnabled), SettingKeys.NotificationCategory);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

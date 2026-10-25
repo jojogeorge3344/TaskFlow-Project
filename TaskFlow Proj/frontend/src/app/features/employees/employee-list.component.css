@@ -29,6 +29,21 @@
   font-size: 0.8125rem;
 }
 
+.project-line {
+  font-size: 0.875rem;
+}
+
+.project-line__position {
+  margin-left: 0.25rem;
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+}
+
+.project-line--total {
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+}
+
 .unassigned {
   color: var(--tf-subtle);
   font-style: italic;

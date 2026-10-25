@@ -1,0 +1,135 @@
+<div class="reader">
+  <div class="reader__bar">
+    <button type="button" class="tf-btn tf-btn--icon reader__back" aria-label="Back to list" data-action="back" (click)="back.emit()">
+      <tf-icon name="back" />
+    </button>
+
+    @if (detail(); as item) {
+      <div class="reader__actions">
+        @if (canReply() && canCompose()) {
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="reply" (click)="startReply('Reply')">
+            <tf-icon name="reply" /><span class="reader__label">Reply</span>
+          </button>
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="reply-all" (click)="startReply('ReplyAll')">
+            <tf-icon name="reply-all" /><span class="reader__label">Reply all</span>
+          </button>
+        }
+        @if (!item.isTrashed && canCompose()) {
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="forward" (click)="startReply('Forward')">
+            <tf-icon name="forward" /><span class="reader__label">Forward</span>
+          </button>
+        }
+        <span class="reader__spacer"></span>
+        @if (!canOrganize()) {
+          <!-- Reading only: no flags, trash or delete. -->
+        } @else if (!item.isTrashed) {
+          <button
+            type="button"
+            class="tf-btn tf-btn--icon"
+            [class.reader__on]="item.isStarred"
+            [attr.aria-pressed]="item.isStarred"
+            aria-label="Star"
+            title="Star"
+            data-action="star"
+            (click)="toggleStar()"
+          >
+            <tf-icon name="star" />
+          </button>
+          <button
+            type="button"
+            class="tf-btn tf-btn--icon"
+            [class.reader__on]="item.isImportant"
+            [attr.aria-pressed]="item.isImportant"
+            aria-label="Mark important"
+            title="Important"
+            data-action="important"
+            (click)="toggleImportant()"
+          >
+            <tf-icon name="flag" />
+          </button>
+          @if (item.folder === 'Inbox') {
+            <button type="button" class="tf-btn tf-btn--icon" aria-label="Mark unread" title="Mark unread" data-action="unread" (click)="markUnread()">
+              <tf-icon name="mail" />
+            </button>
+          }
+          <button type="button" class="tf-btn tf-btn--icon" aria-label="Move to Trash" title="Move to Trash" data-action="trash" (click)="trash()">
+            <tf-icon name="trash" />
+          </button>
+        } @else {
+          <button type="button" class="tf-btn tf-btn--ghost" data-action="restore" (click)="restore()">
+            <tf-icon name="reset" /><span class="reader__label">Restore</span>
+          </button>
+          <button type="button" class="tf-btn tf-btn--danger" data-action="delete-forever" (click)="deleteForever()">
+            <tf-icon name="trash" /><span class="reader__label">Delete forever</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="tf-empty" role="alert">
+      <tf-icon name="alert" />
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (loading() && !detail()) {
+    <div class="reader__body" aria-busy="true">
+      <span class="tf-skeleton reader__skeleton"></span>
+      <span class="tf-skeleton reader__skeleton"></span>
+    </div>
+  } @else {
+    @if (detail(); as item) {
+    <div class="reader__body">
+      <h2 class="reader__subject">{{ item.message.subject || '(no subject)' }}</h2>
+      @if (item.message.taskId) {
+        <a class="reader__task" [routerLink]="['/tasks', item.message.taskId]" data-action="open-task">
+          <tf-icon name="tasks" /> Open the task
+        </a>
+      }
+
+      @for (message of item.thread; track message.messageId) {
+        <article class="message" [class.message--current]="message.messageId === item.message.messageId" [attr.data-message]="message.messageId">
+          <header class="message__head">
+            <span class="tf-avatar message__avatar" aria-hidden="true">{{ message.from.name.charAt(0) }}</span>
+            <div class="message__who">
+              <strong [class.message__system]="message.isSystem">{{ message.from.name }}</strong>
+              @if (message.from.email) {
+                <span class="message__email">&lt;{{ message.from.email }}&gt;</span>
+              }
+              <div class="message__to">
+                to {{ recipients(message) }}
+                @if (message.cc.length) {
+                  , cc {{ message.cc.map(displayName).join(', ') }}
+                }
+              </div>
+            </div>
+            <time class="message__date">{{ fullDate(message.sentAt) }}</time>
+          </header>
+          <div class="message__body">@for (part of linkify(message.body); track $index) {@if (part.url) {<a
+                class="message__link"
+                [href]="part.url"
+                [attr.target]="isInApp(part.url) ? null : '_blank'"
+                rel="noopener noreferrer"
+                data-link
+                (click)="openLink($event, part.url)"
+              >{{ part.url }}</a>} @else {<ng-container>{{ part.text }}</ng-container>}}</div>
+          @if (message.attachments.length) {
+            <ul class="message__files" aria-label="Attachments">
+              @for (file of message.attachments; track file.id) {
+                <li>
+                  <button type="button" class="message__file" [attr.data-attachment]="file.id" (click)="download(file)">
+                    <tf-icon name="paperclip" />
+                    <span class="message__file-name">{{ file.fileName }}</span>
+                    <span class="message__file-size">{{ formatSize(file.sizeBytes) }}</span>
+                    <tf-icon name="download" />
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    </div>
+    }
+  }
+</div>

@@ -17,6 +17,77 @@ namespace TaskFlow.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AiModel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsBuiltIn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "Name")
+                        .IsUnique();
+
+                    b.ToTable("AiModels");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AiProviderConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EncryptedApiKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("KeyLast4")
+                        .HasMaxLength(4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind")
+                        .IsUnique();
+
+                    b.ToTable("AiProviderConfigs");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.ApplicationSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -52,6 +123,134 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("ApplicationSettings");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantAudit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "At");
+
+                    b.ToTable("AssistantAudits");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AssistantConversations");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetaJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProviderKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.ToTable("AssistantMessages");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantPendingAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AssistantPendingActions");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Department", b =>
                 {
                     b.Property<int>("Id")
@@ -76,9 +275,248 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = 0");
 
                     b.ToTable("Departments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.DepartmentManager", b =>
+                {
+                    b.Property<int>("ManagerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ManagerUserId", "DepartmentId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("DepartmentManagers");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("StorageKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UploadedByUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.ToTable("MailAttachments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(20000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DraftCc")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DraftTo")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ParentMessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ReminderHistoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SenderUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TaskId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("ParentMessageId");
+
+                    b.HasIndex("ReminderHistoryId")
+                        .IsUnique()
+                        .HasFilter("\"ReminderHistoryId\" IS NOT NULL");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("MailMessages");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MessageId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("MailRecipients");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsImportant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsStarred")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OwnerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("PurgedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SortAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("TrashedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId", "OwnerUserId", "Folder")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "Folder", "PurgedAt", "TrashedAt", "SortAt");
+
+                    b.ToTable("MailboxItems");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ManagerProject", b =>
+                {
+                    b.Property<int>("ManagerUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ManagerUserId", "ProjectId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ManagerProjects");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CodeHash");
+
+                    b.ToTable("MfaBackupCodes");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
@@ -115,6 +553,158 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.HasIndex("UserId", "IsRead");
 
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetGrant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash");
+
+                    b.HasIndex("UserId", "UsedAt");
+
+                    b.ToTable("PasswordResetGrants");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsAssignable")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("Permissions");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Position", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Positions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Member"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "QA"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Developer"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "DevOps"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "System Admin"
+                        });
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.RefreshToken", b =>
@@ -189,11 +779,56 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("ReminderHistory");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Role", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.RolePermission", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Task", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("ActualHours")
+                        .IsConcurrencyToken()
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("AssignedToUserId")
                         .HasColumnType("INTEGER");
@@ -213,9 +848,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("Deadline")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Description")
                         .HasMaxLength(4000)
                         .HasColumnType("TEXT");
@@ -233,6 +865,9 @@ namespace TaskFlow.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Priority")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ProjectId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SecondReminderDays")
@@ -265,7 +900,7 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasIndex("Deadline");
 
-                    b.HasIndex("DepartmentId");
+                    b.HasIndex("ProjectId");
 
                     b.HasIndex("TaskCode")
                         .IsUnique();
@@ -328,6 +963,14 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("TaskId")
                         .HasColumnType("INTEGER");
 
@@ -371,9 +1014,6 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -397,14 +1037,34 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("MfaEnabledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MfaFailedAttempts")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("MfaLastUsedStep")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("MfaLockedUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MfaSecretProtected")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MobileNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
+                    b.Property<int>("RoleId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("SecurityStamp")
                         .IsRequired()
@@ -421,15 +1081,228 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DepartmentId");
-
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("RoleId");
 
                     b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserDepartment", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UserId", "DepartmentId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("UserDepartments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserProjectAllocation", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AllocationPercent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsProjectManager")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PositionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UserId", "ProjectId");
+
+                    b.HasIndex("PositionId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("UserProjectAllocations", t =>
+                        {
+                            t.HasCheckConstraint("CK_UserProjectAllocations_AllocationPercent", "\"AllocationPercent\" BETWEEN 1 AND 100");
+                        });
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantMessage", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.AssistantConversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantPendingAction", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.DepartmentManager", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                        .WithMany("ManagerLinks")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Manager")
+                        .WithMany("ManagedDepartments")
+                        .HasForeignKey("ManagerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Manager");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany("Attachments")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "UploadedByUser")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("UploadedByUser");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "ParentMessage")
+                        .WithMany()
+                        .HasForeignKey("ParentMessageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TaskFlow.Domain.Entities.ReminderHistory", "ReminderHistory")
+                        .WithMany()
+                        .HasForeignKey("ReminderHistoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ParentMessage");
+
+                    b.Navigation("ReminderHistory");
+
+                    b.Navigation("SenderUser");
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany("Recipients")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "OwnerUser")
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+
+                    b.Navigation("OwnerUser");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.ManagerProject", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Manager")
+                        .WithMany("ManagerProjects")
+                        .HasForeignKey("ManagerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Manager");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MfaBackupCode", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany("MfaBackupCodes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
@@ -446,6 +1319,17 @@ namespace TaskFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.PasswordResetGrant", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -480,6 +1364,25 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.RolePermission", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Permission", "Permission")
+                        .WithMany("Roles")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
+                        .WithMany("Permissions")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("Role");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Task", b =>
                 {
                     b.HasOne("TaskFlow.Domain.Entities.User", "AssignedTo")
@@ -494,16 +1397,16 @@ namespace TaskFlow.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
                         .WithMany()
-                        .HasForeignKey("DepartmentId")
+                        .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("AssignedTo");
 
                     b.Navigation("CreatedBy");
 
-                    b.Navigation("Department");
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.TaskActivityLog", b =>
@@ -565,21 +1468,114 @@ namespace TaskFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                    b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
                         .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserDepartment", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                        .WithMany("Memberships")
                         .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany("DepartmentMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Department");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.UserProjectAllocation", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Position", "Position")
+                        .WithMany("Allocations")
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
+                        .WithMany("Allocations")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                        .WithMany("ProjectAllocations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Position");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.Department", b =>
                 {
+                    b.Navigation("ManagerLinks");
+
+                    b.Navigation("Memberships");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+                {
+                    b.Navigation("Attachments");
+
+                    b.Navigation("Recipients");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
+                {
+                    b.Navigation("Roles");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Position", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Role", b =>
+                {
+                    b.Navigation("Permissions");
+
                     b.Navigation("Users");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
+                    b.Navigation("DepartmentMemberships");
+
+                    b.Navigation("ManagedDepartments");
+
+                    b.Navigation("ManagerProjects");
+
+                    b.Navigation("MfaBackupCodes");
+
+                    b.Navigation("ProjectAllocations");
+
                     b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618

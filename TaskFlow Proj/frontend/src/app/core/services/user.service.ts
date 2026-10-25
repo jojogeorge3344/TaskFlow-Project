@@ -1,17 +1,20 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CreateUserRequest, Role, UpdateUserRequest, User, UserStatusRequest } from '../models';
+import { CreateUserRequest, UpdateUserRequest, User, UserStatusRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/v1/users';
 
-  getAll(params?: { search?: string; departmentId?: number; role?: Role; isActive?: boolean }): Observable<User[]> {
+  getAll(params?: { search?: string; projectId?: number; departmentId?: number; role?: string; isActive?: boolean }): Observable<User[]> {
     let httpParams = new HttpParams();
     if (params?.search) {
       httpParams = httpParams.set('search', params.search);
+    }
+    if (params?.projectId !== undefined && params?.projectId !== null) {
+      httpParams = httpParams.set('projectId', params.projectId.toString());
     }
     if (params?.departmentId !== undefined && params?.departmentId !== null) {
       httpParams = httpParams.set('departmentId', params.departmentId.toString());
@@ -39,5 +42,15 @@ export class UserService {
 
   updateStatus(id: number, request: UserStatusRequest): Observable<User> {
     return this.http.patch<User>(`${this.baseUrl}/${id}/status`, request);
+  }
+
+  /** Removes the user's authenticator MFA (lost phone and backup codes), ends their sessions and notifies them. */
+  resetMfa(id: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${id}/mfa/reset`, {});
+  }
+
+  /** Administrator only. The employee is soft-deleted; their history stays. */
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 }

@@ -1,0 +1,372 @@
+.pd {
+  display: grid;
+  gap: 1rem;
+}
+
+.pd__back {
+  justify-self: start;
+}
+
+.pd__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--tf-primary-soft), var(--tf-surface) 60%);
+}
+
+.pd__title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.pd__title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.pd__icon {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-primary);
+  color: var(--tf-on-primary);
+}
+
+.pd__desc {
+  margin: 0.25rem 0 0;
+  color: var(--tf-muted);
+  overflow-wrap: anywhere;
+}
+
+.pd__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.pd__stat {
+  min-width: 5.5rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-surface);
+  box-shadow: var(--tf-shadow-sm);
+}
+
+.pd__stat dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
+}
+
+.pd__stat dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-text);
+}
+
+.pd__stat--danger dd {
+  color: var(--tf-danger);
+}
+
+.pd__stat--success dd {
+  color: var(--tf-success);
+}
+
+.pd__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 992px) {
+  .pd__body {
+    grid-template-columns: 20rem minmax(0, 1fr);
+  }
+}
+
+.pd__team,
+.pd__tasks {
+  padding: 1.25rem;
+}
+
+.pd__heading {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.pd__muted {
+  margin: 0;
+  color: var(--tf-subtle);
+  font-style: italic;
+}
+
+.pd__members {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pd__member {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-surface-alt);
+}
+
+.pd__member-main {
+  display: grid;
+  flex: 1;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.pd__member-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pd__role {
+  display: inline-block;
+  justify-self: start;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pd__bar {
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--tf-border);
+  overflow: hidden;
+}
+
+.pd__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tf-primary);
+}
+
+.pd__percent {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--tf-text-secondary);
+}
+
+.pd__tasks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pd__tasks-head .pd__heading {
+  margin-bottom: 0.75rem;
+}
+
+.pd__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--tf-border);
+  border-radius: var(--tf-radius-lg);
+  background: var(--tf-surface-alt);
+}
+
+.pd__empty {
+  padding: 2rem 1rem;
+}
+
+.pd__table-wrap {
+  overflow-x: auto;
+}
+
+.pd__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pd__table th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
+  border-bottom: 1px solid var(--tf-border);
+}
+
+.pd__table td {
+  padding: 0.75rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--tf-border);
+}
+
+.pd__table tbody tr:hover {
+  background: var(--tf-surface-alt);
+}
+
+.pd__row--overdue {
+  background: var(--tf-danger-tint);
+}
+
+.pd__task-title {
+  display: block;
+  font-weight: 600;
+  color: var(--tf-text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.pd__task-title:hover {
+  color: var(--tf-primary);
+}
+
+.pd__code {
+  font-size: 0.75rem;
+  color: var(--tf-muted);
+}
+
+.pd__assignee {
+  display: block;
+  margin-bottom: 0.125rem;
+}
+
+.pd__badge,
+.pd__status {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pd__badge--low {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+.pd__badge--medium {
+  background: var(--tf-warning-soft);
+  color: var(--tf-warning);
+}
+
+.pd__badge--high {
+  background: var(--tf-chip-orange-bg);
+  color: var(--tf-chip-orange-fg);
+}
+
+.pd__badge--critical {
+  background: var(--tf-danger-soft);
+  color: var(--tf-danger-strong);
+}
+
+.pd__status {
+  background: var(--tf-border);
+  color: var(--tf-text-secondary);
+}
+
+.pd__status--inprogress,
+.pd__status--inqa {
+  background: var(--tf-info-soft);
+  color: var(--tf-info);
+}
+
+.pd__status--completed {
+  background: var(--tf-success-soft);
+  color: var(--tf-success);
+}
+
+.pd__status--blocked {
+  background: var(--tf-danger-soft);
+  color: var(--tf-danger-strong);
+}
+
+.pd__deadline {
+  white-space: nowrap;
+}
+
+.pd__overdue {
+  margin-left: 0.375rem;
+  color: var(--tf-danger);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Phone: each task becomes a card. */
+@media (max-width: 767.98px) {
+  .pd__hero {
+    padding: 1rem;
+  }
+
+  .pd__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .pd__table,
+  .pd__table tbody,
+  .pd__table tr,
+  .pd__table td {
+    display: block;
+    width: 100%;
+  }
+
+  .pd__table tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--tf-border);
+    border-radius: var(--tf-radius-lg);
+  }
+
+  .pd__table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 0;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .pd__table td::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--tf-muted);
+  }
+}

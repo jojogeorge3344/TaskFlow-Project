@@ -1,6 +1,6 @@
 ## 1. Preconditions
 
-- [ ] 1.1 Confirm `bootstrap-solution-scaffold` is applied; verify `dotnet build` succeeds at the solution root and F5 shows the sample SPA populated by the API.
+- [x] 1.1 Confirm `bootstrap-solution-scaffold` is applied; verify `dotnet build` succeeds at the solution root and F5 shows the sample SPA populated by the API.
 - [x] 1.2 Add `Jwt` settings (issuer, `AccessTokenMinutes=30`, `RefreshTokenDays=7`), the SQLite connection string, and the allowed SPA origin to `appsettings.json`, and put the signing key in user-secrets; verify `dotnet user-secrets list` shows the key and no secret appears in `appsettings.json`.
 
 ## 2. Data & domain foundation
@@ -42,5 +42,5 @@
 ## 8. End-to-end verification
 
 - [x] 8.1 Run `dotnet test` and `ng test`; verify all suites pass.
-- [ ] 8.2 From a clean database, F5 and log in as the seeded Administrator, then create a Manager and an Employee in Employee Management and log in as each of the three roles; verify each lands on its dashboard and that a browser reload restores the session without re-entry.
+- [x] 8.2 From a clean database, F5 and log in as the seeded Administrator, then create a Manager and an Employee in Employee Management and log in as each of the three roles; verify each lands on its dashboard and that a browser reload restores the session without re-entry.
 - [x] 8.3 Verify against the spec: invalid credentials show the generic error, an inactive account is refused without disclosure, and a refresh after logout is rejected.

@@ -1,8 +1,14 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Application.Mail;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Domain.Enums;
 using TaskFlow.Domain.Rules;
+using TaskFlow.Domain.Security;
+using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Infrastructure.Persistence;
 using TaskEntity = TaskFlow.Domain.Entities.Task;
 using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
@@ -20,6 +26,9 @@ public class TaskService : ITaskService
     private readonly TimeProvider _timeProvider;
     private readonly IReminderSettingsService _reminderSettings;
     private readonly IAppClock _clock;
+    private readonly IManagerDashboardScope _managerScope;
+    private readonly IMailService _mail;
+    private readonly ILogger<TaskService> _logger;
 
     public TaskService(
         AppDbContext dbContext,
@@ -27,7 +36,10 @@ public class TaskService : ITaskService
         INotificationPublisher notificationPublisher,
         TimeProvider timeProvider,
         IReminderSettingsService reminderSettings,
-        IAppClock clock)
+        IAppClock clock,
+        IManagerDashboardScope managerScope,
+        IMailService mail,
+        ILogger<TaskService> logger)
     {
         _dbContext = dbContext;
         _activityService = activityService;
@@ -35,12 +47,27 @@ public class TaskService : ITaskService
         _timeProvider = timeProvider;
         _reminderSettings = reminderSettings;
         _clock = clock;
+        _managerScope = managerScope;
+        _mail = mail;
+        _logger = logger;
     }
 
     private DateTime Now => _timeProvider.GetUtcNow().UtcDateTime;
 
-    private static bool IsManagerOrAdmin(string role) =>
-        role is nameof(Role.Manager) or nameof(Role.Administrator);
+    /// <summary>Whether the named role holds the permission, read from the database so changes apply immediately.</summary>
+    private async Task<bool> HasPermissionAsync(string roleName, string permissionKey, CancellationToken cancellationToken)
+    {
+        var held = await _dbContext.RolePermissions
+            .AsNoTracking()
+            .Where(grant => grant.Role.Name == roleName)
+            .Select(grant => grant.Permission.Key)
+            .ToListAsync(cancellationToken);
+
+        return EffectivePermissions.Expand(held).Contains(permissionKey);
+    }
+
+    private Task<bool> CanViewAllAsync(string roleName, CancellationToken cancellationToken) =>
+        HasPermissionAsync(roleName, PermissionKeys.TasksViewAll, cancellationToken);
 
     public async Task<TaskDetailsDto?> GetDetailsAsync(
         int taskId,
@@ -55,7 +82,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             return null;
         }
@@ -69,8 +96,11 @@ public class TaskService : ITaskService
         CancellationToken cancellationToken)
     {
         var now = Now;
-        var tasks = await ScopedTasks(currentUserId, currentUserRole)
+        var scoped = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
+        var tasks = await scoped
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
+            .Include(task => task.Project)
             .OrderBy(task => task.Deadline)
             .ToListAsync(cancellationToken);
 
@@ -86,7 +116,7 @@ public class TaskService : ITaskService
         var page = filter.Page < 1 ? 1 : filter.Page;
         var pageSize = filter.PageSize is < 1 or > 100 ? 20 : filter.PageSize;
 
-        var query = ScopedTasks(currentUserId, currentUserRole);
+        var query = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
 
         if (filter.AssignedToUserId is int assignedTo)
         {
@@ -125,12 +155,23 @@ public class TaskService : ITaskService
                 || EF.Functions.Like(task.TaskCode, $"%{term}%", @"\"));
         }
 
+        if (IsDrillDown(filter) && await IsManagerScopedAsync(currentUserRole, cancellationToken))
+        {
+            // A drill-down from the manager dashboard shows exactly the team's tasks, whatever the query string says.
+            // Stricter than the general manager scope in ScopedForCallerAsync: only the team, so the list matches the chart.
+            query = _managerScope.TeamTasks(query, currentUserId);
+        }
+
+        query = await ApplyAnalyticsFiltersAsync(query, filter, cancellationToken);
+
         var total = await query.CountAsync(cancellationToken);
 
         var now = Now;
         var tasks = await query
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
+            .Include(task => task.Project)
             .OrderBy(task => task.Deadline)
             .ThenBy(task => task.Id)
             .Skip((page - 1) * pageSize)
@@ -142,12 +183,74 @@ public class TaskService : ITaskService
         return new PagedResult<TaskListItemDto>(items, total, page, pageSize);
     }
 
+    private static bool IsDrillDown(TaskListFilter filter) =>
+        filter.Bucket is not null || filter.DeadlineBucket is not null || filter.DepartmentId is not null
+        || filter.ProjectId is not null || filter.EmployeeId is not null || filter.ManagerId is not null
+        || filter.From is not null || filter.To is not null;
+
+    /// <summary>Holds the manager dashboard but not the administrator one, so the dashboard is limited to a team.</summary>
+    private async Task<bool> IsManagerScopedAsync(string roleName, CancellationToken cancellationToken) =>
+        await HasPermissionAsync(roleName, PermissionKeys.DashboardViewTeam, cancellationToken)
+        && !await HasPermissionAsync(roleName, PermissionKeys.DashboardViewOrganization, cancellationToken);
+
+    /// <summary>The dashboard drill-down filters. They reuse the analytics rules, so a list opened from a chart
+    /// segment holds exactly the tasks the segment counted.</summary>
+    private async Task<IQueryable<TaskEntity>> ApplyAnalyticsFiltersAsync(
+        IQueryable<TaskEntity> query,
+        TaskListFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var now = Now;
+
+        if (filter.Bucket is TaskBucketFilter bucket)
+        {
+            query = bucket == TaskBucketFilter.All
+                ? query.Where(TaskBucketRules.IsCounted())
+                : query.Where(TaskBucketRules.InBucket(ToBucket(bucket), now));
+        }
+
+        if (filter.DeadlineBucket is DeadlineBucket deadlineBucket)
+        {
+            var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
+            query = query.Where(DeadlineBucketRules.InBucket(deadlineBucket, DeadlineBucketRules.BoundsFor(now, timeZone)));
+        }
+
+        if (filter.From is not null || filter.To is not null)
+        {
+            if (filter.From is DateOnly start && filter.To is DateOnly end && start > end)
+            {
+                throw new AnalyticsFilterException("The end date cannot be before the start date.");
+            }
+
+            var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
+            var fromUtc = filter.From is DateOnly from
+                ? ReminderCalculator.LocalMidnightUtc(from, timeZone)
+                : DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+            var toUtc = filter.To is DateOnly to
+                ? ReminderCalculator.LocalMidnightUtc(to.AddDays(1), timeZone)
+                : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+            query = query.ApplyDateRange(filter.Basis, fromUtc, toUtc);
+        }
+
+        return query.ApplyEntityFilters(_dbContext, filter.DepartmentId, filter.ProjectId, filter.EmployeeId, filter.ManagerId);
+    }
+
+    private static TaskBucket ToBucket(TaskBucketFilter bucket) => bucket switch
+    {
+        TaskBucketFilter.Pending => TaskBucket.Pending,
+        TaskBucketFilter.InProgress => TaskBucket.InProgress,
+        TaskBucketFilter.Completed => TaskBucket.Completed,
+        _ => TaskBucket.Overdue
+    };
+
     public async Task<IReadOnlyCollection<TaskRecipientDto>> GetAssigneesAsync(
         int currentUserId,
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        var assignees = await ScopedTasks(currentUserId, currentUserRole)
+        var scoped = await ScopedForCallerAsync(currentUserId, currentUserRole, cancellationToken);
+        var assignees = await scoped
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Select(task => new { task.AssignedToUserId, task.AssignedTo!.FullName })
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -158,13 +261,56 @@ public class TaskService : ITaskService
             .ToList();
     }
 
-    /// <summary>Non-deleted tasks the caller may access: everything for Managers/Administrators,
+    /// <summary>The tasks the caller may see. A manager (dashboard.manager without dashboard.admin) sees their team's tasks
+    /// plus the tasks they created, are assigned or receive, never another team's tasks; every other caller follows
+    /// <see cref="ScopedTasks"/>.</summary>
+    private async Task<IQueryable<TaskEntity>> ScopedForCallerAsync(int currentUserId, string roleName, CancellationToken cancellationToken)
+    {
+        var canViewAll = await CanViewAllAsync(roleName, cancellationToken);
+        var query = ScopedTasks(currentUserId, canViewAll);
+        if (!canViewAll || !await IsManagerScopedAsync(roleName, cancellationToken))
+        {
+            return query;
+        }
+
+        var teamTaskIds = _managerScope.TeamTasks(query, currentUserId).Select(task => task.Id);
+        var ownTaskIds = ScopedTasks(currentUserId, canViewAll: false).Select(task => task.Id);
+        return query.Where(task => teamTaskIds.Contains(task.Id) || ownTaskIds.Contains(task.Id));
+    }
+
+    /// <summary>Single-task access: the usual rule, plus a manager may only reach tasks of their own team or ones they
+    /// created, are assigned or receive.</summary>
+    private async Task<bool> CanAccessTaskAsync(
+        TaskEntity task,
+        IReadOnlyCollection<int> recipientUserIds,
+        int currentUserId,
+        string roleName,
+        CancellationToken cancellationToken)
+    {
+        var canViewAll = await CanViewAllAsync(roleName, cancellationToken);
+        if (!TaskAccessScope.CanAccess(currentUserId, canViewAll, task, recipientUserIds))
+        {
+            return false;
+        }
+
+        if (!canViewAll
+            || TaskAccessScope.CanAccess(currentUserId, canViewAll: false, task, recipientUserIds)
+            || !await IsManagerScopedAsync(roleName, cancellationToken))
+        {
+            return true;
+        }
+
+        return await _managerScope.TeamTasks(_dbContext.Tasks.Where(candidate => candidate.Id == task.Id), currentUserId)
+            .AnyAsync(cancellationToken);
+    }
+
+    /// <summary>Non-deleted tasks the caller may access: everything for roles holding tasks.view.all,
     /// otherwise tasks they are assigned to, created, or receive notifications for.</summary>
-    private IQueryable<TaskEntity> ScopedTasks(int currentUserId, string currentUserRole)
+    private IQueryable<TaskEntity> ScopedTasks(int currentUserId, bool canViewAll)
     {
         IQueryable<TaskEntity> query = _dbContext.Tasks.AsNoTracking().Where(task => !task.IsDeleted);
 
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!canViewAll)
         {
             var recipientTaskIds = _dbContext.TaskRecipients
                 .Where(recipient => recipient.UserId == currentUserId)
@@ -185,9 +331,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksCreate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can create tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to create tasks.");
         }
 
         ValidateCreate(request);
@@ -199,6 +345,11 @@ public class TaskService : ITaskService
         if (assignee is null || !assignee.IsActive)
         {
             throw new InvalidOperationException("The assigned employee does not exist or is not active.");
+        }
+
+        if (!await _dbContext.Projects.AnyAsync(project => project.Id == request.ProjectId && !project.IsDeleted, cancellationToken))
+        {
+            throw new InvalidOperationException("The selected project does not exist.");
         }
 
         var additionalRecipientIds = request.AdditionalRecipientUserIds?.Distinct().ToList() ?? [];
@@ -238,6 +389,7 @@ public class TaskService : ITaskService
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             AssignedToUserId = assignee.Id,
             CreatedByUserId = currentUserId,
+            ProjectId = request.ProjectId,
             Priority = request.Priority,
             StartDate = request.StartDate,
             Deadline = request.Deadline,
@@ -310,9 +462,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can edit tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to edit tasks.");
         }
 
         ValidateUpdate(request);
@@ -324,7 +476,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -353,6 +505,23 @@ public class TaskService : ITaskService
                 cancellationToken);
         }
 
+        decimal? hoursChangedFrom = null;
+        if (request.ActualHours.HasValue && task.ActualHours != request.ActualHours.Value)
+        {
+            hoursChangedFrom = task.ActualHours ?? 0;
+            var oldHours = FormatHours(task.ActualHours ?? 0);
+            var newHours = FormatHours(request.ActualHours.Value);
+            task.ActualHours = request.ActualHours.Value;
+            await _activityService.AppendAsync(
+                taskId,
+                TaskActivityEventType.HoursLogged,
+                currentUserId,
+                $"Worked hours logged: {newHours}h (total)",
+                oldHours,
+                newHours,
+                cancellationToken);
+        }
+
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.Priority = request.Priority;
@@ -363,7 +532,134 @@ public class TaskService : ITaskService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        if (hoursChangedFrom is { } previousHours)
+        {
+            await NotifyHoursChangedAsync(task, recipients, previousHours, task.ActualHours ?? 0, currentUserId, cancellationToken);
+        }
+
         return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    public async Task<TaskDetailsDto?> LogHoursAsync(
+        int taskId,
+        LogHoursRequest request,
+        int currentUserId,
+        string currentUserRole,
+        CancellationToken cancellationToken)
+    {
+        if (request.Hours <= 0 || request.Hours > 24)
+        {
+            throw new InvalidOperationException("Hours must be greater than 0 and at most 24 per entry.");
+        }
+
+        var task = await LoadTaskAsync(taskId, cancellationToken);
+        if (task is null)
+        {
+            return null;
+        }
+
+        var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("You do not have access to this task.");
+        }
+
+        if (task.AssignedToUserId != currentUserId
+            && !await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Only the assignee can log hours on this task.");
+        }
+
+        var previous = task.ActualHours ?? 0;
+        var total = previous + request.Hours;
+        task.ActualHours = total;
+        task.UpdatedAt = Now;
+        await _activityService.AppendAsync(
+            taskId,
+            TaskActivityEventType.HoursLogged,
+            currentUserId,
+            $"Worked hours logged: {FormatHours(total)}h (total)",
+            FormatHours(previous),
+            FormatHours(total),
+            cancellationToken);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("The task's worked hours changed while you were saving. Please try again.");
+        }
+
+        await NotifyHoursChangedAsync(task, recipients, previous, total, currentUserId, cancellationToken);
+
+        return ToDetails(task, recipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    /// <summary>Tells the assignee and recipients (including the person who made the change, as a confirmation) that worked hours were
+    /// added, updated or cleared, by notification and internal mail. Best effort: a failure is logged and never
+    /// undoes the saved change.</summary>
+    /// <summary>Hours are stored in activity text and parsed back invariantly, so they are always written invariantly.</summary>
+    private static string FormatHours(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private async Task NotifyHoursChangedAsync(
+        TaskEntity task,
+        IReadOnlyCollection<TaskRecipientDto> recipients,
+        decimal oldHours,
+        decimal newHours,
+        int actorId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var targetIds = recipients.Select(recipient => recipient.UserId)
+                .Append(task.AssignedToUserId)
+                .Distinct()
+                .ToList();
+            if (targetIds.Count == 0)
+            {
+                return;
+            }
+
+            var actorName = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => user.Id == actorId)
+                .Select(user => user.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? "A teammate";
+
+            var action = newHours == 0
+                ? $"cleared the worked hours (was {FormatHours(oldHours)}h)"
+                : newHours > oldHours
+                    ? $"added {FormatHours(newHours - oldHours)}h of worked time (was {FormatHours(oldHours)}h)"
+                    : $"updated the worked hours (was {FormatHours(oldHours)}h)";
+            var remaining = task.EstimatedHours - newHours;
+            var remainingText = remaining >= 0 ? $"{FormatHours(remaining)}h remaining" : $"over by {FormatHours(-remaining)}h";
+            var summary = $"Total worked now: {FormatHours(newHours)}h of {FormatHours(task.EstimatedHours)}h estimated ({remainingText}).";
+            var message = $"{actorName} {action} on task {task.Title}. {summary}";
+
+            foreach (var userId in targetIds)
+            {
+                await _notificationPublisher.PublishAsync(userId, task.Id, NotificationType.System, message, cancellationToken);
+            }
+
+            var emails = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => targetIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+                .Select(user => user.Email)
+                .ToListAsync(cancellationToken);
+            if (emails.Count > 0)
+            {
+                await _mail.SendAsync(
+                    actorId,
+                    new SendMailRequest(emails, null, $"Worked hours changed: {task.Title}", message, null),
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not notify assigned members of the worked-hours change on task {TaskId}.", task.Id);
+        }
     }
 
     public async Task<TaskCardDto?> ChangeStatusAsync(
@@ -380,7 +676,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -436,9 +732,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksReassign, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can reassign tasks.");
+            throw new UnauthorizedAccessException("Your role is not allowed to reassign tasks.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Reason))
@@ -453,7 +749,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             throw new UnauthorizedAccessException("You do not have access to this task.");
         }
@@ -479,9 +775,9 @@ public class TaskService : ITaskService
             taskId,
             TaskActivityEventType.Reassigned,
             currentUserId,
-            $"Reassigned from {oldAssignee?.FullName ?? "Unknown"} to {newAssignee.FullName}. Reason: {request.Reason}",
-            oldAssigneeId.ToString(),
-            request.NewAssigneeUserId.ToString(),
+            $"Reassigned from {oldAssignee?.FullName ?? oldAssigneeId.ToString()} to {newAssignee.FullName}. Reason: {request.Reason}",
+            oldAssignee?.FullName ?? oldAssigneeId.ToString(),
+            newAssignee.FullName,
             cancellationToken);
 
         // BR-5: the assignee is always a recipient - make sure the new assignee is included.
@@ -496,15 +792,73 @@ public class TaskService : ITaskService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await _notificationPublisher.PublishAsync(
-            request.NewAssigneeUserId,
-            taskId,
-            NotificationType.Reassigned,
-            $"A task was reassigned to you: {task.Title}",
+        var updatedRecipients = await LoadRecipientsAsync(taskId, cancellationToken);
+        await NotifyReassignedAsync(
+            task,
+            updatedRecipients,
+            oldAssigneeId,
+            oldAssignee?.FullName ?? oldAssigneeId.ToString(),
+            newAssignee.FullName,
+            request.Reason.Trim(),
+            currentUserId,
             cancellationToken);
 
-        var updatedRecipients = await LoadRecipientsAsync(taskId, cancellationToken);
         return ToDetails(task, updatedRecipients, await _clock.GetTimeZoneAsync(cancellationToken));
+    }
+
+    /// <summary>Tells the new assignee, the previous assignee and everyone else who is notified about the task that it
+    /// was reassigned, by notification and internal mail. Best effort: a failure is logged and never undoes the saved
+    /// reassignment.</summary>
+    private async Task NotifyReassignedAsync(
+        TaskEntity task,
+        IReadOnlyCollection<TaskRecipientDto> recipients,
+        int oldAssigneeId,
+        string oldAssigneeName,
+        string newAssigneeName,
+        string reason,
+        int actorId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var targetIds = recipients.Select(recipient => recipient.UserId)
+                .Append(task.AssignedToUserId)
+                .Append(oldAssigneeId)
+                .Append(actorId)
+                .Distinct()
+                .ToList();
+
+            var actorName = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => user.Id == actorId)
+                .Select(user => user.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? "A teammate";
+
+            var details = $"{actorName} reassigned task \"{task.Title}\" ({task.TaskCode}) from {oldAssigneeName} to {newAssigneeName}. Reason: {reason}";
+
+            foreach (var userId in targetIds)
+            {
+                var message = userId == task.AssignedToUserId ? $"A task was reassigned to you: {task.Title}. Reason: {reason}" : details;
+                await _notificationPublisher.PublishAsync(userId, task.Id, NotificationType.Reassigned, message, cancellationToken);
+            }
+
+            var emails = await _dbContext.Users
+                .AsNoTracking()
+                .Where(user => targetIds.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+                .Select(user => user.Email)
+                .ToListAsync(cancellationToken);
+            if (emails.Count > 0)
+            {
+                await _mail.SendAsync(
+                    actorId,
+                    new SendMailRequest(emails, null, $"Task reassigned: {task.Title}", details, null),
+                    cancellationToken);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not notify assigned members of the reassignment of task {TaskId}.", task.Id);
+        }
     }
 
     public async Task<IReadOnlyCollection<TaskRecipientDto>?> GetRecipientsAsync(
@@ -520,7 +874,7 @@ public class TaskService : ITaskService
         }
 
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
-        if (!TaskAccessScope.CanAccess(currentUserId, currentUserRole, task, recipientIds(recipients)))
+        if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
             return null;
         }
@@ -535,9 +889,9 @@ public class TaskService : ITaskService
         string currentUserRole,
         CancellationToken cancellationToken)
     {
-        if (!IsManagerOrAdmin(currentUserRole))
+        if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksRecipients, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only Managers and Administrators can manage task recipients.");
+            throw new UnauthorizedAccessException("Your role is not allowed to manage task recipients.");
         }
 
         var task = await LoadTaskAsync(taskId, cancellationToken);
@@ -584,13 +938,43 @@ public class TaskService : ITaskService
         return true;
     }
 
+    public async Task<bool> DeleteAsync(int taskId, int currentUserId, CancellationToken cancellationToken)
+    {
+        var task = await _dbContext.Tasks
+            .FirstOrDefaultAsync(candidate => candidate.Id == taskId && !candidate.IsDeleted, cancellationToken);
+        if (task is null)
+        {
+            return false;
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        task.IsDeleted = true;
+        task.UpdatedAt = Now;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Comments and earlier history stay; this entry says who removed the task and when.
+        await _activityService.AppendAsync(
+            task.Id,
+            TaskActivityEventType.Deleted,
+            currentUserId,
+            "Task deleted",
+            oldValue: task.Title,
+            cancellationToken: cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     private static IReadOnlyCollection<int> recipientIds(IReadOnlyCollection<TaskRecipientDto> recipients) =>
         recipients.Select(recipient => recipient.UserId).ToList();
 
     private async Task<TaskEntity?> LoadTaskAsync(int taskId, CancellationToken cancellationToken) =>
         await _dbContext.Tasks
+            .IgnoreQueryFilters() // Users are soft-deleted behind a query filter; history must keep showing a deleted person's name.
             .Include(task => task.AssignedTo)
             .Include(task => task.CreatedBy)
+            .Include(task => task.Project)
             .FirstOrDefaultAsync(task => task.Id == taskId && !task.IsDeleted, cancellationToken);
 
     private async Task<IReadOnlyCollection<TaskRecipientDto>> LoadRecipientsAsync(
@@ -636,6 +1020,11 @@ public class TaskService : ITaskService
             throw new InvalidOperationException("An assigned employee is required.");
         }
 
+        if (request.ProjectId <= 0)
+        {
+            throw new InvalidOperationException("A project is required.");
+        }
+
         if (request.Deadline <= request.StartDate)
         {
             throw new InvalidOperationException("Deadline must be after the start date.");
@@ -664,11 +1053,17 @@ public class TaskService : ITaskService
             task.StartDate,
             task.Deadline,
             task.EstimatedHours,
+            task.ActualHours,
             task.Status,
             stage,
             recipients,
             task.CreatedAt,
-            task.UpdatedAt);
+            task.UpdatedAt,
+            task.ProjectId,
+            task.Project?.Name,
+            task.FirstReminderDays,
+            task.SecondReminderDays,
+            task.OverdueReminderFrequency);
     }
 
     private TaskCardDto ToCard(TaskEntity task, DateTime utcNow)
@@ -686,7 +1081,9 @@ public class TaskService : ITaskService
             task.Priority,
             task.Deadline,
             task.Status,
-            isOverdue);
+            isOverdue,
+            task.ProjectId,
+            task.Project?.Name);
     }
 
     private TaskListItemDto ToListItem(TaskEntity task, DateTime utcNow, TimeZoneInfo timeZone)
@@ -707,6 +1104,8 @@ public class TaskService : ITaskService
             task.EstimatedHours,
             task.Status,
             stage.ToString(),
-            stage == TaskStage.Overdue);
+            stage == TaskStage.Overdue,
+            task.ProjectId,
+            task.Project?.Name);
     }
 }

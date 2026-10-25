@@ -1,3 +1,5 @@
+import { AuthService } from '../../core/auth/auth.service';
+import { fakeAuthService, systemPermissions } from '../../testing/permissions';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -43,7 +45,7 @@ describe('NotificationCenterComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [NotificationCenterComponent],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: systemPermissions('Employee') })) }]
     });
 
     service = TestBed.inject(NotificationService);

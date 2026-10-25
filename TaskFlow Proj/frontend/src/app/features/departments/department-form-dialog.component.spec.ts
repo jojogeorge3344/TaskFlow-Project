@@ -20,7 +20,7 @@ describe('DepartmentFormDialogComponent', () => {
   }
 
   function setName(value: string): void {
-    const input = el().querySelector('#dept-name') as HTMLInputElement;
+    const input = el().querySelector('#department-name') as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
   }
@@ -56,7 +56,7 @@ describe('DepartmentFormDialogComponent', () => {
 
     expect(dialog().open).toBeTrue();
     expect(el().querySelector('h2')?.textContent).toContain('Add department');
-    expect(document.activeElement?.id).toBe('dept-name');
+    expect(document.activeElement?.id).toBe('department-name');
   });
 
   it('shows "Name is required" and saves nothing when the name is empty', () => {
@@ -73,7 +73,7 @@ describe('DepartmentFormDialogComponent', () => {
 
   it('keeps the dialog open and shows the server error for a duplicate name', () => {
     createSpy.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'A department named Finance already exists.' } }))
+      throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'Department name already exists.' } }))
     );
     fixture.componentInstance.open(null);
     fixture.detectChanges();
@@ -82,7 +82,7 @@ describe('DepartmentFormDialogComponent', () => {
     submit();
 
     expect(dialog().open).toBeTrue();
-    expect(el().querySelector('.tf-alert')?.textContent).toContain('A department named Finance already exists.');
+    expect(el().querySelector('.tf-alert')?.textContent).toContain('Department name already exists.');
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
@@ -91,11 +91,11 @@ describe('DepartmentFormDialogComponent', () => {
     fixture.componentInstance.saved.subscribe(savedSpy);
     updateSpy.and.returnValue(of({ id: 2, name: 'Finance & Accounts', description: null, createdAt: '2026-09-01' }));
 
-    fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', employeeCount: 0 });
+    fixture.componentInstance.open({ id: 2, name: 'Finance', description: null, createdAt: '2026-09-01', managerCount: 1, employeeCount: 4 });
     fixture.detectChanges();
 
     expect(el().querySelector('h2')?.textContent).toContain('Edit department');
-    expect((el().querySelector('#dept-name') as HTMLInputElement).value).toBe('Finance');
+    expect((el().querySelector('#department-name') as HTMLInputElement).value).toBe('Finance');
 
     setName('Finance & Accounts');
     submit();
