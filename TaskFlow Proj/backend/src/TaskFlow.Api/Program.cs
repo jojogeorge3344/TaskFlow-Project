@@ -23,6 +23,10 @@ using TaskFlow.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Per-environment values (CORS, mail links, seeding) live in this one file; environment variables still override it.
+builder.Configuration.AddJsonFile("appsettings.Environment.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
+
 // Enums (Role, TaskStatus, TaskPriority) travel as their names, matching the SPA's string unions.
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
