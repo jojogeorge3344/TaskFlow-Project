@@ -201,6 +201,10 @@ public static class PermissionCatalog
             Settings, "TFA Settings", "AI providers", "Delete", Requires: PermissionKeys.SettingsAiView),
         new(PermissionKeys.RolesManage, "Manage roles and permissions", "Open Role Configuration and create, edit and delete custom roles. Whoever holds it can also tick or untick it, and Assign roles, on custom roles.",
             Settings, "Role Configuration", "", "Manage"),
+        new(PermissionKeys.RolesViewAll, "View all roles", "If ticked, the logged user can see all roles. If unticked, they can only see their own permissions.",
+            Settings, "Role Configuration", "", "View"),
+        new(PermissionKeys.RolesModifyAccess, "Modify access", "If ticked, the logged user can add or update permissions. If unticked, all permissions are in view mode.",
+            Settings, "Role Configuration", "", "Edit"),
         new(PermissionKeys.RolesAdministratorAssign, "Give the Administrator role", "Make an account an Administrator, or take the role away. Only the Administrator role holds it.",
             Settings, "Role Configuration", "", "Assign", IsAssignable: false),
 

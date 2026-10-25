@@ -20,8 +20,20 @@ public class RolesController : ControllerBase
     }
 
     [HttpGet("roles")]
-    public async Task<ActionResult<IReadOnlyList<RoleDto>>> GetRoles(CancellationToken cancellationToken) =>
-        Ok(await _roles.GetRolesAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<RoleDto>>> GetRoles(CancellationToken cancellationToken)
+    {
+        if (!User.HasClaim("permission", PermissionKeys.RolesViewAll))
+        {
+            var all = await _roles.GetRolesAsync(cancellationToken);
+            var roleName = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? User.FindFirst("role")?.Value;
+            if (string.IsNullOrWhiteSpace(roleName))
+            {
+                return Ok(Array.Empty<RoleDto>());
+            }
+            return Ok(all.Where(r => string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase)).ToList());
+        }
+        return Ok(await _roles.GetRolesAsync(cancellationToken));
+    }
 
     [HttpGet("roles/{id:int}")]
     public Task<ActionResult<RoleDto>> GetRole(int id, CancellationToken cancellationToken) =>
@@ -30,6 +42,10 @@ public class RolesController : ControllerBase
     [HttpPost("roles")]
     public async Task<ActionResult<RoleDto>> Create([FromBody] SaveRoleRequest request, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", PermissionKeys.RolesModifyAccess))
+        {
+            return Forbid();
+        }
         try
         {
             var created = await _roles.CreateAsync(request, cancellationToken);
@@ -44,12 +60,20 @@ public class RolesController : ControllerBase
     [HttpPut("roles/{id:int}")]
     public async Task<ActionResult<RoleDto>> Update(int id, [FromBody] SaveRoleRequest request, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", PermissionKeys.RolesModifyAccess))
+        {
+            return Forbid();
+        }
         return await RunAsync(() => _roles.UpdateAsync(id, request, cancellationToken));
     }
 
     [HttpDelete("roles/{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
+        if (!User.HasClaim("permission", PermissionKeys.RolesModifyAccess))
+        {
+            return Forbid();
+        }
         try
         {
             await _roles.DeleteAsync(id, cancellationToken);
