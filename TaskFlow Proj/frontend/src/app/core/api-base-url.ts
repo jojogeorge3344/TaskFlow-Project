@@ -19,8 +19,8 @@ const ENVIRONMENTS = {
 } as const;
 
 // >>> Switch environment here: 'local' | 'develop' | 'qa' | 'production'
-//const ACTIVE: keyof typeof ENVIRONMENTS = 'local';
-const ACTIVE: keyof typeof ENVIRONMENTS = 'develop';
+const ACTIVE: keyof typeof ENVIRONMENTS = 'local';
+// const ACTIVE: keyof typeof ENVIRONMENTS = 'develop';
 // const ACTIVE: keyof typeof ENVIRONMENTS = 'qa';
 //const ACTIVE: keyof typeof ENVIRONMENTS = 'production';
 

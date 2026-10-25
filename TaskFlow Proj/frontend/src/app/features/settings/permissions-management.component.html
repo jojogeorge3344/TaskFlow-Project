@@ -27,10 +27,12 @@
       <aside class="tf-card rc-roles" aria-label="Roles">
         <div class="rc-roles__head">
           <h2>Roles</h2>
-          <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-action="new-role" (click)="startNew()">
-            <tf-icon name="plus" />
-            New role
-          </button>
+          @if (canModifyAccess()) {
+            <button type="button" class="tf-btn tf-btn--primary tf-btn--sm" data-action="new-role" (click)="startNew()">
+              <tf-icon name="plus" />
+              New role
+            </button>
+          }
         </div>
 
         <div class="tf-search rc-roles__search">

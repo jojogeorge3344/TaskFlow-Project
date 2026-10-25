@@ -77,6 +77,8 @@ public static class PermissionKeys
 
     // Role configuration (Administrator only)
     public const string RolesManage = "roles.manage";
+    public const string RolesViewAll = "roles.view.all";
+    public const string RolesModifyAccess = "roles.modify.access";
     public const string RolesAdministratorAssign = "roles.administrator.assign";
 
     // Always-on features every signed-in user has. Listed so the catalogue is complete; they cannot be switched off.

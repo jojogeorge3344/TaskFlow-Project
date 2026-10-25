@@ -112,11 +112,19 @@ export class PermissionsManagementComponent implements OnInit {
   /** A system role is shown but never changed. */
   readonly isSystemRole = computed(() => this.selectedRole()?.isSystem === true);
 
-  readonly editable = computed(() => this.isNew() || (this.selectedRole() !== null && !this.isSystemRole()));
+  readonly editable = computed(() => this.canModifyAccess() && (this.isNew() || (this.selectedRole() !== null && !this.isSystemRole())));
+
+  readonly canViewAllRoles = computed(() => this.auth.hasPermission(Permissions.RolesViewAll));
+  readonly canModifyAccess = computed(() => this.auth.hasPermission(Permissions.RolesModifyAccess));
 
   readonly filteredRoles = computed(() => {
     const term = this.roleSearch().trim().toLowerCase();
-    return term === '' ? this.roles() : this.roles().filter((role) => role.name.toLowerCase().includes(term));
+    let roles = this.roles();
+    if (!this.canViewAllRoles()) {
+      const currentRole = this.auth.currentUser()?.role;
+      roles = roles.filter((role) => role.name === currentRole);
+    }
+    return term === '' ? roles : roles.filter((role) => role.name.toLowerCase().includes(term));
   });
 
   readonly tree = computed<TreeModule[]>(() => buildTree(this.catalog()));
