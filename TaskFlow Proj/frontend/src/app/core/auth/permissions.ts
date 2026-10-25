@@ -79,6 +79,8 @@ export const Permissions = {
 
   // Role configuration
   RolesManage: 'roles.manage',
+  RolesViewAll: 'roles.view.all',
+  RolesModifyAccess: 'roles.modify.access',
   RolesAdministratorAssign: 'roles.administrator.assign'
 } as const;
 
