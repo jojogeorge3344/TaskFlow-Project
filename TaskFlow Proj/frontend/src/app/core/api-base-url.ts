@@ -1,14 +1,24 @@
-// SINGLE PLACE to switch the backend the frontend talks to. Keep exactly ONE line active.
-// Empty string = relative /api calls via proxy.conf.json (local backend).
+// SINGLE PLACE for every environment's URLs. Change ONLY the ACTIVE line below.
+// All API calls in the app (/api/v1/...) get the active environment's apiBaseUrl prefixed automatically,
+// so individual services never contain a URL.
 
-// Local
-export const API_BASE_URL: string = '';
+const ENVIRONMENTS = {
+  // Local run: '' = relative /api calls, forwarded by proxy.conf.json to the local backend.
+  local: {
+    apiBaseUrl: ''
+  },
+  develop: {
+    apiBaseUrl: 'https://taskflow-project-1-z76p.onrender.com'
+  },
+  qa: {
+    apiBaseUrl: 'https://taskflow-qa-api.example.com'
+  },
+  production: {
+    apiBaseUrl: 'https://taskflow-prod-api.example.com'
+  }
+} as const;
 
-// Develop
-// export const API_BASE_URL: string = 'https://taskflow-project-1-z76p.onrender.com';
+// >>> Switch environment here: 'local' | 'develop' | 'qa' | 'production'
+const ACTIVE: keyof typeof ENVIRONMENTS = 'local';
 
-// QA
-// export const API_BASE_URL: string = 'https://taskflow-qa-api.example.com';
-
-// Production
-// export const API_BASE_URL: string = 'https://taskflow-prod-api.example.com';
+export const API_BASE_URL: string = ENVIRONMENTS[ACTIVE].apiBaseUrl;

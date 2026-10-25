@@ -16,8 +16,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenStore = inject(TokenStore);
 
-  //private readonly baseUrl = '/api/v1/auth';
-  private readonly baseUrl = 'https://taskflow-project-1-z76p.onrender.com/api/v1/auth';
+  private readonly baseUrl = '/api/v1/auth';
   private readonly currentUserSignal = signal<AuthUser | null>(null);
   private refreshInFlight$: Observable<AuthResponse> | null = null;
 
