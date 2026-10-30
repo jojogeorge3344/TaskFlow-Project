@@ -48,8 +48,8 @@
 
 - [x] 7.1 `Monitoring/TaskManagement`: `TaskRepository` with filter records, `TaskService`, `TasksController` and DTOs. Move the single-module rules (`TaskStatusTransitions`, `TaskAccessScope`) to `.../TaskManagement/Rules`; `TaskStageCalculator`, `TaskBucketRules` and `DeadlineBucketRules` stay in `Common/Rules` because analytics and the assistant use them. The manager visibility rule is decided in the service and passed to the repository as a `TaskVisibility` (design D5). Verify that `TaskServiceTests`, `TaskManagementServiceTests`, `TaskDeletionTests`, `TaskLogHoursTests` and `TasksEndpointsTests` pass
 - [x] 7.2 `Monitoring/TaskManagement/Discussion` and `.../Activity`: repositories, services and controllers. Verify that `TaskCommentActivityNotificationTests` and `TaskWorkedHoursNotificationTests` pass. Done: the comment and activity endpoints moved from TasksController into TaskCommentsController and TaskActivityController (same routes)
-- [ ] 7.3 Add `ITaskAccessService` and rewrite `TaskAccessHandler` to use it (design D7). Verify the missing or deleted task still returns 403 (`GetDetails_MissingOrDeletedTask_IsForbidden`)
-- [ ] 7.4 `Monitoring/EmployeeWorkload`: repository, service and controller. Verify that `WorkloadServiceTests`, `CustomRoleWorkloadTests` and `WorkloadEndpointsTests` pass
+- [x] 7.3 Add `ITaskAccessService` and rewrite `TaskAccessHandler` to use it (design D7). Verify the missing or deleted task still returns 403 (`GetDetails_MissingOrDeletedTask_IsForbidden`)
+- [x] 7.4 `Monitoring/EmployeeWorkload`: repository, service and controller. Verify that `WorkloadServiceTests`, `CustomRoleWorkloadTests` and `WorkloadEndpointsTests` pass
 
 ## 8. Module: Dashboard
 

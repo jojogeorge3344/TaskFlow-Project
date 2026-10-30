@@ -40,7 +40,6 @@ public class ArchitectureTests
     [
         "TaskFlow.Application.",                              // Legacy/Application, groups 4-11
         "TaskFlow.Infrastructure.",                           // Legacy/Infrastructure, groups 4-11
-        "TaskFlow.Api.Authorization.TaskAccessHandler",       // task 7.3
         "TaskFlow.Api.Authentication.SessionValidation",      // task 10.2
     ];
 

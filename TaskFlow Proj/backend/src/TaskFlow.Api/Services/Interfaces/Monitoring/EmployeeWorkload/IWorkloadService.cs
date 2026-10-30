@@ -1,4 +1,6 @@
-namespace TaskFlow.Application.Workload;
+using TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
+
+namespace TaskFlow.Api.Services.Interfaces.Monitoring.EmployeeWorkload;
 
 public interface IWorkloadService
 {

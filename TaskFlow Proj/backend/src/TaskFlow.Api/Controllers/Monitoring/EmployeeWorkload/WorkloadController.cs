@@ -1,10 +1,11 @@
+using TaskFlow.Api.Services.Interfaces.Monitoring.EmployeeWorkload;
+using TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Workload;
 
-namespace TaskFlow.Api.Controllers;
+namespace TaskFlow.Api.Controllers.Monitoring.EmployeeWorkload;
 
 /// <summary>Employee workload (Screen 16). Needs workload.view.</summary>
 [ApiController]

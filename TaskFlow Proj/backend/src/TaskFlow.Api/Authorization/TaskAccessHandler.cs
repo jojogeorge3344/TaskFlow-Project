@@ -1,9 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
 using TaskFlow.Infrastructure.Authentication;
-using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Api.Authorization;
 
@@ -15,11 +14,11 @@ public class TaskAccessRequirement : IAuthorizationRequirement
 /// creator, any additional recipient, or a user whose role holds tasks.view.all may access a task.</summary>
 public class TaskAccessHandler : AuthorizationHandler<TaskAccessRequirement>
 {
-    private readonly AppDbContext _dbContext;
+    private readonly ITaskAccessService _access;
 
-    public TaskAccessHandler(AppDbContext dbContext)
+    public TaskAccessHandler(ITaskAccessService access)
     {
-        _dbContext = dbContext;
+        _access = access;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -32,34 +31,10 @@ public class TaskAccessHandler : AuthorizationHandler<TaskAccessRequirement>
             return;
         }
 
-        var task = await _dbContext.Tasks
-            .AsNoTracking()
-            .FirstOrDefaultAsync(candidate => candidate.Id == taskId && !candidate.IsDeleted);
+        int? userId = int.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : null;
+        var canViewAll = context.User.HasClaim(AuthClaims.Permission, PermissionKeys.TasksViewAll);
 
-        if (task is null)
-        {
-            context.Fail();
-            return;
-        }
-
-        if (context.User.HasClaim(AuthClaims.Permission, PermissionKeys.TasksViewAll))
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
-        if (!int.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-        {
-            context.Fail();
-            return;
-        }
-
-        var isRelated = task.AssignedToUserId == userId
-            || task.CreatedByUserId == userId
-            || await _dbContext.TaskRecipients.AnyAsync(recipient =>
-                recipient.TaskId == taskId && recipient.UserId == userId);
-
-        if (isRelated)
+        if (await _access.CanAccessAsync(taskId, userId, canViewAll))
         {
             context.Succeed(requirement);
         }

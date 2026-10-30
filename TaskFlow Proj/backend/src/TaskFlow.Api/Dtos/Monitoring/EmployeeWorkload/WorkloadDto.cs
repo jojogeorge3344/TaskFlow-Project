@@ -1,6 +1,6 @@
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 
-namespace TaskFlow.Application.Workload;
+namespace TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
 
 /// <summary>One employee's task load for the Employee Workload screen (Screen 16). Counts use the
 /// same open/overdue rules as the dashboards so the figures agree across screens. Projects lists every
