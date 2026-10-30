@@ -1,5 +1,5 @@
+using TaskFlow.Api.Dtos.Auth;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Auth;
 
 namespace TaskFlow.UnitTests;
 

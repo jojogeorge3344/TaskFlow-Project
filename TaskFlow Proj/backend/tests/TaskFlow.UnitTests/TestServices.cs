@@ -158,4 +158,63 @@ internal static class TestServices
 
     public static DashboardService Dashboard(AppDbContext db, IAppClock clock) =>
         new(new DashboardRepository(db), clock, ManagerScope(db, clock));
+
+    public static TaskFlow.Api.Services.Auth.Mfa.MfaService Mfa(
+        AppDbContext db,
+        IPasswordHasher<User> hasher,
+        TaskFlow.Api.Integrations.Interfaces.Security.IMfaSecretProtector protector,
+        INotificationPublisher publisher,
+        IOptions<TaskFlow.Api.Config.MfaOptions> options,
+        TimeProvider timeProvider) =>
+        new(
+            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new TaskFlow.Api.Repositories.Auth.Mfa.MfaBackupCodeRepository(db),
+            new RefreshTokenRepository(db),
+            new UnitOfWork(db),
+            hasher,
+            protector,
+            publisher,
+            options,
+            timeProvider);
+
+    public static TaskFlow.Api.Services.Auth.AuthService Auth(
+        AppDbContext db,
+        TaskFlow.Api.Integrations.Interfaces.Security.ITokenService tokenService,
+        IPasswordHasher<User> hasher,
+        TimeProvider timeProvider,
+        TaskFlow.Api.Services.Interfaces.Auth.Mfa.IMfaService mfaService,
+        TaskFlow.Api.Integrations.Interfaces.Security.IMfaSecretProtector protector,
+        IOptions<TaskFlow.Api.Config.MfaOptions> options) =>
+        new(
+            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new RefreshTokenRepository(db),
+            new UnitOfWork(db),
+            tokenService,
+            hasher,
+            timeProvider,
+            mfaService,
+            protector,
+            options);
+
+    public static TaskFlow.Api.Services.Auth.PasswordRecovery.PasswordRecoveryService PasswordRecovery(
+        AppDbContext db,
+        IPasswordHasher<User> hasher,
+        INotificationPublisher publisher,
+        TimeProvider timeProvider)
+    {
+        var protector = new TaskFlow.Api.Integrations.Security.MfaSecretProtector(
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(),
+            timeProvider);
+        return new(
+            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new TaskFlow.Api.Repositories.Auth.PasswordRecovery.PasswordResetGrantRepository(db),
+            new RefreshTokenRepository(db),
+            new UnitOfWork(db),
+            Mfa(db, hasher, protector, publisher, Options.Create(new TaskFlow.Api.Config.MfaOptions()), timeProvider),
+            new TaskFlow.Api.Services.Auth.AttemptLimiter(timeProvider),
+            hasher,
+            publisher,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskFlow.Api.Services.Auth.PasswordRecovery.PasswordRecoveryService>.Instance,
+            timeProvider);
+    }
 }

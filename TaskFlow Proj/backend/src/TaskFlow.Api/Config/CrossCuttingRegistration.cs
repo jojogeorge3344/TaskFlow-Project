@@ -1,3 +1,4 @@
+using TaskFlow.Api.Dtos.Auth.Validators;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -7,13 +8,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using TaskFlow.Api.Authentication;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Filters;
 using TaskFlow.Api.Middleware;
-using TaskFlow.Application.Auth;
-using TaskFlow.Infrastructure.Authentication;
 
 namespace TaskFlow.Api.Config;
 

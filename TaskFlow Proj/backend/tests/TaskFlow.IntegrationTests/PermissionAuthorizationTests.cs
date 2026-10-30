@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 

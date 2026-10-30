@@ -60,6 +60,9 @@ public static class RepositoryRegistration
 
         // Auth
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokenRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IAccountRepository, TaskFlow.Api.Repositories.Auth.AccountRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.Mfa.IMfaBackupCodeRepository, TaskFlow.Api.Repositories.Auth.Mfa.MfaBackupCodeRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.PasswordRecovery.IPasswordResetGrantRepository, TaskFlow.Api.Repositories.Auth.PasswordRecovery.PasswordResetGrantRepository>();
 
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
         services.AddScoped<AccessControlSeeder>();

@@ -4,7 +4,6 @@ using TaskFlow.Api.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

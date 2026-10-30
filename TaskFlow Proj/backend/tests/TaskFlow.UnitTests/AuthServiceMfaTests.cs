@@ -1,6 +1,7 @@
+using TaskFlow.Api.Dtos.Auth.Mfa;
+using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
+using TaskFlow.Api.Dtos.Auth;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Auth;
-using TaskFlow.Application.Mfa;
 
 namespace TaskFlow.UnitTests;
 

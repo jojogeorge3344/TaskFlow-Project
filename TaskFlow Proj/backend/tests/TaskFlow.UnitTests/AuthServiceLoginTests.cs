@@ -1,6 +1,6 @@
+using TaskFlow.Api.Dtos.Auth;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Auth;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;

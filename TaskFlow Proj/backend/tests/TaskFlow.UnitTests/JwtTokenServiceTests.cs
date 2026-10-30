@@ -1,3 +1,5 @@
+using TaskFlow.Api.Integrations.Security;
+using TaskFlow.Api.Config;
 using System.IdentityModel.Tokens.Jwt;
 using TaskFlow.Api.Common.Security;
 using System.Security.Claims;
@@ -6,7 +8,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Authentication;
 
 namespace TaskFlow.UnitTests;
 

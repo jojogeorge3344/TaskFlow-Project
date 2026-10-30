@@ -1,7 +1,7 @@
+using TaskFlow.Api.Integrations.Security;
+using TaskFlow.Api.Config;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
-using TaskFlow.Application.Mfa;
-using TaskFlow.Infrastructure.Services;
 
 namespace TaskFlow.UnitTests;
 

@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Services;
 using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;

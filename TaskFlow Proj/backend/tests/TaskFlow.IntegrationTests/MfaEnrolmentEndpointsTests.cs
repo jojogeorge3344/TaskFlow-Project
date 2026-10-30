@@ -69,7 +69,7 @@ public class MfaEnrolmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var token = await _mfa.SeedAndLoginAsync(client, "mfa-ep-enable");
         var setup = await Post(client, "setup", token, new { currentPassword = MfaTestHarness.Password });
         using var setupDoc = JsonDocument.Parse(await setup.Content.ReadAsStringAsync());
-        var secret = TaskFlow.Application.Mfa.Base32.Decode(setupDoc.RootElement.GetProperty("key").GetString())!;
+        var secret = TaskFlow.Api.Integrations.Security.Base32.Decode(setupDoc.RootElement.GetProperty("key").GetString())!;
 
         var wrong = await Post(client, "enable", token, new { code = "000000" });
         var right = await Post(client, "enable", token, new { code = _mfa.NextCode(secret) });
@@ -93,7 +93,7 @@ public class MfaEnrolmentEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var profile = JsonDocument.Parse(body);
         Assert.True(profile.RootElement.GetProperty("mfaEnabled").GetBoolean());
         Assert.Equal(10, profile.RootElement.GetProperty("backupCodesRemaining").GetInt32());
-        Assert.DoesNotContain(TaskFlow.Application.Mfa.Base32.Encode(secret), body);
+        Assert.DoesNotContain(TaskFlow.Api.Integrations.Security.Base32.Encode(secret), body);
         Assert.All(codes, code => Assert.DoesNotContain(code, body));
     }
 

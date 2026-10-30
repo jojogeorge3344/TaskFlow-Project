@@ -1,12 +1,14 @@
+using TaskFlow.Api.Services.Interfaces.Auth;
+using TaskFlow.Api.Services.Auth;
+using TaskFlow.Api.Integrations.Security;
+using TaskFlow.Api.Config;
 using Microsoft.AspNetCore.Identity;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Auth;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.UnitTests;
@@ -46,9 +48,9 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
             Options.Create(new JwtOptions { Issuer = "TaskFlow", Key = new string('k', 64) }),
             TimeProvider.System);
 
-        var mfaProtector = new TaskFlow.Infrastructure.Services.MfaSecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TimeProvider.System);
-        var mfaService = new TaskFlow.Application.Mfa.MfaService(db, passwordHasher, mfaProtector, TestServices.NotificationPublisher(db, TimeProvider.System), Options.Create(new TaskFlow.Application.Mfa.MfaOptions()), TimeProvider.System);
-        var service = new AuthService(db, tokenService, passwordHasher, TimeProvider.System, mfaService, mfaProtector, Options.Create(new TaskFlow.Application.Mfa.MfaOptions()));
+        var mfaProtector = new TaskFlow.Api.Integrations.Security.MfaSecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TimeProvider.System);
+        var mfaService = TestServices.Mfa(db, passwordHasher, mfaProtector, TestServices.NotificationPublisher(db, TimeProvider.System), Options.Create(new TaskFlow.Api.Config.MfaOptions()), TimeProvider.System);
+        var service = TestServices.Auth(db, tokenService, passwordHasher, TimeProvider.System, mfaService, mfaProtector, Options.Create(new TaskFlow.Api.Config.MfaOptions()));
 
         return new AuthServiceHarness(connection, db, service, passwordHasher);
     }

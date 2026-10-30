@@ -1,8 +1,8 @@
+using TaskFlow.Api.Common.Security;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
-using TaskFlow.Api.Cookies;
 
 namespace TaskFlow.IntegrationTests;
 

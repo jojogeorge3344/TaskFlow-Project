@@ -5,7 +5,6 @@ using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Exceptions;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

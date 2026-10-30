@@ -88,7 +88,7 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicies.SpaClient);
 
 app.UseAuthentication();
-app.UseMiddleware<TaskFlow.Api.Authentication.MfaSetupGateMiddleware>();
+app.UseMiddleware<TaskFlow.Api.Middleware.MfaSetupGateMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

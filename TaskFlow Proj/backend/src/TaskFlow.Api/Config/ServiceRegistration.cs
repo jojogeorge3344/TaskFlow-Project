@@ -1,5 +1,8 @@
+using TaskFlow.Api.Services.Interfaces.Auth.PasswordRecovery;
+using TaskFlow.Api.Services.Interfaces.Auth;
+using TaskFlow.Api.Services.Auth.PasswordRecovery;
+using TaskFlow.Api.Services.Auth;
 using TaskFlow.Api.Authorization;
-using TaskFlow.Application.Auth;
 
 namespace TaskFlow.Api.Config;
 
@@ -12,9 +15,10 @@ public static class ServiceRegistration
         services.AddScoped<IAuthService, AuthService>();
         // Password recovery from the login page: an authenticator code buys a single-use reset token.
         services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
-        services.AddSingleton<IAttemptLimiter, TaskFlow.Infrastructure.Services.AttemptLimiter>();
-        services.Configure<TaskFlow.Application.Mfa.MfaOptions>(configuration.GetSection(TaskFlow.Application.Mfa.MfaOptions.SectionName));
-        services.AddScoped<TaskFlow.Application.Mfa.IMfaService, TaskFlow.Application.Mfa.MfaService>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddSingleton<IAttemptLimiter, TaskFlow.Api.Services.Auth.AttemptLimiter>();
+        services.Configure<TaskFlow.Api.Config.MfaOptions>(configuration.GetSection(TaskFlow.Api.Config.MfaOptions.SectionName));
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Auth.Mfa.IMfaService, TaskFlow.Api.Services.Auth.Mfa.MfaService>();
 
         // Dashboard
         services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.IDashboardService, TaskFlow.Api.Services.Dashboard.DashboardService>();

@@ -1,3 +1,5 @@
+using TaskFlow.Api.Integrations.Security;
+using TaskFlow.Api.Integrations.Interfaces.Security;
 using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Integrations.Ai;
 using Microsoft.AspNetCore.DataProtection;
@@ -9,7 +11,6 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Infrastructure.Assistant;
-using TaskFlow.Infrastructure.Authentication;
 
 namespace TaskFlow.Api.Config;
 
@@ -24,7 +25,7 @@ public static class IntegrationRegistration
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
         // Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
-        services.AddSingleton<TaskFlow.Application.Mfa.IMfaSecretProtector, TaskFlow.Infrastructure.Services.MfaSecretProtector>();
+        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Security.IMfaSecretProtector, TaskFlow.Api.Integrations.Security.MfaSecretProtector>();
 
         services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Storage.IMailFileStore, TaskFlow.Api.Integrations.Storage.LocalMailFileStore>();
         services.Configure<TaskFlow.Api.Config.MailOptions>(configuration.GetSection(TaskFlow.Api.Config.MailOptions.SectionName));

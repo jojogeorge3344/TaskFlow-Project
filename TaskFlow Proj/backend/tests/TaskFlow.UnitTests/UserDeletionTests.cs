@@ -12,7 +12,6 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

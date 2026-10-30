@@ -1,6 +1,5 @@
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Net;
-using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Api.Common.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;

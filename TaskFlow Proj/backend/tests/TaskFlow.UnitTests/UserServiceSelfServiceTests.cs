@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

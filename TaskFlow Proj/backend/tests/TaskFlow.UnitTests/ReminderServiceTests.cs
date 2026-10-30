@@ -11,7 +11,6 @@ using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Services;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;

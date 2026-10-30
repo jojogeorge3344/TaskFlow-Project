@@ -17,7 +17,6 @@ using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 using User = TaskFlow.Api.Models.Entities.User;
 

@@ -1,12 +1,13 @@
+using TaskFlow.Api.Dtos.Auth.PasswordRecovery;
+using TaskFlow.Api.Dtos.Auth.PasswordRecovery.Validators;
+using TaskFlow.Api.Services.Auth.PasswordRecovery;
 using TaskFlow.Api.Services.Communication.Notification;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Auth;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;
@@ -34,7 +35,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         TestAccessControl.Seed(_db);
 
         _user = AddUser("recover-user");
-        _service = new PasswordRecoveryService(_db, _hasher, TestServices.NotificationPublisher(_db, _clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
+        _service = TestServices.PasswordRecovery(_db, _hasher, TestServices.NotificationPublisher(_db, _clock), _clock);
     }
 
     private User AddUser(string username)
@@ -166,9 +167,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
     [Fact]
     public async Task A_failing_notification_does_not_undo_or_fail_the_reset()
     {
-        var service = new PasswordRecoveryService(
-            _db, _hasher, new ThrowingPublisher(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
+        var service = TestServices.PasswordRecovery(_db, _hasher, new ThrowingPublisher(), _clock);
         var token = await service.IssueResetTokenAsync(_user.Id);
 
         Assert.True(await service.ResetPasswordAsync(token, NewPassword));

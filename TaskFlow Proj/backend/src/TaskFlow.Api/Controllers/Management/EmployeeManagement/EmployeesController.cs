@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
 using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
@@ -8,8 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Authentication;
-using TaskFlow.Application.Mfa;
 
 namespace TaskFlow.Api.Controllers.Management.EmployeeManagement;
 

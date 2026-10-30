@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Services;
 
 namespace TaskFlow.UnitTests;
 

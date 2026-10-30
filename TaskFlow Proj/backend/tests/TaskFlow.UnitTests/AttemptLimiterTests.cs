@@ -1,5 +1,5 @@
-using TaskFlow.Application.Auth;
-using TaskFlow.Infrastructure.Services;
+using TaskFlow.Api.Services.Interfaces.Auth;
+using TaskFlow.Api.Services.Auth;
 
 namespace TaskFlow.UnitTests;
 
