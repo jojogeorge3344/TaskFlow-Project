@@ -3,7 +3,6 @@ using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
-using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Repositories.Interfaces;
 using TaskFlow.Api.Repositories.Interfaces.Auth;
@@ -47,8 +46,6 @@ public class EmployeeService : IEmployeeService
         await _employees.GetListAsync(filter, cancellationToken);
 
     public Task<UserDto?> GetByIdAsync(int id, CancellationToken cancellationToken) => _employees.GetDtoAsync(id, cancellationToken);
-
-    public Task<UserDto?> GetOwnAsync(int id, CancellationToken cancellationToken) => GetByIdAsync(id, cancellationToken);
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken)
     {
@@ -194,67 +191,6 @@ public class EmployeeService : IEmployeeService
 
         user.IsActive = request.IsActive;
         user.UpdatedAt = now;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return (await GetByIdAsync(user.Id, cancellationToken))!;
-    }
-
-    public async Task<UserDto?> UpdateOwnProfileAsync(int id, UpdateOwnProfileRequest request, CancellationToken cancellationToken = default)
-    {
-        var user = await _employees.GetActiveWithRoleForUpdateAsync(id, cancellationToken);
-        if (user is null)
-        {
-            return null;
-        }
-
-        var email = RequireValidEmail(request.Email);
-
-        // Null keeps the current number; an empty value clears it.
-        var mobileNumber = request.MobileNumber is null
-            ? user.MobileNumber
-            : MobileNumberPolicy.Normalize(request.MobileNumber);
-        if (mobileNumber is not null && !MobileNumberPolicy.IsValid(mobileNumber))
-        {
-            throw new BusinessRuleException(MobileNumberPolicy.InvalidMessage);
-        }
-
-        // Email is the only unique identity, so a number may be shared. What is refused is a second record that already holds
-        // this exact email and number together.
-        if (mobileNumber is not null && await _employees.EmailAndMobileTakenAsync(email, mobileNumber, id, cancellationToken))
-        {
-            throw new BusinessRuleException("A user with this email and mobile number already exists.");
-        }
-
-        if (await EmailTakenAsync(email, id, cancellationToken))
-        {
-            throw new BusinessRuleException("Email already exists.");
-        }
-
-        user.FullName = request.FullName!.Trim();
-        user.Email = email;
-        user.MobileNumber = mobileNumber;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        // Role, project, username, employee code and status are deliberately untouched.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return (await GetByIdAsync(user.Id, cancellationToken))!;
-    }
-
-    public async Task<UserDto?> ChangeOwnPasswordAsync(int id, ChangePasswordRequest request, CancellationToken cancellationToken = default)
-    {
-        var user = await _employees.GetActiveWithRoleForUpdateAsync(id, cancellationToken);
-        if (user is null)
-        {
-            return null;
-        }
-
-        var now = DateTime.UtcNow;
-        user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword!);
-        user.UpdatedAt = now;
-
-        // The password change ends every session, including this one; the client signs in again.
-        await EndSessionsAsync(user, now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return (await GetByIdAsync(user.Id, cancellationToken))!;

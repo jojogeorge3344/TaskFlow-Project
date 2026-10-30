@@ -16,6 +16,9 @@ public static class ServiceRegistration
         // Password recovery from the login page: an authenticator code buys a single-use reset token.
         services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
         services.AddScoped<ISessionService, SessionService>();
+
+        // Profile
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Profile.IProfileService, TaskFlow.Api.Services.Profile.ProfileService>();
         services.AddSingleton<IAttemptLimiter, TaskFlow.Api.Services.Auth.AttemptLimiter>();
         services.Configure<TaskFlow.Api.Config.MfaOptions>(configuration.GetSection(TaskFlow.Api.Config.MfaOptions.SectionName));
         services.AddScoped<TaskFlow.Api.Services.Interfaces.Auth.Mfa.IMfaService, TaskFlow.Api.Services.Auth.Mfa.MfaService>();

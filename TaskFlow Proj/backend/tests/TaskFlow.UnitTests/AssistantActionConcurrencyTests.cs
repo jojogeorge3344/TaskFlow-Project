@@ -52,6 +52,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
             db,
             mail,
             TestServices.Employees(db, new PasswordHasher<User>()),
+            TestServices.Profile(db, new PasswordHasher<User>()),
             new RolePolicyAuthorizer(),
             new AssistantAuditLog(db, clock),
             new SendMailRequestValidator(),

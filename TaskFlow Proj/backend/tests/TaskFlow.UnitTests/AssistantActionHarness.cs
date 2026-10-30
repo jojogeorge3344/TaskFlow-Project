@@ -84,7 +84,7 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
     public AssistantAuditLog Audit => new(Db, Clock);
 
     public AssistantActionService Actions =>
-        new(Db, Mail, Users, Authorizer, Audit, new SendMailRequestValidator(), new UpdateOwnProfileRequestValidator(), Clock);
+        new(Db, Mail, Users, TestServices.Profile(Db, new PasswordHasher<User>()), Authorizer, Audit, new SendMailRequestValidator(), new UpdateOwnProfileRequestValidator(), Clock);
 
     public AssistantUserResolver Resolver => new(Db);
 

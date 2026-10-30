@@ -51,6 +51,7 @@ public class AssistantActionService : IAssistantActionService
     private readonly AppDbContext _dbContext;
     private readonly IMailService _mail;
     private readonly IEmployeeService _users;
+    private readonly TaskFlow.Api.Services.Interfaces.Profile.IProfileService _profile;
     private readonly IAssistantAuthorizer _authorizer;
     private readonly IAssistantAuditLog _audit;
     private readonly IValidator<SendMailRequest> _sendMailValidator;
@@ -62,6 +63,7 @@ public class AssistantActionService : IAssistantActionService
         AppDbContext dbContext,
         IMailService mail,
         IEmployeeService users,
+        TaskFlow.Api.Services.Interfaces.Profile.IProfileService profile,
         IAssistantAuthorizer authorizer,
         IAssistantAuditLog audit,
         IValidator<SendMailRequest> sendMailValidator,
@@ -73,6 +75,7 @@ public class AssistantActionService : IAssistantActionService
         _dbContext = dbContext;
         _mail = mail;
         _users = users;
+        _profile = profile;
         _authorizer = authorizer;
         _audit = audit;
         _sendMailValidator = sendMailValidator;
@@ -380,7 +383,7 @@ public class AssistantActionService : IAssistantActionService
                     throw new ValidationException(profileValidation.Errors);
                 }
 
-                _ = await _users.UpdateOwnProfileAsync(caller.UserId, profileRequest, cancellationToken)
+                _ = await _profile.UpdateAsync(caller.UserId, profileRequest, cancellationToken)
                     ?? throw new BusinessRuleException("your account was not found");
                 return "Done. Your profile was updated.";
 

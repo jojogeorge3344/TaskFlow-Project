@@ -17,7 +17,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly AppDbContext _db;
-    private readonly EmployeeService _service;
+    private readonly TaskFlow.Api.Services.Profile.ProfileService _service;
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
 
     public UserServiceSelfServiceTests()
@@ -27,7 +27,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = TestServices.Employees(_db, _hasher);
+        _service = TestServices.Profile(_db, _hasher);
     }
 
     private User AddUser(string username, string email, string role = SystemRoles.Employee)
@@ -54,7 +54,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     {
         var user = AddUser("self1", "self1@taskflow.com");
 
-        var dto = await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("New Name", "new@taskflow.com"));
+        var dto = await _service.UpdateAsync(user.Id, new UpdateOwnProfileRequest("New Name", "new@taskflow.com"));
 
         Assert.NotNull(dto);
         Assert.Equal("New Name", dto!.FullName);
@@ -68,7 +68,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         AddUser("other", "other@taskflow.com");
 
         await Assert.ThrowsAsync<BusinessRuleException>(() =>
-            _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Self 2", "other@taskflow.com")));
+            _service.UpdateAsync(user.Id, new UpdateOwnProfileRequest("Self 2", "other@taskflow.com")));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     {
         var user = AddUser("self3", "self3@taskflow.com", SystemRoles.Employee);
 
-        await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Renamed", "self3b@taskflow.com"));
+        await _service.UpdateAsync(user.Id, new UpdateOwnProfileRequest("Renamed", "self3b@taskflow.com"));
 
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.Equal("self3", reloaded.Username);
@@ -89,6 +89,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     public async Task ChangeOwnPassword_UpdatesPasswordAndEndsSessions()
     {
         var user = AddUser("self5", "self5@taskflow.com");
+        user.MfaEnabledAt = DateTime.UtcNow;
         var originalStamp = user.SecurityStamp;
         _db.RefreshTokens.Add(new RefreshToken
         {
@@ -99,7 +100,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         });
         await _db.SaveChangesAsync();
 
-        var dto = await _service.ChangeOwnPasswordAsync(user.Id, new ChangePasswordRequest("N3wP@ss!"));
+        var dto = await _service.ChangePasswordAsync(user.Id, new ChangePasswordRequest("N3wP@ss!"));
 
         Assert.NotNull(dto);
         var reloaded = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
@@ -112,10 +113,21 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ChangeOwnPassword_WithoutAuthenticatorMfa_IsRefused()
+    {
+        var user = AddUser("self6", "self6@taskflow.com");
+
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            _service.ChangePasswordAsync(user.Id, new ChangePasswordRequest("N3wP@ss!")));
+
+        Assert.Equal(TaskFlow.Api.Services.Profile.ProfileService.MfaRequiredForPasswordMessage, error.Message);
+    }
+
+    [Fact]
     public async Task SelfService_OnUnknownUser_ReturnsNull()
     {
-        Assert.Null(await _service.UpdateOwnProfileAsync(9999, new UpdateOwnProfileRequest("X", "x@taskflow.com"), CancellationToken.None));
-        Assert.Null(await _service.ChangeOwnPasswordAsync(9999, new ChangePasswordRequest("bbbbbb"), CancellationToken.None));
+        Assert.Null(await _service.UpdateAsync(9999, new UpdateOwnProfileRequest("X", "x@taskflow.com"), CancellationToken.None));
+        Assert.Null(await _service.ChangePasswordAsync(9999, new ChangePasswordRequest("bbbbbb"), CancellationToken.None));
     }
 
     public async ValueTask DisposeAsync()

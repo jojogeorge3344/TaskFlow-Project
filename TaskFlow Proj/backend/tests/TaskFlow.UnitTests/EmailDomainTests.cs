@@ -198,7 +198,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     {
         var user = AddUser("self", "self@taskflow.com");
 
-        var dto = await _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("New Name", "self@taskflow.com"));
+        var dto = await TestServices.Profile(_db, _hasher).UpdateAsync(user.Id, new UpdateOwnProfileRequest("New Name", "self@taskflow.com"));
 
         Assert.Equal("New Name", dto!.FullName);
     }

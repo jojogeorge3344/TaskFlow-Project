@@ -163,7 +163,7 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
         var allowedPlainAuthorize = new[]
         {
             "ApplicationSettingsController", "AssistantController", "AuthController", "DashboardController", "MailController",
-            "MfaController", "NotificationsController", "TasksController", "TaskCommentsController", "TaskActivityController", "EmployeesController"
+            "ProfileController", "NotificationsController", "TasksController", "TaskCommentsController", "TaskActivityController", "EmployeesController"
         };
 
         foreach (var controller in typeof(Program).Assembly.GetTypes()

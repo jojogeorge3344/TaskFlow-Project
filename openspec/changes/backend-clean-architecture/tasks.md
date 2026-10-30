@@ -64,7 +64,7 @@
 
 - [x] 10.1 `Auth` (+ `Mfa`, `PasswordRecovery`): repositories for users, refresh tokens, MFA backup codes and reset grants. Move `AuthService`, `MfaService` and `PasswordRecovery` onto them. Move `JwtTokenService`, TOTP and `MfaSecretProtector` to `Integrations/Security`. Rewrite `PasswordRecoveryController` with no DbContext. Verify that the `AuthService*Tests`, `MfaServiceTests`, `PasswordRecoveryServiceTests` and the `Auth*`/`Mfa*`/`PasswordRecovery*` endpoint tests pass
 - [x] 10.2 Add `ISessionService` and rewrite `SessionValidation` (and move it to `Middleware/`) to use it. Verify that `AuthenticationWiringTests` and `AuthServiceRefreshAndLogoutTests` pass
-- [ ] 10.3 `Profile`: move the own-profile, password and own-MFA endpoints and service methods into the `Profile` module. Verify that `UserProfileEndpointsTests`, `UserServiceSelfServiceTests` and `MfaEnrolmentEndpointsTests` pass
+- [x] 10.3 `Profile`: move the own-profile, password and own-MFA endpoints and service methods into the `Profile` module. Verify that `UserProfileEndpointsTests`, `UserServiceSelfServiceTests` and `MfaEnrolmentEndpointsTests` pass
 
 ## 11. Module: Assistant
 

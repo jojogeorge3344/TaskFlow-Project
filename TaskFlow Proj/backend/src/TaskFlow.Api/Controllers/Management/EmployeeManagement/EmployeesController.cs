@@ -1,6 +1,5 @@
 using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
 using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Services.Interfaces.Settings.RoleConfiguration;
 using TaskFlow.Api.Dtos.Settings.RoleConfiguration;
@@ -28,61 +27,6 @@ public class EmployeesController : ControllerBase
         _userService = userService;
         _mfaService = mfaService;
         _roleService = roleService;
-    }
-
-    /// <summary>The caller's own account details (Screen 19). The id always comes from the token,
-    /// so a user can never read or change somebody else's account here.</summary>
-    [HttpGet("me")]
-    [Authorize]
-    public async Task<ActionResult<UserDto>> GetOwn(CancellationToken cancellationToken)
-    {
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
-        {
-            return Unauthorized();
-        }
-
-        var user = await _userService.GetOwnAsync(currentUserId, cancellationToken);
-        return user is null ? NotFound() : Ok(user);
-    }
-
-    /// <summary>Updates the caller's own full name and email. Role, project, username, employee
-    /// code and account status are not part of this contract and cannot change here.</summary>
-    [HttpPut("me")]
-    [Authorize]
-    public async Task<ActionResult<UserDto>> UpdateOwn([FromBody] UpdateOwnProfileRequest request, CancellationToken cancellationToken)
-    {
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
-        {
-            return Unauthorized();
-        }
-
-        var user = await _userService.UpdateOwnProfileAsync(currentUserId, request, cancellationToken);
-        return user is null ? NotFound() : Ok(user);
-    }
-
-    /// <summary>Changes the caller's own password after checking an authenticator code. Every session of
-    /// the user is ended, so the client must sign in again with the new password.</summary>
-    [HttpPost("me/password")]
-    [Authorize]
-    public async Task<ActionResult> ChangeOwnPassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
-    {
-        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
-        {
-            return Unauthorized();
-        }
-
-        // The authenticator code is the proof of identity. RequireCodeAsync passes silently when MFA is off, which the setup
-        // gate prevents; refuse here too so a gate regression cannot leave this endpoint unprotected.
-        var current = await _userService.GetOwnAsync(currentUserId, cancellationToken);
-        if (current is null || !current.MfaEnabled)
-        {
-            return Problem(detail: "Set up two-step verification before changing your password.", statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
-
-        var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
-        return user is null ? NotFound() : NoContent();
     }
 
     /// <summary>Read-only user list. Managers need it to pick assignees and recipients when
@@ -213,6 +157,15 @@ public class EmployeesController : ControllerBase
 
         var deleted = await _userService.DeleteAsync(id, currentUserId, cancellationToken);
         return deleted ? NoContent() : NotFound();
+    }
+
+    /// <summary>Administrator reset of authenticator MFA for someone who lost their phone and their backup codes. Ends the
+    /// user's sessions.</summary>
+    [HttpPost("{id:int}/mfa/reset")]
+    [RequirePermission(PermissionKeys.EmployeesMfaReset)]
+    public async Task<ActionResult> ResetMfa(int id, CancellationToken cancellationToken)
+    {
+        return await _mfaService.ResetAsync(id, cancellationToken) ? NoContent() : NotFound();
     }
 
     private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesRoleAssign);

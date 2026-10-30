@@ -159,6 +159,18 @@ internal static class TestServices
     public static DashboardService Dashboard(AppDbContext db, IAppClock clock) =>
         new(new DashboardRepository(db), clock, ManagerScope(db, clock));
 
+    public static TaskFlow.Api.Services.Profile.ProfileService Profile(
+        AppDbContext db,
+        IPasswordHasher<User> hasher,
+        TaskFlow.Api.Services.Interfaces.Auth.Mfa.IMfaService? mfa = null) =>
+        new(
+            new EmployeeRepository(db),
+            new RefreshTokenRepository(db),
+            new UnitOfWork(db),
+            hasher,
+            mfa ?? new AcceptingMfaService(),
+            new TaskFlow.Api.Services.Auth.AttemptLimiter(TimeProvider.System));
+
     public static TaskFlow.Api.Services.Auth.Mfa.MfaService Mfa(
         AppDbContext db,
         IPasswordHasher<User> hasher,

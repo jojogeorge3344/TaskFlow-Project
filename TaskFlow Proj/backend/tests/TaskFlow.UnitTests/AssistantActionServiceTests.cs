@@ -287,7 +287,7 @@ public class AssistantActionServiceTests
         await using var h = new AssistantActionHarness();
         var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
-            h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
+            h.Db, h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
             new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
@@ -309,7 +309,7 @@ public class AssistantActionServiceTests
         ravi.IsActive = false;
         await h.Db.SaveChangesAsync();
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
-            h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "failed"),
+            h.Db, h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "failed"),
             new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
