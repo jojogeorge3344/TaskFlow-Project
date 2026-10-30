@@ -42,7 +42,7 @@ public class ManagerDrillDownScopeTests
         harness.AddTask(mine, TaskFlow.Api.Models.Enums.TaskStatus.ToDo, deadline: Now.UtcDateTime.AddDays(-2));
         harness.AddTask(harness.AddUser("e2"));
 
-        var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Application.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);
+        var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Api.Dtos.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);
         var listed = await TotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.Overdue, EmployeeId: mine.Id), manager.Id, SystemRoles.Manager);
 
         Assert.Equal(analytics.TasksByStatus.Overdue, listed);
@@ -60,7 +60,7 @@ public class ManagerDrillDownScopeTests
         deleted.IsDeleted = true;
         harness.Db.SaveChanges();
 
-        var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Application.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);
+        var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Api.Dtos.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);
         var row = analytics.ByProject.Single(project => project.ProjectId is null);
         var listed = await TotalAsync(harness, new TaskListFilter(Bucket: TaskBucketFilter.All, ProjectId: 0), manager.Id, SystemRoles.Manager);
 

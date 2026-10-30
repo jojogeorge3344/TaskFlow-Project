@@ -1,4 +1,6 @@
-namespace TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+
+namespace TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
 
 public interface IManagerAnalyticsService
 {

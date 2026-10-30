@@ -1,5 +1,6 @@
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Security;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
@@ -13,7 +14,7 @@ public class AnalyticsScopeTests
     private static async Task<List<int>> IdsAsync(AnalyticsHarness harness, AnalyticsFilter filter)
     {
         var scoped = await harness.Scope.ScopeAsync(filter, CancellationToken.None);
-        return await scoped.Tasks.Select(task => task.Id).OrderBy(id => id).ToListAsync();
+        return (await harness.Analytics.GetTaskIdsAsync(scoped.Tasks)).Order().ToList();
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public class AnalyticsScopeTests
 
         Assert.Equal(new DateOnly(2026, 5, 17), scoped.Filter.From);
         Assert.Equal(new DateOnly(2026, 6, 15), scoped.Filter.To);
-        Assert.Equal([inside.Id], await scoped.Tasks.Select(task => task.Id).ToListAsync());
+        Assert.Equal([inside.Id], await harness.Analytics.GetTaskIdsAsync(scoped.Tasks));
     }
 
     [Theory]
@@ -251,13 +252,9 @@ public class AnalyticsScopeTests
         foreach (var filter in filters)
         {
             var scoped = await harness.Scope.ScopeAsync(filter, CancellationToken.None);
-            var total = await scoped.Tasks.CountAsync();
-            var now = scoped.Filter.NowUtc;
-            var sum = 0;
-            foreach (var bucket in Enum.GetValues<TaskBucket>())
-            {
-                sum += await scoped.Tasks.CountAsync(TaskBucketRules.InBucket(bucket, now));
-            }
+            var total = await harness.Analytics.CountTasksAsync(scoped.Tasks);
+            var buckets = await harness.Analytics.CountByStatusAsync(scoped.Tasks, scoped.Filter.NowUtc);
+            var sum = buckets.Pending + buckets.InProgress + buckets.Completed + buckets.Overdue;
 
             Assert.Equal(total, sum);
         }

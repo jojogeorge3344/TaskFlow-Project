@@ -1,13 +1,11 @@
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
-using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Common.Rules;
-using TaskFlow.Api.Persistence;
-using TaskEntity = TaskFlow.Api.Models.Entities.Task;
-using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
-using static TaskFlow.Infrastructure.Analytics.AnalyticsCounting;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 
-namespace TaskFlow.Infrastructure.Analytics;
+namespace TaskFlow.Api.Services.Dashboard.Analytics;
 
 public class EmployeeAnalyticsService : IEmployeeAnalyticsService
 {
@@ -17,13 +15,13 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
 
     private const int UpcomingListSize = 10;
 
-    private readonly AppDbContext _dbContext;
+    private readonly IAnalyticsRepository _analytics;
     private readonly IEmployeeDashboardScope _scope;
     private readonly IAppClock _clock;
 
-    public EmployeeAnalyticsService(AppDbContext dbContext, IEmployeeDashboardScope scope, IAppClock clock)
+    public EmployeeAnalyticsService(IAnalyticsRepository analytics, IEmployeeDashboardScope scope, IAppClock clock)
     {
-        _dbContext = dbContext;
+        _analytics = analytics;
         _scope = scope;
         _clock = clock;
     }
@@ -41,8 +39,8 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
             _ => new DateOnly(today.Year, today.Month, 1)
         };
 
-        var own = _scope.OwnTasks(_dbContext.Tasks.AsNoTracking(), userId);
-        var byStatus = await TotalsAsync(own, now, cancellationToken);
+        var own = _scope.OwnTasks(userId);
+        var byStatus = await _analytics.CountByStatusAsync(own, now, cancellationToken);
         var trend = await TrendAsync(own, from, today, timeZone, cancellationToken);
 
         return new EmployeeAnalyticsResponseDto(
@@ -52,7 +50,7 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
             await DepartmentAsync(userId, now, cancellationToken),
             new EmployeeSummaryDto(byStatus.Total, byStatus.CompletionPercent, byStatus.Completed, byStatus.Open),
             byStatus,
-            await ByPriorityAsync(own, cancellationToken),
+            await _analytics.CountByPriorityAsync(own, cancellationToken),
             await UpcomingAsync(own, now, today, timeZone, cancellationToken),
             await ProjectsAsync(userId, own, cancellationToken),
             trend,
@@ -70,55 +68,38 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
     private async Task<EmployeeDepartmentDto?> DepartmentAsync(int userId, DateTime now, CancellationToken cancellationToken)
     {
         // A person may belong to several departments; the card shows the first by name.
-        var departmentId = await _dbContext.UserDepartments
-            .Where(membership => membership.UserId == userId)
-            .OrderBy(membership => membership.Department.Name)
-            .Select(membership => (int?)membership.DepartmentId)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (departmentId is null)
+        if (await _analytics.GetFirstDepartmentIdAsync(userId, cancellationToken) is not int departmentId)
         {
             return null;
         }
 
-        var name = await _dbContext.Departments
-            .Where(department => department.Id == departmentId)
-            .Select(department => department.Name)
-            .SingleOrDefaultAsync(cancellationToken);
+        var name = await _analytics.GetDepartmentNameAsync(departmentId, cancellationToken);
         if (name is null)
         {
             return null;
         }
 
-        var members = _dbContext.Users.Where(user =>
-            user.IsActive && user.DepartmentMemberships.Any(membership => membership.DepartmentId == departmentId));
-        var tasks = _dbContext.Tasks.AsNoTracking()
-            .Where(TaskBucketRules.IsCounted())
-            .Where(task => members.Any(member => member.Id == task.AssignedToUserId));
-
-        if (await members.CountAsync(cancellationToken) < MinDepartmentMembersForBreakdown)
+        if (await _analytics.CountActiveDepartmentMembersAsync(departmentId, cancellationToken) < MinDepartmentMembersForBreakdown)
         {
             return new EmployeeDepartmentDto(name, true, null, null);
         }
 
-        var totals = await TotalsAsync(tasks, now, cancellationToken);
+        var totals = await _analytics.CountByStatusAsync(
+            new AnalyticsTaskSet(ActiveMembersOfDepartmentId: departmentId),
+            now,
+            cancellationToken);
         return new EmployeeDepartmentDto(name, false, totals.Total, totals);
     }
 
-    private static async Task<IReadOnlyList<EmployeeDeadlineDto>> UpcomingAsync(
-        IQueryable<TaskEntity> own,
+    private async Task<IReadOnlyList<EmployeeDeadlineDto>> UpcomingAsync(
+        AnalyticsTaskSet own,
         DateTime now,
         DateOnly today,
         TimeZoneInfo timeZone,
         CancellationToken cancellationToken)
     {
         var horizon = DeadlineBucketRules.BoundsFor(now, timeZone).HorizonUtc;
-        var rows = await own
-            .Where(task => task.Status != TaskStatus.Completed && task.Deadline < horizon)
-            .OrderBy(task => task.Deadline)
-            .ThenBy(task => task.Id)
-            .Take(UpcomingListSize)
-            .Select(task => new { task.Id, task.TaskCode, task.Title, task.Priority, task.Deadline })
-            .ToListAsync(cancellationToken);
+        var rows = await _analytics.GetOpenDueBeforeAsync(own, horizon, UpcomingListSize, cancellationToken);
 
         return rows
             .Select(task =>
@@ -140,34 +121,15 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
 
     private async Task<IReadOnlyList<EmployeeProjectDto>> ProjectsAsync(
         int userId,
-        IQueryable<TaskEntity> own,
+        AnalyticsTaskSet own,
         CancellationToken cancellationToken)
     {
-        var perProject = await own
-            .Where(task => task.ProjectId != null)
-            .GroupBy(task => task.ProjectId!.Value)
-            .Select(group => new
-            {
-                ProjectId = group.Key,
-                Total = group.Count(),
-                Completed = group.Count(task => task.Status == TaskStatus.Completed),
-                Latest = group
-                    .Where(task => task.Status != TaskStatus.Completed)
-                    .Max(task => (DateTime?)task.Deadline)
-            })
-            .ToListAsync(cancellationToken);
-
-        var memberships = await _dbContext.UserProjectAllocations
-            .Where(allocation => allocation.UserId == userId)
-            .Select(allocation => allocation.ProjectId)
-            .ToListAsync(cancellationToken);
+        var perProject = await _analytics.GetProjectProgressAsync(own, cancellationToken);
+        var memberships = await _analytics.GetAllocatedProjectIdsAsync(userId, cancellationToken);
         var ids = perProject.Select(row => row.ProjectId).ToList();
         ids.AddRange(memberships.Where(memberOf => !ids.Contains(memberOf)));
 
-        var projects = await _dbContext.Projects
-            .Where(project => ids.Contains(project.Id))
-            .Select(project => new { project.Id, project.Name })
-            .ToListAsync(cancellationToken);
+        var projects = await _analytics.GetProjectsByIdsAsync(ids, cancellationToken);
 
         return projects
             .OrderBy(project => project.Name)
@@ -182,13 +144,13 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
                     total,
                     completed,
                     TaskBucketRules.CompletionPercent(completed, total),
-                    row?.Latest);
+                    row?.LatestOpenDeadline);
             })
             .ToList();
     }
 
-    private static async Task<IReadOnlyList<TrendPointDto>> TrendAsync(
-        IQueryable<TaskEntity> own,
+    private async Task<IReadOnlyList<TrendPointDto>> TrendAsync(
+        AnalyticsTaskSet own,
         DateOnly from,
         DateOnly to,
         TimeZoneInfo timeZone,
@@ -197,18 +159,10 @@ public class EmployeeAnalyticsService : IEmployeeAnalyticsService
         var fromUtc = ReminderCalculator.LocalMidnightUtc(from, timeZone);
         var toUtc = ReminderCalculator.LocalMidnightUtc(to.AddDays(1), timeZone);
 
-        var created = await QuarterHourCountsAsync(
-            own.Where(task => task.CreatedAt >= fromUtc && task.CreatedAt < toUtc).Select(task => task.CreatedAt),
-            cancellationToken);
-        var completed = await QuarterHourCountsAsync(
-            own.Where(task => task.Status == TaskStatus.Completed
-                    && task.CompletedAt != null
-                    && task.CompletedAt >= fromUtc
-                    && task.CompletedAt < toUtc)
-                .Select(task => task.CompletedAt!.Value),
-            cancellationToken);
+        var created = await _analytics.CountCreatedPerQuarterHourAsync(own, fromUtc, toUtc, cancellationToken);
+        var completed = await _analytics.CountCompletedPerQuarterHourAsync(own, fromUtc, toUtc, completedStatusOnly: true, cancellationToken);
 
-        Dictionary<DateOnly, int> PerDay(List<QuarterHourCount> rows) => rows
+        Dictionary<DateOnly, int> PerDay(IReadOnlyList<QuarterHourCount> rows) => rows
             .GroupBy(row => ReminderCalculator.LocalDate(row.Start, timeZone))
             .ToDictionary(group => group.Key, group => group.Sum(row => row.Count));
 

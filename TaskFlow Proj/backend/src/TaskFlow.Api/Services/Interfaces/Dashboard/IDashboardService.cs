@@ -1,4 +1,6 @@
-namespace TaskFlow.Application.Dashboard;
+using TaskFlow.Api.Dtos.Dashboard;
+
+namespace TaskFlow.Api.Services.Interfaces.Dashboard;
 
 public interface IDashboardService
 {

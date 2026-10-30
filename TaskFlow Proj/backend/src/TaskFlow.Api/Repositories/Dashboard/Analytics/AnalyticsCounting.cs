@@ -1,20 +1,17 @@
+using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 
-namespace TaskFlow.Infrastructure.Analytics;
+namespace TaskFlow.Api.Repositories.Dashboard.Analytics;
 
 internal sealed record KeyCount(int Key, int Count);
-
-internal sealed record QuarterHourCount(DateTime Start, int Count);
 
 /// <summary>Bucket counting shared by the Admin and Manager analytics so both use one definition of every bucket.</summary>
 internal static class AnalyticsCounting
 {
-    public static readonly BucketCountsDto Empty = new(0, 0, 0, 0);
-
     public static async Task<BucketCountsDto> TotalsAsync(
         IQueryable<TaskEntity> tasks,
         DateTime now,
@@ -59,14 +56,6 @@ internal static class AnalyticsCounting
 
         return perKey.ToDictionary(pair => pair.Key, pair => ToBuckets(pair.Value));
     }
-
-    public static BucketCountsDto Sum(IEnumerable<BucketCountsDto> parts) => parts.Aggregate(
-        Empty,
-        (total, part) => new BucketCountsDto(
-            total.Pending + part.Pending,
-            total.InProgress + part.InProgress,
-            total.Completed + part.Completed,
-            total.Overdue + part.Overdue));
 
     /// <summary>Counts instants per quarter hour so a caller can bucket them into local days in any timezone.</summary>
     public static async Task<List<QuarterHourCount>> QuarterHourCountsAsync(

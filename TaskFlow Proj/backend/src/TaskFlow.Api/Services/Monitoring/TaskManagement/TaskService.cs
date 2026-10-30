@@ -18,7 +18,6 @@ using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Rules;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskRecipient = TaskFlow.Api.Models.Entities.TaskRecipient;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

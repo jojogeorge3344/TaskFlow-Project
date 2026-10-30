@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Dashboard;
+using TaskFlow.Api.Repositories.Dashboard.Analytics;
+using TaskFlow.Api.Services.Dashboard;
+using TaskFlow.Api.Services.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
@@ -135,4 +140,22 @@ internal static class TestServices
 
     public static ProjectService Projects(AppDbContext db, IUserAllocationService? allocations = null) =>
         new(new ProjectRepository(db), allocations ?? Allocations(db), new UnitOfWork(db));
+
+    public static AdminDashboardScope AdminScope(AppDbContext db, IAppClock clock) =>
+        new(new AnalyticsRepository(db), clock);
+
+    public static ManagerDashboardScope ManagerScope(AppDbContext db, IAppClock clock) =>
+        new(new AnalyticsRepository(db), new EmployeeRepository(db), clock);
+
+    public static AdminAnalyticsService AdminAnalytics(AppDbContext db, IDashboardScope scope, IAppClock clock) =>
+        new(new AnalyticsRepository(db), scope, clock);
+
+    public static ManagerAnalyticsService ManagerAnalytics(AppDbContext db, IManagerDashboardScope scope, IAppClock clock) =>
+        new(new AnalyticsRepository(db), scope, clock);
+
+    public static EmployeeAnalyticsService EmployeeAnalytics(AppDbContext db, IAppClock clock) =>
+        new(new AnalyticsRepository(db), new EmployeeDashboardScope(), clock);
+
+    public static DashboardService Dashboard(AppDbContext db, IAppClock clock) =>
+        new(new DashboardRepository(db), clock, ManagerScope(db, clock));
 }

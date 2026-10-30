@@ -1,4 +1,4 @@
-namespace TaskFlow.Application.Dashboard.Analytics;
+namespace TaskFlow.Api.Dtos.Dashboard.Analytics;
 
 public record TeamSummaryDto(int TeamSize, int TotalProjects, BucketCountsDto Tasks)
 {

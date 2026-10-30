@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Dashboard.Analytics;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Communication.Notification;
@@ -12,7 +13,6 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
@@ -36,6 +36,8 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
     }
 
     public AppDbContext Db => _inner.Db;
+
+    public TaskFlow.Api.Repositories.Dashboard.Analytics.AnalyticsRepository Analytics => new(Db);
 
     public FakeTimeProvider Clock => _inner.Clock;
 
@@ -61,8 +63,8 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             inner.Clock,
             Options.Create(new ApplicationOptions { Timezone = timezone }),
             NullLogger<AppClock>.Instance);
-        var scope = new AdminDashboardScope(inner.Db, appClock);
-        var managerScope = new ManagerDashboardScope(inner.Db, appClock);
+        var scope = TestServices.AdminScope(inner.Db, appClock);
+        var managerScope = TestServices.ManagerScope(inner.Db, appClock);
         var tasks = TestServices.Tasks(
             inner.Db,
             TestServices.TaskActivity(inner.Db, inner.Clock),
@@ -75,11 +77,11 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
         return new AnalyticsHarness(
             inner,
             scope,
-            new AdminAnalyticsService(inner.Db, scope, appClock),
+            TestServices.AdminAnalytics(inner.Db, scope, appClock),
             tasks,
             managerScope,
-            new ManagerAnalyticsService(inner.Db, managerScope, appClock),
-            new EmployeeAnalyticsService(inner.Db, new EmployeeDashboardScope(inner.Db), appClock));
+            TestServices.ManagerAnalytics(inner.Db, managerScope, appClock),
+            TestServices.EmployeeAnalytics(inner.Db, appClock));
     }
 
     public Project AddProject(string name) => _inner.AddProject(name);

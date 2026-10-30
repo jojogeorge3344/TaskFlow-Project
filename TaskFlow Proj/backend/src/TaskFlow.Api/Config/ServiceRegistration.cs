@@ -17,13 +17,13 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Application.Mfa.IMfaService, TaskFlow.Application.Mfa.MfaService>();
 
         // Dashboard
-        services.AddScoped<TaskFlow.Application.Dashboard.IDashboardService, TaskFlow.Infrastructure.Services.DashboardService>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IDashboardScope, TaskFlow.Infrastructure.Analytics.AdminDashboardScope>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IManagerDashboardScope, TaskFlow.Infrastructure.Analytics.ManagerDashboardScope>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IManagerAnalyticsService, TaskFlow.Infrastructure.Analytics.ManagerAnalyticsService>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IAdminAnalyticsService, TaskFlow.Infrastructure.Analytics.AdminAnalyticsService>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IEmployeeDashboardScope, TaskFlow.Infrastructure.Analytics.EmployeeDashboardScope>();
-        services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IEmployeeAnalyticsService, TaskFlow.Infrastructure.Analytics.EmployeeAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.IDashboardService, TaskFlow.Api.Services.Dashboard.DashboardService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.AdminDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IManagerDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.ManagerDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IManagerAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.ManagerAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IAdminAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.AdminAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IEmployeeDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IEmployeeAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeAnalyticsService>();
 
         // Monitoring
         services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.ITaskService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskService>();

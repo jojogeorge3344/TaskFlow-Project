@@ -1,4 +1,4 @@
-namespace TaskFlow.Application.Dashboard.Analytics;
+namespace TaskFlow.Api.Dtos.Dashboard.Analytics;
 
 /// <summary>The period presets of the Employee dashboard trend and completed-work summary.</summary>
 public enum EmployeeAnalyticsPeriod

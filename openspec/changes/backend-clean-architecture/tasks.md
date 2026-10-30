@@ -53,8 +53,8 @@
 
 ## 8. Module: Dashboard
 
-- [ ] 8.1 `Dashboard`: `DashboardRepository`, `DashboardService` and controller. Verify that `DashboardServiceTests` and `DashboardEndpointsTests` pass
-- [ ] 8.2 `Dashboard/Analytics`: split each `*DashboardScope` into a scope service (allowed ids) and repository filters (design D5), and rewrite the Admin/Manager/Employee analytics services onto analytics repositories. Verify that the `*Analytics*Tests`, `*Scope*Tests`, `AnalyticsDrillDownTests`, `AdminAnalyticsQueryShapeTests` (moved to the repository) and the analytics endpoint and isolation tests pass
+- [x] 8.1 `Dashboard`: `DashboardRepository`, `DashboardService` and controller. Verify that `DashboardServiceTests` and `DashboardEndpointsTests` pass
+- [x] 8.2 `Dashboard/Analytics`: split each `*DashboardScope` into a scope service (allowed ids) and repository filters (design D5), and rewrite the Admin/Manager/Employee analytics services onto analytics repositories. Verify that the `*Analytics*Tests`, `*Scope*Tests`, `AnalyticsDrillDownTests`, `AdminAnalyticsQueryShapeTests` (moved to the repository) and the analytics endpoint and isolation tests pass
 
 ## 9. Module: Reports
 

@@ -1,4 +1,4 @@
-namespace TaskFlow.Application.Dashboard;
+namespace TaskFlow.Api.Dtos.Dashboard;
 
 public record AdminDashboardDto(
     int TotalEmployees,

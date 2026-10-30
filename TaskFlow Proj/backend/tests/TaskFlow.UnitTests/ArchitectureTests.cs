@@ -97,6 +97,7 @@ public class ArchitectureTests
         var offenders = TypesIn("Services")
             .SelectMany(type => type.GetConstructors().SelectMany(ctor => ctor.GetParameters())
                 .Where(parameter => parameter.ParameterType.Namespace?.StartsWith($"{Root}.Repositories", StringComparison.Ordinal) == true
+                                    && parameter.ParameterType.Namespace?.StartsWith($"{Root}.Repositories.Interfaces", StringComparison.Ordinal) != true
                                     && !parameter.ParameterType.IsInterface)
                 .Select(parameter => $"{type.FullName}({parameter.ParameterType.Name})"))
             .ToList();

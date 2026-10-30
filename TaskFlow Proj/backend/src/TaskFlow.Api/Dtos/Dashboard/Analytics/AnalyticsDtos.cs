@@ -1,6 +1,6 @@
 using TaskFlow.Api.Common.Rules;
 
-namespace TaskFlow.Application.Dashboard.Analytics;
+namespace TaskFlow.Api.Dtos.Dashboard.Analytics;
 
 public record BucketCountsDto(int Pending, int InProgress, int Completed, int Overdue)
 {

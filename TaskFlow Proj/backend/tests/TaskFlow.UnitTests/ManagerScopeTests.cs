@@ -1,5 +1,6 @@
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Common.Security;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -12,7 +13,7 @@ public class ManagerScopeTests
     private static async Task<List<int>> TaskIdsAsync(AnalyticsHarness harness, int managerId, AnalyticsFilter? filter = null)
     {
         var scoped = await harness.ManagerScope.ScopeAsync(managerId, filter ?? new AnalyticsFilter(), CancellationToken.None);
-        return await scoped.Tasks.Select(task => task.Id).OrderBy(id => id).ToListAsync();
+        return (await harness.Analytics.GetTaskIdsAsync(scoped.Tasks)).Order().ToList();
     }
 
     [Fact]
@@ -23,7 +24,7 @@ public class ManagerScopeTests
         var other = harness.AddDepartment("Other");
         var report = harness.AddUser("e1", departmentId: other.Id, managerId: manager.Id);
 
-        Assert.Equal([report.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([report.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -34,7 +35,7 @@ public class ManagerScopeTests
         var department = harness.AddDepartment("Eng", manager);
         var member = harness.AddUser("e1", departmentId: department.Id);
 
-        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     private static void AddToProject(AnalyticsHarness harness, TaskFlow.Api.Models.Entities.User user, TaskFlow.Api.Models.Entities.Project project, bool manages = false)
@@ -63,8 +64,8 @@ public class ManagerScopeTests
         AddToProject(harness, member, project);
         AddToProject(harness, inactive, project);
 
-        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
-        Assert.DoesNotContain(outsider.Id, await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
+        Assert.DoesNotContain(outsider.Id, await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -77,7 +78,7 @@ public class ManagerScopeTests
         AddToProject(harness, manager, project, manages: false);
         AddToProject(harness, member, project);
 
-        Assert.Empty(await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Empty(await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -91,7 +92,7 @@ public class ManagerScopeTests
         AddToProject(harness, manager, project, manages: true);
         AddToProject(harness, member, project);
 
-        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public class ManagerScopeTests
         var department = harness.AddDepartment("Eng", manager);
         var both = harness.AddUser("e1", departmentId: department.Id, managerId: manager.Id);
 
-        Assert.Equal([both.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([both.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -129,7 +130,7 @@ public class ManagerScopeTests
         harness.AddUser("e2", managerId: manager.Id, isActive: false);
         harness.AddUser("e3", managerId: otherManager.Id);
 
-        Assert.Equal([kept.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Equal([kept.Id], await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
     }
 
     [Fact]
@@ -140,7 +141,7 @@ public class ManagerScopeTests
         harness.AddDepartment("Eng", manager);
         harness.AddTask(manager);
 
-        Assert.Empty(await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Empty(await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
         Assert.Empty(await TaskIdsAsync(harness, manager.Id));
     }
 
@@ -169,7 +170,7 @@ public class ManagerScopeTests
         var outsider = harness.AddUser("e1");
         harness.AddTask(outsider);
 
-        Assert.Empty(await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
+        Assert.Empty(await harness.ManagerScope.TeamUserIdsAsync(manager.Id));
         Assert.Empty(await TaskIdsAsync(harness, manager.Id));
     }
 
@@ -187,7 +188,7 @@ public class ManagerScopeTests
         harness.AddTask(member, projectId: viaTeam.Id);
         harness.AddTask(outsider, projectId: foreign.Id);
 
-        var ids = await harness.ManagerScope.ProjectIds(manager.Id).OrderBy(id => id).ToListAsync();
+        var ids = (await harness.ManagerScope.ProjectIdsAsync(manager.Id)).Order().ToList();
 
         Assert.Equal([assignedOnly.Id, viaTeam.Id], ids);
     }
@@ -208,7 +209,7 @@ public class ManagerScopeFilterTests
 
         var scoped = await harness.ManagerScope.ScopeAsync(manager.Id, new AnalyticsFilter(EmployeeId: member.Id), CancellationToken.None);
 
-        Assert.Equal([task.Id], await scoped.Tasks.Select(t => t.Id).ToListAsync());
+        Assert.Equal([task.Id], await harness.Analytics.GetTaskIdsAsync(scoped.Tasks));
     }
 
     [Fact]
@@ -245,7 +246,7 @@ public class ManagerScopeFilterTests
 
         var scoped = await harness.ManagerScope.ScopeAsync(manager.Id, new AnalyticsFilter(ProjectId: project.Id), CancellationToken.None);
 
-        Assert.Equal([inProject.Id], await scoped.Tasks.Select(t => t.Id).ToListAsync());
+        Assert.Equal([inProject.Id], await harness.Analytics.GetTaskIdsAsync(scoped.Tasks));
     }
 
     [Fact]
@@ -287,7 +288,7 @@ public class ManagerScopeFilterTests
             new AnalyticsFilter(DepartmentId: other.Id, ManagerId: outsider.Id),
             CancellationToken.None);
 
-        Assert.Equal([kept.Id], await scoped.Tasks.Select(t => t.Id).ToListAsync());
+        Assert.Equal([kept.Id], await harness.Analytics.GetTaskIdsAsync(scoped.Tasks));
         Assert.Null(scoped.Filter.DepartmentId);
         Assert.Null(scoped.Filter.ManagerId);
     }

@@ -1,4 +1,4 @@
-using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

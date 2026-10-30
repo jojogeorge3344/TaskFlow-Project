@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Controllers.Monitoring.TaskManagement;

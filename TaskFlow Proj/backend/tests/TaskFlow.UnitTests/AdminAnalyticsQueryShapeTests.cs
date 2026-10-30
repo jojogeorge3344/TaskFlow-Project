@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ApplicationSettings;
@@ -9,11 +11,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Api.Persistence;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
@@ -56,7 +56,7 @@ public class AdminAnalyticsQueryShapeTests
             new FakeTimeProvider(Now),
             Options.Create(new ApplicationOptions { Timezone = "UTC" }),
             NullLogger<AppClock>.Instance);
-        var service = new AdminAnalyticsService(db, new AdminDashboardScope(db, clock), clock);
+        var service = TestServices.AdminAnalytics(db, TestServices.AdminScope(db, clock), clock);
         return (connection, db, service, counter);
     }
 

@@ -1,6 +1,7 @@
-using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
 
-namespace TaskFlow.Application.Dashboard.Analytics;
+namespace TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
 
 public sealed record ResolvedAnalyticsFilter(
     DateOnly From,
@@ -17,9 +18,11 @@ public sealed record ResolvedAnalyticsFilter(
     DateTime NowUtc,
     TimeZoneInfo TimeZone);
 
+/// <summary>The tasks a dashboard reads, decided by its scope: with the date range, and the same set without it (for the
+/// trend, which spans its own range).</summary>
 public sealed record ScopedTasks(
-    IQueryable<TaskEntity> Tasks,
-    IQueryable<TaskEntity> TasksIgnoringDates,
+    AnalyticsTaskSet Tasks,
+    AnalyticsTaskSet TasksIgnoringDates,
     ResolvedAnalyticsFilter Filter);
 
 public interface IDashboardScope

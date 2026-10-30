@@ -1,25 +1,23 @@
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
-using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Common.Rules;
-using TaskFlow.Api.Persistence;
-using TaskEntity = TaskFlow.Api.Models.Entities.Task;
-using static TaskFlow.Infrastructure.Analytics.AnalyticsCounting;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using static TaskFlow.Api.Services.Dashboard.Analytics.AnalyticsBuckets;
 
-namespace TaskFlow.Infrastructure.Analytics;
+namespace TaskFlow.Api.Services.Dashboard.Analytics;
 
 public class ManagerAnalyticsService : IManagerAnalyticsService
 {
     private const string NoProject = "No project";
-    private const int NoKey = 0;
 
-    private readonly AppDbContext _dbContext;
+    private readonly IAnalyticsRepository _analytics;
     private readonly IManagerDashboardScope _scope;
     private readonly IAppClock _clock;
 
-    public ManagerAnalyticsService(AppDbContext dbContext, IManagerDashboardScope scope, IAppClock clock)
+    public ManagerAnalyticsService(IAnalyticsRepository analytics, IManagerDashboardScope scope, IAppClock clock)
     {
-        _dbContext = dbContext;
+        _analytics = analytics;
         _scope = scope;
         _clock = clock;
     }
@@ -34,7 +32,7 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
         var now = resolved.NowUtc;
 
         var team = await TeamAsync(managerId, cancellationToken);
-        var byStatus = await TotalsAsync(scoped.Tasks, now, cancellationToken);
+        var byStatus = await _analytics.CountByStatusAsync(scoped.Tasks, now, cancellationToken);
         var byProject = await ByProjectAsync(managerId, scoped.Tasks, resolved, cancellationToken);
 
         return new ManagerAnalyticsResponseDto(
@@ -51,7 +49,7 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
                 resolved.ProjectId is null ? byProject.Count(project => project.ProjectId is not null) : 1,
                 byStatus),
             byStatus,
-            await ByPriorityAsync(scoped.Tasks, cancellationToken),
+            await _analytics.CountByPriorityAsync(scoped.Tasks, cancellationToken),
             await ByEmployeeAsync(managerId, filter, scoped, team, cancellationToken),
             byProject,
             await AttentionAsync(scoped.Tasks, byProject, resolved, cancellationToken));
@@ -62,32 +60,26 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
         var timeZone = await _clock.GetTimeZoneAsync(cancellationToken);
         var today = ReminderCalculator.LocalDate(_clock.UtcNow, timeZone);
 
-        var employees = await _dbContext.Users
-            .Where(user => _scope.TeamUserIds(managerId).Contains(user.Id))
-            .OrderBy(user => user.FullName)
-            .Select(user => new AnalyticsOptionDto(user.Id, user.FullName))
-            .ToListAsync(cancellationToken);
-        var projectIds = _scope.ProjectIds(managerId);
-        var projects = await _dbContext.Projects
-            .Where(project => projectIds.Contains(project.Id))
-            .OrderBy(project => project.Name)
-            .Select(project => new AnalyticsOptionDto(project.Id, project.Name))
-            .ToListAsync(cancellationToken);
+        var employees = (await TeamAsync(managerId, cancellationToken))
+            .OrderBy(member => member.Value)
+            .Select(member => new AnalyticsOptionDto(member.Key, member.Value))
+            .ToList();
+        var projects = await _analytics.GetProjectsAsync(
+            null,
+            await _scope.ProjectIdsAsync(managerId, cancellationToken),
+            cancellationToken);
 
         return new ManagerFilterOptionsDto(today, timeZone.Id, employees, projects);
     }
 
-    private async Task<Dictionary<int, string>> TeamAsync(int managerId, CancellationToken cancellationToken) =>
-        await _dbContext.Users
-            .Where(user => _scope.TeamUserIds(managerId).Contains(user.Id))
-            .Select(user => new { user.Id, user.FullName })
-            .ToDictionaryAsync(user => user.Id, user => user.FullName, cancellationToken);
+    private async Task<IReadOnlyDictionary<int, string>> TeamAsync(int managerId, CancellationToken cancellationToken) =>
+        await _analytics.GetUserNamesAsync(await _scope.TeamUserIdsAsync(managerId, cancellationToken), cancellationToken);
 
     private async Task<IReadOnlyList<TeamEmployeeDto>> ByEmployeeAsync(
         int managerId,
         AnalyticsFilter requested,
         ScopedTasks scoped,
-        Dictionary<int, string> team,
+        IReadOnlyDictionary<int, string> team,
         CancellationToken cancellationToken)
     {
         // The flags compare a member with the whole team, so an employee filter narrows the rows but not the baseline.
@@ -100,22 +92,7 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
             baseline = (await _scope.ScopeAsync(managerId, wholeTeam, cancellationToken)).Tasks;
         }
 
-        var recipients = _dbContext.TaskRecipients;
-        var perMember = await CountByAsync(
-            baseline,
-            scoped.Filter.NowUtc,
-            query =>
-            {
-                var assignees = query.Select(task => new { TaskId = task.Id, UserId = task.AssignedToUserId });
-                var shared = query.SelectMany(task => recipients
-                    .Where(recipient => recipient.TaskId == task.Id)
-                    .Select(recipient => new { TaskId = recipient.TaskId, UserId = recipient.UserId }));
-                return assignees
-                    .Union(shared)
-                    .GroupBy(pair => pair.UserId)
-                    .Select(group => new KeyCount(group.Key, group.Count()));
-            },
-            cancellationToken);
+        var perMember = await _analytics.CountByPersonAsync(baseline, scoped.Filter.NowUtc, cancellationToken);
 
         var counts = team.Keys.ToDictionary(id => id, id => perMember.GetValueOrDefault(id, Empty));
         var mean = counts.Count == 0 ? 0 : counts.Values.Average(bucket => bucket.Open);
@@ -136,35 +113,16 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
 
     private async Task<IReadOnlyList<ProjectAnalyticsDto>> ByProjectAsync(
         int managerId,
-        IQueryable<TaskEntity> tasks,
+        AnalyticsTaskSet tasks,
         ResolvedAnalyticsFilter filter,
         CancellationToken cancellationToken)
     {
-        var perProject = await CountByAsync(
-            tasks,
-            filter.NowUtc,
-            query => query
-                .GroupBy(task => task.ProjectId ?? NoKey)
-                .Select(group => new KeyCount(group.Key, group.Count())),
+        var perProject = await _analytics.CountByProjectAsync(tasks, filter.NowUtc, cancellationToken);
+        var latestDeadlines = await _analytics.GetLatestDeadlineByProjectAsync(tasks, cancellationToken);
+        var named = await _analytics.GetProjectsAsync(
+            filter.ProjectId,
+            await _scope.ProjectIdsAsync(managerId, cancellationToken),
             cancellationToken);
-
-        var latestDeadlines = (await tasks
-                .GroupBy(task => task.ProjectId ?? NoKey)
-                .Select(group => new { group.Key, Latest = group.Max(task => task.Deadline) })
-                .ToListAsync(cancellationToken))
-            .ToDictionary(row => row.Key, row => row.Latest);
-
-        var inScope = _scope.ProjectIds(managerId);
-        var projects = _dbContext.Projects.Where(project => inScope.Contains(project.Id));
-        if (filter.ProjectId is int onlyProject)
-        {
-            projects = projects.Where(project => project.Id == onlyProject);
-        }
-
-        var named = await projects
-            .OrderBy(project => project.Name)
-            .Select(project => new { project.Id, project.Name })
-            .ToListAsync(cancellationToken);
 
         var result = named
             .Select(project => new ProjectAnalyticsDto(
@@ -186,39 +144,19 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
     }
 
     private async Task<TeamAttentionDto> AttentionAsync(
-        IQueryable<TaskEntity> tasks,
+        AnalyticsTaskSet tasks,
         IReadOnlyList<ProjectAnalyticsDto> byProject,
         ResolvedAnalyticsFilter filter,
         CancellationToken cancellationToken)
     {
-        var overdue = await tasks
-            .Where(TaskBucketRules.InBucket(TaskBucket.Overdue, filter.NowUtc))
-            .OrderBy(task => task.Deadline)
-            .ThenBy(task => task.Id)
-            .Take(ManagerTeamThresholds.AttentionListSize)
-            .Select(task => new
-            {
-                task.Id,
-                task.TaskCode,
-                task.Title,
-                task.Deadline,
-                task.AssignedToUserId,
-                task.ProjectId
-            })
-            .ToListAsync(cancellationToken);
+        var overdue = await _analytics.GetOverdueAsync(tasks, filter.NowUtc, ManagerTeamThresholds.AttentionListSize, cancellationToken);
 
-        var userIds = overdue.Select(task => task.AssignedToUserId).Distinct().ToList();
-        var names = await _dbContext.Users
-            .IgnoreQueryFilters()
-            .Where(user => userIds.Contains(user.Id))
-            .Select(user => new { user.Id, user.FullName })
-            .ToDictionaryAsync(user => user.Id, user => user.FullName, cancellationToken);
-        var projectIds = overdue.Where(task => task.ProjectId != null).Select(task => task.ProjectId!.Value).Distinct().ToList();
-        var projectNames = await _dbContext.Projects
-            .IgnoreQueryFilters()
-            .Where(project => projectIds.Contains(project.Id))
-            .Select(project => new { project.Id, project.Name })
-            .ToDictionaryAsync(project => project.Id, project => project.Name, cancellationToken);
+        var names = await _analytics.GetUserNamesIncludingDeletedAsync(
+            overdue.Select(task => task.AssignedToUserId).Distinct().ToList(),
+            cancellationToken);
+        var projectNames = await _analytics.GetProjectNamesIncludingDeletedAsync(
+            overdue.Where(task => task.ProjectId != null).Select(task => task.ProjectId!.Value).Distinct().ToList(),
+            cancellationToken);
 
         var delayed = overdue
             .Select(task => new DelayedTaskDto(

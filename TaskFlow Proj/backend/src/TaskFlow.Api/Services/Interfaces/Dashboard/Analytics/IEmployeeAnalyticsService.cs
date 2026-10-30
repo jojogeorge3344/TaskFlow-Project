@@ -1,4 +1,7 @@
-namespace TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Common.Exceptions;
+
+namespace TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
 
 public interface IEmployeeAnalyticsService
 {

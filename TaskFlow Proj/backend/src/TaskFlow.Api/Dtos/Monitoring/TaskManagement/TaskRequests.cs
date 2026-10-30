@@ -1,4 +1,4 @@
-using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Common.Rules;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

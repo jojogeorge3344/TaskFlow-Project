@@ -1,5 +1,5 @@
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Api.Persistence;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 

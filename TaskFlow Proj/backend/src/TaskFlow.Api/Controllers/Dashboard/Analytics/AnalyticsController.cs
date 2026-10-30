@@ -3,40 +3,27 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Dashboard;
-using TaskFlow.Application.Dashboard.Analytics;
+using TaskFlow.Api.Dtos.Dashboard.Analytics;
+using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
 
-namespace TaskFlow.Api.Controllers;
+namespace TaskFlow.Api.Controllers.Dashboard.Analytics;
 
 [ApiController]
 [Route("api/v1/dashboard")]
-public class DashboardController : ControllerBase
+public class AnalyticsController : ControllerBase
 {
-    private readonly IDashboardService _dashboardService;
     private readonly IAdminAnalyticsService _analyticsService;
-
     private readonly IManagerAnalyticsService _managerAnalyticsService;
-
     private readonly IEmployeeAnalyticsService _employeeAnalyticsService;
 
-    public DashboardController(
-        IDashboardService dashboardService,
+    public AnalyticsController(
         IAdminAnalyticsService analyticsService,
         IManagerAnalyticsService managerAnalyticsService,
         IEmployeeAnalyticsService employeeAnalyticsService)
     {
-        _dashboardService = dashboardService;
         _analyticsService = analyticsService;
         _managerAnalyticsService = managerAnalyticsService;
         _employeeAnalyticsService = employeeAnalyticsService;
-    }
-
-    [HttpGet("admin")]
-    [RequirePermission(PermissionKeys.DashboardViewOrganization)]
-    public async Task<ActionResult<AdminDashboardDto>> GetAdminStats(CancellationToken cancellationToken)
-    {
-        var stats = await _dashboardService.GetAdminStatsAsync(cancellationToken);
-        return Ok(stats);
     }
 
     [HttpGet("admin/analytics")]
@@ -55,19 +42,6 @@ public class DashboardController : ControllerBase
     public async Task<ActionResult<AnalyticsFilterOptionsDto>> GetAdminAnalyticsFilters(CancellationToken cancellationToken)
     {
         return Ok(await _analyticsService.GetFilterOptionsAsync(cancellationToken));
-    }
-
-    [HttpGet("manager")]
-    [RequirePermission(PermissionKeys.DashboardViewTeam)]
-    public async Task<ActionResult<ManagerDashboardDto>> GetManagerStats(CancellationToken cancellationToken)
-    {
-        if (!TryGetCallerId(out var managerId))
-        {
-            return Unauthorized();
-        }
-
-        var stats = await _dashboardService.GetManagerStatsAsync(managerId, cancellationToken);
-        return Ok(stats);
     }
 
     [HttpGet("manager/analytics")]
@@ -96,18 +70,6 @@ public class DashboardController : ControllerBase
         }
 
         return Ok(await _managerAnalyticsService.GetFilterOptionsAsync(managerId, cancellationToken));
-    }
-
-    [HttpGet("employee")]
-    [Authorize]
-    public async Task<ActionResult<EmployeeDashboardDto>> GetEmployeeStats(CancellationToken cancellationToken)
-    {
-        if (!TryGetCallerId(out var userId))
-        {
-            return Unauthorized();
-        }
-        var stats = await _dashboardService.GetEmployeeStatsAsync(userId, cancellationToken);
-        return Ok(stats);
     }
 
     /// <summary>Analytics of the caller's own tasks. The subject is always the session user; the only input is the
