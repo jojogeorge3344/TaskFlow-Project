@@ -20,11 +20,32 @@ public class ManagerDashboardScope : IManagerDashboardScope
         _resolver = new AnalyticsFilterResolver(analytics, clock);
     }
 
-    public Task<IReadOnlyList<int>> TeamUserIdsAsync(int managerId, CancellationToken cancellationToken = default) =>
-        _employees.GetTeamMemberIdsAsync(managerId, cancellationToken);
+    // The scope lives for one request, and a dashboard request asks for the same team and projects several times; each is
+    // read once per manager.
+    private readonly Dictionary<int, IReadOnlyList<int>> _teams = new();
+    private readonly Dictionary<int, IReadOnlyList<int>> _projects = new();
 
-    public async Task<IReadOnlyList<int>> ProjectIdsAsync(int managerId, CancellationToken cancellationToken = default) =>
-        await _analytics.GetManagerProjectIdsAsync(managerId, await TeamUserIdsAsync(managerId, cancellationToken), cancellationToken);
+    public async Task<IReadOnlyList<int>> TeamUserIdsAsync(int managerId, CancellationToken cancellationToken = default)
+    {
+        if (!_teams.TryGetValue(managerId, out var team))
+        {
+            team = await _employees.GetTeamMemberIdsAsync(managerId, cancellationToken);
+            _teams[managerId] = team;
+        }
+
+        return team;
+    }
+
+    public async Task<IReadOnlyList<int>> ProjectIdsAsync(int managerId, CancellationToken cancellationToken = default)
+    {
+        if (!_projects.TryGetValue(managerId, out var projects))
+        {
+            projects = await _analytics.GetManagerProjectIdsAsync(managerId, await TeamUserIdsAsync(managerId, cancellationToken), cancellationToken);
+            _projects[managerId] = projects;
+        }
+
+        return projects;
+    }
 
     public async Task<ScopedTasks> ScopeAsync(int managerId, AnalyticsFilter filter, CancellationToken cancellationToken)
     {

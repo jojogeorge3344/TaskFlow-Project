@@ -41,15 +41,31 @@ public class DashboardRepository : BaseRepository<TaskEntity>, IDashboardReposit
                 || Db.TaskRecipients.Any(recipient => recipient.TaskId == task.Id && recipient.UserId == own));
         }
 
-        var open = tasks.Where(task => task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled);
+        var todayStart = bounds.TodayStart;
+        var tomorrowStart = bounds.TomorrowStart;
+        var upcomingHorizon = bounds.UpcomingHorizon;
+        var now = bounds.Now;
 
-        return new DashboardTaskCounts(
-            await tasks.CountAsync(cancellationToken),
-            await open.CountAsync(cancellationToken),
-            await open.CountAsync(task => task.Deadline >= bounds.TodayStart && task.Deadline < bounds.TomorrowStart, cancellationToken),
-            await open.CountAsync(task => task.Deadline >= bounds.TomorrowStart && task.Deadline < bounds.UpcomingHorizon, cancellationToken),
-            await open.CountAsync(task => task.Deadline < bounds.Now, cancellationToken),
-            await tasks.CountAsync(task => task.Status == TaskStatus.InProgress || task.Status == TaskStatus.InQA, cancellationToken),
-            await tasks.CountAsync(task => task.Status == TaskStatus.Completed, cancellationToken));
+        // One grouped query: each row contributes 1 to every count it falls in.
+        var counts = await tasks
+            .Select(task => new
+            {
+                Open = task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled ? 1 : 0,
+                Deadline = task.Deadline,
+                InProgress = task.Status == TaskStatus.InProgress || task.Status == TaskStatus.InQA ? 1 : 0,
+                Completed = task.Status == TaskStatus.Completed ? 1 : 0
+            })
+            .GroupBy(_ => 1)
+            .Select(group => new DashboardTaskCounts(
+                group.Count(),
+                group.Sum(row => row.Open),
+                group.Sum(row => row.Open == 1 && row.Deadline >= todayStart && row.Deadline < tomorrowStart ? 1 : 0),
+                group.Sum(row => row.Open == 1 && row.Deadline >= tomorrowStart && row.Deadline < upcomingHorizon ? 1 : 0),
+                group.Sum(row => row.Open == 1 && row.Deadline < now ? 1 : 0),
+                group.Sum(row => row.InProgress),
+                group.Sum(row => row.Completed)))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return counts ?? new DashboardTaskCounts(0, 0, 0, 0, 0, 0, 0);
     }
 }

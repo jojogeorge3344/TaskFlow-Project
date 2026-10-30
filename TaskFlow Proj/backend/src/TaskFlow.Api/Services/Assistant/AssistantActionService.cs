@@ -307,7 +307,10 @@ public class AssistantActionService : IAssistantActionService
         {
             // The action was claimed before it ran, so any failure, expected or not, must leave it Failed and not
             // Confirmed. Application rule failures say why; anything else is logged and reported in general terms.
-            var expected = exception is AppException or ValidationException;
+            // A clash in the database (a concurrent edit, a duplicate value) is not a rule the user broke, so it is logged
+            // and reported in general terms like any other server failure.
+            var expected = exception is (AppException and not (ConcurrencyConflictException or UniqueConstraintException))
+                or ValidationException;
             if (!expected)
             {
                 _logger?.LogError(exception, "TFA action {ActionKind} failed unexpectedly", action.Kind);

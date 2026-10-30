@@ -495,17 +495,18 @@ public class TaskService : ITaskService
         var total = previous + request.Hours;
         task.ActualHours = total;
         task.UpdatedAt = Now;
-        await _activityService.AppendAsync(
-            taskId,
-            TaskActivityEventType.HoursLogged,
-            currentUserId,
-            $"Worked hours logged: {FormatHours(total)}h (total)",
-            FormatHours(previous),
-            FormatHours(total),
-            cancellationToken);
 
+        // The activity entry saves the shared context, so it is the save that meets a concurrent change to the hours.
         try
         {
+            await _activityService.AppendAsync(
+                taskId,
+                TaskActivityEventType.HoursLogged,
+                currentUserId,
+                $"Worked hours logged: {FormatHours(total)}h (total)",
+                FormatHours(previous),
+                FormatHours(total),
+                cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
         catch (ConcurrencyConflictException)

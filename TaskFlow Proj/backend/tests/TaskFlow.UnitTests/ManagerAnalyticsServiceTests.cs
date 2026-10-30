@@ -214,6 +214,20 @@ public class ManagerAnalyticsServiceTests
     }
 
     [Fact]
+    public async Task FilterOptions_ListEmployeesInTheDatabaseNameOrder()
+    {
+        await using var harness = AnalyticsHarness.Create(Now);
+        var manager = harness.AddUser("m1", SystemRoles.Manager);
+        harness.AddUser("anna", managerId: manager.Id);
+        harness.AddUser("Bob", managerId: manager.Id);
+
+        var options = await harness.ManagerService.GetFilterOptionsAsync(manager.Id, CancellationToken.None);
+
+        // SQLite compares names byte by byte, so upper case sorts before lower case, as the other name lists do.
+        Assert.Equal(["Bob full name", "anna full name"], options.Employees.Select(employee => employee.Name));
+    }
+
+    [Fact]
     public async Task FilterOptions_ListOnlyInScopeEmployeesAndProjects()
     {
         await using var harness = AnalyticsHarness.Create(Now);

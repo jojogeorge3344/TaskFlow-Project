@@ -65,6 +65,45 @@ public class UsersEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task Create_WithAShortPassword_IsRejectedByTheValidator()
+    {
+        var client = _factory.CreateClient();
+        var token = (await LoginAsync(client, "users-admin-shortpw", SystemRoles.Administrator)).AccessToken;
+
+        var response = await SendAsync(client, HttpMethod.Post, "/api/v1/users", token, new
+        {
+            employeeCode = "EMP-901",
+            fullName = "Short Password",
+            username = "short.password",
+            email = "short.password@taskflow.com",
+            password = "abc",
+            roleId = SystemRoles.EmployeeId,
+            isActive = true
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Contains(
+            document.RootElement.GetProperty("errors").EnumerateObject(),
+            error => string.Equals(error.Name, "password", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CreateProject_WithoutAName_IsRejectedByTheValidator()
+    {
+        var client = _factory.CreateClient();
+        var token = (await LoginAsync(client, "users-admin-noname", SystemRoles.Administrator)).AccessToken;
+
+        var response = await SendAsync(client, HttpMethod.Post, "/api/v1/projects", token, new { name = "", description = "x" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Contains(
+            document.RootElement.GetProperty("errors").EnumerateObject(),
+            error => string.Equals(error.Name, "name", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task GetAll_ReturnsRolesAsNames()
     {
         var client = _factory.CreateClient();

@@ -305,6 +305,31 @@ public class AssistantActionServiceTests
         Assert.Equal(AssistantActionStatus.Confirmed, (await h.Db.AssistantPendingActions.AsNoTracking().SingleAsync()).Status);
     }
 
+    /// <summary>A mail service whose send loses a database race.</summary>
+    public class RacingMail : System.Reflection.DispatchProxy
+    {
+        protected override object? Invoke(System.Reflection.MethodInfo? targetMethod, object?[]? args) =>
+            throw new ConcurrencyConflictException();
+    }
+
+    [Fact]
+    public async Task ADatabaseClashWhileRunningAnActionIsReportedAsAServerFailure()
+    {
+        await using var h = new AssistantActionHarness();
+        var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
+        var mail = System.Reflection.DispatchProxy.Create<TaskFlow.Api.Services.Interfaces.Communication.Mail.IMailService, RacingMail>();
+        var service = new TaskFlow.Api.Services.Assistant.AssistantActionService(
+            new AssistantPendingActionRepository(h.Db), new AssistantMessageRepository(h.Db), new AssistantDirectoryRepository(h.Db), new UnitOfWork(h.Db), mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, h.Audit,
+            new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
+            new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
+
+        var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
+
+        Assert.Equal(AssistantActionStatus.Failed, result!.Status);
+        Assert.Contains("something went wrong on the server", result.Message);
+        Assert.DoesNotContain("changed this record", result.Message);
+    }
+
     [Fact]
     public async Task AFailedAuditWriteWhileReportingAFailureStillTellsTheUserWhatHappened()
     {

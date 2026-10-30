@@ -61,7 +61,7 @@ public class ManagerAnalyticsService : IManagerAnalyticsService
         var today = ReminderCalculator.LocalDate(_clock.UtcNow, timeZone);
 
         var employees = (await TeamAsync(managerId, cancellationToken))
-            .OrderBy(member => member.Value)
+            .OrderBy(member => member.Value, StringComparer.Ordinal)
             .Select(member => new AnalyticsOptionDto(member.Key, member.Value))
             .ToList();
         var projects = await _analytics.GetProjectsAsync(

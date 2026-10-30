@@ -67,6 +67,23 @@ public class TaskLogHoursTests
     }
 
     [Fact]
+    public async Task LogHours_WhenTheHoursChangedMeanwhile_AsksToTryAgain()
+    {
+        await using var harness = TaskTrackingServiceHarness.Create();
+        var manager = harness.AddUser("lh-mgr6", SystemRoles.Manager);
+        var assignee = harness.AddUser("lh-emp6");
+        var task = harness.AddTask(assignee.Id, manager.Id);
+
+        // Another request logs hours after this one loaded the task: the tracked copy still holds the old total.
+        await harness.Db.Database.ExecuteSqlRawAsync("UPDATE \"Tasks\" SET \"ActualHours\" = 5 WHERE \"Id\" = {0}", task.Id);
+
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+            harness.TaskService.LogHoursAsync(task.Id, new LogHoursRequest(1m), assignee.Id, SystemRoles.Employee, CancellationToken.None));
+
+        Assert.Contains("worked hours changed", error.Message);
+    }
+
+    [Fact]
     public async Task LogHours_ForAMissingTask_ReturnsNull()
     {
         await using var harness = TaskTrackingServiceHarness.Create();
