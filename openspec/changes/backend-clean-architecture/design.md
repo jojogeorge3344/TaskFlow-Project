@@ -151,6 +151,3 @@ Namespaces follow the folders: `TaskFlow.Api.Services.Monitoring.TaskManagement`
 
 **Rollback:** every step is a normal commit on a feature branch with no database change, so a revert is enough. The database is untouched throughout.
 
-## Open Questions
-
-- Should NetArchTest.Rules be used, or a small reflection-based helper in the test project? Either satisfies the specs. Decide when writing the first architecture test.

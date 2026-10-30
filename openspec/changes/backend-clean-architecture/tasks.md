@@ -24,8 +24,8 @@
 
 ## 3. Architecture test harness
 
-- [ ] 3.1 Add an `ArchitectureTests` class to `TaskFlow.UnitTests` (NetArchTest.Rules or a reflection helper, per the design open question), with every rule from spec backend-architecture scoped to the namespaces migrated so far (`Controllers`, `Services`, `Repositories`, `Dtos`). Verify the suite runs and passes on the empty namespaces
-- [ ] 3.2 Add `IUnitOfWork`, `Common/BaseRepository<T>` and `Config/` DI extension methods (`AddRepositories`, `AddServices`, `AddIntegrations`, `AddCrossCutting`), and move the existing registrations out of `Program.cs`. Verify with a DI-resolution test that resolves every registered service interface
+- [x] 3.1 Add an `ArchitectureTests` class to `TaskFlow.UnitTests` (NetArchTest.Rules, chosen because it reads IL and so also sees dependencies used inside method bodies), with every rule from spec backend-architecture scoped to the namespaces migrated so far (`Controllers`, `Services`, `Repositories`, `Dtos`). Verify the suite runs and passes on the empty namespaces. Mutation check: with the pending list emptied, the suite flags exactly the known violations (TaskAccessHandler, PasswordRecoveryController, ProjectsController.GetEmployees returning an entity)
+- [x] 3.2 Add `IUnitOfWork`, `Common/BaseRepository<T>` and `Config/` DI extension methods (`AddRepositories`, `AddServices`, `AddIntegrations`, `AddCrossCutting`), and move the existing registrations out of `Program.cs`. Verify with a DI-resolution test that resolves every registered service interface. Done: 29 interfaces resolve; a diff of the old Program.cs registrations against Config/ shows none lost
 
 ## 4. Module: Settings
 
