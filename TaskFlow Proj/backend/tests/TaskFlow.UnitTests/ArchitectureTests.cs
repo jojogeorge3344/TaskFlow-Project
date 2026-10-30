@@ -6,8 +6,8 @@ using NetArchTest.Rules;
 namespace TaskFlow.UnitTests;
 
 /// <summary>The backend-architecture rules (REQ-04 and REQ-05), checked against the compiled API and its source. Each rule
-/// covers the layer folders (Controllers, Services, Repositories, Dtos, Middleware, Filters); code still waiting in Legacy
-/// or in the flat Controllers folder is listed in <see cref="Pending"/> until its module moves.</summary>
+/// covers the layer folders (Controllers, Services, Repositories, Dtos, Middleware, Filters), and the whole-assembly rules
+/// keep the DbContext inside Persistence and Repositories and every type inside a known top-level folder.</summary>
 public class ArchitectureTests
 {
     private const string Root = "TaskFlow.Api";
@@ -35,21 +35,9 @@ public class ArchitectureTests
 
     private static readonly string[] LayerFolders = ["Controllers", "Services", "Repositories", "Dtos"];
 
-    /// <summary>Not migrated yet. Each entry names the task that removes it; task 12.1 deletes this list.</summary>
-    private static readonly string[] Pending =
-    [
-        "TaskFlow.Application.",                              // Legacy/Application, groups 4-11
-        "TaskFlow.Infrastructure.",                           // Legacy/Infrastructure, groups 4-11
-    ];
-
-    private static bool IsPending(Type type) =>
-        type.Namespace == $"{Root}.Controllers" // flat controllers folder, moved module by module in groups 4-11
-        || Pending.Any(prefix => (type.FullName ?? string.Empty).StartsWith(prefix, StringComparison.Ordinal));
-
     private static IEnumerable<Type> TypesIn(string layer) =>
         Api.GetTypes().Where(type => type.Namespace is { } ns
                                      && (ns == $"{Root}.{layer}" || ns.StartsWith($"{Root}.{layer}.", StringComparison.Ordinal))
-                                     && !IsPending(type)
                                      && !type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)));
 
     // ---------------------------------------------------------------- one-way layered flow
@@ -62,8 +50,7 @@ public class ArchitectureTests
             "Microsoft.EntityFrameworkCore",
             $"{Root}.Persistence",
             $"{Root}.Repositories",
-            $"{Root}.Integrations",
-            "TaskFlow.Application.Abstractions.IApplicationDbContext");
+            $"{Root}.Integrations");
     }
 
     [Fact]
@@ -73,8 +60,7 @@ public class ArchitectureTests
             $"{Root}.Services",
             "Microsoft.EntityFrameworkCore",
             $"{Root}.Persistence",
-            $"{Root}.Controllers",
-            "TaskFlow.Application.Abstractions.IApplicationDbContext");
+            $"{Root}.Controllers");
     }
 
     [Fact]
@@ -106,14 +92,53 @@ public class ArchitectureTests
     [Fact]
     public void RequestPipelineComponentsDoNotReachTheDatabase()
     {
-        foreach (var layer in new[] { "Middleware", "Filters", "Authentication", "Authorization" })
+        foreach (var layer in new[] { "Middleware", "Filters", "Authorization" })
         {
             AssertNoDependency(
                 $"{Root}.{layer}",
                 $"{Root}.Persistence.AppDbContext",
-                "TaskFlow.Application.Abstractions.IApplicationDbContext",
                 "Microsoft.EntityFrameworkCore.DbContext");
         }
+    }
+
+    // ---------------------------------------------------------------- the whole assembly
+
+    /// <summary>Folders a type may live in. Everything else is a layer, the composition root (<c>Program</c>, <c>Config</c>)
+    /// or persistence.</summary>
+    private static readonly string[] TopLevelFolders =
+    [
+        "Authorization", "Common", "Config", "Controllers", "Dtos", "Filters", "Integrations", "Middleware", "Models",
+        "Persistence", "Repositories", "Services",
+    ];
+
+    [Fact]
+    public void OnlyPersistenceAndRepositoriesReachTheDbContext()
+    {
+        // Config registers the DbContext and Program migrates and seeds at startup; BaseRepository is the repositories' base.
+        var offenders = Types.InAssembly(Api)
+            .That().DoNotResideInNamespaceMatching($@"^{Regex.Escape(Root)}\.(Persistence|Repositories|Config)(\.|$)")
+            .Should().NotHaveDependencyOnAny($"{Root}.Persistence.AppDbContext", "Microsoft.EntityFrameworkCore.DbContext")
+            .GetResult().FailingTypeNames ?? [];
+
+        Assert.Empty(offenders.Where(name => !name.Contains('<')
+                                             && name != $"{Root}.Common.BaseRepository`1"
+                                             && name != "Program"));
+    }
+
+    [Fact]
+    public void EveryTypeLivesInAKnownFolder()
+    {
+        var offenders = Api.GetTypes()
+            .Where(type => !type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
+                           && type.Name != "Program"
+                           && !type.FullName!.StartsWith("Microsoft.", StringComparison.Ordinal)
+                           && !type.FullName.StartsWith("System.", StringComparison.Ordinal)
+                           && !type.FullName.Contains('<'))
+            .Where(type => type.Namespace?.Split('.') is not [_, "Api", var folder, ..] || !TopLevelFolders.Contains(folder))
+            .Select(type => type.FullName)
+            .ToList();
+
+        Assert.Empty(offenders);
     }
 
     // ---------------------------------------------------------------- controllers handle HTTP only
@@ -253,8 +278,7 @@ public class ArchitectureTests
             .Should().NotHaveDependencyOnAny(forbidden)
             .GetResult().FailingTypeNames ?? [];
 
-        Assert.Empty(offenders.Where(name => !IsPending(Api.GetType(name.Replace('/', '+')) ?? typeof(object))
-                                             && !name.Contains('<')));
+        Assert.Empty(offenders.Where(name => !name.Contains('<')));
     }
 
     private static IEnumerable<string> NamingOffenders(string layer, string suffix, string[]? allowed = null)

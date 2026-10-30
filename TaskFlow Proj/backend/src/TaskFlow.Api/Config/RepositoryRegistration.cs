@@ -4,7 +4,6 @@ using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Persistence.Seeders;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Application.Abstractions;
 
 namespace TaskFlow.Api.Config;
 
@@ -22,7 +21,6 @@ public static class RepositoryRegistration
                 provider.GetRequiredService<IConfiguration>().GetConnectionString("Default"),
                 StorageRoot.Resolve(provider.GetRequiredService<IOptions<StorageOptions>>().Value.Root))));
 
-        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Settings

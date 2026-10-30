@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using TaskFlow.Application.Abstractions;
 using TaskFlow.Api.Models.Entities;
 
 namespace TaskFlow.Api.Integrations.Security;

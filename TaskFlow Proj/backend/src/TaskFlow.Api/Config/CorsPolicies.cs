@@ -1,4 +1,4 @@
-namespace TaskFlow.Api;
+namespace TaskFlow.Api.Config;
 
 public static class CorsPolicies
 {

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using TaskFlow.Api;
 using TaskFlow.Api.Config;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Persistence.Seeders;

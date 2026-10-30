@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Application.Abstractions;
 
 namespace TaskFlow.Api.Config;
 
