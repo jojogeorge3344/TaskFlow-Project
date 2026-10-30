@@ -1,9 +1,16 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
+using TaskFlow.Api.Repositories.Management.ProjectManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Management.ProjectManagement.Positions;
+using TaskFlow.Api.Services.Management.ProjectManagement;
+using TaskFlow.Api.Dtos.Management.ProjectManagement;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Projects;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
@@ -23,7 +30,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
     private readonly SqliteConnection _connection;
     private readonly AppDbContext _db;
     private readonly UserAllocationService _allocations;
-    private readonly UserService _users;
+    private readonly EmployeeService _users;
     private readonly ProjectService _projects;
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
     private int _counter;
@@ -35,9 +42,9 @@ public class UserAllocationServiceTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _allocations = new UserAllocationService(_db);
-        _users = new UserService(_db, _hasher, _allocations);
-        _projects = new ProjectService(_db, _allocations);
+        _allocations = TestServices.Allocations(_db);
+        _users = TestServices.Employees(_db, _hasher, _allocations);
+        _projects = TestServices.Projects(_db, _allocations);
     }
 
     private User AddManager(string? name = null, bool active = true) => AddUser(name, active, SystemRoles.ManagerId);
@@ -556,7 +563,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
     [Fact]
     public async Task APositionIsCreatedOnceWhateverTheCaseAndTheSeededOnesExist()
     {
-        var positions = new PositionService(_db);
+        var positions = new PositionService(new PositionRepository(_db), new UnitOfWork(_db));
 
         var existing = await positions.GetOrCreateAsync("qa", default);
         var created = await positions.GetOrCreateAsync("  Scrum   Master ", default);
@@ -573,7 +580,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
     [Fact]
     public async Task ABlankOrTooLongPositionNameIsRefused()
     {
-        var positions = new PositionService(_db);
+        var positions = new PositionService(new PositionRepository(_db), new UnitOfWork(_db));
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => positions.GetOrCreateAsync("   ", default));
         await Assert.ThrowsAsync<BusinessRuleException>(() => positions.GetOrCreateAsync(new string('x', 101), default));

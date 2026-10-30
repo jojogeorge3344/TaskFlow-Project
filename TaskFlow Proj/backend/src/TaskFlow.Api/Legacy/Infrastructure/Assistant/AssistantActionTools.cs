@@ -1,10 +1,10 @@
+using TaskFlow.Api.Dtos.Profile;
 using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;

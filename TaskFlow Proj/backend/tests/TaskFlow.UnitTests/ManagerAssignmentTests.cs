@@ -1,7 +1,13 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
+using TaskFlow.Api.Repositories.Management.ProjectManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Management.ProjectManagement;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
@@ -14,7 +20,7 @@ public class ManagerAssignmentTests : IAsyncDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly AppDbContext _db;
-    private readonly UserService _service;
+    private readonly EmployeeService _service;
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
 
     public ManagerAssignmentTests()
@@ -24,7 +30,7 @@ public class ManagerAssignmentTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
+        _service = TestServices.Employees(_db, _hasher);
     }
 
     private User AddUser(string username, int roleId = SystemRoles.EmployeeId, bool active = true, int? managerId = null)
@@ -113,7 +119,7 @@ public class ManagerAssignmentTests : IAsyncDisposable
         var drop = AddProject("Drop");
         await AssignAsync(manager.Id, keep.Id, drop.Id);
 
-        Assert.True(await new ProjectService(_db, new UserAllocationService(_db)).DeleteAsync(drop.Id, default));
+        Assert.True(await TestServices.Projects(_db).DeleteAsync(drop.Id, default));
 
         var dto = await _service.GetByIdAsync(manager.Id, default);
         Assert.Equal(["Keep"], dto!.ManagerProjects!.Select(d => d.Name));

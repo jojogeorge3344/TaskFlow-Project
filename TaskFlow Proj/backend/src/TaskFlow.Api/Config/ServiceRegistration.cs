@@ -32,11 +32,11 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Application.Workload.IWorkloadService, TaskFlow.Infrastructure.Services.WorkloadService>();
 
         // Management
-        services.AddScoped<TaskFlow.Application.Users.IUserService, TaskFlow.Infrastructure.Services.UserService>();
-        services.AddScoped<TaskFlow.Application.Users.IUserAllocationService, TaskFlow.Infrastructure.Services.UserAllocationService>();
-        services.AddScoped<TaskFlow.Application.Projects.IProjectService, TaskFlow.Infrastructure.Services.ProjectService>();
-        services.AddScoped<TaskFlow.Application.Projects.IPositionService, TaskFlow.Infrastructure.Services.PositionService>();
-        services.AddScoped<TaskFlow.Application.Departments.IDepartmentService, TaskFlow.Infrastructure.Services.DepartmentService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.IEmployeeService, TaskFlow.Api.Services.Management.EmployeeManagement.EmployeeService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.Allocations.IUserAllocationService, TaskFlow.Api.Services.Management.EmployeeManagement.Allocations.UserAllocationService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.ProjectManagement.IProjectService, TaskFlow.Api.Services.Management.ProjectManagement.ProjectService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.ProjectManagement.Positions.IPositionService, TaskFlow.Api.Services.Management.ProjectManagement.Positions.PositionService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.DepartmentManagement.IDepartmentService, TaskFlow.Api.Services.Management.DepartmentManagement.DepartmentService>();
 
         // Communication
         services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();

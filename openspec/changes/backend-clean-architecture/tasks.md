@@ -35,9 +35,9 @@
 
 ## 5. Module: Management
 
-- [ ] 5.1 `Management/DepartmentManagement`: repository, service, controller and DTOs. Verify that the `DepartmentsEndpointsTests` and department validator tests pass
-- [ ] 5.2 `Management/ProjectManagement` (+ `Positions`): repositories, services, controllers and DTOs. Verify that `ProjectTeamEndpointsTests` and `ProjectTaskTests` pass
-- [ ] 5.3 `Management/EmployeeManagement` (+ `Allocations`): rename `UsersController` to `EmployeesController`, keeping route `api/users`, and move `UserService` and `UserAllocationService` behind repositories. Verify that `UsersEndpointsTests`, `UserAllocationServiceTests`, `UserDeletionTests`, `LastAdministratorTests` and `RoleAssignmentSafeguardTests` pass
+- [x] 5.1 `Management/DepartmentManagement`: repository, service, controller and DTOs. Verify that the `DepartmentsEndpointsTests` and department validator tests pass
+- [x] 5.2 `Management/ProjectManagement` (+ `Positions`): repositories, services, controllers and DTOs. Verify that `ProjectTeamEndpointsTests` and `ProjectTaskTests` pass. Done: `GET /projects/{id}/employees` returned raw `User` entities (password hash, security stamp, protected MFA secret) to anyone allowed to view projects; it now returns `ProjectEmployeeDto` without credentials, covered by `TheProjectEmployeeListNeverExposesCredentialsOrMfaState`
+- [x] 5.3 `Management/EmployeeManagement` (+ `Allocations`): rename `UsersController` to `EmployeesController`, keeping route `api/users`, and move `UserService` and `UserAllocationService` behind repositories. Verify that `UsersEndpointsTests`, `UserAllocationServiceTests`, `UserDeletionTests`, `LastAdministratorTests` and `RoleAssignmentSafeguardTests` pass. Done: `UserService` is now `EmployeeService` (same name in every layer); test construction goes through `TestServices`
 
 ## 6. Module: Communication
 

@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Profile.Validators;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ApplicationSettings;
@@ -10,7 +13,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail.Validators;
-using TaskFlow.Application.Users.Validators;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
@@ -49,7 +51,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
         return new AssistantActionService(
             db,
             mail,
-            new UserService(db, new PasswordHasher<User>(), new UserAllocationService(db)),
+            TestServices.Employees(db, new PasswordHasher<User>()),
             new RolePolicyAuthorizer(),
             new AssistantAuditLog(db, clock),
             new SendMailRequestValidator(),

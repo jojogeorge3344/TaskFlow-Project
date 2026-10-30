@@ -1,8 +1,12 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
+using TaskFlow.Api.Repositories.Management.ProjectManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Management.ProjectManagement;
+using TaskFlow.Api.Dtos.Management.ProjectManagement;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Projects;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
@@ -109,7 +113,7 @@ public class ProjectTaskTests
         elsewhere.ProjectId = other.Id;
         await harness.Db.SaveChangesAsync();
 
-        var service = new ProjectService(harness.Db, new UserAllocationService(harness.Db));
+        var service = TestServices.Projects(harness.Db);
 
         var all = await service.GetTasksAsync(project.Id, new ProjectTaskFilter(), CancellationToken.None);
         Assert.Equal(2, all!.Count);

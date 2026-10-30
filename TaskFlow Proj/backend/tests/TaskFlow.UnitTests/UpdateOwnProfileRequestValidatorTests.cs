@@ -1,6 +1,6 @@
+using TaskFlow.Api.Dtos.Profile.Validators;
+using TaskFlow.Api.Dtos.Profile;
 using FluentValidation.TestHelper;
-using TaskFlow.Application.Users;
-using TaskFlow.Application.Users.Validators;
 
 namespace TaskFlow.UnitTests;
 

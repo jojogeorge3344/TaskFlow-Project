@@ -289,7 +289,7 @@ public class AssistantActionServiceTests
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
             h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
             new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
-            new TaskFlow.Application.Users.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
+            new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
         var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
 
@@ -311,7 +311,7 @@ public class AssistantActionServiceTests
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
             h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "failed"),
             new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
-            new TaskFlow.Application.Users.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
+            new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
         var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
 

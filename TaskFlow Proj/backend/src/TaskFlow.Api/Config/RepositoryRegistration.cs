@@ -34,6 +34,13 @@ public static class RepositoryRegistration
 
         // Management
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement.IEmployeeRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.EmployeeRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.DepartmentManagement.IDepartmentRepository, TaskFlow.Api.Repositories.Management.DepartmentManagement.DepartmentRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement.IProjectRepository, TaskFlow.Api.Repositories.Management.ProjectManagement.ProjectRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement.Positions.IPositionRepository, TaskFlow.Api.Repositories.Management.ProjectManagement.Positions.PositionRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement.Allocations.IUserAllocationRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.Allocations.UserAllocationRepository>();
+
+        // Monitoring
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.ITaskRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.TaskRepository>();
 
         // Auth
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokenRepository>();

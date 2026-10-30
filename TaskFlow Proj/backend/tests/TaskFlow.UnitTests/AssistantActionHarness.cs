@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Profile.Validators;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ApplicationSettings;
@@ -11,7 +14,6 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Mail.Validators;
-using TaskFlow.Application.Users.Validators;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
@@ -76,7 +78,7 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
         return user;
     }
 
-    public UserService Users => new(Db, new PasswordHasher<User>(), new UserAllocationService(Db));
+    public EmployeeService Users => TestServices.Employees(Db, new PasswordHasher<User>());
 
     public MailService Mail => new(Db, Clock, new AppClock(new ApplicationSettingsRepository(Db), Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
 

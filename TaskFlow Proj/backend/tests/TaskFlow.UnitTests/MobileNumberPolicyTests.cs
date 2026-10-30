@@ -1,6 +1,7 @@
+using TaskFlow.Api.Dtos.Profile.Validators;
+using TaskFlow.Api.Dtos.Profile;
+using TaskFlow.Api.Common.Rules;
 using TaskFlow.Application.Auth;
-using TaskFlow.Application.Users;
-using TaskFlow.Application.Users.Validators;
 
 namespace TaskFlow.UnitTests;
 

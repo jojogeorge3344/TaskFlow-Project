@@ -1,6 +1,6 @@
+using TaskFlow.Api.Dtos.Management.DepartmentManagement.Validators;
+using TaskFlow.Api.Dtos.Management.DepartmentManagement;
 using FluentValidation.TestHelper;
-using TaskFlow.Application.Departments;
-using TaskFlow.Application.Departments.Validators;
 
 namespace TaskFlow.UnitTests;
 

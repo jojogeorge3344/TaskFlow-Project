@@ -20,6 +20,7 @@ REQ-04 calls for Clean Architecture with the Repository Pattern (Controller → 
 - Centralise cross-cutting concerns: an exception-handling middleware driven by a typed `AppException` hierarchy, an MVC validation filter that runs FluentValidation for every bound request, and a request-logging middleware. Remove the per-action try/catch blocks and hand-written validator calls.
 - **BREAKING (API error body):** every error response becomes a single ProblemDetails shape (`status`, `title`, `detail`, optional `errors`, `traceId`), replacing `{ error }` / `{ message }` bodies. The frontend's shared `apiErrorMessage` already reads `detail`. The one component that reads `error.error` directly, and the integration tests that assert `error` or `message`, are updated in this change.
 - **Behaviour change:** unexpected exceptions return 500 with a generic message instead of leaking internal messages as 400.
+- **Security fix:** `GET /api/v1/projects/{id}/employees` returned the `User` entity, including the password hash, security stamp and protected MFA secret, to anyone who may view projects. It now returns account details only (the frontend does not call it).
 - Add **architecture tests** that fail the build when a layer skips a level or depends on a concrete lower-layer type.
 - Rename `UsersController` to `EmployeesController` to match the Employee Management module. All HTTP routes stay the same.
 - Remove the template leftovers `WeatherForecastController` and `WeatherForecast`.

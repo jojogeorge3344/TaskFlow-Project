@@ -245,6 +245,27 @@ public class ProjectTeamEndpointsTests : IClassFixture<TaskFlowApiFactory>
     // ------------------------------------------------------------------ project managers
 
     [Fact]
+    public async Task TheProjectEmployeeListNeverExposesCredentialsOrMfaState()
+    {
+        var client = _factory.CreateClient();
+        var admin = await SignInAsync(client, "team-admin-leak", SystemRoles.Administrator);
+        var person = await SeedManagerAsync("team-leak-m1");
+        var projectId = await CreateProjectAsync(client, admin, $"No Leak {Guid.NewGuid():N}");
+        var saved = await SendAsync(client, HttpMethod.Put, $"/api/v1/projects/{projectId}/members", admin,
+            new { members = new[] { new { userId = person, positionId = Member, percent = 40, isManager = true } } });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+
+        using var employees = await JsonAsync(client, $"/api/v1/projects/{projectId}/employees", admin);
+
+        var employee = Assert.Single(employees.RootElement.EnumerateArray());
+        Assert.Equal(person, employee.GetProperty("id").GetInt32());
+        foreach (var secret in new[] { "passwordHash", "securityStamp", "mfaSecretProtected", "mfaLastUsedStep", "refreshTokens", "mfaBackupCodes" })
+        {
+            Assert.False(employee.TryGetProperty(secret, out _), $"The employee list exposes {secret}.");
+        }
+    }
+
+    [Fact]
     public async Task ATeamWithoutAManagerIsRejectedAndNothingIsSaved()
     {
         var client = _factory.CreateClient();

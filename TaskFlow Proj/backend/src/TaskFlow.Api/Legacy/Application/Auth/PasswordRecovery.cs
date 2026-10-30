@@ -1,3 +1,4 @@
+using TaskFlow.Api.Dtos.Profile.Validators;
 using System.Security.Cryptography;
 using System.Text;
 using FluentValidation;
@@ -6,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Application.Users.Validators;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;

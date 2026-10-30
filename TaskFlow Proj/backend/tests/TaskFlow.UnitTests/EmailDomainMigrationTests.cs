@@ -100,7 +100,7 @@ public class EmailDomainMigrationTests : IDisposable
         Assert.StartsWith("user", emails["symbols"]);
         Assert.Equal(new string('x', 63) + "@taskflow.com", emails["cut"]);
         Assert.Equal(new string('x', 64) + "@taskflow.com", emails["long"]);
-        Assert.All(emails.Values, email => Assert.True(TaskFlow.Application.Users.EmailPolicy.IsValid(email), email));
+        Assert.All(emails.Values, email => Assert.True(TaskFlow.Api.Common.Rules.EmailPolicy.IsValid(email), email));
     }
 
     [Fact]

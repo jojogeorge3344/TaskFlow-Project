@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Profile;
+using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Common.Exceptions;
 using System.Text.Json;
 using FluentValidation;
@@ -5,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
@@ -46,7 +48,7 @@ public class AssistantActionService : IAssistantActionService
 
     private readonly AppDbContext _dbContext;
     private readonly IMailService _mail;
-    private readonly IUserService _users;
+    private readonly IEmployeeService _users;
     private readonly IAssistantAuthorizer _authorizer;
     private readonly IAssistantAuditLog _audit;
     private readonly IValidator<SendMailRequest> _sendMailValidator;
@@ -57,7 +59,7 @@ public class AssistantActionService : IAssistantActionService
     public AssistantActionService(
         AppDbContext dbContext,
         IMailService mail,
-        IUserService users,
+        IEmployeeService users,
         IAssistantAuthorizer authorizer,
         IAssistantAuditLog audit,
         IValidator<SendMailRequest> sendMailValidator,

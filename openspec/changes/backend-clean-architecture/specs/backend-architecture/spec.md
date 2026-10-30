@@ -68,6 +68,10 @@ Request and response types SHALL be DTOs kept apart from database entities. No c
 - **WHEN** the architecture test suite inspects every controller action's parameters and return types
 - **THEN** none of them is, or contains, an entity type
 
+#### Scenario: No credentials in a response
+- **WHEN** a user who may view projects lists a project's employees
+- **THEN** no entry carries a password hash, security stamp, MFA secret or token
+
 ### Requirement: Layer-first folder structure
 The backend SHALL keep each layer in a dedicated top-level folder (controllers, services, repositories, models, DTOs, middleware, config, common), with service and repository interfaces in an `Interfaces` sub-folder of their layer.
 

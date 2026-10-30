@@ -1,9 +1,11 @@
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
+using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
@@ -16,7 +18,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly AppDbContext _db;
-    private readonly UserService _service;
+    private readonly EmployeeService _service;
     private readonly IPasswordHasher<User> _hasher = new PasswordHasher<User>();
 
     public UserServiceSelfServiceTests()
@@ -26,7 +28,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
         TestAccessControl.Seed(_db);
-        _service = new UserService(_db, _hasher, new UserAllocationService(_db));
+        _service = TestServices.Employees(_db, _hasher);
     }
 
     private User AddUser(string username, string email, string role = SystemRoles.Employee)
