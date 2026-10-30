@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A runtime-editable, non-secret application setting stored as a key/value pair
 /// (TDD §7.2). Secrets such as the SMTP password never live here.</summary>

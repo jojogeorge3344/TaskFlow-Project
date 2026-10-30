@@ -10,7 +10,7 @@ public interface IManagerDashboardScope
     Task<ScopedTasks> ScopeAsync(int managerId, AnalyticsFilter filter, CancellationToken cancellationToken);
 
     /// <summary>Restricts a task query to tasks assigned to or shared with the manager's team.</summary>
-    IQueryable<TaskFlow.Domain.Entities.Task> TeamTasks(IQueryable<TaskFlow.Domain.Entities.Task> tasks, int managerId);
+    IQueryable<TaskFlow.Api.Models.Entities.Task> TeamTasks(IQueryable<TaskFlow.Api.Models.Entities.Task> tasks, int managerId);
 
     /// <summary>Ids of the active users on the manager's team, distinct, as a composable query.</summary>
     IQueryable<int> TeamUserIds(int managerId);

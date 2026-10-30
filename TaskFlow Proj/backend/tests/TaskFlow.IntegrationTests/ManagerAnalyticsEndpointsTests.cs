@@ -4,11 +4,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
-using Project = TaskFlow.Domain.Entities.Project;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using Project = TaskFlow.Api.Models.Entities.Project;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.IntegrationTests;
 
@@ -206,11 +206,11 @@ public class ManagerAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var team = await db.Departments.FirstOrDefaultAsync(d => d.Name == teamName);
         if (team is null)
         {
-            team = new TaskFlow.Domain.Entities.Department { Name = teamName, CreatedAt = DateTime.UtcNow };
+            team = new TaskFlow.Api.Models.Entities.Department { Name = teamName, CreatedAt = DateTime.UtcNow };
             db.Departments.Add(team);
             await db.SaveChangesAsync();
-            db.DepartmentManagers.Add(new TaskFlow.Domain.Entities.DepartmentManager { ManagerUserId = manager.Id, DepartmentId = team.Id });
-            db.UserDepartments.Add(new TaskFlow.Domain.Entities.UserDepartment { UserId = member.Id, DepartmentId = team.Id });
+            db.DepartmentManagers.Add(new TaskFlow.Api.Models.Entities.DepartmentManager { ManagerUserId = manager.Id, DepartmentId = team.Id });
+            db.UserDepartments.Add(new TaskFlow.Api.Models.Entities.UserDepartment { UserId = member.Id, DepartmentId = team.Id });
         }
 
         var existing = await db.Tasks.CountAsync(task => task.AssignedToUserId == member.Id && task.Title == "Team seeded");

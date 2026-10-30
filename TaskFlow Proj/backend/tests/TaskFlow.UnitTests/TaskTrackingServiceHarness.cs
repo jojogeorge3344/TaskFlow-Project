@@ -1,15 +1,15 @@
 using Microsoft.Data.Sqlite;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -90,7 +90,7 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         return user;
     }
 
-    public Domain.Entities.Task AddTask(
+    public TaskFlow.Api.Models.Entities.Task AddTask(
         int assignedToUserId,
         int createdByUserId,
         string title = "Seed task",
@@ -98,7 +98,7 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         DateTime? deadline = null,
         TaskPriority priority = TaskPriority.Medium)
     {
-        var task = new Domain.Entities.Task
+        var task = new TaskFlow.Api.Models.Entities.Task
         {
             TaskCode = $"SEED-{Guid.NewGuid():N}"[..24],
             Title = title,

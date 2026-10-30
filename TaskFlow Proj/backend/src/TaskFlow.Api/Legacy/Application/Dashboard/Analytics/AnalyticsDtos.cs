@@ -1,4 +1,4 @@
-using TaskFlow.Domain.Rules;
+using TaskFlow.Api.Common.Rules;
 
 namespace TaskFlow.Application.Dashboard.Analytics;
 

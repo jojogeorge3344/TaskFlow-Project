@@ -1,8 +1,8 @@
 using System.Linq.Expressions;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Domain.Rules;
+namespace TaskFlow.Api.Common.Rules;
 
 public enum DeadlineBucket
 {

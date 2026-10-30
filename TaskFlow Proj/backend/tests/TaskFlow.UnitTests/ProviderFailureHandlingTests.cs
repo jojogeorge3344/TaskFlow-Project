@@ -1,7 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;

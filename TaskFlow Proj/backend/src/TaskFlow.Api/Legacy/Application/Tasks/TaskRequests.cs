@@ -1,8 +1,8 @@
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Rules;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
+using TaskFlow.Api.Common.Rules;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using ReminderFrequency = TaskFlow.Api.Models.Enums.ReminderFrequency;
 
 namespace TaskFlow.Application.Tasks;
 

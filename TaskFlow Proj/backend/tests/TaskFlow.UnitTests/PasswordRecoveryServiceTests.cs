@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Auth;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
@@ -176,7 +176,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
 
     private sealed class ThrowingPublisher : TaskFlow.Application.Tasks.INotificationPublisher
     {
-        public Task PublishAsync(int userId, int? taskId, TaskFlow.Domain.Enums.NotificationType type, string message, CancellationToken cancellationToken = default) =>
+        public Task PublishAsync(int userId, int? taskId, TaskFlow.Api.Models.Enums.NotificationType type, string message, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Notifications are down.");
     }
 

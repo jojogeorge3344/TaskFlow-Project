@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A project a manager oversees. Recorded data only; it does not narrow what the manager can see.</summary>
 public class ManagerProject

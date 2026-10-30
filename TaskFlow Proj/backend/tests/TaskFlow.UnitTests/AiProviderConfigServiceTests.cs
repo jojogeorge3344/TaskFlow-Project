@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Assistant.Validators;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
@@ -130,11 +130,11 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
             }
 
             raced = true;
-            var options = new DbContextOptionsBuilder<TaskFlow.Infrastructure.Persistence.AppDbContext>()
+            var options = new DbContextOptionsBuilder<TaskFlow.Api.Persistence.AppDbContext>()
                 .UseSqlite(_harness.Db.Database.GetDbConnection())
                 .Options;
-            using var other = new TaskFlow.Infrastructure.Persistence.AppDbContext(options);
-            other.AiModels.Add(new TaskFlow.Domain.Entities.AiModel { Kind = AiProviderKind.Ollama, Name = "phi3:mini", IsBuiltIn = false });
+            using var other = new TaskFlow.Api.Persistence.AppDbContext(options);
+            other.AiModels.Add(new TaskFlow.Api.Models.Entities.AiModel { Kind = AiProviderKind.Ollama, Name = "phi3:mini", IsBuiltIn = false });
             other.SaveChanges();
         };
 

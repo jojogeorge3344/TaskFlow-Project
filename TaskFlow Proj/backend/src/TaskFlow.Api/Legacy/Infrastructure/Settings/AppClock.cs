@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Settings;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Settings;
 

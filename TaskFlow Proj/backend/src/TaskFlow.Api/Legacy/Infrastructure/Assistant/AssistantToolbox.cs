@@ -1,6 +1,6 @@
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Infrastructure.Assistant;
 

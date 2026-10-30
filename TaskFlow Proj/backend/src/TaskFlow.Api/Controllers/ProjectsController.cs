@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Projects;
 
 namespace TaskFlow.Api.Controllers;
@@ -39,7 +39,7 @@ public class ProjectsController : ControllerBase
 
     [HttpGet("{id}/employees")]
     [RequirePermission(PermissionKeys.ProjectsView)]
-    public async Task<ActionResult<IReadOnlyCollection<Domain.Entities.User>>> GetEmployees(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyCollection<TaskFlow.Api.Models.Entities.User>>> GetEmployees(int id, CancellationToken cancellationToken)
     {
         var employees = await _projectService.GetEmployeesAsync(id, cancellationToken);
         return Ok(employees);

@@ -1,7 +1,7 @@
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -291,7 +291,7 @@ public class AdminAnalyticsServiceTests
         var idle = harness.AddUser("idle", SystemRoles.Manager);
         var department = harness.AddDepartment("Engineering", mgr);
         var project = harness.AddProject("Alpha");
-        harness.Db.ManagerProjects.Add(new TaskFlow.Domain.Entities.ManagerProject { ManagerUserId = mgr.Id, ProjectId = project.Id });
+        harness.Db.ManagerProjects.Add(new TaskFlow.Api.Models.Entities.ManagerProject { ManagerUserId = mgr.Id, ProjectId = project.Id });
         harness.Db.SaveChanges();
         var report = harness.AddUser("report", departmentId: department.Id);
         var member = harness.AddUser("member", departmentId: department.Id);

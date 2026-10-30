@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Abstractions;
-using TaskFlow.Domain.Entities;
+using TaskFlow.Api.Models.Entities;
 
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence;
 
 public class AppDbContext : DbContext, IApplicationDbContext
 {
@@ -29,8 +29,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Position> Positions => Set<Position>();
     public DbSet<UserProjectAllocation> UserProjectAllocations => Set<UserProjectAllocation>();
     public DbSet<UserDepartment> UserDepartments => Set<UserDepartment>();
-    public DbSet<Domain.Entities.Task> Tasks => Set<Domain.Entities.Task>();
-    public DbSet<Domain.Entities.TaskRecipient> TaskRecipients => Set<Domain.Entities.TaskRecipient>();
+    public DbSet<TaskFlow.Api.Models.Entities.Task> Tasks => Set<TaskFlow.Api.Models.Entities.Task>();
+    public DbSet<TaskFlow.Api.Models.Entities.TaskRecipient> TaskRecipients => Set<TaskFlow.Api.Models.Entities.TaskRecipient>();
     public DbSet<TaskComment> TaskComments => Set<TaskComment>();
     public DbSet<TaskActivityLog> TaskActivityLogs => Set<TaskActivityLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -247,7 +247,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasQueryFilter(project => !project.IsDeleted);
         });
 
-        modelBuilder.Entity<Domain.Entities.Task>(entity =>
+        modelBuilder.Entity<TaskFlow.Api.Models.Entities.Task>(entity =>
         {
             entity.HasKey(task => task.Id);
             entity.Property(task => task.TaskCode).IsRequired().HasMaxLength(32);
@@ -278,7 +278,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Domain.Entities.TaskRecipient>(entity =>
+        modelBuilder.Entity<TaskFlow.Api.Models.Entities.TaskRecipient>(entity =>
         {
             entity.HasKey(recipient => recipient.Id);
 

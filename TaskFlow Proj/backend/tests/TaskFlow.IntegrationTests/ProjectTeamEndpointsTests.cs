@@ -4,8 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.IntegrationTests;
@@ -383,7 +383,7 @@ public class ProjectTeamEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var department = new TaskFlow.Domain.Entities.Department { Name = name, CreatedAt = DateTime.UtcNow };
+        var department = new TaskFlow.Api.Models.Entities.Department { Name = name, CreatedAt = DateTime.UtcNow };
         db.Departments.Add(department);
         await db.SaveChangesAsync();
         return department.Id;

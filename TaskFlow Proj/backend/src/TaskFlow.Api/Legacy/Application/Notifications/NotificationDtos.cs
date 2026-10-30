@@ -1,5 +1,5 @@
 using TaskFlow.Application.Tasks;
-using NotificationType = TaskFlow.Domain.Enums.NotificationType;
+using NotificationType = TaskFlow.Api.Models.Enums.NotificationType;
 
 namespace TaskFlow.Application.Notifications;
 

@@ -1,15 +1,15 @@
 using System.Net;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.IntegrationTests;
 
@@ -633,7 +633,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return (token, id);
     }
 
-    private async Task<Domain.Entities.User> SeedUserAsync(string username)
+    private async Task<TaskFlow.Api.Models.Entities.User> SeedUserAsync(string username)
     {
         const string password = "P@ssw0rd!";
         await _factory.SeedUserAsync(username, $"{username}@taskflow.com", password, SystemRoles.Employee);

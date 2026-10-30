@@ -1,14 +1,14 @@
 using System.Text.Json;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Application.Users.Validators;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using Task = System.Threading.Tasks.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using User = TaskFlow.Domain.Entities.User;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 
@@ -101,7 +101,7 @@ public class AssistantActionToolsTests
         await using var h = new AssistantActionHarness();
         var loner = h.AddUser("loner", SystemRoles.Employee);
         var noManagers = h.AddUser("othersdept", SystemRoles.Employee);
-        var support = new TaskFlow.Domain.Entities.Department { Name = "Support", CreatedAt = DateTime.UtcNow };
+        var support = new TaskFlow.Api.Models.Entities.Department { Name = "Support", CreatedAt = DateTime.UtcNow };
         h.Db.Departments.Add(support);
         await h.Db.SaveChangesAsync();
         TestMemberships.JoinDepartment(h.Db, noManagers, support.Id);
@@ -116,9 +116,9 @@ public class AssistantActionToolsTests
         Assert.Contains("Ask the user", emptyProject.ResultForModel);
     }
 
-    private static async Task<TaskFlow.Domain.Entities.Project> AddProjectAsync(AssistantActionHarness h, string name)
+    private static async Task<TaskFlow.Api.Models.Entities.Project> AddProjectAsync(AssistantActionHarness h, string name)
     {
-        var project = new TaskFlow.Domain.Entities.Project { Name = name, CreatedAt = DateTime.UtcNow };
+        var project = new TaskFlow.Api.Models.Entities.Project { Name = name, CreatedAt = DateTime.UtcNow };
         h.Db.Projects.Add(project);
         await h.Db.SaveChangesAsync();
         return project;

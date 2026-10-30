@@ -1,8 +1,8 @@
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 

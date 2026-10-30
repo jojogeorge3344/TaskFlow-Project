@@ -1,10 +1,10 @@
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Infrastructure.Services;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using User = TaskFlow.Domain.Entities.User;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 
@@ -32,7 +32,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
     private static IEnumerable<string> Codes(JsonDocument result) =>
         result.RootElement.GetProperty("tasks").EnumerateArray().Select(task => task.GetProperty("title").GetString()!);
 
-    private TaskFlow.Domain.Entities.Task Add(User assignee, string title, int daysFromNow, TaskStatus status = TaskStatus.InProgress,
+    private TaskFlow.Api.Models.Entities.Task Add(User assignee, string title, int daysFromNow, TaskStatus status = TaskStatus.InProgress,
         TaskPriority priority = TaskPriority.Medium, User? creator = null) =>
         _h.Tracking.AddTask(assignee.Id, (creator ?? _h.Ravi).Id, title, status, DateTime.UtcNow.Date.AddDays(daysFromNow).AddHours(12), priority);
 
@@ -141,7 +141,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
     public async Task OpenTasksAreNotPushedOutByManyCompletedOnes()
     {
         // 550 completed tasks with early deadlines used to fill the five pages that were read, hiding the open task.
-        var completed = Enumerable.Range(0, 550).Select(i => new TaskFlow.Domain.Entities.Task
+        var completed = Enumerable.Range(0, 550).Select(i => new TaskFlow.Api.Models.Entities.Task
         {
             TaskCode = $"DONE-{i:D4}", Title = $"Completed {i}", AssignedToUserId = _h.Asha.Id, CreatedByUserId = _h.Ravi.Id,
             Priority = TaskPriority.Low, StartDate = DateTime.UtcNow.AddDays(-400), Deadline = DateTime.UtcNow.AddDays(-300 + i % 100),
@@ -161,7 +161,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
     [Fact]
     public async Task MoreThanOnePageOfOpenTasksIsStillComplete()
     {
-        var open = Enumerable.Range(0, 230).Select(i => new TaskFlow.Domain.Entities.Task
+        var open = Enumerable.Range(0, 230).Select(i => new TaskFlow.Api.Models.Entities.Task
         {
             TaskCode = $"OPEN-{i:D4}", Title = $"Open {i}", AssignedToUserId = _h.Asha.Id, CreatedByUserId = _h.Ravi.Id,
             Priority = TaskPriority.Medium, StartDate = DateTime.UtcNow.AddDays(-1), Deadline = DateTime.UtcNow.AddDays(1 + i),

@@ -1,7 +1,7 @@
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
-using User = TaskFlow.Domain.Entities.User;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
+using User = TaskFlow.Api.Models.Entities.User;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 

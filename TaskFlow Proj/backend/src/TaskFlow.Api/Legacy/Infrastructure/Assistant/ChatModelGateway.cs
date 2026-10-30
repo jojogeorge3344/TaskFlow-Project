@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Infrastructure.Assistant;
 

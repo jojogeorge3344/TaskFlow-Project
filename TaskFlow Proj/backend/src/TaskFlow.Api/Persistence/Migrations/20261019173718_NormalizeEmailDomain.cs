@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     /// <summary>
     /// Moves every existing user onto the fixed <c>@taskflow.com</c> domain. The local part is kept, except that characters

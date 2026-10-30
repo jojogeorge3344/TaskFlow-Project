@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Rules;
+namespace TaskFlow.Api.Common.Rules;
 
 /// <summary>Ordering rule for a task's reminder intervals: the second reminder may not come before the
 /// first. Equal intervals collapse to one reminder and 0 means "on the deadline day", so both are allowed.</summary>

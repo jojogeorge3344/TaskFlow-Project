@@ -1,4 +1,4 @@
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.UnitTests;
 

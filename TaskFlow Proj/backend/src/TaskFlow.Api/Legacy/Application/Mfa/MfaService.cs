@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Application.Mfa;

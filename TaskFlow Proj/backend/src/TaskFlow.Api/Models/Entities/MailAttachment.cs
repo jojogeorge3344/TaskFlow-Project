@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A file attached to a mail. Until <see cref="MessageId"/> is set it is an upload only its uploader can
 /// see. The content lives in the attachment store under <see cref="StorageKey"/>, never under the user's name.</summary>

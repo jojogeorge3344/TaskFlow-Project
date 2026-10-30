@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 
 namespace TaskFlow.Infrastructure.Analytics;
 

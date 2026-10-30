@@ -1,5 +1,5 @@
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.UnitTests;
 
@@ -39,7 +39,7 @@ public class ManagerDrillDownScopeTests
         await using var harness = AnalyticsHarness.Create(Now);
         var manager = harness.AddUser("m1", SystemRoles.Manager);
         var mine = harness.AddUser("e1", managerId: manager.Id);
-        harness.AddTask(mine, TaskFlow.Domain.Enums.TaskStatus.ToDo, deadline: Now.UtcDateTime.AddDays(-2));
+        harness.AddTask(mine, TaskFlow.Api.Models.Enums.TaskStatus.ToDo, deadline: Now.UtcDateTime.AddDays(-2));
         harness.AddTask(harness.AddUser("e2"));
 
         var analytics = await harness.ManagerService.GetAsync(manager.Id, new TaskFlow.Application.Dashboard.Analytics.AnalyticsFilter(), CancellationToken.None);

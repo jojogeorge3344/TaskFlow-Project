@@ -1,9 +1,9 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Infrastructure.Services;

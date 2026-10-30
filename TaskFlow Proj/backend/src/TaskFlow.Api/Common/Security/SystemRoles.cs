@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Security;
+namespace TaskFlow.Api.Common.Security;
 
 /// <summary>Names and ids of the roles the application creates itself. They cannot be renamed, changed or deleted.</summary>
 public static class SystemRoles

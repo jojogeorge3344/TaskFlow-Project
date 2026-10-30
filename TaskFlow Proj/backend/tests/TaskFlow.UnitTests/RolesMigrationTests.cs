@@ -2,9 +2,10 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Persistence.Seeders;
 
 namespace TaskFlow.UnitTests;
 

@@ -1,5 +1,5 @@
 using Task = System.Threading.Tasks.Task;
-using TaskFlow.Domain.Entities;
+using TaskFlow.Api.Models.Entities;
 
 namespace TaskFlow.Application.Mfa;
 

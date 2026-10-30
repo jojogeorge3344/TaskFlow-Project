@@ -1,9 +1,10 @@
+using TaskFlow.Api.Persistence.Seeders;
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     /// <summary>Replaces the Users.Role enum column with roles, the permission catalog and role grants. The three system
     /// roles are created here with fixed ids (1 Administrator, 2 Manager, 3 Employee) so existing users can be moved

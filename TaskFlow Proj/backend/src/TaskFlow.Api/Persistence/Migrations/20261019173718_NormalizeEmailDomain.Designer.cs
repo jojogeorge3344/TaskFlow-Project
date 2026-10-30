@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 #nullable disable
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20261019173718_NormalizeEmailDomain")]
@@ -20,7 +20,7 @@ namespace TaskFlow.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AiModel", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AiModel", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -47,7 +47,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AiModels");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AiProviderConfig", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AiProviderConfig", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -91,7 +91,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AiProviderConfigs");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.ApplicationSetting", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.ApplicationSetting", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -126,7 +126,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("ApplicationSettings");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantAudit", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantAudit", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -155,7 +155,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AssistantAudits");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantConversation", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -177,7 +177,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AssistantConversations");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantMessage", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -212,7 +212,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AssistantMessages");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantPendingAction", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantPendingAction", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -254,7 +254,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("AssistantPendingActions");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Department", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Department", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -283,7 +283,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailAttachment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -323,7 +323,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("MailAttachments");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -391,7 +391,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("MailMessages");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailRecipient", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -418,7 +418,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("MailRecipients");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailboxItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -463,7 +463,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("MailboxItems");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -499,7 +499,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Permission", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -536,7 +536,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Permissions");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RefreshToken", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -567,7 +567,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.ReminderHistory", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.ReminderHistory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -608,7 +608,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("ReminderHistory");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Role", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Role", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -634,7 +634,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Roles");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RolePermission", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RolePermission", b =>
                 {
                     b.Property<int>("RoleId")
                         .HasColumnType("INTEGER");
@@ -649,7 +649,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("RolePermissions");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Task", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Task", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -733,7 +733,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Tasks");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskActivityLog", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskActivityLog", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -772,7 +772,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("TaskActivityLogs");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskComment", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskComment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -800,7 +800,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("TaskComments");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskRecipient", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskRecipient", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -822,7 +822,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("TaskRecipients");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -892,9 +892,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantConversation", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -903,9 +903,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantMessage", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantMessage", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.AssistantConversation", "Conversation")
+                    b.HasOne("TaskFlow.Api.Models.Entities.AssistantConversation", "Conversation")
                         .WithMany("Messages")
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -914,9 +914,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Conversation");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantPendingAction", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantPendingAction", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -925,14 +925,14 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailAttachment", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailAttachment", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                    b.HasOne("TaskFlow.Api.Models.Entities.MailMessage", "Message")
                         .WithMany("Attachments")
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "UploadedByUser")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "UploadedByUser")
                         .WithMany()
                         .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -943,24 +943,24 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("UploadedByUser");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailMessage", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "ParentMessage")
+                    b.HasOne("TaskFlow.Api.Models.Entities.MailMessage", "ParentMessage")
                         .WithMany()
                         .HasForeignKey("ParentMessageId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TaskFlow.Domain.Entities.ReminderHistory", "ReminderHistory")
+                    b.HasOne("TaskFlow.Api.Models.Entities.ReminderHistory", "ReminderHistory")
                         .WithMany()
                         .HasForeignKey("ReminderHistoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "SenderUser")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "SenderUser")
                         .WithMany()
                         .HasForeignKey("SenderUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -974,15 +974,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailRecipient", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailRecipient", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                    b.HasOne("TaskFlow.Api.Models.Entities.MailMessage", "Message")
                         .WithMany("Recipients")
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -993,15 +993,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailboxItem", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailboxItem", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.MailMessage", "Message")
+                    b.HasOne("TaskFlow.Api.Models.Entities.MailMessage", "Message")
                         .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "OwnerUser")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1012,14 +1012,14 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("OwnerUser");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Notification", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1030,9 +1030,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RefreshToken", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RefreshToken", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1041,15 +1041,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.ReminderHistory", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.ReminderHistory", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "RecipientUser")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "RecipientUser")
                         .WithMany()
                         .HasForeignKey("RecipientUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1060,15 +1060,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RolePermission", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RolePermission", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Permission", "Permission")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Permission", "Permission")
                         .WithMany("Roles")
                         .HasForeignKey("PermissionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Role", "Role")
                         .WithMany("Permissions")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1079,21 +1079,21 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Task", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Task", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "AssignedTo")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "AssignedTo")
                         .WithMany()
                         .HasForeignKey("AssignedToUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "CreatedBy")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Department", "Department")
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1105,15 +1105,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Department");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskActivityLog", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskActivityLog", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "Actor")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "Actor")
                         .WithMany()
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1124,15 +1124,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskComment", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskComment", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "Author")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "Author")
                         .WithMany()
                         .HasForeignKey("AuthorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1143,15 +1143,15 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskRecipient", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.TaskRecipient", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Task", "Task")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Task", "Task")
                         .WithMany()
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1162,14 +1162,14 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.User", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.Department", "Department")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Department", "Department")
                         .WithMany("Users")
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("TaskFlow.Domain.Entities.Role", "Role")
+                    b.HasOne("TaskFlow.Api.Models.Entities.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1180,36 +1180,36 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.AssistantConversation", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantConversation", b =>
                 {
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Department", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Department", b =>
                 {
                     b.Navigation("Users");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.MailMessage", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailMessage", b =>
                 {
                     b.Navigation("Attachments");
 
                     b.Navigation("Recipients");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Permission", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Permission", b =>
                 {
                     b.Navigation("Roles");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.Role", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.Role", b =>
                 {
                     b.Navigation("Permissions");
 
                     b.Navigation("Users");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
                 });

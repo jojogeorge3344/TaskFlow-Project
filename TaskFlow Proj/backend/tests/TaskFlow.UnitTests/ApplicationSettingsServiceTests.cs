@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;
 

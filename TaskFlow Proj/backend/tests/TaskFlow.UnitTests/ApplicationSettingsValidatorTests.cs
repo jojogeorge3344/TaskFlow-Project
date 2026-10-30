@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Settings.Validators;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;
 

@@ -1,8 +1,8 @@
 using FluentValidation.TestHelper;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Tasks.Validators;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using ReminderFrequency = TaskFlow.Domain.Enums.ReminderFrequency;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using ReminderFrequency = TaskFlow.Api.Models.Enums.ReminderFrequency;
 
 namespace TaskFlow.UnitTests;
 

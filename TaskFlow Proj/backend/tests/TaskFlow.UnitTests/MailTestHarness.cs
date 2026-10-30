@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
-using User = TaskFlow.Domain.Entities.User;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 

@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A department a manager manages. Membership is managed from the Department Management screen.</summary>
 public class DepartmentManager

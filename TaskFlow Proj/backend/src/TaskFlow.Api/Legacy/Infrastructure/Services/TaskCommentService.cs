@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Infrastructure.Services;
@@ -185,7 +185,7 @@ public class TaskCommentService : ITaskCommentService
     private static TaskCommentDto ToDto(TaskComment comment, string authorName) =>
         new(comment.Id, comment.Body, comment.AuthorUserId, authorName, comment.CreatedAt, comment.EditedAt);
 
-    private Task<Domain.Entities.Task?> FindTaskAsync(int taskId, CancellationToken cancellationToken) =>
+    private Task<TaskFlow.Api.Models.Entities.Task?> FindTaskAsync(int taskId, CancellationToken cancellationToken) =>
         _dbContext.Tasks
             .AsNoTracking()
             .FirstOrDefaultAsync(task => task.Id == taskId && !task.IsDeleted, cancellationToken);
@@ -202,7 +202,7 @@ public class TaskCommentService : ITaskCommentService
     /// person who made the change) by in-app notification and Inbox mail. A delivery failure is logged and never
     /// undoes the comment change that has already been saved.</summary>
     private async System.Threading.Tasks.Task NotifyMembersAsync(
-        Domain.Entities.Task task,
+        TaskFlow.Api.Models.Entities.Task task,
         int actorUserId,
         string actorName,
         string verb,
@@ -260,7 +260,7 @@ public class TaskCommentService : ITaskCommentService
         }
     }
 
-    private void AddInboxMail(Domain.Entities.Task task, IReadOnlyCollection<int> recipientIds, string who, string verb, string mailDetail)
+    private void AddInboxMail(TaskFlow.Api.Models.Entities.Task task, IReadOnlyCollection<int> recipientIds, string who, string verb, string mailDetail)
     {
         var subject = $"Comment {verb}: {task.Title}";
         if (subject.Length > MailRules.MaxSubjectLength)

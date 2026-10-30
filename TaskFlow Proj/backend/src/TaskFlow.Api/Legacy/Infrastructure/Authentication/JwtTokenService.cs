@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TaskFlow.Application.Abstractions;
-using TaskFlow.Domain.Entities;
+using TaskFlow.Api.Models.Entities;
 
 namespace TaskFlow.Infrastructure.Authentication;
 

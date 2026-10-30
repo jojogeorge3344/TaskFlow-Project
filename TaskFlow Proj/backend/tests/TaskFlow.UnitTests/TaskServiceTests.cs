@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -121,7 +121,7 @@ public class TaskServiceTests
     {
         await using var harness = TaskTrackingServiceHarness.Create();
         var admin = harness.AddUser("tkbp-admin", SystemRoles.Administrator);
-        var project = new TaskFlow.Domain.Entities.Project { Name = "Atlas", CreatedAt = DateTime.UtcNow };
+        var project = new TaskFlow.Api.Models.Entities.Project { Name = "Atlas", CreatedAt = DateTime.UtcNow };
         harness.Db.Projects.Add(project);
         harness.Db.SaveChanges();
 
@@ -238,7 +238,7 @@ public class TaskServiceTests
             new UpdateTaskRequest(
                 "Updated title",
                 "Updated description",
-                TaskFlow.Domain.Enums.TaskPriority.High,
+                TaskFlow.Api.Models.Enums.TaskPriority.High,
                 task.StartDate,
                 newDeadline,
                 12m),
@@ -249,7 +249,7 @@ public class TaskServiceTests
         Assert.NotNull(details);
         Assert.Equal("Updated title", details.Title);
         Assert.Equal(newDeadline, details.Deadline);
-        Assert.Equal(TaskFlow.Domain.Enums.TaskPriority.High, details.Priority);
+        Assert.Equal(TaskFlow.Api.Models.Enums.TaskPriority.High, details.Priority);
 
         var activity = await harness.ActivityService.GetForTaskAsync(task.Id, new ActivityFilter(), CancellationToken.None);
         Assert.Contains(activity, entry => entry.EventType == nameof(TaskActivityEventType.DeadlineChanged));
@@ -267,7 +267,7 @@ public class TaskServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             harness.TaskService.UpdateAsync(
                 task.Id,
-                new UpdateTaskRequest("x", null, TaskFlow.Domain.Enums.TaskPriority.Low, task.StartDate, task.Deadline, 8m),
+                new UpdateTaskRequest("x", null, TaskFlow.Api.Models.Enums.TaskPriority.Low, task.StartDate, task.Deadline, 8m),
                 assignee.Id,
                 SystemRoles.Employee,
                 CancellationToken.None));
@@ -286,7 +286,7 @@ public class TaskServiceTests
                 new UpdateTaskRequest(
                     "x",
                     null,
-                    TaskFlow.Domain.Enums.TaskPriority.Low,
+                    TaskFlow.Api.Models.Enums.TaskPriority.Low,
                     new DateTime(2026, 10, 15),
                     new DateTime(2026, 10, 10),
                     8m),

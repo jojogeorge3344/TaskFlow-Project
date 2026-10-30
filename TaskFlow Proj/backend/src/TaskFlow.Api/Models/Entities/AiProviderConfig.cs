@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>Organisation-wide configuration of one AI provider. Kept apart from <see cref="ApplicationSetting"/>
 /// because that table is readable by every signed-in user, while the API key here never leaves the server.</summary>

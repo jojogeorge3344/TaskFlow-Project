@@ -1,5 +1,5 @@
 using FluentValidation;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Application.Settings.Validators;
 

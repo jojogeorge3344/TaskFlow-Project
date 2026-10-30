@@ -2,8 +2,8 @@ using Task = System.Threading.Tasks.Task;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;

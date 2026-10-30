@@ -18,7 +18,7 @@ public interface IUserAllocationService
     /// part unchanged; an empty list clears it. The caller saves, so it commits with the rest of the user change. Validate
     /// first.</summary>
     System.Threading.Tasks.Task StageForUserAsync(
-        Domain.Entities.User user,
+        TaskFlow.Api.Models.Entities.User user,
         IReadOnlyList<ProjectAllocationInput>? allocations,
         IReadOnlyList<int>? departmentIds,
         CancellationToken cancellationToken);

@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Security;
+namespace TaskFlow.Api.Common.Security;
 
 /// <summary>Maps a permission key to the name of the authorization policy that requires it. The REST controllers and the
 /// assistant both use these names, so they always agree.</summary>

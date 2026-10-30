@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.Api.Authorization;
 

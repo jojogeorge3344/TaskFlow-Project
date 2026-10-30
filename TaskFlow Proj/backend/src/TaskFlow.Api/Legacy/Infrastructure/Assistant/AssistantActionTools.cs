@@ -5,9 +5,9 @@ using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Users;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Assistant;
 

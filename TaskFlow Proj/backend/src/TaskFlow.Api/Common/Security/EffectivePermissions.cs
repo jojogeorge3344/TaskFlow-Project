@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Security;
+namespace TaskFlow.Api.Common.Security;
 
 /// <summary>
 /// Turns the permission keys a role holds into what its users may actually do. Two things are added to the stored keys

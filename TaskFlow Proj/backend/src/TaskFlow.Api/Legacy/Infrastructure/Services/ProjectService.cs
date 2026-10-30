@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Users;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Services;
 

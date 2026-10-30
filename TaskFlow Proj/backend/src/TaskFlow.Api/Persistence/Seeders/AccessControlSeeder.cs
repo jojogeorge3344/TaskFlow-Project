@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
 
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence.Seeders;
 
 /// <summary>
 /// Makes sure the three system roles, the permission catalog and the system roles' grants exist. This is required

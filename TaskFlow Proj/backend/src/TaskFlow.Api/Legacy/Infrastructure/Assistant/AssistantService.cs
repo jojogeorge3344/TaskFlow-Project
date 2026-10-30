@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Infrastructure.Assistant;

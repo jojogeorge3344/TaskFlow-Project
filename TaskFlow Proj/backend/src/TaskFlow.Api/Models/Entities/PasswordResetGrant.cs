@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A single-use permission to set a new password, issued after the user proved who they are with an
 /// authenticator code. Only a hash of the token is stored.</summary>

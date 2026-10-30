@@ -7,7 +7,7 @@ public static class TaskAccessScope
     public static bool CanAccess(
         int userId,
         bool canViewAll,
-        TaskFlow.Domain.Entities.Task task,
+        TaskFlow.Api.Models.Entities.Task task,
         IReadOnlyCollection<int> recipientUserIds)
     {
         if (canViewAll)

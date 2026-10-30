@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence;
 
 public static class DatabasePathResolver
 {

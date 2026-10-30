@@ -1,4 +1,4 @@
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence.Seeders;
 
 public class SeedOptions
 {

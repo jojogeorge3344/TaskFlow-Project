@@ -1,8 +1,8 @@
 using System.Text.Json;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Enums;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using User = TaskFlow.Domain.Entities.User;
+using TaskFlow.Api.Models.Enums;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 

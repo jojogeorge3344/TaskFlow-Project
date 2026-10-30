@@ -2,11 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Infrastructure.Persistence;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Persistence;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
 

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Mail;
 

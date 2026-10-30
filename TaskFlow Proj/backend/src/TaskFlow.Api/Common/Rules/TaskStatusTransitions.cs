@@ -1,7 +1,7 @@
-using TaskFlow.Domain.Enums;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Domain.Rules;
+namespace TaskFlow.Api.Common.Rules;
 
 /// <summary>Pure transition rules per TDD §10.2 and Appendix A. Completed and Cancelled are
 /// terminal - no transitions out. Repeating the same status is always allowed.</summary>

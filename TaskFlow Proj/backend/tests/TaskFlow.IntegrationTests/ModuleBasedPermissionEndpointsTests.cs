@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.IntegrationTests;
@@ -162,7 +162,7 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
     {
         var allowedPlainAuthorize = new[]
         {
-            "ApplicationSettingsController", "WeatherForecastController", "AssistantController", "AuthController", "DashboardController", "MailController",
+            "ApplicationSettingsController", "AssistantController", "AuthController", "DashboardController", "MailController",
             "MfaController", "NotificationsController", "TasksController", "UsersController"
         };
 

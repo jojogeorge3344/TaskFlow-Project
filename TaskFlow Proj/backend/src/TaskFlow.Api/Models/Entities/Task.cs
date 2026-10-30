@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 public class Task
 {

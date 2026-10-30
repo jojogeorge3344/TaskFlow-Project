@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Security;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Common.Security;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -37,9 +37,9 @@ public class ManagerScopeTests
         Assert.Equal([member.Id], await harness.ManagerScope.TeamUserIds(manager.Id).ToListAsync());
     }
 
-    private static void AddToProject(AnalyticsHarness harness, TaskFlow.Domain.Entities.User user, TaskFlow.Domain.Entities.Project project, bool manages = false)
+    private static void AddToProject(AnalyticsHarness harness, TaskFlow.Api.Models.Entities.User user, TaskFlow.Api.Models.Entities.Project project, bool manages = false)
     {
-        harness.Db.UserProjectAllocations.Add(new TaskFlow.Domain.Entities.UserProjectAllocation
+        harness.Db.UserProjectAllocations.Add(new TaskFlow.Api.Models.Entities.UserProjectAllocation
         {
             UserId = user.Id,
             ProjectId = project.Id,

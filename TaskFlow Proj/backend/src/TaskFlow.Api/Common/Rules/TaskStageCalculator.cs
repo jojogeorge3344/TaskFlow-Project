@@ -1,7 +1,7 @@
-using TaskFlow.Domain.Enums;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Domain.Rules;
+namespace TaskFlow.Api.Common.Rules;
 
 /// <summary>The display stage of a task, derived at read time from its status and deadline.
 /// Never stored (agent.md: overdue is never stored).</summary>

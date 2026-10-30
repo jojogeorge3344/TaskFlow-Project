@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Mail;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

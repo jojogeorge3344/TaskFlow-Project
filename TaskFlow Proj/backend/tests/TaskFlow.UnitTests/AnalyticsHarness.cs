@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Analytics;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 

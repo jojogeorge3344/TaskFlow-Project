@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 #nullable disable
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20261011171611_InitialAuth")]
@@ -20,7 +20,7 @@ namespace TaskFlow.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RefreshToken", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -51,7 +51,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -111,9 +111,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.RefreshToken", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.RefreshToken", b =>
                 {
-                    b.HasOne("TaskFlow.Domain.Entities.User", "User")
+                    b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -122,7 +122,7 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.User", b =>
                 {
                     b.Navigation("RefreshTokens");
                 });

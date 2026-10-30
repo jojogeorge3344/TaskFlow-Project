@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,13 +8,13 @@ using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Application.Users.Validators;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
-using User = TaskFlow.Domain.Entities.User;
+using User = TaskFlow.Api.Models.Entities.User;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A single-use recovery code for a user with MFA on. Only a hash is stored.</summary>
 public class MfaBackupCode

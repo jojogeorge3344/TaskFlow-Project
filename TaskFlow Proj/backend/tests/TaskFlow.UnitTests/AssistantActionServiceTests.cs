@@ -1,17 +1,17 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;
 
 public class AssistantActionServiceTests
 {
-    private static async Task<int> InboxCountAsync(AssistantActionHarness h, TaskFlow.Domain.Entities.User user) =>
+    private static async Task<int> InboxCountAsync(AssistantActionHarness h, TaskFlow.Api.Models.Entities.User user) =>
         await h.Db.MailboxItems.CountAsync(item => item.OwnerUserId == user.Id && item.Folder == MailFolder.Inbox);
 
-    private static async Task<int> SentCountAsync(AssistantActionHarness h, TaskFlow.Domain.Entities.User user) =>
+    private static async Task<int> SentCountAsync(AssistantActionHarness h, TaskFlow.Api.Models.Entities.User user) =>
         await h.Db.MailboxItems.CountAsync(item => item.OwnerUserId == user.Id && item.Folder == MailFolder.Sent);
 
     [Fact]
@@ -428,7 +428,7 @@ public class AssistantActionServiceTests
             Assert.DoesNotContain("in review", audit.Outcome);
             Assert.DoesNotContain("TF-102", audit.Outcome);
         });
-        var properties = typeof(TaskFlow.Domain.Entities.AssistantAudit).GetProperties().Select(property => property.Name).ToList();
+        var properties = typeof(TaskFlow.Api.Models.Entities.AssistantAudit).GetProperties().Select(property => property.Name).ToList();
         Assert.Equal(["At", "Id", "Kind", "Outcome", "UserId"], properties.Order());
     }
 }

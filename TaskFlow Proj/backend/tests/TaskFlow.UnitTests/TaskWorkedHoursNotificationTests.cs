@@ -2,15 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Services;
 
 namespace TaskFlow.UnitTests;
 
 public class TaskWorkedHoursNotificationTests
 {
-    private static UpdateTaskRequest Request(Domain.Entities.Task task, decimal? hours) =>
+    private static UpdateTaskRequest Request(TaskFlow.Api.Models.Entities.Task task, decimal? hours) =>
         new(task.Title, task.Description, task.Priority, task.StartDate, task.Deadline, task.EstimatedHours, hours);
 
     [Fact]

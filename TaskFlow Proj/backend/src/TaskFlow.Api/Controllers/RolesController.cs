@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Application.Roles;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.Api.Controllers;
 

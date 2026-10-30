@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Users.Validators;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Application.Auth;

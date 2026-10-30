@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Application.Auth;
 using TaskFlow.Application.Mfa;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.Api.Controllers;
 

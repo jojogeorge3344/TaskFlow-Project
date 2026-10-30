@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Projects;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Services;
 

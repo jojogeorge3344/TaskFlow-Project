@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A department a user belongs to. A user may belong to several.</summary>
 public class UserDepartment

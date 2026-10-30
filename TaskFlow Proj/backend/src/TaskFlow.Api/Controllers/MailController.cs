@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

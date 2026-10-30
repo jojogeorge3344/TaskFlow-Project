@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A role someone holds on a project, such as QA or Developer. A label only: it grants no permissions.</summary>
 public class Position

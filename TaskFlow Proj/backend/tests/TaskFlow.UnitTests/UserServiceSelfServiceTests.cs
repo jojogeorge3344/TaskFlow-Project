@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Identity;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 

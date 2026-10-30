@@ -4,7 +4,7 @@
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class UserProjectAllocationsAndDepartments : Migration

@@ -2,11 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Users;
 using TaskFlow.Application.Workload;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
 

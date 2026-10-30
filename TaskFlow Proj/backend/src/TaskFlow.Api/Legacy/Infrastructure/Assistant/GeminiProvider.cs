@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Infrastructure.Assistant;
 

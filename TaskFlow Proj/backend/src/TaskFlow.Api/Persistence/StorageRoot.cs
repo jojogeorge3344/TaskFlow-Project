@@ -1,4 +1,4 @@
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence;
 
 /// <summary>The <c>Storage</c> configuration section: the one folder that holds the database, the AI key ring and mail
 /// attachments on this machine.</summary>

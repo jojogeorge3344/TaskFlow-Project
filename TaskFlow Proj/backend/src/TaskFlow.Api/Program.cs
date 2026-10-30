@@ -16,10 +16,11 @@ using TaskFlow.Api.Authentication;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Auth;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Authentication;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Persistence.Seeders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -205,10 +206,10 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     // One policy per catalog permission; the permission claims are refreshed from the database on every request.
-    foreach (var permission in TaskFlow.Domain.Security.PermissionCatalog.All)
+    foreach (var permission in TaskFlow.Api.Common.Security.PermissionCatalog.All)
     {
         options.AddPolicy(
-            TaskFlow.Domain.Security.PermissionPolicy.NameFor(permission.Key),
+            TaskFlow.Api.Common.Security.PermissionPolicy.NameFor(permission.Key),
             policy => policy.RequireClaim(AuthClaims.Permission, permission.Key));
     }
 

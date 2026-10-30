@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Services;
 
@@ -456,8 +456,8 @@ public class UserService : IUserService
             .CountAsync(
                 t => t.AssignedToUserId == id
                      && !t.IsDeleted
-                     && t.Status != Domain.Enums.TaskStatus.Completed
-                     && t.Status != Domain.Enums.TaskStatus.Cancelled,
+                     && t.Status != TaskFlow.Api.Models.Enums.TaskStatus.Completed
+                     && t.Status != TaskFlow.Api.Models.Enums.TaskStatus.Cancelled,
                 cancellationToken);
         if (unfinished > 0)
         {

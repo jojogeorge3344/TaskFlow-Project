@@ -1,4 +1,4 @@
-using TaskEntity = TaskFlow.Domain.Entities.Task;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 
 namespace TaskFlow.Application.Dashboard.Analytics;
 

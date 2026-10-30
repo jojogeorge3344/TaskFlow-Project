@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Dashboard;
 using TaskFlow.Application.Dashboard.Analytics;
 

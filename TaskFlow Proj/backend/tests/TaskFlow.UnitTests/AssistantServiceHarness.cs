@@ -1,12 +1,12 @@
 using System.Security.Claims;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Infrastructure.Settings;
-using User = TaskFlow.Domain.Entities.User;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 

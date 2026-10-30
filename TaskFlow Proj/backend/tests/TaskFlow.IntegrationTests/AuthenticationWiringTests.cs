@@ -1,11 +1,11 @@
 using System.Net;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Application.Abstractions;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.IntegrationTests;
 
@@ -23,7 +23,7 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/weatherforecast");
+        var response = await client.GetAsync("/api/v1/notifications/unread-count");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -45,7 +45,7 @@ public class AuthenticationWiringTests : IClassFixture<TaskFlowApiFactory>
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken.Token);
 
-        var response = await client.GetAsync("/weatherforecast");
+        var response = await client.GetAsync("/api/v1/notifications/unread-count");
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
     }

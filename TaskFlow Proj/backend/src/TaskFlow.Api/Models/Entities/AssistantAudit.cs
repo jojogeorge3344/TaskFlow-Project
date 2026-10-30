@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A record that an action was prepared, confirmed, cancelled, expired or refused. It holds no message
 /// bodies, passwords or keys.</summary>

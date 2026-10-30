@@ -1,7 +1,7 @@
 using FluentValidation.TestHelper;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Application.Tasks.Validators;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -155,7 +155,7 @@ public class TaskValidatorsTests
     private static UpdateTaskRequest ValidUpdate() => new(
         "Prepare report",
         "October figures",
-        TaskFlow.Domain.Enums.TaskPriority.Medium,
+        TaskFlow.Api.Models.Enums.TaskPriority.Medium,
         new DateTime(2026, 10, 13),
         new DateTime(2026, 10, 15),
         6m);

@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 

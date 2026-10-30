@@ -3,11 +3,11 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
-using ProjectEntity = TaskFlow.Domain.Entities.Project;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using ProjectEntity = TaskFlow.Api.Models.Entities.Project;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.IntegrationTests;
 

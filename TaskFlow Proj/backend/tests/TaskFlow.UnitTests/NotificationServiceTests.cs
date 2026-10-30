@@ -1,5 +1,5 @@
 using TaskFlow.Application.Notifications;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

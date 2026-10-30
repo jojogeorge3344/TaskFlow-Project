@@ -5,14 +5,14 @@ using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Analytics;
-using TaskFlow.Infrastructure.Persistence;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Persistence;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
 
@@ -414,7 +414,7 @@ public class TaskService : ITaskService
         recipientIds.UnionWith(additionalRecipientIds);
         foreach (var userId in recipientIds)
         {
-            _dbContext.TaskRecipients.Add(new TaskFlow.Domain.Entities.TaskRecipient
+            _dbContext.TaskRecipients.Add(new TaskFlow.Api.Models.Entities.TaskRecipient
             {
                 TaskId = task.Id,
                 UserId = userId
@@ -783,7 +783,7 @@ public class TaskService : ITaskService
         // BR-5: the assignee is always a recipient - make sure the new assignee is included.
         if (recipients.All(recipient => recipient.UserId != request.NewAssigneeUserId))
         {
-            _dbContext.TaskRecipients.Add(new TaskFlow.Domain.Entities.TaskRecipient
+            _dbContext.TaskRecipients.Add(new TaskFlow.Api.Models.Entities.TaskRecipient
             {
                 TaskId = taskId,
                 UserId = request.NewAssigneeUserId
@@ -913,7 +913,7 @@ public class TaskService : ITaskService
 
         foreach (var userId in toAdd)
         {
-            _dbContext.TaskRecipients.Add(new TaskFlow.Domain.Entities.TaskRecipient
+            _dbContext.TaskRecipients.Add(new TaskFlow.Api.Models.Entities.TaskRecipient
             {
                 TaskId = taskId,
                 UserId = userId

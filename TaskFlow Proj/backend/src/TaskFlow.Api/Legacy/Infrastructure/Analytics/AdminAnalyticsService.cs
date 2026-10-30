@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using static TaskFlow.Infrastructure.Analytics.AnalyticsCounting;
 
 namespace TaskFlow.Infrastructure.Analytics;
@@ -82,10 +82,10 @@ public class AdminAnalyticsService : IAdminAnalyticsService
         return new AnalyticsFilterOptionsDto(today, timeZone.Id, departments, projects, employees, managers);
     }
 
-    private IQueryable<Domain.Entities.User> ManagerUsers() =>
+    private IQueryable<TaskFlow.Api.Models.Entities.User> ManagerUsers() =>
         _dbContext.Users.Where(user => user.RoleId == SystemRoles.ManagerId);
 
-    private IQueryable<Domain.Entities.User> EmployeeUsers() =>
+    private IQueryable<TaskFlow.Api.Models.Entities.User> EmployeeUsers() =>
         _dbContext.Users.Where(user =>
             user.IsActive
             && !user.Role.Permissions.Any(grant => grant.Permission.Key == PermissionKeys.TasksViewAll));

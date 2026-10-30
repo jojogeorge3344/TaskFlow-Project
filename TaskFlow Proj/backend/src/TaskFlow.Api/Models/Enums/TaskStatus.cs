@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Enums;
+namespace TaskFlow.Api.Models.Enums;
 
 public enum TaskStatus
 {

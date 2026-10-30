@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A TaskFlow user a sent mail was addressed to.</summary>
 public class MailRecipient

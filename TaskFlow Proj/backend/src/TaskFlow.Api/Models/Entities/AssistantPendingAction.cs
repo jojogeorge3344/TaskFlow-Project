@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>Something TFA has prepared for the user but not done. Only the user's own confirm request runs it.</summary>
 public class AssistantPendingAction

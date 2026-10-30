@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Reports;
 using TaskFlow.Application.Settings;
-using TaskFlow.Infrastructure.Persistence;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
+using TaskFlow.Api.Persistence;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 
 namespace TaskFlow.Infrastructure.Services;
 

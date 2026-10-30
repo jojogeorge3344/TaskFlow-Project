@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Authentication;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Api.Authorization;
 

@@ -13,8 +13,8 @@ public record ProjectTaskDto(
     int Id,
     string TaskCode,
     string Title,
-    TaskFlow.Domain.Enums.TaskStatus Status,
-    TaskFlow.Domain.Enums.TaskPriority Priority,
+    TaskFlow.Api.Models.Enums.TaskStatus Status,
+    TaskFlow.Api.Models.Enums.TaskPriority Priority,
     DateTime StartDate,
     DateTime Deadline,
     int AssignedToUserId,
@@ -24,8 +24,8 @@ public record ProjectTaskDto(
 
 /// <summary>Optional filters for a project's tasks; all given filters apply together.</summary>
 public record ProjectTaskFilter(
-    TaskFlow.Domain.Enums.TaskStatus? Status = null,
-    TaskFlow.Domain.Enums.TaskPriority? Priority = null,
+    TaskFlow.Api.Models.Enums.TaskStatus? Status = null,
+    TaskFlow.Api.Models.Enums.TaskPriority? Priority = null,
     DateTime? DeadlineFrom = null,
     DateTime? DeadlineTo = null,
     int? AssignedToUserId = null,

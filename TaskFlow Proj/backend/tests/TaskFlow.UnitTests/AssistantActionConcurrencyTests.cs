@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Identity;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,13 +7,13 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Application.Users.Validators;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
-using User = TaskFlow.Domain.Entities.User;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 
@@ -74,7 +74,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
         {
             ashaId = (await prepare.Users.SingleAsync(user => user.Username == "asha")).Id;
             raviId = (await prepare.Users.SingleAsync(user => user.Username == "ravi")).Id;
-            var conversation = new TaskFlow.Domain.Entities.AssistantConversation { UserId = ashaId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            var conversation = new TaskFlow.Api.Models.Entities.AssistantConversation { UserId = ashaId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
             prepare.AssistantConversations.Add(conversation);
             await prepare.SaveChangesAsync();
             var card = await NewService(prepare).CreateAsync(

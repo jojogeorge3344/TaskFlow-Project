@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Rules;
+namespace TaskFlow.Api.Common.Rules;
 
 /// <summary>The thresholds behind the Manager dashboard's per-employee flags, kept in one place so they can be tuned.</summary>
 public static class ManagerTeamThresholds

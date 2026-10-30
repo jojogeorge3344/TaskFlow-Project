@@ -5,12 +5,12 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Reminders;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
 using TaskFlow.Infrastructure.Mail;
-using TaskFlow.Infrastructure.Persistence;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Persistence;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.Infrastructure.Services;
 

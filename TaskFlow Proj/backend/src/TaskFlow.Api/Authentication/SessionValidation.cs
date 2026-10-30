@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Infrastructure.Authentication;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Api.Authentication;
 
@@ -67,7 +67,7 @@ public static class SessionValidation
                 identity.AddClaim(new Claim(AuthClaims.MfaSetupRequired, "true"));
             }
 
-            identity.AddClaims(TaskFlow.Domain.Security.EffectivePermissions.Expand(user.PermissionKeys).Select(key => new Claim(AuthClaims.Permission, key)));
+            identity.AddClaims(TaskFlow.Api.Common.Security.EffectivePermissions.Expand(user.PermissionKeys).Select(key => new Claim(AuthClaims.Permission, key)));
         }
     }
 }

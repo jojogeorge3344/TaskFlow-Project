@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>One TFA chat belonging to one user. The user's latest conversation is the active one.</summary>
 public class AssistantConversation

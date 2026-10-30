@@ -1,7 +1,7 @@
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Infrastructure.Persistence;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Persistence;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 
 namespace TaskFlow.Infrastructure.Analytics;
 

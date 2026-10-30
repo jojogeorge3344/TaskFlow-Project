@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A named set of permissions. The three system roles are created by the application and are read-only;
 /// every other role is a custom role an administrator manages.</summary>

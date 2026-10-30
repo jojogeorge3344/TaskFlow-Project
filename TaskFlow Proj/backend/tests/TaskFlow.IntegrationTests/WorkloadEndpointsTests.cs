@@ -1,18 +1,18 @@
 using System.Net;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Infrastructure.Persistence;
-using Project = TaskFlow.Domain.Entities.Project;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using User = TaskFlow.Domain.Entities.User;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Persistence;
+using Project = TaskFlow.Api.Models.Entities.Project;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using User = TaskFlow.Api.Models.Entities.User;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.IntegrationTests;
 
@@ -135,7 +135,7 @@ public class WorkloadEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         if (projectId is not null)
         {
-            db.UserProjectAllocations.Add(new TaskFlow.Domain.Entities.UserProjectAllocation { UserId = user.Id, ProjectId = projectId.Value, AllocationPercent = 100, PositionId = 1 });
+            db.UserProjectAllocations.Add(new TaskFlow.Api.Models.Entities.UserProjectAllocation { UserId = user.Id, ProjectId = projectId.Value, AllocationPercent = 100, PositionId = 1 });
             await db.SaveChangesAsync();
         }
 

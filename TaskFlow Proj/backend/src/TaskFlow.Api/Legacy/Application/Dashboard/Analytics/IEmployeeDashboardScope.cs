@@ -5,5 +5,5 @@ namespace TaskFlow.Application.Dashboard.Analytics;
 public interface IEmployeeDashboardScope
 {
     /// <summary>Restricts a task query to counted tasks assigned to or shared with <paramref name="userId"/>.</summary>
-    IQueryable<TaskFlow.Domain.Entities.Task> OwnTasks(IQueryable<TaskFlow.Domain.Entities.Task> tasks, int userId);
+    IQueryable<TaskFlow.Api.Models.Entities.Task> OwnTasks(IQueryable<TaskFlow.Api.Models.Entities.Task> tasks, int userId);
 }

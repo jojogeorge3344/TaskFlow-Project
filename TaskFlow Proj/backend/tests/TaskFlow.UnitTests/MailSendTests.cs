@@ -2,7 +2,7 @@ using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Mail.Validators;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.UnitTests;

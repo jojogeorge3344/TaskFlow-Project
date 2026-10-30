@@ -1,8 +1,8 @@
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
 using Task = System.Threading.Tasks.Task;
-using TaskPriority = TaskFlow.Domain.Enums.TaskPriority;
+using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 
 namespace TaskFlow.UnitTests;
 

@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Services;
 using TaskFlow.Infrastructure.Settings;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
 
@@ -27,7 +27,7 @@ public class ReminderServiceTests
             NullLogger<ReminderService>.Instance);
     }
 
-    private static (Domain.Entities.User Creator, Domain.Entities.User Assignee, Domain.Entities.Task Task) SeedTask(
+    private static (TaskFlow.Api.Models.Entities.User Creator, TaskFlow.Api.Models.Entities.User Assignee, TaskFlow.Api.Models.Entities.Task Task) SeedTask(
         TaskTrackingServiceHarness harness,
         string prefix,
         TaskStatus status = TaskStatus.InProgress)
@@ -216,7 +216,7 @@ public class ReminderServiceTests
         Assert.Equal(new[] { assignee.Id, creator.Id }.Order(), items.Select(item => item.OwnerUserId).Order());
         Assert.All(items, item =>
         {
-            Assert.Equal(TaskFlow.Domain.Enums.MailFolder.Inbox, item.Folder);
+            Assert.Equal(TaskFlow.Api.Models.Enums.MailFolder.Inbox, item.Folder);
             Assert.False(item.IsRead);
             Assert.True(item.Message!.IsSystem);
             Assert.Null(item.Message.SenderUserId);
@@ -234,7 +234,7 @@ public class ReminderServiceTests
     {
         await using var harness = TaskTrackingServiceHarness.Create();
         SeedTask(harness, "rs-nomail");
-        harness.Db.ApplicationSettings.Add(new TaskFlow.Domain.Entities.ApplicationSetting
+        harness.Db.ApplicationSettings.Add(new TaskFlow.Api.Models.Entities.ApplicationSetting
         {
             Key = SettingKeys.NotificationMailEnabled,
             Value = "false",

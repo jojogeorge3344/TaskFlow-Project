@@ -4,13 +4,13 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Domain.Security;
-using TaskFlow.Infrastructure.Persistence;
-using DepartmentEntity = TaskFlow.Domain.Entities.Department;
-using DepartmentManagerEntity = TaskFlow.Domain.Entities.DepartmentManager;
-using UserDepartmentEntity = TaskFlow.Domain.Entities.UserDepartment;
-using TaskEntity = TaskFlow.Domain.Entities.Task;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
+using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Persistence;
+using DepartmentEntity = TaskFlow.Api.Models.Entities.Department;
+using DepartmentManagerEntity = TaskFlow.Api.Models.Entities.DepartmentManager;
+using UserDepartmentEntity = TaskFlow.Api.Models.Entities.UserDepartment;
+using TaskEntity = TaskFlow.Api.Models.Entities.Task;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.IntegrationTests;
 

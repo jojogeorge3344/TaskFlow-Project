@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>An in-app notification targeting a user. Written by INotificationPublisher and read
 /// and marked read by INotificationService in the notification center (Screen 12).</summary>
@@ -10,7 +10,7 @@ public class Notification
     public int UserId { get; set; }
     public User? User { get; set; }
     public int? TaskId { get; set; }
-    public Domain.Entities.Task? Task { get; set; }
+    public TaskFlow.Api.Models.Entities.Task? Task { get; set; }
     public NotificationType Type { get; set; }
     public string Message { get; set; } = string.Empty;
     public bool IsRead { get; set; }

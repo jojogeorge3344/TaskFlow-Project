@@ -1,9 +1,9 @@
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Domain.Security;
-using TaskStatus = TaskFlow.Domain.Enums.TaskStatus;
-using User = TaskFlow.Domain.Entities.User;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Common.Security;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
 

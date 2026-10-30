@@ -2,8 +2,8 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Settings;
 

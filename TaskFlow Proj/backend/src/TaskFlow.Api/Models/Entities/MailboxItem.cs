@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>One user's copy of a mail. Read state, flags and trash are personal; privacy is "the caller owns
 /// the item". Deleting forever sets <see cref="PurgedAt"/> and keeps the row.</summary>

@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Settings;
-using TaskFlow.Domain.Rules;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.Infrastructure.Analytics;
 

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Tasks;
-using TaskFlow.Domain.Enums;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.UnitTests;
 

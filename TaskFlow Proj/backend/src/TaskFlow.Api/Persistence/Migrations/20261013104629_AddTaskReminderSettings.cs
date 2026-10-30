@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace TaskFlow.Infrastructure.Migrations
+namespace TaskFlow.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddTaskReminderSettings : Migration

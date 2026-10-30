@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>The content of one internal mail. Written once when sent; while <see cref="SentAt"/> is null it is
 /// the author's draft. Each person's copy (folder, read state, flags, trash) is a <see cref="MailboxItem"/>.</summary>

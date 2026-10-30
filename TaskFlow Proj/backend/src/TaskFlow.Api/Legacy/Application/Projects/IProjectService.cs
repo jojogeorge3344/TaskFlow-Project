@@ -1,4 +1,4 @@
-using TaskFlow.Domain.Entities;
+using TaskFlow.Api.Models.Entities;
 
 namespace TaskFlow.Application.Projects;
 
@@ -6,7 +6,7 @@ public interface IProjectService
 {
     Task<IReadOnlyCollection<ProjectWithCountDto>> GetAllAsync(CancellationToken cancellationToken);
     Task<ProjectDto?> GetByIdAsync(int id, CancellationToken cancellationToken);
-    Task<IReadOnlyCollection<Domain.Entities.User>> GetEmployeesAsync(int projectId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<TaskFlow.Api.Models.Entities.User>> GetEmployeesAsync(int projectId, CancellationToken cancellationToken);
 
     /// <summary>The project's team with positions and percentages. Null when the project does not exist.</summary>
     Task<IReadOnlyCollection<ProjectMemberDto>?> GetMembersAsync(int projectId, CancellationToken cancellationToken);

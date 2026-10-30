@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;
 
@@ -298,8 +298,8 @@ public class AssistantServiceTests
     public async Task LinksAndRankedTasksFromToolsComeBackOnTheMessageAndSurviveAReload()
     {
         await using var h = await AssistantServiceHarness.CreateAsync();
-        var ranked = new PrioritisedTask(1, 7, "TF-7", "Fix bug", TaskPriority.High, TaskFlow.Domain.Enums.TaskStatus.InProgress,
-            new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc), new DateOnly(2026, 10, 20), 2, TaskFlow.Domain.Rules.TaskStage.Upcoming, false);
+        var ranked = new PrioritisedTask(1, 7, "TF-7", "Fix bug", TaskPriority.High, TaskFlow.Api.Models.Enums.TaskStatus.InProgress,
+            new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc), new DateOnly(2026, 10, 20), 2, TaskFlow.Api.Common.Rules.TaskStage.Upcoming, false);
         h.Toolbox.Handler = _ => new ToolOutcome("ranked", Links: [new AssistantLinkDto("TF-7", "/tasks/7")], RankedTasks: [ranked]);
         h.Gateway.Handler = (_, request) => request.Messages.Any(m => m.Role == AssistantMessageRole.Tool)
             ? ChatModelResult.FromText("Start with TF-7.")

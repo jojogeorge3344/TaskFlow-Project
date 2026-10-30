@@ -25,7 +25,7 @@ public sealed class AssistantCaller
 public static class AssistantPolicies
 {
     /// <summary>The policy that requires the <c>roles.manage</c> permission.</summary>
-    public const string RolesManage = TaskFlow.Domain.Security.PermissionPolicy.Prefix + TaskFlow.Domain.Security.PermissionKeys.RolesManage;
+    public const string RolesManage = TaskFlow.Api.Common.Security.PermissionPolicy.Prefix + TaskFlow.Api.Common.Security.PermissionKeys.RolesManage;
 }
 
 /// <summary>Asks the application's authorization system whether the user may do something. TFA must go through this

@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Security;
+namespace TaskFlow.Api.Common.Security;
 
 /// <summary>The permission keys code checks. Each one is listed in <see cref="PermissionCatalog"/>, except the
 /// <c>Legacy*</c> keys, which only exist as grants roles already hold (see <see cref="EffectivePermissions"/>).</summary>

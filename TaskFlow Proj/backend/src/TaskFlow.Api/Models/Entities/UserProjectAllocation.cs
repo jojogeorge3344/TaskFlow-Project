@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>A user's share of their time on one project, and the position they hold there. A user's percentages across all
 /// projects total at most 100.</summary>

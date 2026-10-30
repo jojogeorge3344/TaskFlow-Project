@@ -1,6 +1,6 @@
-using TaskFlow.Domain.Enums;
+using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>One generated deadline reminder for one recipient. The unique index on
 /// (TaskId, RecipientUserId, ReminderType, ScheduledFor) prevents duplicate reminders (BRD §3.5).</summary>

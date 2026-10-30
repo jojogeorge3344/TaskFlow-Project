@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Domain.Security;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Common.Security;
 
-namespace TaskFlow.Infrastructure.Persistence;
+namespace TaskFlow.Api.Persistence.Seeders;
 
 public class DatabaseSeeder
 {

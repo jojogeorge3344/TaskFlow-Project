@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Entities;
+namespace TaskFlow.Api.Models.Entities;
 
 /// <summary>One entry of the fixed permission catalog. Rows are created from <see cref="Security.PermissionCatalog"/>
 /// and are never updated or deleted.</summary>

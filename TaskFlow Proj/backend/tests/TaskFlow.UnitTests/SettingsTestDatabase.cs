@@ -2,8 +2,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Domain.Entities;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Settings;
 
 namespace TaskFlow.UnitTests;

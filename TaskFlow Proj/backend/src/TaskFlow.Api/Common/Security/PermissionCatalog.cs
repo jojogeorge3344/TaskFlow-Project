@@ -1,4 +1,4 @@
-namespace TaskFlow.Domain.Security;
+namespace TaskFlow.Api.Common.Security;
 
 /// <summary>
 /// One permission, placed in the Module -> Screen -> Section -> Feature -> Action hierarchy.

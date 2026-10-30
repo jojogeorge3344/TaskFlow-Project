@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Abstractions;
 using TaskFlow.Application.Mfa;
 using Microsoft.Extensions.Options;
-using TaskFlow.Domain.Entities;
+using TaskFlow.Api.Models.Entities;
 
 namespace TaskFlow.Application.Auth;
 
@@ -207,7 +207,7 @@ public class AuthService : IAuthService
             .Where(grant => grant.RoleId == user.RoleId)
             .Select(grant => grant.Permission.Key)
             .ToListAsync(cancellationToken);
-        permissions = TaskFlow.Domain.Security.EffectivePermissions.Expand(permissions).Order(StringComparer.Ordinal).ToList();
+        permissions = TaskFlow.Api.Common.Security.EffectivePermissions.Expand(permissions).Order(StringComparer.Ordinal).ToList();
 
         return new UserDto(
             user.Id,

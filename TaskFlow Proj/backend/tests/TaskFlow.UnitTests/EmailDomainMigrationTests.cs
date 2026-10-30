@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using TaskFlow.Infrastructure.Persistence;
+using TaskFlow.Api.Persistence;
 
 namespace TaskFlow.UnitTests;
 
@@ -134,7 +134,7 @@ public class EmailDomainMigrationTests : IDisposable
         var first = await MigrateAsync(("jo1", "jo@gmail.com", false), ("jo2", "jo@yahoo.com", false));
 
         await using var db = NewContext();
-        var migration = new TaskFlow.Infrastructure.Migrations.NormalizeEmailDomain();
+        var migration = new TaskFlow.Api.Persistence.Migrations.NormalizeEmailDomain();
         var sql = string.Join("\n", migration.UpOperations.OfType<Microsoft.EntityFrameworkCore.Migrations.Operations.SqlOperation>().Select(op => op.Sql));
         foreach (var statement in migration.UpOperations.OfType<Microsoft.EntityFrameworkCore.Migrations.Operations.SqlOperation>())
         {
