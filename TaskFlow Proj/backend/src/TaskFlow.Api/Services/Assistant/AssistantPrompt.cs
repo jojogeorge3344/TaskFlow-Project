@@ -1,4 +1,8 @@
-namespace TaskFlow.Application.Assistant;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+namespace TaskFlow.Api.Services.Assistant;
 
 public static class AssistantPrompt
 {

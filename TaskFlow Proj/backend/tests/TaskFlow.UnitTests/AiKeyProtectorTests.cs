@@ -1,6 +1,5 @@
 using TaskFlow.Api.Integrations.Ai;
 using Microsoft.AspNetCore.DataProtection;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

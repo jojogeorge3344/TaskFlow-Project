@@ -1,17 +1,17 @@
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Dtos.Profile;
 using System.Text.Json;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Interfaces.Assistant;
 
-namespace TaskFlow.Infrastructure.Assistant;
-
-public record ResolvedUser(int Id, string FullName, string Email, string Role, bool IsActive);
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>Finds TaskFlow users for a name or an address. The model never supplies a user id: it names a person, and
 /// the server decides who that is, or says it is ambiguous.</summary>
@@ -19,11 +19,11 @@ public class AssistantUserResolver
 {
     private const int MaxCandidates = 5;
 
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantDirectoryRepository _directory;
 
-    public AssistantUserResolver(AppDbContext dbContext)
+    public AssistantUserResolver(IAssistantDirectoryRepository directory)
     {
-        _dbContext = dbContext;
+        _directory = directory;
     }
 
     public record Match(ResolvedUser? User, IReadOnlyList<ResolvedUser> Candidates);
@@ -39,11 +39,7 @@ public class AssistantUserResolver
             return null;
         }
 
-        return await _dbContext.Roles
-            .AsNoTracking()
-            .Where(role => role.Name == term)
-            .Select(role => new RoleRef(role.Id, role.Name))
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _directory.FindRoleByNameAsync(term, cancellationToken) is { } role ? new RoleRef(role.Id, role.Name) : null;
     }
 
     /// <summary>An exact address wins, then an exact full name, then a single partial match. More than one partial match
@@ -57,34 +53,19 @@ public class AssistantUserResolver
         }
 
         var lower = term.ToLowerInvariant();
-        var users = _dbContext.Users.AsNoTracking().Where(user => user.IsActive);
-
         if (term.Contains('@'))
         {
-            var byEmail = await users
-                .Where(user => user.Email.ToLower() == lower)
-                .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
-                .FirstOrDefaultAsync(cancellationToken);
+            var byEmail = await _directory.FindActiveByEmailAsync(lower, cancellationToken);
             return new Match(byEmail, byEmail is null ? [] : [byEmail]);
         }
 
-        var exact = await users
-            .Where(user => user.FullName.ToLower() == lower || user.Username.ToLower() == lower)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
-            .Take(MaxCandidates + 1)
-            .ToListAsync(cancellationToken);
+        var exact = await _directory.FindActiveByExactNameAsync(lower, MaxCandidates + 1, cancellationToken);
         if (exact.Count == 1)
         {
             return new Match(exact[0], exact);
         }
 
-        var escaped = lower.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
-        var partial = await users
-            .Where(user => EF.Functions.Like(user.FullName, $"%{escaped}%", "\\") || EF.Functions.Like(user.Username, $"%{escaped}%", "\\"))
-            .OrderBy(user => user.FullName)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
-            .Take(MaxCandidates)
-            .ToListAsync(cancellationToken);
+        var partial = await _directory.SearchActiveByNameAsync(lower, MaxCandidates, cancellationToken);
 
         return partial.Count == 1 ? new Match(partial[0], partial) : new Match(null, exact.Count > 1 ? exact.Take(MaxCandidates).ToList() : partial);
     }
@@ -95,12 +76,12 @@ public class AssistantUserResolver
 /// user is asked to choose.</summary>
 public class AssistantManagerResolver
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantDirectoryRepository _directory;
     private readonly ITaskService _tasks;
 
-    public AssistantManagerResolver(AppDbContext dbContext, ITaskService tasks)
+    public AssistantManagerResolver(IAssistantDirectoryRepository directory, ITaskService tasks)
     {
-        _dbContext = dbContext;
+        _directory = directory;
         _tasks = tasks;
     }
 
@@ -118,11 +99,7 @@ public class AssistantManagerResolver
 
             if (task.CreatedByUserId != caller.UserId)
             {
-                var creator = await _dbContext.Users
-                    .AsNoTracking()
-                    .Where(user => user.Id == task.CreatedByUserId && user.IsActive)
-                    .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
-                    .FirstOrDefaultAsync(cancellationToken);
+                var creator = await _directory.FindActiveAsync(task.CreatedByUserId, cancellationToken);
                 if (creator is not null)
                 {
                     return new Result(creator, [creator], null);
@@ -131,23 +108,13 @@ public class AssistantManagerResolver
         }
 
         // A person's managers are the managers of the departments they belong to.
-        var departmentIds = await _dbContext.UserDepartments
-            .AsNoTracking()
-            .Where(membership => membership.UserId == caller.UserId)
-            .Select(membership => membership.DepartmentId)
-            .ToListAsync(cancellationToken);
+        var departmentIds = await _directory.GetDepartmentIdsAsync(caller.UserId, cancellationToken);
         if (departmentIds.Count == 0)
         {
             return new Result(null, [], "You are not in a department, so I cannot tell who your manager is.");
         }
 
-        var managers = await _dbContext.Users
-            .AsNoTracking()
-            .Where(user => user.RoleId == SystemRoles.ManagerId && user.IsActive && user.Id != caller.UserId
-                && user.ManagedDepartments.Any(link => departmentIds.Contains(link.DepartmentId)))
-            .OrderBy(user => user.FullName)
-            .Select(user => new ResolvedUser(user.Id, user.FullName, user.Email, user.Role.Name, user.IsActive))
-            .ToListAsync(cancellationToken);
+        var managers = await _directory.GetActiveManagersOfDepartmentsAsync(departmentIds, caller.UserId, cancellationToken);
 
         return managers.Count switch
         {
@@ -269,13 +236,13 @@ public class DraftMailTool : IAssistantTool
 
 public class ProposeProfileUpdateTool : IAssistantTool
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantDirectoryRepository _directory;
     private readonly IAssistantActionService _actions;
     private readonly IValidator<UpdateOwnProfileRequest> _validator;
 
-    public ProposeProfileUpdateTool(AppDbContext dbContext, IAssistantActionService actions, IValidator<UpdateOwnProfileRequest> validator)
+    public ProposeProfileUpdateTool(IAssistantDirectoryRepository directory, IAssistantActionService actions, IValidator<UpdateOwnProfileRequest> validator)
     {
-        _dbContext = dbContext;
+        _directory = directory;
         _actions = actions;
         _validator = validator;
     }
@@ -303,11 +270,7 @@ public class ProposeProfileUpdateTool : IAssistantTool
             return new ToolOutcome("Ask the user what their new name or email should be.");
         }
 
-        var me = await _dbContext.Users.AsNoTracking()
-            .Where(user => user.Id == caller.UserId)
-            .Select(user => new { user.FullName, user.Email })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (me is null)
+        if (await _directory.GetNameAndEmailAsync(caller.UserId, cancellationToken) is not { } me)
         {
             return new ToolOutcome("The user's account was not found.");
         }
@@ -321,8 +284,7 @@ public class ProposeProfileUpdateTool : IAssistantTool
             return new ToolOutcome("That change is not valid: " + string.Join(" ", check.Errors.Select(error => error.ErrorMessage).Distinct()));
         }
 
-        var lowered = email.ToLowerInvariant();
-        if (await _dbContext.Users.AnyAsync(user => user.Id != caller.UserId && user.Email.ToLower() == lowered, cancellationToken))
+        if (await _directory.EmailUsedByOtherAsync(email, caller.UserId, cancellationToken))
         {
             return new ToolOutcome("That email address is already used by another account. Ask the user for a different one.");
         }

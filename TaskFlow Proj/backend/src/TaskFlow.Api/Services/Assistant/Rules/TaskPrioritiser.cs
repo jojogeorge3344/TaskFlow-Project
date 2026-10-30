@@ -3,21 +3,9 @@ using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Application.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 
-/// <summary>One open task in the order TFA recommends.</summary>
-public record PrioritisedTask(
-    int Rank,
-    int TaskId,
-    string TaskCode,
-    string Title,
-    TaskPriority Priority,
-    TaskStatus Status,
-    DateTime Deadline,
-    DateOnly DueDate,
-    int DaysUntilDue,
-    TaskStage Stage,
-    bool IsBlocked);
+namespace TaskFlow.Api.Services.Assistant.Rules;
 
 /// <summary>Orders a user's open tasks. The order is computed here, from the data only, so it is identical whichever
 /// AI model is asked to explain it: overdue first (longest overdue first), then due today, then the nearest

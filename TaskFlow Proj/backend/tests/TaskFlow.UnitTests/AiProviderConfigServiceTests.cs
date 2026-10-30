@@ -10,9 +10,7 @@ using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

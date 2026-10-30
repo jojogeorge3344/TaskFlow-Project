@@ -1,17 +1,12 @@
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Application.Assistant;
-
-/// <summary>A classified provider problem as shown to the user: a fixed message plus the other providers they could
-/// choose. The raw provider error is never part of it.</summary>
-public record AssistantFailureDto(
-    ProviderFailureKind Kind,
-    AiProviderKind Provider,
-    string Message,
-    int? RetryAfterSeconds,
-    IReadOnlyList<AiProviderOptionDto> Alternatives);
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>The fixed, plain-language message for each kind of provider failure.</summary>
 public static class ProviderFailureMessages

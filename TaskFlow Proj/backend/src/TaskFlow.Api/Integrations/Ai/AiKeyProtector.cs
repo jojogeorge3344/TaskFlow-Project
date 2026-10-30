@@ -1,7 +1,6 @@
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
-using TaskFlow.Application.Assistant;
 
 namespace TaskFlow.Api.Integrations.Ai;
 

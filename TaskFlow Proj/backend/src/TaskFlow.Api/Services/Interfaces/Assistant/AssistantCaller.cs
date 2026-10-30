@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace TaskFlow.Application.Assistant;
+namespace TaskFlow.Api.Services.Interfaces.Assistant;
 
 /// <summary>The signed-in user TFA acts as. Id and role are read from the validated token's claims: they are never
 /// taken from the chat text or from anything the model returns.</summary>

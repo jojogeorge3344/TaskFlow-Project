@@ -1,3 +1,5 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Communication.Notification.Reminders;
@@ -10,11 +12,9 @@ using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Infrastructure.Assistant;
 using Task = System.Threading.Tasks.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 

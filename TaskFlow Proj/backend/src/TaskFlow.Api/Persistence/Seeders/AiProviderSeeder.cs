@@ -1,6 +1,5 @@
 using TaskFlow.Api.Common.Constants;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;

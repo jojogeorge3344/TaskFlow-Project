@@ -3,9 +3,7 @@ using TaskFlow.Api.Integrations.Ai;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

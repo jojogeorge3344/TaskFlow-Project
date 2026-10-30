@@ -1,4 +1,8 @@
-namespace TaskFlow.Application.Assistant;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>Messages TFA shows as fixed text. None of these is produced by an AI model, so they cannot be argued away
 /// by a prompt, and they say the same thing every time.</summary>
@@ -27,41 +31,4 @@ public static class AssistantTexts
     public static string PermissionDenied(string actionDescription, string whoCanDoIt) =>
         $"You do not have the required permission to perform this action. {actionDescription} can only be performed by {whoCanDoIt}. "
         + "Please contact your system administrator for assistance.";
-
-    public static string RateLimited(TimeSpan retryAfter)
-    {
-        var seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
-        return $"You are sending messages too quickly. Please wait about {seconds} seconds and try again.";
-    }
-}
-
-/// <summary>The request cannot be handled and nothing was sent to any provider (HTTP 400).</summary>
-public class AssistantRequestException : TaskFlow.Api.Common.Exceptions.AppException
-{
-    public AssistantRequestException(string message)
-        : base(message)
-    {
-    }
-
-    public override int StatusCode => StatusCodes.Status400BadRequest;
-
-    public override string? Title => "TFA could not handle that";
-}
-
-/// <summary>The user is over the per-minute limit (HTTP 429).</summary>
-public class AssistantRateLimitedException : AssistantRequestException
-{
-    public AssistantRateLimitedException(TimeSpan retryAfter)
-        : base(AssistantTexts.RateLimited(retryAfter))
-    {
-        _retryAfter = retryAfter;
-    }
-
-    private readonly TimeSpan _retryAfter;
-
-    public override int StatusCode => StatusCodes.Status429TooManyRequests;
-
-    public override string? Title => "Too many requests";
-
-    public override TimeSpan? RetryAfter => _retryAfter;
 }

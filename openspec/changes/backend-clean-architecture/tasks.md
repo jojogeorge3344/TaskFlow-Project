@@ -68,7 +68,7 @@
 
 ## 11. Module: Assistant
 
-- [ ] 11.1 `Assistant`: conversation, message, pending-action and audit repositories. Move `AssistantService`, `AssistantActionService` and the read/action tools onto services and repositories, with `ChatModelGateway` and the providers in `Integrations/Ai`. Verify that the `Assistant*Tests` unit tests and `AssistantEndpointsTests` pass
+- [x] 11.1 `Assistant`: conversation, message, pending-action and audit repositories. Move `AssistantService`, `AssistantActionService` and the read/action tools onto services and repositories, with `ChatModelGateway` and the providers in `Integrations/Ai`. Verify that the `Assistant*Tests` unit tests and `AssistantEndpointsTests` pass
 
 ## 12. Lock down
 

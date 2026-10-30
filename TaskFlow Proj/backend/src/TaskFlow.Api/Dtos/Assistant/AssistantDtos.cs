@@ -1,6 +1,8 @@
+using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Models.Enums;
+using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Application.Assistant;
+namespace TaskFlow.Api.Dtos.Assistant;
 
 /// <summary>How a message should look in the panel. Refusal and Notice messages are fixed text, never model output.</summary>
 public enum AssistantMessageKind
@@ -50,13 +52,16 @@ public record AssistantMessageMeta(
     IReadOnlyList<PrioritisedTask>? RankedTasks,
     Guid? ActionId);
 
-public static class AssistantRules
-{
-    public const int MaxMessageLength = 2000;
-    public const int HistoryMessages = 12;
-    public const int HistoryCharacters = 6000;
-    public const int MaxToolRounds = 4;
-
-    /// <summary>How many of the latest messages the panel loads. Older ones stay stored but are not sent to the browser.</summary>
-    public const int ConversationMessages = 100;
-}
+/// <summary>One open task in the order TFA recommends.</summary>
+public record PrioritisedTask(
+    int Rank,
+    int TaskId,
+    string TaskCode,
+    string Title,
+    TaskPriority Priority,
+    TaskStatus Status,
+    DateTime Deadline,
+    DateOnly DueDate,
+    int DaysUntilDue,
+    TaskStage Stage,
+    bool IsBlocked);

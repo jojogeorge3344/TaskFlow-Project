@@ -1,4 +1,4 @@
-namespace TaskFlow.Application.Assistant;
+namespace TaskFlow.Api.Services.Interfaces.Assistant;
 
 /// <summary>Limits how many chat requests one user can send per minute, so one user cannot use up a free-tier quota.</summary>
 public interface IAssistantRateLimiter

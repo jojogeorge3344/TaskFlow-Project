@@ -1,3 +1,5 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -7,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Middleware;
-using TaskFlow.Application.Assistant;
 
 namespace TaskFlow.IntegrationTests;
 

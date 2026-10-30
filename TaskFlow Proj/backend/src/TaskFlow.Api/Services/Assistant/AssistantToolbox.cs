@@ -1,9 +1,12 @@
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Text.Json;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>One thing TFA can do. The model only ever names a tool and its arguments; the caller's identity, the
 /// authorization check and the confirmation step are all outside the model's reach.</summary>

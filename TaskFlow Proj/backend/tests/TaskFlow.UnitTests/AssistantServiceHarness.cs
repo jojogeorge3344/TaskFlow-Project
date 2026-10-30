@@ -1,3 +1,7 @@
+using TaskFlow.Api.Repositories.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Repositories.Settings.TfaSettings;
 using TaskFlow.Api.Services.Settings.TfaSettings;
 using TaskFlow.Api.Services.Interfaces.Assistant;
@@ -12,9 +16,7 @@ using System.Security.Claims;
 using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
@@ -93,7 +95,10 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
     /// <summary>A fresh service each call, like a new request scope.</summary>
     public AssistantService Service =>
         new(
-            Tracking.Db,
+            new AssistantConversationRepository(Tracking.Db),
+            new AssistantMessageRepository(Tracking.Db),
+            new AssistantDirectoryRepository(Tracking.Db),
+            new UnitOfWork(Tracking.Db),
             Gateway,
             Config,
             RateLimiter,

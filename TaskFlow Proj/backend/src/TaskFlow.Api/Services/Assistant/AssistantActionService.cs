@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Interfaces.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Rules;
@@ -7,37 +10,38 @@ using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Common.Exceptions;
 using System.Text.Json;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Interfaces;
+using TaskFlow.Api.Repositories.Interfaces.Assistant;
 using Task = System.Threading.Tasks.Task;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 public class AssistantAuditLog : IAssistantAuditLog
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantAuditRepository _audits;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
-    public AssistantAuditLog(AppDbContext dbContext, TimeProvider timeProvider)
+    public AssistantAuditLog(IAssistantAuditRepository audits, IUnitOfWork unitOfWork, TimeProvider timeProvider)
     {
-        _dbContext = dbContext;
+        _audits = audits;
+        _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
 
     public async Task RecordAsync(int userId, AssistantActionKind kind, string outcome, CancellationToken cancellationToken = default)
     {
-        _dbContext.AssistantAudits.Add(new AssistantAudit
+        _audits.Add(new AssistantAudit
         {
             UserId = userId,
             Kind = kind,
             Outcome = outcome,
             At = _timeProvider.GetUtcNow().UtcDateTime
         });
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
 
@@ -48,7 +52,10 @@ public class AssistantActionService : IAssistantActionService
 {
     private static readonly JsonSerializerOptions Json = AssistantService.MetaJson;
 
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantPendingActionRepository _actions;
+    private readonly IAssistantMessageRepository _messages;
+    private readonly IAssistantDirectoryRepository _directory;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMailService _mail;
     private readonly IEmployeeService _users;
     private readonly TaskFlow.Api.Services.Interfaces.Profile.IProfileService _profile;
@@ -60,7 +67,10 @@ public class AssistantActionService : IAssistantActionService
     private readonly ILogger<AssistantActionService>? _logger;
 
     public AssistantActionService(
-        AppDbContext dbContext,
+        IAssistantPendingActionRepository actions,
+        IAssistantMessageRepository messages,
+        IAssistantDirectoryRepository directory,
+        IUnitOfWork unitOfWork,
         IMailService mail,
         IEmployeeService users,
         TaskFlow.Api.Services.Interfaces.Profile.IProfileService profile,
@@ -72,7 +82,10 @@ public class AssistantActionService : IAssistantActionService
         ILogger<AssistantActionService>? logger = null)
     {
         _logger = logger;
-        _dbContext = dbContext;
+        _actions = actions;
+        _messages = messages;
+        _directory = directory;
+        _unitOfWork = unitOfWork;
         _mail = mail;
         _users = users;
         _profile = profile;
@@ -106,8 +119,8 @@ public class AssistantActionService : IAssistantActionService
             CreatedAt = now,
             ExpiresAt = now + AssistantActionRules.Lifetime
         };
-        _dbContext.AssistantPendingActions.Add(action);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _actions.Add(action);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _audit.RecordAsync(caller.UserId, kind, "prepared", cancellationToken);
 
         return ToCard(action, now);
@@ -121,10 +134,7 @@ public class AssistantActionService : IAssistantActionService
         CancellationToken cancellationToken = default)
     {
         var now = UtcNow;
-        var actions = await _dbContext.AssistantPendingActions
-            .AsNoTracking()
-            .Where(action => action.UserId == userId && actionIds.Contains(action.Id))
-            .ToListAsync(cancellationToken);
+        var actions = await _actions.GetForUserAsync(userId, actionIds, cancellationToken);
         return actions.ToDictionary(action => action.Id, action => ToCard(action, now));
     }
 
@@ -192,8 +202,7 @@ public class AssistantActionService : IAssistantActionService
         EditMailActionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var action = await _dbContext.AssistantPendingActions
-            .FirstOrDefaultAsync(candidate => candidate.Id == id && candidate.UserId == caller.UserId, cancellationToken);
+        var action = await _actions.FindForUserForUpdateAsync(id, caller.UserId, cancellationToken);
         if (action is null)
         {
             return null;
@@ -219,14 +228,13 @@ public class AssistantActionService : IAssistantActionService
 
         var recipients = await ResolveRecipientsAsync(addresses, cancellationToken);
         action.PayloadJson = JsonSerializer.Serialize(new SendMailPayload(recipients, subject.Trim(), body, current.TaskId), Json);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToCard(action, now);
     }
 
     public async Task<AssistantPendingActionDto?> CancelAsync(AssistantCaller caller, Guid id, CancellationToken cancellationToken = default)
     {
-        var action = await _dbContext.AssistantPendingActions
-            .FirstOrDefaultAsync(candidate => candidate.Id == id && candidate.UserId == caller.UserId, cancellationToken);
+        var action = await _actions.FindForUserForUpdateAsync(id, caller.UserId, cancellationToken);
         if (action is null)
         {
             return null;
@@ -237,7 +245,7 @@ public class AssistantActionService : IAssistantActionService
         {
             action.Status = AssistantActionStatus.Cancelled;
             action.ResolvedAt = now;
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _audit.RecordAsync(caller.UserId, action.Kind, "cancelled", cancellationToken);
         }
 
@@ -248,9 +256,7 @@ public class AssistantActionService : IAssistantActionService
 
     public async Task<AssistantActionResultDto?> ConfirmAsync(AssistantCaller caller, Guid id, CancellationToken cancellationToken = default)
     {
-        var action = await _dbContext.AssistantPendingActions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(candidate => candidate.Id == id && candidate.UserId == caller.UserId, cancellationToken);
+        var action = await _actions.FindForUserAsync(id, caller.UserId, cancellationToken);
         if (action is null)
         {
             return null;
@@ -286,14 +292,7 @@ public class AssistantActionService : IAssistantActionService
         }
 
         // Claim it: only one of several simultaneous confirms can move Pending to Confirmed, so it runs at most once.
-        var claimed = await _dbContext.AssistantPendingActions
-            .Where(candidate => candidate.Id == action.Id && candidate.Status == AssistantActionStatus.Pending)
-            .ExecuteUpdateAsync(
-                set => set
-                    .SetProperty(candidate => candidate.Status, AssistantActionStatus.Confirmed)
-                    .SetProperty(candidate => candidate.ResolvedAt, now),
-                cancellationToken);
-        if (claimed == 0)
+        if (!await _actions.TryClaimAsync(action.Id, now, cancellationToken))
         {
             throw new AssistantActionConflictException("This action has already been done.");
         }
@@ -417,8 +416,8 @@ public class AssistantActionService : IAssistantActionService
             MetaJson = JsonSerializer.Serialize(new AssistantMessageMeta(kind, null, null, null), Json),
             CreatedAt = now
         };
-        _dbContext.AssistantMessages.Add(message);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _messages.Add(message);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AssistantMessageDto(message.Id, "Assistant", text, kind, DateTime.SpecifyKind(now, DateTimeKind.Utc), null, [], [], null);
     }
@@ -426,11 +425,7 @@ public class AssistantActionService : IAssistantActionService
     // ------------------------------------------------------------------------------------------- helpers
 
     private Task MarkAsync(Guid id, AssistantActionStatus status, DateTime now, CancellationToken cancellationToken) =>
-        _dbContext.AssistantPendingActions
-            .Where(candidate => candidate.Id == id)
-            .ExecuteUpdateAsync(
-                set => set.SetProperty(candidate => candidate.Status, status).SetProperty(candidate => candidate.ResolvedAt, now),
-                cancellationToken);
+        _actions.SetStatusAsync(id, status, now, cancellationToken);
 
     private static void EnsurePending(AssistantPendingAction action, DateTime now)
     {
@@ -450,11 +445,7 @@ public class AssistantActionService : IAssistantActionService
     internal async Task<IReadOnlyList<MailRecipientRef>> ResolveRecipientsAsync(IEnumerable<string> addresses, CancellationToken cancellationToken)
     {
         var wanted = MailRules.NormalizeAddresses(addresses.ToList());
-        var found = await _dbContext.Users
-            .AsNoTracking()
-            .Where(user => user.IsActive && wanted.Contains(user.Email.ToLower()))
-            .Select(user => new MailRecipientRef(user.Id, user.FullName, user.Email))
-            .ToListAsync(cancellationToken);
+        var found = await _directory.GetActiveRecipientsAsync(wanted, cancellationToken);
 
         var missing = wanted.Where(address => found.All(user => !string.Equals(user.Email, address, StringComparison.OrdinalIgnoreCase))).ToList();
         if (missing.Count > 0)

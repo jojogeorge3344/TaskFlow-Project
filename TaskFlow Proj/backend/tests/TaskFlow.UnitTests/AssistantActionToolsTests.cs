@@ -1,12 +1,16 @@
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Dtos.Communication.Mail.Validators;
 using TaskFlow.Api.Dtos.Profile.Validators;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Text.Json;
 using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 using Task = System.Threading.Tasks.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 using User = TaskFlow.Api.Models.Entities.User;
@@ -26,7 +30,7 @@ public class AssistantActionToolsTests
         new(h.Resolver, h.Managers, h.Actions, new SendMailRequestValidator());
 
     private static ProposeProfileUpdateTool ProfileTool(AssistantActionHarness h) =>
-        new(h.Db, h.Actions, new UpdateOwnProfileRequestValidator());
+        new(new AssistantDirectoryRepository(h.Db), h.Actions, new UpdateOwnProfileRequestValidator());
 
     private static ProposeRoleChangeTool RoleTool(AssistantActionHarness h) => new(h.Resolver, h.Actions);
 

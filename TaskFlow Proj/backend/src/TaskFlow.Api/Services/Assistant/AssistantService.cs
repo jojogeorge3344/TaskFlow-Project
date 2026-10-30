@@ -1,17 +1,19 @@
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
 using TaskFlow.Api.Services.Interfaces.Assistant;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Interfaces;
+using TaskFlow.Api.Repositories.Interfaces.Assistant;
 using Task = System.Threading.Tasks.Task;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>TFA's conversation engine. A message goes through, in order: the length and secret checks, the per-minute
 /// limit, then the chosen provider with a small tool loop. Nothing is stored until the provider has answered, so a
@@ -23,7 +25,10 @@ public class AssistantService : IAssistantService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private readonly AppDbContext _dbContext;
+    private readonly IAssistantConversationRepository _conversations;
+    private readonly IAssistantMessageRepository _messages;
+    private readonly IAssistantDirectoryRepository _directory;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IChatModelGateway _gateway;
     private readonly IAiProviderConfigService _providers;
     private readonly IAssistantRateLimiter _rateLimiter;
@@ -34,7 +39,10 @@ public class AssistantService : IAssistantService
     private readonly TimeProvider _timeProvider;
 
     public AssistantService(
-        AppDbContext dbContext,
+        IAssistantConversationRepository conversations,
+        IAssistantMessageRepository messages,
+        IAssistantDirectoryRepository directory,
+        IUnitOfWork unitOfWork,
         IChatModelGateway gateway,
         IAiProviderConfigService providers,
         IAssistantRateLimiter rateLimiter,
@@ -44,7 +52,10 @@ public class AssistantService : IAssistantService
         IAppClock clock,
         TimeProvider timeProvider)
     {
-        _dbContext = dbContext;
+        _conversations = conversations;
+        _messages = messages;
+        _directory = directory;
+        _unitOfWork = unitOfWork;
         _gateway = gateway;
         _providers = providers;
         _rateLimiter = rateLimiter;
@@ -65,13 +76,7 @@ public class AssistantService : IAssistantService
             return new AssistantConversationDto(null, []);
         }
 
-        var messages = await _dbContext.AssistantMessages
-            .AsNoTracking()
-            .Where(message => message.ConversationId == conversation.Id)
-            .OrderByDescending(message => message.Id)
-            .Take(AssistantRules.ConversationMessages)
-            .ToListAsync(cancellationToken);
-        messages.Reverse();
+        var messages = (await _messages.GetNewestAsync(conversation.Id, AssistantRules.ConversationMessages, cancellationToken)).Reverse().ToList();
 
         return new AssistantConversationDto(conversation.Id, await ToDtosAsync(caller.UserId, messages, cancellationToken));
     }
@@ -79,8 +84,8 @@ public class AssistantService : IAssistantService
     public async Task NewConversationAsync(AssistantCaller caller, CancellationToken cancellationToken = default)
     {
         var now = UtcNow;
-        _dbContext.AssistantConversations.Add(new AssistantConversation { UserId = caller.UserId, CreatedAt = now, UpdatedAt = now });
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _conversations.Add(new AssistantConversation { UserId = caller.UserId, CreatedAt = now, UpdatedAt = now });
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<AssistantReplyDto> SendAsync(AssistantCaller caller, SendAssistantMessageRequest request, CancellationToken cancellationToken = default)
@@ -118,10 +123,7 @@ public class AssistantService : IAssistantService
         var history = await LoadHistoryAsync(conversation.Id, cancellationToken);
         var turn = new List<ChatMessage>(history) { new(AssistantMessageRole.User, text) };
 
-        var userName = await _dbContext.Users.AsNoTracking()
-            .Where(user => user.Id == caller.UserId)
-            .Select(user => user.FullName)
-            .FirstOrDefaultAsync(cancellationToken) ?? "the user";
+        var userName = await _directory.GetFullNameAsync(caller.UserId, cancellationToken) ?? "the user";
         var systemPrompt = AssistantPrompt.Build(
             userName,
             caller.Role,
@@ -165,9 +167,10 @@ public class AssistantService : IAssistantService
                 MetaJson),
             CreatedAt = now.AddMilliseconds(1)
         };
-        _dbContext.AssistantMessages.AddRange(userMessage, assistantMessage);
+        _messages.Add(userMessage);
+        _messages.Add(assistantMessage);
         conversation.UpdatedAt = now;
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AssistantReplyDto(await ToDtosAsync(caller.UserId, [userMessage, assistantMessage], cancellationToken), null);
     }
@@ -238,17 +241,14 @@ public class AssistantService : IAssistantService
     // ------------------------------------------------------------------------------------------- storage
 
     private Task<AssistantConversation?> ActiveConversationAsync(int userId, CancellationToken cancellationToken) =>
-        _dbContext.AssistantConversations
-            .Where(conversation => conversation.UserId == userId)
-            .OrderByDescending(conversation => conversation.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        _conversations.FindLatestForUpdateAsync(userId, cancellationToken);
 
     private async Task<AssistantConversation> CreateConversationAsync(int userId, CancellationToken cancellationToken)
     {
         var now = UtcNow;
         var conversation = new AssistantConversation { UserId = userId, CreatedAt = now, UpdatedAt = now };
-        _dbContext.AssistantConversations.Add(conversation);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _conversations.Add(conversation);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return conversation;
     }
 
@@ -256,12 +256,7 @@ public class AssistantService : IAssistantService
     /// they fit the character budget. Notices are left out because they are not part of what was said.</summary>
     private async Task<List<ChatMessage>> LoadHistoryAsync(int conversationId, CancellationToken cancellationToken)
     {
-        var stored = await _dbContext.AssistantMessages
-            .AsNoTracking()
-            .Where(message => message.ConversationId == conversationId)
-            .OrderByDescending(message => message.Id)
-            .Take(AssistantRules.HistoryMessages * 2)
-            .ToListAsync(cancellationToken);
+        var stored = await _messages.GetNewestAsync(conversationId, AssistantRules.HistoryMessages * 2, cancellationToken);
 
         var turns = new List<ChatMessage>();
         var characters = 0;

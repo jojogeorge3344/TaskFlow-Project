@@ -1,14 +1,17 @@
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Interfaces.Communication.Mail;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Text.Json;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>Loads the tasks TFA may talk about. Everything goes through <see cref="ITaskService"/> with the caller's id
 /// and role, so the application's own task access rules apply and TFA never sees more than the user could.</summary>

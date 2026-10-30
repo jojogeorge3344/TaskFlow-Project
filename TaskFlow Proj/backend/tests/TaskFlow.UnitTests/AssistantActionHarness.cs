@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail.Validators;
 using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
@@ -13,10 +18,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
 using User = TaskFlow.Api.Models.Entities.User;
 using Task = System.Threading.Tasks.Task;
@@ -81,14 +84,14 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
 
     public MailService Mail => TestServices.Mail(Db, Clock, new AppClock(new ApplicationSettingsRepository(Db), Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
 
-    public AssistantAuditLog Audit => new(Db, Clock);
+    public AssistantAuditLog Audit => new(new AssistantAuditRepository(Db), new UnitOfWork(Db), Clock);
 
     public AssistantActionService Actions =>
-        new(Db, Mail, Users, TestServices.Profile(Db, new PasswordHasher<User>()), Authorizer, Audit, new SendMailRequestValidator(), new UpdateOwnProfileRequestValidator(), Clock);
+        new(new AssistantPendingActionRepository(Db), new AssistantMessageRepository(Db), new AssistantDirectoryRepository(Db), new UnitOfWork(Db), Mail, Users, TestServices.Profile(Db, new PasswordHasher<User>()), Authorizer, Audit, new SendMailRequestValidator(), new UpdateOwnProfileRequestValidator(), Clock);
 
-    public AssistantUserResolver Resolver => new(Db);
+    public AssistantUserResolver Resolver => new(new AssistantDirectoryRepository(Db));
 
-    public AssistantManagerResolver Managers => new(Db, Tracking.TaskService);
+    public AssistantManagerResolver Managers => new(new AssistantDirectoryRepository(Db), Tracking.TaskService);
 
     public AssistantConversation Conversation(User user)
     {

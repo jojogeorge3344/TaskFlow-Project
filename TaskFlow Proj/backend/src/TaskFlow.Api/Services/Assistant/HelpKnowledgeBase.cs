@@ -1,6 +1,9 @@
-using TaskFlow.Application.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>Help topics shipped as embedded markdown files (<c>Assistant/Knowledge/*.md</c>), each with a small header
 /// giving its title, the roles it applies to, search keywords and an optional screen link. Matching is plain keyword

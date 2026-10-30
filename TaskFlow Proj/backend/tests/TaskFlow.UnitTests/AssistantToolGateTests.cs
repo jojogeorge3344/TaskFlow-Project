@@ -1,9 +1,11 @@
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Security.Claims;
 using System.Text.Json;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

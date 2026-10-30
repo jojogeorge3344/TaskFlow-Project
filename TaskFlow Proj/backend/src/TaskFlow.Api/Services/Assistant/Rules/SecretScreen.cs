@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace TaskFlow.Application.Assistant;
+namespace TaskFlow.Api.Services.Assistant.Rules;
 
 /// <summary>A safety net that spots passwords and API keys in text. TFA never accepts them in chat: a message that
 /// looks like it contains one is not sent to any provider and is not stored. It is a screen, not a guarantee, which is

@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail.Validators;
 using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
@@ -13,9 +18,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 using User = TaskFlow.Api.Models.Entities.User;
@@ -49,12 +52,15 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
         var clock = new FixedTimeProvider(new DateTime(2026, 10, 19, 9, 0, 0));
         var mail = TestServices.Mail(db, clock, new AppClock(new ApplicationSettingsRepository(db), clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
         return new AssistantActionService(
-            db,
+            new AssistantPendingActionRepository(db),
+            new AssistantMessageRepository(db),
+            new AssistantDirectoryRepository(db),
+            new UnitOfWork(db),
             mail,
             TestServices.Employees(db, new PasswordHasher<User>()),
             TestServices.Profile(db, new PasswordHasher<User>()),
             new RolePolicyAuthorizer(),
-            new AssistantAuditLog(db, clock),
+            new AssistantAuditLog(new AssistantAuditRepository(db), new UnitOfWork(db), clock),
             new SendMailRequestValidator(),
             new UpdateOwnProfileRequestValidator(),
             clock);

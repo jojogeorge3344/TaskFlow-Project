@@ -7,10 +7,8 @@ using TaskFlow.Api.Common.Constants;
 using Task = System.Threading.Tasks.Task;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

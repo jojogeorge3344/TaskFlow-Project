@@ -1,7 +1,6 @@
 using TaskFlow.Api.Integrations.Ai;
 using System.Security.AccessControl;
 using System.Security.Principal;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

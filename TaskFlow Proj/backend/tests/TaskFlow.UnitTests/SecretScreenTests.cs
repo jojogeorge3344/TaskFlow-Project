@@ -1,4 +1,6 @@
-using TaskFlow.Application.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Assistant.Rules;
 
 namespace TaskFlow.UnitTests;
 

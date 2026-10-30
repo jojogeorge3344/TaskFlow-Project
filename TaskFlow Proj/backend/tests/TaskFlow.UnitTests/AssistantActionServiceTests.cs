@@ -1,6 +1,11 @@
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 
@@ -286,8 +291,8 @@ public class AssistantActionServiceTests
     {
         await using var h = new AssistantActionHarness();
         var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
-        var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
-            h.Db, h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
+        var service = new TaskFlow.Api.Services.Assistant.AssistantActionService(
+            new AssistantPendingActionRepository(h.Db), new AssistantMessageRepository(h.Db), new AssistantDirectoryRepository(h.Db), new UnitOfWork(h.Db), h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
             new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
@@ -308,8 +313,8 @@ public class AssistantActionServiceTests
         var ravi = await h.Db.Users.SingleAsync(user => user.Id == h.Ravi.Id);
         ravi.IsActive = false;
         await h.Db.SaveChangesAsync();
-        var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
-            h.Db, h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "failed"),
+        var service = new TaskFlow.Api.Services.Assistant.AssistantActionService(
+            new AssistantPendingActionRepository(h.Db), new AssistantMessageRepository(h.Db), new AssistantDirectoryRepository(h.Db), new UnitOfWork(h.Db), h.Mail, h.Users, TestServices.Profile(h.Db, new Microsoft.AspNetCore.Identity.PasswordHasher<TaskFlow.Api.Models.Entities.User>()), h.Authorizer, new FailingAudit(h.Audit, "failed"),
             new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 

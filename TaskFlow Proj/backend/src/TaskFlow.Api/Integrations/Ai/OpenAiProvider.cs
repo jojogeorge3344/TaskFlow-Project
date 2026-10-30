@@ -2,7 +2,6 @@ using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Integrations.Ai;

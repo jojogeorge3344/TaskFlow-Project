@@ -1,3 +1,5 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Repositories.Settings.TfaSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.TfaSettings;
@@ -7,9 +9,7 @@ using TaskFlow.Api.Integrations.Ai;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 
 namespace TaskFlow.UnitTests;
 

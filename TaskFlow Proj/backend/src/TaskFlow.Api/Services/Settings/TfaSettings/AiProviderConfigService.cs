@@ -4,7 +4,6 @@ using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.Extensions.Logging;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Repositories.Interfaces;

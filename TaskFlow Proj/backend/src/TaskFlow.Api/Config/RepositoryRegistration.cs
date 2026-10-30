@@ -58,6 +58,13 @@ public static class RepositoryRegistration
         // Reports
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Reports.IReportRepository, TaskFlow.Api.Repositories.Reports.ReportRepository>();
 
+        // Assistant
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Assistant.IAssistantConversationRepository, TaskFlow.Api.Repositories.Assistant.AssistantConversationRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Assistant.IAssistantMessageRepository, TaskFlow.Api.Repositories.Assistant.AssistantMessageRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Assistant.IAssistantPendingActionRepository, TaskFlow.Api.Repositories.Assistant.AssistantPendingActionRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Assistant.IAssistantAuditRepository, TaskFlow.Api.Repositories.Assistant.AssistantAuditRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Assistant.IAssistantDirectoryRepository, TaskFlow.Api.Repositories.Assistant.AssistantDirectoryRepository>();
+
         // Auth
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokenRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IAccountRepository, TaskFlow.Api.Repositories.Auth.AccountRepository>();

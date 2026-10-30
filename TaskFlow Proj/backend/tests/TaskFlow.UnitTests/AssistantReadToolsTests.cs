@@ -1,8 +1,10 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Services.Communication.Mail;
 using System.Text.Json;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Infrastructure.Assistant;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 using User = TaskFlow.Api.Models.Entities.User;
 

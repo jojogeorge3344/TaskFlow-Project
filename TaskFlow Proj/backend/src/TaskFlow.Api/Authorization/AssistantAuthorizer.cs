@@ -1,6 +1,6 @@
+using TaskFlow.Api.Services.Interfaces.Assistant;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using TaskFlow.Application.Assistant;
 
 namespace TaskFlow.Api.Authorization;
 

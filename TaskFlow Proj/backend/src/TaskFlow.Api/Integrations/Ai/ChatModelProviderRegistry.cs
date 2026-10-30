@@ -1,5 +1,4 @@
 using TaskFlow.Api.Integrations.Interfaces.Ai;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Integrations.Ai;

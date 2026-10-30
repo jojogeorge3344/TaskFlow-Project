@@ -1,7 +1,9 @@
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using TaskFlow.Api.Models.Enums;
 
-namespace TaskFlow.Application.Assistant;
+namespace TaskFlow.Api.Services.Interfaces.Assistant;
 
 /// <summary>TFA's conversation. Everything works on the caller's own conversation: a conversation that is not the
 /// caller's is reported as not found, never as forbidden.</summary>

@@ -1,11 +1,14 @@
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Assistant;
 
-namespace TaskFlow.Api.Controllers;
+namespace TaskFlow.Api.Controllers.Assistant;
 
 /// <summary>TFA, the in-app assistant: the signed-in user's own conversation and actions, and the providers they may
 /// chat with. Provider configuration is in Settings (AiProvidersController).</summary>

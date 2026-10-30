@@ -1,7 +1,11 @@
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;
@@ -77,7 +81,7 @@ public class AssistantServiceTests
     public async Task OnlyTheLastTwelveMessagesAreSent()
     {
         await using var h = await AssistantServiceHarness.CreateAsync();
-        h.RateLimiter = new TaskFlow.Infrastructure.Assistant.AssistantRateLimiter(new FixedTimeProvider(DateTime.UtcNow));
+        h.RateLimiter = new TaskFlow.Api.Services.Assistant.AssistantRateLimiter(new FixedTimeProvider(DateTime.UtcNow));
         for (var i = 1; i <= 10; i++)
         {
             await h.SendAsync(h.Asha, $"message {i}");
@@ -199,7 +203,7 @@ public class AssistantServiceTests
     public async Task TheTwentyFirstMessageInAMinuteIsRefusedBeforeAnyProviderIsCalled()
     {
         await using var h = await AssistantServiceHarness.CreateAsync();
-        for (var i = 0; i < TaskFlow.Infrastructure.Assistant.AssistantRateLimiter.RequestsPerMinute; i++)
+        for (var i = 0; i < TaskFlow.Api.Services.Assistant.AssistantRateLimiter.RequestsPerMinute; i++)
         {
             await h.SendAsync(h.Asha, $"m{i}");
         }
@@ -207,7 +211,7 @@ public class AssistantServiceTests
         var error = await Assert.ThrowsAsync<AssistantRateLimitedException>(() => h.SendAsync(h.Asha, "one too many"));
 
         Assert.True(error.RetryAfter > TimeSpan.Zero);
-        Assert.Equal(TaskFlow.Infrastructure.Assistant.AssistantRateLimiter.RequestsPerMinute, h.Gateway.Calls.Count);
+        Assert.Equal(TaskFlow.Api.Services.Assistant.AssistantRateLimiter.RequestsPerMinute, h.Gateway.Calls.Count);
     }
 
     [Theory]
@@ -335,7 +339,7 @@ public class AssistantServiceTests
     {
         await using var h = await AssistantServiceHarness.CreateAsync();
         var clock = new FixedTimeProvider(DateTime.UtcNow);
-        h.RateLimiter = new TaskFlow.Infrastructure.Assistant.AssistantRateLimiter(clock);
+        h.RateLimiter = new TaskFlow.Api.Services.Assistant.AssistantRateLimiter(clock);
         for (var i = 1; i <= 60; i++)
         {
             await h.SendAsync(h.Asha, $"question {i}");

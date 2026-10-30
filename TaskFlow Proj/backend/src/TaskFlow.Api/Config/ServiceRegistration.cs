@@ -70,28 +70,28 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.TfaSettings.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConnectionTester>();
 
         // Assistant
-        services.AddSingleton<TaskFlow.Application.Assistant.IAssistantRateLimiter, TaskFlow.Infrastructure.Assistant.AssistantRateLimiter>();
-        services.AddSingleton<TaskFlow.Application.Assistant.IHelpKnowledgeBase, TaskFlow.Infrastructure.Assistant.HelpKnowledgeBase>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantTaskReader>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantUserResolver>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantManagerResolver>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.AssistantToolGate>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.GetMyTasksTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.PrioritiseTasksTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.SearchHelpTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.FindUserTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ExplainPasswordChangeTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ContactAdminGuidanceTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.DraftMailTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ProposeProfileUpdateTool>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.IAssistantTool, TaskFlow.Infrastructure.Assistant.ProposeRoleChangeTool>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantToolbox, TaskFlow.Infrastructure.Assistant.AssistantToolbox>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantAuditLog, TaskFlow.Infrastructure.Assistant.AssistantAuditLog>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionService, TaskFlow.Infrastructure.Assistant.AssistantActionService>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantActionCards>(
-            provider => provider.GetRequiredService<TaskFlow.Application.Assistant.IAssistantActionService>());
-        services.AddScoped<TaskFlow.Application.Assistant.IAssistantService, TaskFlow.Infrastructure.Assistant.AssistantService>();
+        services.AddSingleton<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantRateLimiter, TaskFlow.Api.Services.Assistant.AssistantRateLimiter>();
+        services.AddSingleton<TaskFlow.Api.Services.Interfaces.Assistant.IHelpKnowledgeBase, TaskFlow.Api.Services.Assistant.HelpKnowledgeBase>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantTaskReader>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantUserResolver>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantManagerResolver>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantToolGate>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.GetMyTasksTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.PrioritiseTasksTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.SearchHelpTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.FindUserTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ExplainPasswordChangeTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ContactAdminGuidanceTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.DraftMailTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ProposeProfileUpdateTool>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ProposeRoleChangeTool>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantToolbox, TaskFlow.Api.Services.Assistant.AssistantToolbox>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantAuditLog, TaskFlow.Api.Services.Assistant.AssistantAuditLog>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionService, TaskFlow.Api.Services.Assistant.AssistantActionService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionCards>(
+            provider => provider.GetRequiredService<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionService>());
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantService, TaskFlow.Api.Services.Assistant.AssistantService>();
 
         return services;
     }

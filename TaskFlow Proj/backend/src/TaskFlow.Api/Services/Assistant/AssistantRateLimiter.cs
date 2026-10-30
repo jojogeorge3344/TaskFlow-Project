@@ -1,7 +1,10 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Assistant.Rules;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Services.Interfaces.Assistant;
 using System.Collections.Concurrent;
-using TaskFlow.Application.Assistant;
 
-namespace TaskFlow.Infrastructure.Assistant;
+namespace TaskFlow.Api.Services.Assistant;
 
 /// <summary>A sliding one-minute window per user, kept in memory. A restart resets it, which is fine for a safeguard
 /// against free-tier quota use.</summary>

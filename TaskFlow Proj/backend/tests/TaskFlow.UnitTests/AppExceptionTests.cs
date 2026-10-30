@@ -1,6 +1,8 @@
+using TaskFlow.Api.Dtos.Assistant;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using Microsoft.AspNetCore.Http;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Application.Assistant;
 
 namespace TaskFlow.UnitTests;
 
