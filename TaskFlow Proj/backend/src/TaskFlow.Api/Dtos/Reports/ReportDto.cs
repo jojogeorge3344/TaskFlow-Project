@@ -1,7 +1,7 @@
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
-namespace TaskFlow.Application.Reports;
+namespace TaskFlow.Api.Dtos.Reports;
 
 /// <summary>Filters for a task report (Screen 17). Every field is optional; an omitted filter leaves
 /// that dimension unrestricted. The date range filters the task deadline inclusively.</summary>

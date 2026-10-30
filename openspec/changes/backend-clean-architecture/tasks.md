@@ -58,7 +58,7 @@
 
 ## 9. Module: Reports
 
-- [ ] 9.1 `Reports`: repository, service, `ReportCsv` and controller. Verify that `ReportServiceTests`, `ReportCsvTests` and `ReportEndpointsTests` pass
+- [x] 9.1 `Reports`: repository, service, `ReportCsv` and controller. Verify that `ReportServiceTests`, `ReportCsvTests` and `ReportEndpointsTests` pass
 
 ## 10. Modules: Auth and Profile
 

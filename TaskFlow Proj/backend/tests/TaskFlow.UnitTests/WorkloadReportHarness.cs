@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Reports;
 using TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
 using TaskFlow.Api.Services.Monitoring.EmployeeWorkload;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
@@ -65,7 +66,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             connection,
             db,
             new WorkloadService(new WorkloadRepository(db), appClock),
-            new ReportService(db, appClock),
+            new ReportService(new TaskFlow.Api.Repositories.Reports.ReportRepository(db), appClock),
             clock);
     }
 

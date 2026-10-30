@@ -1,11 +1,13 @@
+using TaskFlow.Api.Services.Reports;
+using TaskFlow.Api.Services.Interfaces.Reports;
+using TaskFlow.Api.Dtos.Reports;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Reports;
 
-namespace TaskFlow.Api.Controllers;
+namespace TaskFlow.Api.Controllers.Reports;
 
 /// <summary>Task reports and CSV export (Screen 17). Needs reports.view; export needs reports.export.</summary>
 [ApiController]

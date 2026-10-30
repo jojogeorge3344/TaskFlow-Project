@@ -1,7 +1,8 @@
+using TaskFlow.Api.Dtos.Reports;
 using System.Globalization;
 using System.Text;
 
-namespace TaskFlow.Application.Reports;
+namespace TaskFlow.Api.Services.Reports;
 
 /// <summary>Serialises report rows to RFC 4180 CSV (Screen 17). Cell values that begin with a
 /// spreadsheet formula character are prefixed with a single quote to prevent formula injection (D8).</summary>

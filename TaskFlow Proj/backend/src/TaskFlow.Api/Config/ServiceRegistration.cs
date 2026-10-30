@@ -50,7 +50,7 @@ public static class ServiceRegistration
         services.AddHostedService<TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderSchedulerService>();
 
         // Reports
-        services.AddScoped<TaskFlow.Application.Reports.IReportService, TaskFlow.Infrastructure.Services.ReportService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Reports.IReportService, TaskFlow.Api.Services.Reports.ReportService>();
 
         // Settings
         services.Configure<TaskFlow.Api.Config.ApplicationOptions>(

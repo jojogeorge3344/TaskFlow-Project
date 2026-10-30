@@ -1,4 +1,6 @@
-namespace TaskFlow.Application.Reports;
+using TaskFlow.Api.Dtos.Reports;
+
+namespace TaskFlow.Api.Services.Interfaces.Reports;
 
 public interface IReportService
 {

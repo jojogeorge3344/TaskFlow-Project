@@ -1,6 +1,7 @@
+using TaskFlow.Api.Dtos.Reports;
 using FluentValidation;
 
-namespace TaskFlow.Application.Reports.Validators;
+namespace TaskFlow.Api.Dtos.Reports.Validators;
 
 public class ReportFilterValidator : AbstractValidator<ReportFilter>
 {
