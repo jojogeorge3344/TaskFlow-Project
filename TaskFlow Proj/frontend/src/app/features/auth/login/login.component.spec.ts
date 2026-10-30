@@ -85,6 +85,21 @@ describe('LoginComponent', () => {
       .toContain('Invalid email or password.');
   });
 
+  it('shows the server message when the authenticator code is refused', () => {
+    component.form.setValue({ emailOrUsername: 'admin@taskflow.com', password: 'secret' });
+    component.submit();
+    httpMock.expectOne('/api/v1/auth/login').flush({ mfaRequired: true, challengeToken: 'challenge' });
+
+    component.mfaForm.controls.code.setValue('123456');
+    component.submitCode();
+    httpMock.expectOne('/api/v1/auth/mfa/verify').flush(
+      { status: 400, detail: 'The code is incorrect, or the sign-in has expired. Try again or sign in again.' },
+      { status: 400, statusText: 'Bad Request' }
+    );
+
+    expect(component.errorMessage()).toBe('The code is incorrect, or the sign-in has expired. Try again or sign in again.');
+  });
+
   it('shows no sign-out notice by default', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('.login__notice')).toBeNull();
   });

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -19,22 +18,13 @@ public class MfaController : ControllerBase
 
     private readonly IMfaService _mfaService;
     private readonly IAttemptLimiter _limiter;
-    private readonly IValidator<MfaSetupRequest> _setupValidator;
-    private readonly IValidator<MfaEnableRequest> _enableValidator;
-    private readonly IValidator<MfaPasswordCodeRequest> _passwordCodeValidator;
 
     public MfaController(
         IMfaService mfaService,
-        IAttemptLimiter limiter,
-        IValidator<MfaSetupRequest> setupValidator,
-        IValidator<MfaEnableRequest> enableValidator,
-        IValidator<MfaPasswordCodeRequest> passwordCodeValidator)
+        IAttemptLimiter limiter)
     {
         _mfaService = mfaService;
         _limiter = limiter;
-        _setupValidator = setupValidator;
-        _enableValidator = enableValidator;
-        _passwordCodeValidator = passwordCodeValidator;
     }
 
     /// <summary>Starts setup after the current password: returns the key and QR-code URI once. MFA stays off until confirmed.</summary>
@@ -42,19 +32,19 @@ public class MfaController : ControllerBase
     [Authorize]
     public async Task<ActionResult<MfaSetupResponse>> Setup([FromBody] MfaSetupRequest request, CancellationToken cancellationToken)
     {
-        return await RunAsync(_setupValidator, request, async userId =>
+        return await RunAsync(async userId =>
         {
             // The current password is a guess an access token alone could repeat, so it has a budget of its own.
             var passwordKey = IAttemptLimiter.PasswordKey(userId);
             if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
             {
-                return (ActionResult<MfaSetupResponse>)StatusCode(StatusCodes.Status429TooManyRequests, new { error = TooManyAttemptsMessage });
+                return (ActionResult<MfaSetupResponse>)Problem(detail: TooManyAttemptsMessage, statusCode: StatusCodes.Status429TooManyRequests);
             }
 
             var result = await _mfaService.BeginSetupAsync(userId, request.CurrentPassword!, cancellationToken);
             _limiter.Reset(passwordKey);
             return result is null ? NotFound() : Ok(new MfaSetupResponse(result.Key, result.ProvisioningUri));
-        }, cancellationToken);
+        });
     }
 
     /// <summary>Confirms setup with the first code, turns MFA on and returns the backup codes, once.</summary>
@@ -62,11 +52,11 @@ public class MfaController : ControllerBase
     [Authorize]
     public async Task<ActionResult<MfaBackupCodesResponse>> Enable([FromBody] MfaEnableRequest request, CancellationToken cancellationToken)
     {
-        return await RunAsync(_enableValidator, request, async userId =>
+        return await RunAsync(async userId =>
         {
             var codes = await _mfaService.EnableAsync(userId, request.Code!, cancellationToken);
             return codes is null ? NotFound() : Ok(new MfaBackupCodesResponse(codes));
-        }, cancellationToken);
+        });
     }
 
     /// <summary>Checks a code without spending it. The Profile screen uses it before it will show what was typed into a password
@@ -75,16 +65,16 @@ public class MfaController : ControllerBase
     [Authorize]
     public async Task<ActionResult> Check([FromBody] MfaEnableRequest request, CancellationToken cancellationToken)
     {
-        return await RunAsync(_enableValidator, request, async userId =>
+        return await RunAsync(async userId =>
         {
             var outcome = await _mfaService.CheckCodeAsync(userId, request.Code, cancellationToken);
             return outcome switch
             {
                 MfaVerifyOutcome.Success => NoContent(),
-                MfaVerifyOutcome.LockedOut => StatusCode(StatusCodes.Status429TooManyRequests, new { error = MfaService.LockedMessage }),
-                _ => (ActionResult)BadRequest(new { error = MfaService.InvalidCodeMessage })
+                MfaVerifyOutcome.LockedOut => Problem(detail: MfaService.LockedMessage, statusCode: StatusCodes.Status429TooManyRequests),
+                _ => (ActionResult)Problem(detail: MfaService.InvalidCodeMessage, statusCode: StatusCodes.Status400BadRequest)
             };
-        }, cancellationToken);
+        });
     }
 
     /// <summary>Replaces the backup codes (the old set stops working). Needs the current password and a valid code.</summary>
@@ -92,18 +82,18 @@ public class MfaController : ControllerBase
     [Authorize]
     public async Task<ActionResult<MfaBackupCodesResponse>> RegenerateBackupCodes([FromBody] MfaPasswordCodeRequest request, CancellationToken cancellationToken)
     {
-        return await RunAsync(_passwordCodeValidator, request, async userId =>
+        return await RunAsync(async userId =>
         {
             var passwordKey = IAttemptLimiter.PasswordKey(userId);
             if (!_limiter.TryAcquire(passwordKey, remoteAddress: null))
             {
-                return (ActionResult<MfaBackupCodesResponse>)StatusCode(StatusCodes.Status429TooManyRequests, new { error = TooManyAttemptsMessage });
+                return (ActionResult<MfaBackupCodesResponse>)Problem(detail: TooManyAttemptsMessage, statusCode: StatusCodes.Status429TooManyRequests);
             }
 
             var codes = await _mfaService.RegenerateBackupCodesAsync(userId, request.CurrentPassword!, request.Code!, cancellationToken);
             _limiter.Reset(passwordKey);
             return codes is null ? NotFound() : Ok(new MfaBackupCodesResponse(codes));
-        }, cancellationToken);
+        });
     }
 
     /// <summary>Administrator reset for someone who lost their phone and their backup codes. Ends the user's sessions.</summary>
@@ -114,57 +104,23 @@ public class MfaController : ControllerBase
         return await _mfaService.ResetAsync(id, cancellationToken) ? NoContent() : NotFound();
     }
 
-    private async Task<ActionResult<T>> RunAsync<TRequest, T>(
-        IValidator<TRequest> validator,
-        TRequest request,
-        Func<int, Task<ActionResult<T>>> action,
-        CancellationToken cancellationToken)
+    private async Task<ActionResult<T>> RunAsync<T>(Func<int, Task<ActionResult<T>>> action)
     {
-        var validation = await validator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            return await action(userId);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return await action(userId);
     }
 
-    private async Task<ActionResult> RunAsync<TRequest>(
-        IValidator<TRequest> validator,
-        TRequest request,
-        Func<int, Task<ActionResult>> action,
-        CancellationToken cancellationToken)
+    private async Task<ActionResult> RunAsync(Func<int, Task<ActionResult>> action)
     {
-        var validation = await validator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            return await action(userId);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return await action(userId);
     }
 }

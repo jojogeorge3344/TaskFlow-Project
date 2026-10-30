@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
@@ -57,14 +58,13 @@ public class AiProviderConfigService : IAiProviderConfigService
         {
             if (update.Kind is not { } kind || update.IsEnabled is not { } enabled || update.ModelName is null)
             {
-                throw new ArgumentException("Every provider setting must be provided.", nameof(request));
+                throw new RequestValidationException("providers", "Every provider setting must be provided.");
             }
 
             var modelName = update.ModelName.Trim();
             if (modelName.Length == 0 || modelName.Length > MaxModelNameLength)
             {
-                throw new ArgumentException(
-                    $"The {AiProviderCatalog.DisplayName(kind)} model name must be 1 to {MaxModelNameLength} characters.", nameof(request));
+                throw new RequestValidationException("providers", $"The {AiProviderCatalog.DisplayName(kind)} model name must be 1 to {MaxModelNameLength} characters.");
             }
 
             var row = rows.FirstOrDefault(existing => existing.Kind == kind);
@@ -91,7 +91,7 @@ public class AiProviderConfigService : IAiProviderConfigService
             {
                 if (!AiProviderCatalog.RequiresKey(kind))
                 {
-                    throw new ArgumentException($"{AiProviderCatalog.DisplayName(kind)} does not use an API key.", nameof(request));
+                    throw new RequestValidationException("providers", $"{AiProviderCatalog.DisplayName(kind)} does not use an API key.");
                 }
 
                 var key = update.ApiKey.Trim();
@@ -180,16 +180,16 @@ public class AiProviderConfigService : IAiProviderConfigService
         CancellationToken cancellationToken = default)
     {
         var model = await _dbContext.AiModels.FirstOrDefaultAsync(stored => stored.Kind == kind && stored.Name == name, cancellationToken)
-            ?? throw new KeyNotFoundException("That model is not in the list.");
+            ?? throw new NotFoundException("That model is not in the list.");
 
         if (model.IsBuiltIn)
         {
-            throw new ArgumentException("A built-in model cannot be removed.", nameof(name));
+            throw new RequestValidationException("name", "A built-in model cannot be removed.");
         }
 
         if (await _dbContext.AiProviderConfigs.AnyAsync(config => config.Kind == kind && config.ModelName == name, cancellationToken))
         {
-            throw new ArgumentException("That model is the one saved for its server. Choose another model and save before removing it.", nameof(name));
+            throw new RequestValidationException("name", "That model is the one saved for its server. Choose another model and save before removing it.");
         }
 
         _dbContext.AiModels.Remove(model);

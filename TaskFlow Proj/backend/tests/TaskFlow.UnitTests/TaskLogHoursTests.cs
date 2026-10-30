@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
@@ -46,7 +47,7 @@ public class TaskLogHoursTests
         var other = harness.AddUser("lh-other");
         var task = harness.AddTask(assignee.Id, manager.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.LogHoursAsync(task.Id, new LogHoursRequest(1m), other.Id, SystemRoles.Employee, CancellationToken.None));
     }
 
@@ -61,7 +62,7 @@ public class TaskLogHoursTests
         var assignee = harness.AddUser("lh-emp4");
         var task = harness.AddTask(assignee.Id, manager.Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.LogHoursAsync(task.Id, new LogHoursRequest(hours), assignee.Id, SystemRoles.Employee, CancellationToken.None));
     }
 

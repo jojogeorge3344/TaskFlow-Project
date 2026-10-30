@@ -1,4 +1,3 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -12,17 +11,11 @@ namespace TaskFlow.Api.Controllers;
 public class DepartmentsController : ControllerBase
 {
     private readonly IDepartmentService _departmentService;
-    private readonly IValidator<CreateDepartmentRequest> _createValidator;
-    private readonly IValidator<UpdateDepartmentRequest> _updateValidator;
 
     public DepartmentsController(
-        IDepartmentService departmentService,
-        IValidator<CreateDepartmentRequest> createValidator,
-        IValidator<UpdateDepartmentRequest> updateValidator)
+        IDepartmentService departmentService)
     {
         _departmentService = departmentService;
-        _createValidator = createValidator;
-        _updateValidator = updateValidator;
     }
 
     [HttpGet]
@@ -61,79 +54,39 @@ public class DepartmentsController : ControllerBase
     [RequirePermission(PermissionKeys.DepartmentsCreate)]
     public async Task<ActionResult<DepartmentDto>> Create([FromBody] CreateDepartmentRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _createValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
-        try
-        {
-            var department = await _departmentService.CreateAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = department.Id }, department);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var department = await _departmentService.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = department.Id }, department);
     }
 
     [HttpPut("{id}")]
     [RequirePermission(PermissionKeys.DepartmentsEdit)]
     public async Task<ActionResult<DepartmentDto>> Update(int id, [FromBody] UpdateDepartmentRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
+        var department = await _departmentService.UpdateAsync(id, request, cancellationToken);
+        if (department is null)
         {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+            return NotFound();
         }
-
-        try
-        {
-            var department = await _departmentService.UpdateAsync(id, request, cancellationToken);
-            if (department is null)
-            {
-                return NotFound();
-            }
-            return Ok(department);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(department);
     }
 
     [HttpPut("{id}/members")]
     [RequirePermission(PermissionKeys.DepartmentsMembers)]
     public async Task<ActionResult<DepartmentMembersDto>> ReplaceMembers(int id, [FromBody] UpdateDepartmentMembersRequest request, CancellationToken cancellationToken)
     {
-        try
+        var members = await _departmentService.ReplaceMembersAsync(id, request, cancellationToken);
+        if (members is null)
         {
-            var members = await _departmentService.ReplaceMembersAsync(id, request, cancellationToken);
-            if (members is null)
-            {
-                return NotFound();
-            }
-            return Ok(members);
+            return NotFound();
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(members);
     }
 
     [HttpDelete("{id}")]
     [RequirePermission(PermissionKeys.DepartmentsDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        try
-        {
-            var deleted = await _departmentService.DeleteAsync(id, cancellationToken);
-            return deleted ? NoContent() : NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var deleted = await _departmentService.DeleteAsync(id, cancellationToken);
+        return deleted ? NoContent() : NotFound();
     }
 }

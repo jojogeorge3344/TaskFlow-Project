@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Tasks;
@@ -198,7 +199,7 @@ public class TaskServiceTests
         var manager = harness.AddUser("tkcs3", SystemRoles.Manager);
         var task = harness.AddTask(manager.Id, manager.Id, status: TaskStatus.ToDo);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.ChangeStatusAsync(
                 task.Id,
                 new UpdateTaskStatusRequest(TaskStatus.Completed),
@@ -215,7 +216,7 @@ public class TaskServiceTests
         var stranger = harness.AddUser("tkcs5");
         var task = harness.AddTask(manager.Id, manager.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.ChangeStatusAsync(
                 task.Id,
                 new UpdateTaskStatusRequest(TaskStatus.InProgress),
@@ -264,7 +265,7 @@ public class TaskServiceTests
         var assignee = harness.AddUser("tkup4");
         var task = harness.AddTask(assignee.Id, manager.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.UpdateAsync(
                 task.Id,
                 new UpdateTaskRequest("x", null, TaskFlow.Api.Models.Enums.TaskPriority.Low, task.StartDate, task.Deadline, 8m),
@@ -280,7 +281,7 @@ public class TaskServiceTests
         var manager = harness.AddUser("tkup5", SystemRoles.Manager);
         var task = harness.AddTask(manager.Id, manager.Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.UpdateAsync(
                 task.Id,
                 new UpdateTaskRequest(
@@ -377,7 +378,7 @@ public class TaskServiceTests
         var other = harness.AddUser("tkras6");
         var task = harness.AddTask(assignee.Id, manager.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.ReassignAsync(
                 task.Id,
                 new ReassignTaskRequest(other.Id, "Nope"),
@@ -394,7 +395,7 @@ public class TaskServiceTests
         var inactive = harness.AddUser("tkras8", isActive: false);
         var task = harness.AddTask(manager.Id, manager.Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.ReassignAsync(
                 task.Id,
                 new ReassignTaskRequest(inactive.Id, "Whoops"),

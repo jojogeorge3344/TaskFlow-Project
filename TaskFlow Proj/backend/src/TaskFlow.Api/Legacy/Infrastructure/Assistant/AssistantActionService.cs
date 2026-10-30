@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -300,7 +301,7 @@ public class AssistantActionService : IAssistantActionService
         {
             // The action was claimed before it ran, so any failure, expected or not, must leave it Failed and not
             // Confirmed. Application rule failures say why; anything else is logged and reported in general terms.
-            var expected = exception is MailValidationException or InvalidOperationException or ValidationException;
+            var expected = exception is AppException or ValidationException;
             if (!expected)
             {
                 _logger?.LogError(exception, "TFA action {ActionKind} failed unexpectedly", action.Kind);
@@ -363,7 +364,7 @@ public class AssistantActionService : IAssistantActionService
                 }
 
                 var sent = await _mail.SendAsync(caller.UserId, request, cancellationToken)
-                    ?? throw new InvalidOperationException("the mail could not be sent");
+                    ?? throw new BusinessRuleException("the mail could not be sent");
                 return $"Done. Your mail \"{sent.Message.Subject}\" was sent to {string.Join(", ", mail.To.Select(to => to.FullName))}.";
 
             case AssistantActionKind.UpdateOwnProfile:
@@ -376,19 +377,19 @@ public class AssistantActionService : IAssistantActionService
                 }
 
                 _ = await _users.UpdateOwnProfileAsync(caller.UserId, profileRequest, cancellationToken)
-                    ?? throw new InvalidOperationException("your account was not found");
+                    ?? throw new BusinessRuleException("your account was not found");
                 return "Done. Your profile was updated.";
 
             default:
                 var change = JsonSerializer.Deserialize<ChangeRolePayload>(action.PayloadJson, Json)!;
                 var target = await _users.GetByIdAsync(change.TargetUserId, cancellationToken)
-                    ?? throw new InvalidOperationException("that user was not found");
+                    ?? throw new BusinessRuleException("that user was not found");
 
                 // UpdateAsync replaces every field, so everything except the role is passed through unchanged.
                 var updated = await _users.UpdateAsync(
                     target.Id,
                     new UpdateUserRequest(target.EmployeeCode, target.FullName, target.Username, target.Email, change.NewRoleId, target.ProjectAllocations.Select(a => new ProjectAllocationInput(a.ProjectId, a.PositionId, a.Percent)).ToList(), target.Departments.Select(d => d.Id).ToList()),
-                    cancellationToken) ?? throw new InvalidOperationException("that user was not found");
+                    cancellationToken) ?? throw new BusinessRuleException("that user was not found");
                 return $"Done. {updated.FullName} is now a {updated.Role}. They were signed out and will use the new role the next time they sign in.";
         }
     }

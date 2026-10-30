@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using FluentValidation.TestHelper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -137,7 +138,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     {
         AddUser("jane", "jane@taskflow.com");
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.CreateAsync(Create("other", "JANE@taskflow.com"), default));
         Assert.Contains("Email already exists", ex.Message);
     }
@@ -147,7 +148,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     {
         AddUser("jane", "jane@gmail.com");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.CreateAsync(Create("other", "jane@taskflow.com"), default));
     }
 
@@ -156,7 +157,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     {
         AddUser("gone", "gone@taskflow.com", deleted: true);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.CreateAsync(Create("other", "gone@taskflow.com"), default));
     }
 
@@ -165,7 +166,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     {
         AddUser("gone", "gone@taskflow.com", deleted: true);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.CreateAsync(Create("GONE", "fresh@taskflow.com"), default));
         Assert.Contains("already exists", ex.Message);
     }
@@ -176,7 +177,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
         AddUser("gone2", "gone2@taskflow.com", deleted: true);
         var other = AddUser("other2", "other2@taskflow.com");
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.UpdateAsync(other.Id, new UpdateUserRequest(null, "Other", "gone2", "other2@taskflow.com", SystemRoles.EmployeeId, null), default));
         Assert.Contains("already exists", ex.Message);
     }
@@ -184,7 +185,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
     [Fact]
     public async Task Create_rejects_another_domain()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.CreateAsync(Create("other", "other@gmail.com"), default));
     }
 
@@ -204,7 +205,7 @@ public class UserEmailUniquenessTests : IAsyncDisposable
         AddUser("first", "first@taskflow.com");
         var second = AddUser("second", "second@taskflow.com");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.UpdateAsync(second.Id, new UpdateUserRequest(null, "Second", "second", "first@taskflow.com", SystemRoles.EmployeeId, null), default));
     }
 

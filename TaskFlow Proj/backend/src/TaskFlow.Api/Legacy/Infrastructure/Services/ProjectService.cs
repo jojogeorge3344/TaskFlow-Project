@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Users;
@@ -151,7 +152,7 @@ public class ProjectService : IProjectService
             .AnyAsync(p => p.Name.ToLower() == name.ToLower() && !p.IsDeleted, cancellationToken);
         if (exists)
         {
-            throw new InvalidOperationException("Project name already exists.");
+            throw new BusinessRuleException("Project name already exists.");
         }
 
         var project = new Project
@@ -181,7 +182,7 @@ public class ProjectService : IProjectService
             .AnyAsync(p => p.Id != id && p.Name.ToLower() == name.ToLower() && !p.IsDeleted, cancellationToken);
         if (exists)
         {
-            throw new InvalidOperationException("Project name already exists.");
+            throw new BusinessRuleException("Project name already exists.");
         }
 
         project.Name = name;

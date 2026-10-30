@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Departments;
 using TaskFlow.Api.Models.Entities;
@@ -47,7 +48,7 @@ public class DepartmentService : IDepartmentService
             .AnyAsync(d => d.Name.ToLower() == name.ToLower() && !d.IsDeleted, cancellationToken);
         if (exists)
         {
-            throw new InvalidOperationException("Department name already exists.");
+            throw new BusinessRuleException("Department name already exists.");
         }
 
         var department = new Department
@@ -77,7 +78,7 @@ public class DepartmentService : IDepartmentService
             .AnyAsync(d => d.Id != id && d.Name.ToLower() == name.ToLower() && !d.IsDeleted, cancellationToken);
         if (exists)
         {
-            throw new InvalidOperationException("Department name already exists.");
+            throw new BusinessRuleException("Department name already exists.");
         }
 
         department.Name = name;
@@ -104,7 +105,7 @@ public class DepartmentService : IDepartmentService
             .AnyAsync(membership => membership.DepartmentId == id, cancellationToken);
         if (hasManagers || hasEmployees)
         {
-            throw new InvalidOperationException("Department cannot be deleted because it still has members. Remove them first.");
+            throw new BusinessRuleException("Department cannot be deleted because it still has members. Remove them first.");
         }
 
         // The department is only flagged, so the manager links to it would not cascade away on their own.
@@ -165,7 +166,7 @@ public class DepartmentService : IDepartmentService
                 || !user.IsActive
                 || user.RoleId != SystemRoles.ManagerId)
             {
-                throw new InvalidOperationException($"User {managerId} is not an active manager.");
+                throw new BusinessRuleException($"User {managerId} is not an active manager.");
             }
         }
 
@@ -176,7 +177,7 @@ public class DepartmentService : IDepartmentService
         {
             if (!employeeById.TryGetValue(employeeId, out var user) || !user.IsActive)
             {
-                throw new InvalidOperationException($"User {employeeId} is not an active user.");
+                throw new BusinessRuleException($"User {employeeId} is not an active user.");
             }
         }
 

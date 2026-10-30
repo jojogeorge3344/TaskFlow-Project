@@ -36,12 +36,16 @@ public static class AssistantTexts
 }
 
 /// <summary>The request cannot be handled and nothing was sent to any provider (HTTP 400).</summary>
-public class AssistantRequestException : Exception
+public class AssistantRequestException : TaskFlow.Api.Common.Exceptions.AppException
 {
     public AssistantRequestException(string message)
         : base(message)
     {
     }
+
+    public override int StatusCode => StatusCodes.Status400BadRequest;
+
+    public override string? Title => "TFA could not handle that";
 }
 
 /// <summary>The user is over the per-minute limit (HTTP 429).</summary>
@@ -50,8 +54,14 @@ public class AssistantRateLimitedException : AssistantRequestException
     public AssistantRateLimitedException(TimeSpan retryAfter)
         : base(AssistantTexts.RateLimited(retryAfter))
     {
-        RetryAfter = retryAfter;
+        _retryAfter = retryAfter;
     }
 
-    public TimeSpan RetryAfter { get; }
+    private readonly TimeSpan _retryAfter;
+
+    public override int StatusCode => StatusCodes.Status429TooManyRequests;
+
+    public override string? Title => "Too many requests";
+
+    public override TimeSpan? RetryAfter => _retryAfter;
 }

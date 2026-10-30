@@ -27,13 +27,6 @@ public class PositionsController : ControllerBase
     [RequirePermission(PermissionKeys.PositionsCreate)]
     public async Task<ActionResult<PositionDto>> GetOrCreate([FromBody] CreatePositionRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            return Ok(await _positionService.GetOrCreateAsync(request.Name, cancellationToken));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(await _positionService.GetOrCreateAsync(request.Name, cancellationToken));
     }
 }

@@ -110,7 +110,7 @@ Common/Exceptions/AppException (abstract: StatusCode, Title)
 
 Existing custom exceptions (`MailValidationException`, `RoleException`, `AnalyticsFilterException`, `AssistantRequestException`) are re-parented under the matching subclass and keep their names and titles. `RoleException` currently maps to several statuses through `ToProblem`, so it carries its status code.
 
-`Middleware/ExceptionHandlingMiddleware`, registered as an `IExceptionHandler` next to the existing `UseExceptionHandler`, works like this:
+`Middleware/GlobalExceptionHandler`, registered as an `IExceptionHandler` next to the existing `UseExceptionHandler`, works like this:
 - An `AppException` becomes a ProblemDetails with its status, title and message as `detail`, plus `traceId`. Validation exceptions add `errors`.
 - `DbUpdateConcurrencyException` becomes 409. This absorbs the existing `ConcurrencyExceptionHandler`.
 - Anything else becomes a 500 with the generic detail "Something went wrong. Please try again.", and the exception is logged at Error with the `traceId`.

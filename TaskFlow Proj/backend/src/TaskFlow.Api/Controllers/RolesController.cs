@@ -46,15 +46,8 @@ public class RolesController : ControllerBase
         {
             return Forbid();
         }
-        try
-        {
-            var created = await _roles.CreateAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetRole), new { id = created.Id }, created);
-        }
-        catch (RoleException exception)
-        {
-            return ToProblem(exception);
-        }
+        var created = await _roles.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetRole), new { id = created.Id }, created);
     }
 
     [HttpPut("roles/{id:int}")]
@@ -74,15 +67,8 @@ public class RolesController : ControllerBase
         {
             return Forbid();
         }
-        try
-        {
-            await _roles.DeleteAsync(id, cancellationToken);
-            return NoContent();
-        }
-        catch (RoleException exception)
-        {
-            return ToProblem(exception);
-        }
+        await _roles.DeleteAsync(id, cancellationToken);
+        return NoContent();
     }
 
     [HttpGet("permissions")]
@@ -94,25 +80,10 @@ public class RolesController : ControllerBase
     [HttpPut("permissions/{id:int}")]
     [HttpDelete("permissions/{id:int}")]
     public IActionResult CatalogIsFixed() =>
-        StatusCode(StatusCodes.Status403Forbidden, new { error = "The permission list is fixed and cannot be changed." });
+        Problem(detail: "The permission list is fixed and cannot be changed.", statusCode: StatusCodes.Status403Forbidden);
 
     private async Task<ActionResult<RoleDto>> RunAsync(Func<Task<RoleDto>> action)
     {
-        try
-        {
-            return Ok(await action());
-        }
-        catch (RoleException exception)
-        {
-            return ToProblem(exception);
-        }
+        return Ok(await action());
     }
-
-    private ObjectResult ToProblem(RoleException exception) => exception.Failure switch
-    {
-        RoleFailure.NotFound => NotFound(new { error = exception.Message }),
-        RoleFailure.Invalid => BadRequest(new { error = exception.Message }),
-        RoleFailure.ReadOnly => StatusCode(StatusCodes.Status403Forbidden, new { error = exception.Message }),
-        _ => Conflict(new { error = exception.Message })
-    };
 }

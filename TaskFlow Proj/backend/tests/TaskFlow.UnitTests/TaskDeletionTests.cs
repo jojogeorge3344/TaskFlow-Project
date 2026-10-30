@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -128,7 +129,7 @@ public class TaskDeletionTests
         var task = harness.AddTask(admin.Id, admin.Id);
         await harness.TaskService.DeleteAsync(task.Id, admin.Id, default);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.CommentService.AddAsync(task.Id, new AddCommentRequest("Too late"), admin.Id, default));
     }
 }

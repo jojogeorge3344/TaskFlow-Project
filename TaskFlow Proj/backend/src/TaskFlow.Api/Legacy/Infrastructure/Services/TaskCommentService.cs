@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -63,11 +64,11 @@ public class TaskCommentService : ITaskCommentService
     {
         if (string.IsNullOrWhiteSpace(request.Body))
         {
-            throw new InvalidOperationException("Comment must not be empty.");
+            throw new BusinessRuleException("Comment must not be empty.");
         }
 
         var task = await FindTaskAsync(taskId, cancellationToken)
-            ?? throw new InvalidOperationException("Task not found.");
+            ?? throw new BusinessRuleException("Task not found.");
 
         var comment = new TaskComment
         {
@@ -103,11 +104,11 @@ public class TaskCommentService : ITaskCommentService
     {
         if (string.IsNullOrWhiteSpace(request.Body))
         {
-            throw new InvalidOperationException("Comment must not be empty.");
+            throw new BusinessRuleException("Comment must not be empty.");
         }
 
         var task = await FindTaskAsync(taskId, cancellationToken)
-            ?? throw new InvalidOperationException("Task not found.");
+            ?? throw new BusinessRuleException("Task not found.");
 
         var comment = await _dbContext.TaskComments
             .FirstOrDefaultAsync(candidate => candidate.Id == commentId && candidate.TaskId == taskId && !candidate.IsDeleted, cancellationToken);
@@ -118,7 +119,7 @@ public class TaskCommentService : ITaskCommentService
 
         if (comment.AuthorUserId != actorUserId)
         {
-            throw new UnauthorizedAccessException("Only the author can edit this comment.");
+            throw new ForbiddenException("Only the author can edit this comment.");
         }
 
         var oldBody = comment.Body;
@@ -148,7 +149,7 @@ public class TaskCommentService : ITaskCommentService
         CancellationToken cancellationToken)
     {
         var task = await FindTaskAsync(taskId, cancellationToken)
-            ?? throw new InvalidOperationException("Task not found.");
+            ?? throw new BusinessRuleException("Task not found.");
 
         var comment = await _dbContext.TaskComments
             .FirstOrDefaultAsync(candidate => candidate.Id == commentId && candidate.TaskId == taskId && !candidate.IsDeleted, cancellationToken);
@@ -159,7 +160,7 @@ public class TaskCommentService : ITaskCommentService
 
         if (comment.AuthorUserId != actorUserId)
         {
-            throw new UnauthorizedAccessException("Only the author can delete this comment.");
+            throw new ForbiddenException("Only the author can delete this comment.");
         }
 
         comment.IsDeleted = true;

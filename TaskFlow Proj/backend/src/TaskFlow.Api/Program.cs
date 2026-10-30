@@ -29,11 +29,11 @@ builder.Configuration.AddJsonFile("appsettings.Environment.json", optional: true
 builder.Configuration.AddEnvironmentVariables();
 
 // Enums (Role, TaskStatus, TaskPriority) travel as their names, matching the SPA's string unions.
-builder.Services.AddControllers()
+builder.Services.AddControllers(options => options.Filters.Add<TaskFlow.Api.Filters.ValidationFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<TaskFlow.Api.ConcurrencyExceptionHandler>();
+builder.Services.AddExceptionHandler<TaskFlow.Api.Middleware.GlobalExceptionHandler>();
 
 // The real client address matters to the password-recovery throttle. Only loopback proxies are trusted unless the deployment
 // lists its own in Proxy:KnownProxies, so a caller cannot spoof X-Forwarded-For.
@@ -146,6 +146,7 @@ builder.Services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IChatModelProviderRegistry, TaskFlow.Infrastructure.Assistant.ChatModelProviderRegistry>();
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IAiProviderConfigService, TaskFlow.Infrastructure.Assistant.AiProviderConfigService>();
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IChatModelGateway, TaskFlow.Infrastructure.Assistant.ChatModelGateway>();
+builder.Services.AddScoped<TaskFlow.Application.Assistant.IAiProviderConnectionTester, TaskFlow.Infrastructure.Assistant.AiProviderConnectionTester>();
 builder.Services.AddSingleton<TaskFlow.Application.Assistant.IAssistantRateLimiter, TaskFlow.Infrastructure.Assistant.AssistantRateLimiter>();
 builder.Services.AddSingleton<TaskFlow.Application.Assistant.IHelpKnowledgeBase, TaskFlow.Infrastructure.Assistant.HelpKnowledgeBase>();
 builder.Services.AddScoped<TaskFlow.Application.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
@@ -293,6 +294,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+// Outside the exception handler, so the entry records the final status of a request that failed.
+app.UseMiddleware<TaskFlow.Api.Middleware.RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();

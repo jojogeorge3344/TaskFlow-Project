@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -159,7 +160,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
     {
         var user = AddUser();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(user, Row(AddProject(), percent)));
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() => UpdateAsync(user, Row(AddProject(), percent)));
 
         Assert.Contains("1 to 100", error.Message);
         Assert.Equal(0, await TotalAsync(user));
@@ -172,7 +173,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var keep = AddProject();
         await UpdateAsync(user, Row(keep, 30));
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(
             () => UpdateAsync(user, Row(keep, 60), Row(AddProject(), 50)));
 
         Assert.Contains("110%", error.Message);
@@ -185,7 +186,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var user = AddUser();
         var project = AddProject();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(user, Row(project, 20), Row(project, 30)));
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() => UpdateAsync(user, Row(project, 20), Row(project, 30)));
 
         Assert.Contains("only appear once", error.Message);
         Assert.Equal(0, await TotalAsync(user));
@@ -197,8 +198,8 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var user = AddUser();
         var project = AddProject();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(user, new ProjectAllocationInput(9999, Member, 50)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => UpdateAsync(user, new ProjectAllocationInput(project.Id, 9999, 50)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => UpdateAsync(user, new ProjectAllocationInput(9999, Member, 50)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => UpdateAsync(user, new ProjectAllocationInput(project.Id, 9999, 50)));
         Assert.Equal(0, await TotalAsync(user));
     }
 
@@ -209,7 +210,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
             null, "New Person", "newperson", "newperson@taskflow.com", "P@ssw0rd!", SystemRoles.EmployeeId, true,
             [Row(AddProject(), 70), Row(AddProject(), 40)]);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _users.CreateAsync(request, default));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _users.CreateAsync(request, default));
 
         Assert.False(await _db.Users.AnyAsync(u => u.Username == "newperson"));
     }
@@ -266,7 +267,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var manager = AddManager();
         var employee = AddUser();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(
             () => ReplaceMembersAsync(project, Plain(manager, Member, 50), Plain(employee, Member, 50)));
 
         Assert.Contains("manager", error.Message, StringComparison.OrdinalIgnoreCase);
@@ -295,7 +296,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var employee = AddUser("justanemployee");
         var manager = AddManager();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(
             () => ReplaceMembersAsync(project, Lead(employee, Member, 50), Lead(manager, Member, 50)));
 
         Assert.Contains("justanemployee full name", error.Message);
@@ -354,7 +355,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         await UpdateAsync(busy, Row(AddProject(), 70));
         var target = AddProject();
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(target, Lead(busy, Member, 50)));
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(target, Lead(busy, Member, 50)));
 
         Assert.Contains("busy full name", error.Message);
         Assert.Contains("120%", error.Message);
@@ -375,7 +376,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var full = AddUser();
         await UpdateAsync(full, Row(AddProject(), 100));
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(
             () => ReplaceMembersAsync(project, Lead(fine, Member, 20), Plain(full, Member, 10)));
 
         Assert.Contains("110%", error.Message);
@@ -407,12 +408,12 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var user = AddManager();
         var inactive = AddManager(active: false);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, Lead(user, Member, 0)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, Lead(user, Member, 101)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, Lead(user, Member, 10), Lead(user, Qa, 10)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, Lead(user, 9999, 10)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, Lead(inactive, Member, 10)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(project, new ProjectMemberInput(9999, Member, 10, true)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, Lead(user, Member, 0)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, Lead(user, Member, 101)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, Lead(user, Member, 10), Lead(user, Qa, 10)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, Lead(user, 9999, 10)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, Lead(inactive, Member, 10)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(project, new ProjectMemberInput(9999, Member, 10, true)));
         Assert.Null(await ReplaceMembersAsync(new Project { Id = 9999 }));
     }
 
@@ -423,7 +424,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
         var user = AddManager();
         await ReplaceMembersAsync(project, Lead(user, Member, 25));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<BusinessRuleException>(
             () => ReplaceMembersAsync(project, Lead(user, Member, 25), new ProjectMemberInput(9999, Member, 5)));
 
         Assert.Equal(25, Assert.Single((await _projects.GetMembersAsync(project.Id, default))!).Percent);
@@ -439,7 +440,7 @@ public class UserAllocationServiceTests : IAsyncDisposable
 
         // Two requests for the same person, one after the other, as the transaction would serialise them.
         await ReplaceMembersAsync(first, Lead(person, Member, 70));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => ReplaceMembersAsync(second, Lead(person, Member, 60)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => ReplaceMembersAsync(second, Lead(person, Member, 60)));
 
         Assert.Equal(70, await TotalAsync(person));
     }
@@ -574,8 +575,8 @@ public class UserAllocationServiceTests : IAsyncDisposable
     {
         var positions = new PositionService(_db);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => positions.GetOrCreateAsync("   ", default));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => positions.GetOrCreateAsync(new string('x', 101), default));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => positions.GetOrCreateAsync("   ", default));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => positions.GetOrCreateAsync(new string('x', 101), default));
     }
 
     [Fact]

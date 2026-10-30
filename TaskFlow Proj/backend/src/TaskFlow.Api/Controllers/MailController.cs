@@ -20,19 +20,13 @@ public class MailController : ControllerBase
 
     private readonly IMailService _mailService;
     private readonly IMailAttachmentService _attachmentService;
-    private readonly IValidator<SendMailRequest> _sendValidator;
-    private readonly IValidator<SaveDraftRequest> _draftValidator;
 
     public MailController(
         IMailService mailService,
-        IMailAttachmentService attachmentService,
-        IValidator<SendMailRequest> sendValidator,
-        IValidator<SaveDraftRequest> draftValidator)
+        IMailAttachmentService attachmentService)
     {
         _mailService = mailService;
         _attachmentService = attachmentService;
-        _sendValidator = sendValidator;
-        _draftValidator = draftValidator;
     }
 
     /// <summary>One page of a folder, optionally filtered by a search term.</summary>
@@ -123,14 +117,7 @@ public class MailController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return await _mailService.DeleteForeverAsync(callerId, itemId, cancellationToken) ? NoContent() : NotFound();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new { message = exception.Message });
-        }
+        return await _mailService.DeleteForeverAsync(callerId, itemId, cancellationToken) ? NoContent() : NotFound();
     }
 
     /// <summary>Prefilled recipients, subject and quoted text for a reply, reply all or forward.</summary>
@@ -143,15 +130,8 @@ public class MailController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var compose = await _mailService.GetComposeAsync(callerId, itemId, mode, cancellationToken);
-            return compose is null ? NotFound() : Ok(compose);
-        }
-        catch (MailValidationException exception)
-        {
-            return MailProblem(exception);
-        }
+        var compose = await _mailService.GetComposeAsync(callerId, itemId, mode, cancellationToken);
+        return compose is null ? NotFound() : Ok(compose);
     }
 
     /// <summary>Sends a new mail, a reply or forward, or a saved draft to TaskFlow users.</summary>
@@ -159,26 +139,13 @@ public class MailController : ControllerBase
     [Authorize(Policy = PermissionPolicy.Prefix + PermissionKeys.MailCompose)]
     public async Task<ActionResult<MailItemDetailDto>> Send([FromBody] SendMailRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _sendValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCallerId(out var callerId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var sent = await _mailService.SendAsync(callerId, request, cancellationToken);
-            return sent is null ? NotFound() : Ok(sent);
-        }
-        catch (MailValidationException exception)
-        {
-            return MailProblem(exception);
-        }
+        var sent = await _mailService.SendAsync(callerId, request, cancellationToken);
+        return sent is null ? NotFound() : Ok(sent);
     }
 
     [HttpPost("drafts")]
@@ -221,15 +188,8 @@ public class MailController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        try
-        {
-            await using var content = file.OpenReadStream();
-            return Ok(await _attachmentService.UploadAsync(callerId, content, file.FileName, cancellationToken));
-        }
-        catch (MailValidationException exception)
-        {
-            return MailProblem(exception);
-        }
+        await using var content = file.OpenReadStream();
+        return Ok(await _attachmentService.UploadAsync(callerId, content, file.FileName, cancellationToken));
     }
 
     /// <summary>Downloads an attachment as a file; never rendered inline.</summary>
@@ -270,26 +230,13 @@ public class MailController : ControllerBase
         Func<int, SaveDraftRequest, Task<MailItemDetailDto?>> save,
         CancellationToken cancellationToken)
     {
-        var validation = await _draftValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCallerId(out var callerId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var draft = await save(callerId, request);
-            return draft is null ? NotFound() : Ok(draft);
-        }
-        catch (MailValidationException exception)
-        {
-            return MailProblem(exception);
-        }
+        var draft = await save(callerId, request);
+        return draft is null ? NotFound() : Ok(draft);
     }
 
     private async Task<ActionResult<T>> WithCaller<T>(Func<int, Task<T>> action)
@@ -301,9 +248,6 @@ public class MailController : ControllerBase
 
         return Ok(await action(callerId));
     }
-
-    private ActionResult MailProblem(MailValidationException exception) =>
-        ValidationProblem(new ValidationProblemDetails(exception.Errors.ToDictionary(error => error.Key, error => error.Value)));
 
     private bool TryGetCallerId(out int callerId) =>
         int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out callerId);

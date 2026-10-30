@@ -46,18 +46,7 @@ public class DashboardController : ControllerBase
         [FromQuery] AnalyticsFilter filter,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            return Ok(await _analyticsService.GetAsync(filter, cancellationToken));
-        }
-        catch (AnalyticsFilterException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
-        catch (AnalyticsEntityNotFoundException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status404NotFound);
-        }
+        return Ok(await _analyticsService.GetAsync(filter, cancellationToken));
     }
 
     [HttpGet("admin/analytics/filters")]
@@ -93,22 +82,7 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return Ok(await _managerAnalyticsService.GetAsync(managerId, filter, cancellationToken));
-        }
-        catch (AnalyticsFilterException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
-        catch (AnalyticsForbiddenException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status403Forbidden);
-        }
-        catch (AnalyticsEntityNotFoundException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status404NotFound);
-        }
+        return Ok(await _managerAnalyticsService.GetAsync(managerId, filter, cancellationToken));
     }
 
     [HttpGet("manager/analytics/filters")]
@@ -150,14 +124,7 @@ public class DashboardController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return Ok(await _employeeAnalyticsService.GetAsync(userId, period, cancellationToken));
-        }
-        catch (AnalyticsFilterException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        return Ok(await _employeeAnalyticsService.GetAsync(userId, period, cancellationToken));
     }
 
     private bool TryGetCallerId(out int userId) =>

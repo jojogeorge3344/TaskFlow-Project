@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -333,7 +334,7 @@ public class TaskService : ITaskService
     {
         if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksCreate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Your role is not allowed to create tasks.");
+            throw new ForbiddenException("Your role is not allowed to create tasks.");
         }
 
         ValidateCreate(request);
@@ -344,12 +345,12 @@ public class TaskService : ITaskService
 
         if (assignee is null || !assignee.IsActive)
         {
-            throw new InvalidOperationException("The assigned employee does not exist or is not active.");
+            throw new BusinessRuleException("The assigned employee does not exist or is not active.");
         }
 
         if (!await _dbContext.Projects.AnyAsync(project => project.Id == request.ProjectId && !project.IsDeleted, cancellationToken))
         {
-            throw new InvalidOperationException("The selected project does not exist.");
+            throw new BusinessRuleException("The selected project does not exist.");
         }
 
         var additionalRecipientIds = request.AdditionalRecipientUserIds?.Distinct().ToList() ?? [];
@@ -361,7 +362,7 @@ public class TaskService : ITaskService
 
             if (existing != additionalRecipientIds.Count)
             {
-                throw new InvalidOperationException("One or more recipients do not exist.");
+                throw new BusinessRuleException("One or more recipients do not exist.");
             }
         }
 
@@ -376,7 +377,7 @@ public class TaskService : ITaskService
         var secondReminderDays = request.SecondReminderDays ?? reminderDefaults!.DefaultSecondDays;
         if (!ReminderIntervals.AreOrdered(firstReminderDays, secondReminderDays))
         {
-            throw new InvalidOperationException(ReminderIntervals.OrderMessage);
+            throw new BusinessRuleException(ReminderIntervals.OrderMessage);
         }
 
         var now = Now;
@@ -464,7 +465,7 @@ public class TaskService : ITaskService
     {
         if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Your role is not allowed to edit tasks.");
+            throw new ForbiddenException("Your role is not allowed to edit tasks.");
         }
 
         ValidateUpdate(request);
@@ -478,7 +479,7 @@ public class TaskService : ITaskService
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
         if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
-            throw new UnauthorizedAccessException("You do not have access to this task.");
+            throw new ForbiddenException("You do not have access to this task.");
         }
 
         if (task.Deadline != request.Deadline)
@@ -549,7 +550,7 @@ public class TaskService : ITaskService
     {
         if (request.Hours <= 0 || request.Hours > 24)
         {
-            throw new InvalidOperationException("Hours must be greater than 0 and at most 24 per entry.");
+            throw new BusinessRuleException("Hours must be greater than 0 and at most 24 per entry.");
         }
 
         var task = await LoadTaskAsync(taskId, cancellationToken);
@@ -561,13 +562,13 @@ public class TaskService : ITaskService
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
         if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
-            throw new UnauthorizedAccessException("You do not have access to this task.");
+            throw new ForbiddenException("You do not have access to this task.");
         }
 
         if (task.AssignedToUserId != currentUserId
             && !await HasPermissionAsync(currentUserRole, PermissionKeys.TasksUpdate, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Only the assignee can log hours on this task.");
+            throw new ForbiddenException("Only the assignee can log hours on this task.");
         }
 
         var previous = task.ActualHours ?? 0;
@@ -589,7 +590,7 @@ public class TaskService : ITaskService
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new InvalidOperationException("The task's worked hours changed while you were saving. Please try again.");
+            throw new BusinessRuleException("The task's worked hours changed while you were saving. Please try again.");
         }
 
         await NotifyHoursChangedAsync(task, recipients, previous, total, currentUserId, cancellationToken);
@@ -678,12 +679,12 @@ public class TaskService : ITaskService
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
         if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
-            throw new UnauthorizedAccessException("You do not have access to this task.");
+            throw new ForbiddenException("You do not have access to this task.");
         }
 
         if (!TaskStatusTransitions.Can(task.Status, request.Status))
         {
-            throw new InvalidOperationException($"Cannot move a task from {task.Status} to {request.Status}.");
+            throw new BusinessRuleException($"Cannot move a task from {task.Status} to {request.Status}.");
         }
 
         var oldStatus = task.Status;
@@ -734,12 +735,12 @@ public class TaskService : ITaskService
     {
         if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksReassign, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Your role is not allowed to reassign tasks.");
+            throw new ForbiddenException("Your role is not allowed to reassign tasks.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Reason))
         {
-            throw new InvalidOperationException("A reassignment reason is required.");
+            throw new BusinessRuleException("A reassignment reason is required.");
         }
 
         var task = await LoadTaskAsync(taskId, cancellationToken);
@@ -751,7 +752,7 @@ public class TaskService : ITaskService
         var recipients = await LoadRecipientsAsync(taskId, cancellationToken);
         if (!await CanAccessTaskAsync(task, recipientIds(recipients), currentUserId, currentUserRole, cancellationToken))
         {
-            throw new UnauthorizedAccessException("You do not have access to this task.");
+            throw new ForbiddenException("You do not have access to this task.");
         }
 
         var newAssignee = await _dbContext.Users
@@ -760,7 +761,7 @@ public class TaskService : ITaskService
 
         if (newAssignee is null || !newAssignee.IsActive)
         {
-            throw new InvalidOperationException("The target employee does not exist or is not active.");
+            throw new BusinessRuleException("The target employee does not exist or is not active.");
         }
 
         var oldAssignee = await _dbContext.Users
@@ -891,7 +892,7 @@ public class TaskService : ITaskService
     {
         if (!await HasPermissionAsync(currentUserRole, PermissionKeys.TasksRecipients, cancellationToken))
         {
-            throw new UnauthorizedAccessException("Your role is not allowed to manage task recipients.");
+            throw new ForbiddenException("Your role is not allowed to manage task recipients.");
         }
 
         var task = await LoadTaskAsync(taskId, cancellationToken);
@@ -994,17 +995,17 @@ public class TaskService : ITaskService
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            throw new InvalidOperationException("Title is required.");
+            throw new BusinessRuleException("Title is required.");
         }
 
         if (request.Deadline <= request.StartDate)
         {
-            throw new InvalidOperationException("Deadline must be after the start date.");
+            throw new BusinessRuleException("Deadline must be after the start date.");
         }
 
         if (request.EstimatedHours <= 0)
         {
-            throw new InvalidOperationException("Estimated hours must be a positive number.");
+            throw new BusinessRuleException("Estimated hours must be a positive number.");
         }
     }
 
@@ -1012,27 +1013,27 @@ public class TaskService : ITaskService
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            throw new InvalidOperationException("Title is required.");
+            throw new BusinessRuleException("Title is required.");
         }
 
         if (request.AssignedToUserId <= 0)
         {
-            throw new InvalidOperationException("An assigned employee is required.");
+            throw new BusinessRuleException("An assigned employee is required.");
         }
 
         if (request.ProjectId <= 0)
         {
-            throw new InvalidOperationException("A project is required.");
+            throw new BusinessRuleException("A project is required.");
         }
 
         if (request.Deadline <= request.StartDate)
         {
-            throw new InvalidOperationException("Deadline must be after the start date.");
+            throw new BusinessRuleException("Deadline must be after the start date.");
         }
 
         if (request.EstimatedHours <= 0)
         {
-            throw new InvalidOperationException("Estimated hours must be a positive number.");
+            throw new BusinessRuleException("Estimated hours must be a positive number.");
         }
     }
 

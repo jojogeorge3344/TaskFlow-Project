@@ -1,4 +1,3 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,23 +21,17 @@ public class PasswordRecoveryController : ControllerBase
     private readonly IMfaService _mfaService;
     private readonly IPasswordRecoveryService _recoveryService;
     private readonly IAttemptLimiter _limiter;
-    private readonly IValidator<AuthenticatorRecoveryRequest> _verifyValidator;
-    private readonly IValidator<RecoverPasswordRequest> _recoverValidator;
 
     public PasswordRecoveryController(
         IApplicationDbContext db,
         IMfaService mfaService,
         IPasswordRecoveryService recoveryService,
-        IAttemptLimiter limiter,
-        IValidator<AuthenticatorRecoveryRequest> verifyValidator,
-        IValidator<RecoverPasswordRequest> recoverValidator)
+        IAttemptLimiter limiter)
     {
         _db = db;
         _mfaService = mfaService;
         _recoveryService = recoveryService;
         _limiter = limiter;
-        _verifyValidator = verifyValidator;
-        _recoverValidator = recoverValidator;
     }
 
     /// <summary>Step 1: the account and a current authenticator code. A correct code returns the single-use reset token.</summary>
@@ -48,19 +41,13 @@ public class PasswordRecoveryController : ControllerBase
         [FromBody] AuthenticatorRecoveryRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _verifyValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         var identifier = request.Identifier!.Trim();
         var address = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         // A caller whose address is already over budget is turned away before any database work.
         if (_limiter.IsAddressBlocked(address))
         {
-            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
+            return Problem(detail: ThrottledMessage, statusCode: StatusCodes.Status429TooManyRequests);
         }
 
         var user = await _db.Users.FirstOrDefaultAsync(
@@ -75,19 +62,19 @@ public class PasswordRecoveryController : ControllerBase
         var accountKey = user is null ? IAttemptLimiter.UnknownKey(identifier) : IAttemptLimiter.AccountKey(user.Id);
         if (!_limiter.TryAcquire(accountKey, address))
         {
-            return StatusCode(StatusCodes.Status429TooManyRequests, new { error = ThrottledMessage });
+            return Problem(detail: ThrottledMessage, statusCode: StatusCodes.Status429TooManyRequests);
         }
 
         if (user is null || user.MfaEnabledAt is null)
         {
-            return BadRequest(new { error = FailureMessage });
+            return Problem(detail: FailureMessage, statusCode: StatusCodes.Status400BadRequest);
         }
 
         // An unused backup code is not a recovery factor. The account's own lock still applies.
         var outcome = await _mfaService.VerifyAsync(user, request.Code, allowBackupCode: false, countFailure: false, cancellationToken: cancellationToken);
         if (outcome != MfaVerifyOutcome.Success)
         {
-            return BadRequest(new { error = FailureMessage });
+            return Problem(detail: FailureMessage, statusCode: StatusCodes.Status400BadRequest);
         }
 
         _limiter.Reset(accountKey);
@@ -99,15 +86,9 @@ public class PasswordRecoveryController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Reset([FromBody] RecoverPasswordRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _recoverValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         var reset = await _recoveryService.ResetPasswordAsync(request.ResetToken!, request.NewPassword!, cancellationToken);
         return reset
             ? NoContent()
-            : BadRequest(new { error = "This reset link is no longer valid. Start again from the login page." });
+            : Problem(detail: "This reset link is no longer valid. Start again from the login page.", statusCode: StatusCodes.Status400BadRequest);
     }
 }

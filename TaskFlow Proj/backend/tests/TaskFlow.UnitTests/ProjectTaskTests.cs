@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Projects;
 using TaskFlow.Application.Tasks;
@@ -39,7 +40,7 @@ public class ProjectTaskTests
 
         foreach (var projectId in new[] { 0, 9999, deleted.Id })
         {
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            await Assert.ThrowsAsync<BusinessRuleException>(() =>
                 harness.TaskService.CreateAsync(Request(assignee.Id, projectId), manager.Id, SystemRoles.Manager, CancellationToken.None));
         }
 

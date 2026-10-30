@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Application.Settings;
@@ -140,7 +141,7 @@ public class TaskManagementServiceTests
             SecondReminderDays: 5,
             ProjectId: harness.AddProject().Id);
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
 
         Assert.Equal("The second reminder cannot come before the first reminder.", error.Message);
@@ -197,7 +198,7 @@ public class TaskManagementServiceTests
             1m,
             ProjectId: harness.AddProject().Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.CreateAsync(request, employee.Id, SystemRoles.Employee, CancellationToken.None));
     }
 
@@ -218,7 +219,7 @@ public class TaskManagementServiceTests
             1m,
             ProjectId: harness.AddProject().Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.TaskService.CreateAsync(request, manager.Id, SystemRoles.Manager, CancellationToken.None));
     }
 

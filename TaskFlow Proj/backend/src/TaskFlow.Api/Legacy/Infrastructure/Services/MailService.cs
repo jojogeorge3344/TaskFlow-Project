@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -551,7 +552,7 @@ public class MailService : IMailService
 
         if (item.TrashedAt is null && item.Folder != MailFolder.Drafts)
         {
-            throw new InvalidOperationException("Move the mail to Trash before deleting it forever.");
+            throw new ConflictException("Move the mail to Trash before deleting it forever.");
         }
 
         item.PurgedAt = UtcNow;

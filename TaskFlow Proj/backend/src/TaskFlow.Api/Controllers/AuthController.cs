@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Contracts;
@@ -14,17 +13,11 @@ namespace TaskFlow.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
-    private readonly IValidator<LoginRequest> _loginRequestValidator;
-    private readonly IValidator<MfaVerifyRequest> _mfaVerifyValidator;
 
     public AuthController(
-        IAuthService authService,
-        IValidator<LoginRequest> loginRequestValidator,
-        IValidator<MfaVerifyRequest> mfaVerifyValidator)
+        IAuthService authService)
     {
         _authService = authService;
-        _loginRequestValidator = loginRequestValidator;
-        _mfaVerifyValidator = mfaVerifyValidator;
     }
 
     [HttpPost("login")]
@@ -33,13 +26,6 @@ public class AuthController : ControllerBase
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _loginRequestValidator.ValidateAsync(request, cancellationToken);
-
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         var result = await _authService.LoginAsync(request, cancellationToken);
 
         if (result.MfaRequired)
@@ -64,12 +50,6 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> VerifyMfa([FromBody] MfaVerifyRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _mfaVerifyValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         var result = await _authService.VerifyMfaAsync(request.ChallengeToken, request.Code, cancellationToken);
 
         switch (result.Outcome)
@@ -78,9 +58,9 @@ public class AuthController : ControllerBase
                 SetRefreshCookie(result.Auth.Tokens!);
                 return Ok(ToResponse(result.Auth));
             case MfaVerifyOutcome.LockedOut:
-                return StatusCode(StatusCodes.Status429TooManyRequests, new { error = MfaService.LockedMessage });
+                return Problem(detail: MfaService.LockedMessage, statusCode: StatusCodes.Status429TooManyRequests);
             default:
-                return BadRequest(new { error = "The code is incorrect, or the sign-in has expired. Try again or sign in again." });
+                return Problem(detail: "The code is incorrect, or the sign-in has expired. Try again or sign in again.", statusCode: StatusCodes.Status400BadRequest);
         }
     }
 

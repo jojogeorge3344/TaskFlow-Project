@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -58,14 +59,14 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     [InlineData("   ")]
     public async Task AnEmptyModelNameIsRejected(string name)
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: name)));
+        await Assert.ThrowsAsync<RequestValidationException>(() => Save(Update(AiProviderKind.Ollama, model: name)));
         Assert.Empty(await _harness.Db.AiModels.ToListAsync());
     }
 
     [Fact]
     public async Task AModelNameLongerThanTheStoredLengthIsRejected()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => Save(Update(AiProviderKind.Ollama, model: new string('m', 101))));
+        await Assert.ThrowsAsync<RequestValidationException>(() => Save(Update(AiProviderKind.Ollama, model: new string('m', 101))));
         Assert.Empty(await _harness.Db.AiModels.ToListAsync());
 
         await Save(Update(AiProviderKind.Ollama, model: new string('m', 100)));
@@ -94,7 +95,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
         Assert.All(config.Where(provider => provider.Kind != AiProviderKind.Ollama), provider => Assert.Empty(provider.CustomModels));
 
         // It is the saved model, so it stays until another one is saved.
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model"));
+        await Assert.ThrowsAsync<RequestValidationException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model"));
         await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"));
 
         var after = await Service().RemoveModelAsync(AiProviderKind.Ollama, "typo-model");
@@ -110,8 +111,8 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     {
         await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
 
-        await Assert.ThrowsAsync<ArgumentException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "llama3.1:8b"));
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "never-added"));
+        await Assert.ThrowsAsync<RequestValidationException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "llama3.1:8b"));
+        await Assert.ThrowsAsync<NotFoundException>(() => Service().RemoveModelAsync(AiProviderKind.Ollama, "never-added"));
         Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "llama3.1:8b"));
     }
 

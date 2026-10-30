@@ -1,5 +1,4 @@
 using System.Text;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -15,12 +14,10 @@ namespace TaskFlow.Api.Controllers;
 public class ReportController : ControllerBase
 {
     private readonly IReportService _reportService;
-    private readonly IValidator<ReportFilter> _filterValidator;
 
-    public ReportController(IReportService reportService, IValidator<ReportFilter> filterValidator)
+    public ReportController(IReportService reportService)
     {
         _reportService = reportService;
-        _filterValidator = filterValidator;
     }
 
     /// <summary>Totals and completion summary for the filtered scope.</summary>
@@ -29,12 +26,6 @@ public class ReportController : ControllerBase
         [FromQuery] ReportFilter filter,
         CancellationToken cancellationToken)
     {
-        var validation = await _filterValidator.ValidateAsync(filter, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         return Ok(await _reportService.GetSummaryAsync(filter, cancellationToken));
     }
 
@@ -45,12 +36,6 @@ public class ReportController : ControllerBase
         [FromQuery] ReportFilter filter,
         CancellationToken cancellationToken)
     {
-        var validation = await _filterValidator.ValidateAsync(filter, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         var rows = await _reportService.GetRowsAsync(filter, cancellationToken);
         var csv = ReportCsv.Write(rows);
 

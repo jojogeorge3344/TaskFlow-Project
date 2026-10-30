@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
@@ -194,7 +195,7 @@ public class UserService : IUserService
 
         if (await EmailTakenAsync(email, null, cancellationToken))
         {
-            throw new InvalidOperationException("Email already exists.");
+            throw new BusinessRuleException("Email already exists.");
         }
 
         // Deleted users keep their username (the unique index still covers them), so they count here too.
@@ -204,7 +205,7 @@ public class UserService : IUserService
 
         if (usernameTaken)
         {
-            throw new InvalidOperationException("Email or username already exists.");
+            throw new BusinessRuleException("Email or username already exists.");
         }
 
         if (request.ProjectAllocations is not null)
@@ -257,7 +258,7 @@ public class UserService : IUserService
 
         if (await EmailTakenAsync(email, id, cancellationToken))
         {
-            throw new InvalidOperationException("Email already exists.");
+            throw new BusinessRuleException("Email already exists.");
         }
 
         var usernameTaken = await _dbContext.Users
@@ -266,7 +267,7 @@ public class UserService : IUserService
 
         if (usernameTaken)
         {
-            throw new InvalidOperationException("Email or username already exists.");
+            throw new BusinessRuleException("Email or username already exists.");
         }
 
         if (request.ProjectAllocations is not null)
@@ -369,7 +370,7 @@ public class UserService : IUserService
             : MobileNumberPolicy.Normalize(request.MobileNumber);
         if (mobileNumber is not null && !MobileNumberPolicy.IsValid(mobileNumber))
         {
-            throw new InvalidOperationException(MobileNumberPolicy.InvalidMessage);
+            throw new BusinessRuleException(MobileNumberPolicy.InvalidMessage);
         }
 
         // Email is the only unique identity, so a number may be shared. What is refused is a second record that already holds
@@ -377,12 +378,12 @@ public class UserService : IUserService
         if (mobileNumber is not null
             && await _dbContext.Users.AnyAsync(u => u.Id != id && u.Email == email && u.MobileNumber == mobileNumber, cancellationToken))
         {
-            throw new InvalidOperationException("A user with this email and mobile number already exists.");
+            throw new BusinessRuleException("A user with this email and mobile number already exists.");
         }
 
         if (await EmailTakenAsync(email, id, cancellationToken))
         {
-            throw new InvalidOperationException("Email already exists.");
+            throw new BusinessRuleException("Email already exists.");
         }
 
         user.FullName = request.FullName!.Trim();
@@ -446,7 +447,7 @@ public class UserService : IUserService
 
         if (user.Id == currentUserId)
         {
-            throw new InvalidOperationException("You cannot delete your own account.");
+            throw new BusinessRuleException("You cannot delete your own account.");
         }
 
         await EnsureAnotherActiveAdministratorAsync(
@@ -461,7 +462,7 @@ public class UserService : IUserService
                 cancellationToken);
         if (unfinished > 0)
         {
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"{user.FullName} still has {unfinished} unfinished task{(unfinished == 1 ? string.Empty : "s")}. Reassign {(unfinished == 1 ? "it" : "them")} before deleting this employee.");
         }
 
@@ -487,7 +488,7 @@ public class UserService : IUserService
         var normalized = EmailPolicy.Normalize(email);
         if (!EmailPolicy.IsValid(normalized))
         {
-            throw new InvalidOperationException(EmailPolicy.InvalidMessage);
+            throw new BusinessRuleException(EmailPolicy.InvalidMessage);
         }
 
         return normalized;
@@ -515,13 +516,13 @@ public class UserService : IUserService
             .CountAsync(u => u.Id != user.Id && !u.IsDeleted && u.IsActive && u.RoleId == SystemRoles.AdministratorId, cancellationToken);
         if (others == 0)
         {
-            throw new InvalidOperationException(message);
+            throw new BusinessRuleException(message);
         }
     }
 
     private async Task<Role> RequireRoleAsync(int roleId, CancellationToken cancellationToken) =>
         await _dbContext.Roles.FirstOrDefaultAsync(role => role.Id == roleId, cancellationToken)
-        ?? throw new InvalidOperationException("Role does not exist.");
+        ?? throw new BusinessRuleException("Role does not exist.");
 
     private static string NewSecurityStamp() => Guid.NewGuid().ToString("N");
     /// <summary>

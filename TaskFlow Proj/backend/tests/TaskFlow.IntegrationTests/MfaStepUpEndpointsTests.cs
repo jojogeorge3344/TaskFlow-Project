@@ -22,7 +22,7 @@ public class MfaStepUpEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private static async Task<string> ErrorOf(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        return document.RootElement.TryGetProperty("error", out var error) ? error.GetString() ?? "" : "";
+        return document.RootElement.TryGetProperty("detail", out var error) ? error.GetString() ?? "" : "";
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Mail;
 using TaskFlow.Api.Models.Entities;
@@ -118,7 +119,7 @@ public class MailboxTests
         var restored = Assert.Single(await mail.FolderAsync(mail.Priya, MailView.Inbox));
         Assert.True(restored.IsRead && restored.IsStarred);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => mail.Mail.DeleteForeverAsync(mail.Priya.Id, item.ItemId));
+        await Assert.ThrowsAsync<ConflictException>(() => mail.Mail.DeleteForeverAsync(mail.Priya.Id, item.ItemId));
 
         await mail.Mail.TrashAsync(mail.Priya.Id, item.ItemId);
         Assert.True(await mail.Mail.DeleteForeverAsync(mail.Priya.Id, item.ItemId));

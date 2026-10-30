@@ -120,7 +120,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(HttpStatusCode.Forbidden, edit.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, empty.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
-        Assert.Contains("read-only", (await JsonOf(edit)).GetProperty("error").GetString());
+        Assert.Contains("read-only", (await JsonOf(edit)).GetProperty("detail").GetString());
         var after = await JsonOf(await SendAsync(client, HttpMethod.Get, $"{Roles}/{systemRoleId}", token));
         Assert.Equal(before.GetProperty("name").GetString(), after.GetProperty("name").GetString());
         Assert.Equal(Keys(before), Keys(after));
@@ -309,7 +309,7 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var response = await SendAsync(client, HttpMethod.Delete, $"{Roles}/{roleId}", token);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Contains("2 users", (await JsonOf(response)).GetProperty("error").GetString());
+        Assert.Contains("2 users", (await JsonOf(response)).GetProperty("detail").GetString());
         Assert.True(await DbAsync(db => db.Roles.AnyAsync(role => role.Id == roleId)));
         var listed = (await JsonOf(await SendAsync(client, HttpMethod.Get, Roles, token))).EnumerateArray().Single(role => role.GetProperty("id").GetInt32() == roleId);
         Assert.Equal(2, listed.GetProperty("userCount").GetInt32());

@@ -431,7 +431,7 @@ public class ProjectTeamEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private static async Task<string?> ErrorAsync(HttpResponseMessage response)
     {
         using var document = await JsonAsync(response);
-        return document.RootElement.GetProperty("error").GetString();
+        return document.RootElement.GetProperty("detail").GetString();
     }
 
     private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string url, string token, object? body = null)

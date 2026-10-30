@@ -19,11 +19,6 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
             .Must(EmailPolicy.IsValid).WithMessage(EmailPolicy.InvalidMessage)
             .MaximumLength(256);
 
-        RuleFor(x => x.Password)
-            .Must(password => !string.IsNullOrWhiteSpace(password))
-            .WithMessage("Password cannot be blank.")
-            .MinimumLength(6)
-            .When(x => !string.IsNullOrEmpty(x.Password));
-
+        // No password rule: an update ignores the password field (people change their own password from their profile).
     }
 }

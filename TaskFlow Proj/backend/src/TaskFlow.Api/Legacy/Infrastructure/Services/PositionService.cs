@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Projects;
 using TaskFlow.Api.Models.Entities;
@@ -28,12 +29,12 @@ public class PositionService : IPositionService
         var trimmed = string.Join(' ', (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries));
         if (trimmed.Length == 0)
         {
-            throw new InvalidOperationException("Position name is required.");
+            throw new BusinessRuleException("Position name is required.");
         }
 
         if (trimmed.Length > MaxNameLength)
         {
-            throw new InvalidOperationException($"Position name must be {MaxNameLength} characters or fewer.");
+            throw new BusinessRuleException($"Position name must be {MaxNameLength} characters or fewer.");
         }
 
         // The column is NOCASE, so this matches "qa" to "QA".

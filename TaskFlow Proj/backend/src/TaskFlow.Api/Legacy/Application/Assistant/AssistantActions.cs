@@ -24,12 +24,14 @@ public record AssistantActionResultDto(
     AssistantMessageDto? Reply);
 
 /// <summary>The action is not in a state that allows this (expired, already done, cancelled). HTTP 409.</summary>
-public class AssistantActionConflictException : Exception
+public class AssistantActionConflictException : TaskFlow.Api.Common.Exceptions.ConflictException
 {
     public AssistantActionConflictException(string message)
         : base(message)
     {
     }
+
+    public override string? Title => "This action can no longer be done";
 }
 
 public static class AssistantActionRules

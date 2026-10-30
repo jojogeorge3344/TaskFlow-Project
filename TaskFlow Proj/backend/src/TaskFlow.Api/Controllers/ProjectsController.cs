@@ -74,63 +74,35 @@ public class ProjectsController : ControllerBase
         [FromBody] ReplaceProjectMembersRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var members = await _projectService.ReplaceMembersAsync(id, request, cancellationToken);
-            return members is null ? NotFound() : Ok(members);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var members = await _projectService.ReplaceMembersAsync(id, request, cancellationToken);
+        return members is null ? NotFound() : Ok(members);
     }
 
     [HttpPost]
     [RequirePermission(PermissionKeys.ProjectsCreate)]
     public async Task<ActionResult<ProjectDto>> Create([FromBody] CreateProjectRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var project = await _projectService.CreateAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = project.Id }, project);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var project = await _projectService.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = project.Id }, project);
     }
 
     [HttpPut("{id}")]
     [RequirePermission(PermissionKeys.ProjectsEdit)]
     public async Task<ActionResult<ProjectDto>> Update(int id, [FromBody] UpdateProjectRequest request, CancellationToken cancellationToken)
     {
-        try
+        var project = await _projectService.UpdateAsync(id, request, cancellationToken);
+        if (project is null)
         {
-            var project = await _projectService.UpdateAsync(id, request, cancellationToken);
-            if (project is null)
-            {
-                return NotFound();
-            }
-            return Ok(project);
+            return NotFound();
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(project);
     }
 
     [HttpDelete("{id}")]
     [RequirePermission(PermissionKeys.ProjectsDelete)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        try
-        {
-            var deleted = await _projectService.DeleteAsync(id, cancellationToken);
-            return deleted ? NoContent() : NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var deleted = await _projectService.DeleteAsync(id, cancellationToken);
+        return deleted ? NoContent() : NotFound();
     }
 }

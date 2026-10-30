@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using TaskFlow.Infrastructure.Authentication;
 
 namespace TaskFlow.Api.Authentication;
@@ -35,11 +36,12 @@ public class MfaSetupGateMiddleware
             && !IsAllowed(context.Request.Path))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(new
-            {
-                code = ErrorCode,
-                error = "Set up two-step verification to continue."
-            });
+            var problem = context.RequestServices.GetRequiredService<ProblemDetailsFactory>().CreateProblemDetails(
+                context,
+                StatusCodes.Status403Forbidden,
+                detail: "Set up two-step verification to continue.");
+            problem.Extensions["code"] = ErrorCode;
+            await context.Response.WriteAsJsonAsync(problem, options: null, "application/problem+json");
             return;
         }
 

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Tasks;
@@ -100,7 +101,7 @@ public class TaskActivityService : ITaskActivityService
     {
         if (hours <= 0 || hours > 24)
         {
-            throw new InvalidOperationException("Hours must be greater than 0 and at most 24 per entry.");
+            throw new BusinessRuleException("Hours must be greater than 0 and at most 24 per entry.");
         }
 
         return ChangeHoursEntryAsync(taskId, entryId, hours, actorUserId, cancellationToken);
@@ -140,7 +141,7 @@ public class TaskActivityService : ITaskActivityService
         var oldDelta = deltas[target.Id];
         if (newHours is not null && oldDelta <= 0)
         {
-            throw new InvalidOperationException("This entry did not add hours, so it can only be deleted.");
+            throw new BusinessRuleException("This entry did not add hours, so it can only be deleted.");
         }
 
         var baseline = ParseHours(entries[0].OldValue);

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -16,14 +15,11 @@ namespace TaskFlow.Api.Controllers;
 public class ApplicationSettingsController : ControllerBase
 {
     private readonly IApplicationSettingsService _applicationSettingsService;
-    private readonly IValidator<UpdateApplicationSettingsRequest> _validator;
 
     public ApplicationSettingsController(
-        IApplicationSettingsService applicationSettingsService,
-        IValidator<UpdateApplicationSettingsRequest> validator)
+        IApplicationSettingsService applicationSettingsService)
     {
         _applicationSettingsService = applicationSettingsService;
-        _validator = validator;
     }
 
     /// <summary>The current application configuration. Non-secret, readable by every signed-in user.</summary>
@@ -41,12 +37,6 @@ public class ApplicationSettingsController : ControllerBase
         [FromBody] UpdateApplicationSettingsRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _validator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             return Unauthorized();

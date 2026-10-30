@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -20,35 +19,17 @@ public class TasksController : ControllerBase
     private readonly ITaskActivityService _activityService;
     private readonly IAuthorizationService _authorizationService;
 
-    private readonly IValidator<UpdateTaskRequest> _updateValidator;
-    private readonly IValidator<UpdateTaskStatusRequest> _statusValidator;
-    private readonly IValidator<ReassignTaskRequest> _reassignValidator;
-    private readonly IValidator<AddCommentRequest> _commentValidator;
-    private readonly IValidator<SetRecipientsRequest> _recipientsValidator;
-    private readonly IValidator<CreateTaskRequest> _createValidator;
 
     public TasksController(
         ITaskService taskService,
         ITaskCommentService commentService,
         ITaskActivityService activityService,
-        IAuthorizationService authorizationService,
-        IValidator<UpdateTaskRequest> updateValidator,
-        IValidator<UpdateTaskStatusRequest> statusValidator,
-        IValidator<ReassignTaskRequest> reassignValidator,
-        IValidator<AddCommentRequest> commentValidator,
-        IValidator<SetRecipientsRequest> recipientsValidator,
-        IValidator<CreateTaskRequest> createValidator)
+        IAuthorizationService authorizationService)
     {
         _taskService = taskService;
         _commentService = commentService;
         _activityService = activityService;
         _authorizationService = authorizationService;
-        _updateValidator = updateValidator;
-        _statusValidator = statusValidator;
-        _reassignValidator = reassignValidator;
-        _commentValidator = commentValidator;
-        _recipientsValidator = recipientsValidator;
-        _createValidator = createValidator;
     }
 
     /// <summary>A page of tasks the caller may access, with search, filters and paging (Screen 7).</summary>
@@ -62,15 +43,8 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var tasks = await _taskService.ListAsync(filter, userId, role, cancellationToken);
-            return Ok(tasks);
-        }
-        catch (AnalyticsFilterException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+        var tasks = await _taskService.ListAsync(filter, userId, role, cancellationToken);
+        return Ok(tasks);
     }
 
     /// <summary>Creates a task and assigns it to an employee (Screen 8). Manager/Administrator only.</summary>
@@ -80,30 +54,13 @@ public class TasksController : ControllerBase
         [FromBody] CreateTaskRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _createValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCurrentUser(out var userId, out var role))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var task = await _taskService.CreateAsync(request, userId, role, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = task.Id }, task);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var task = await _taskService.CreateAsync(request, userId, role, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = task.Id }, task);
     }
 
     /// <summary>The distinct assignees of tasks the caller may access, for the list's employee filter.</summary>
@@ -157,30 +114,13 @@ public class TasksController : ControllerBase
         [FromBody] UpdateTaskRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _updateValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCurrentUser(out var userId, out var role))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var task = await _taskService.UpdateAsync(id, request, userId, role, cancellationToken);
-            return task is null ? NotFound() : Ok(task);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var task = await _taskService.UpdateAsync(id, request, userId, role, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
     }
 
     /// <summary>Adds worked hours to a task. The task's assignee can do this without edit rights.</summary>
@@ -195,19 +135,8 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var task = await _taskService.LogHoursAsync(id, request, userId, role, cancellationToken);
-            return task is null ? NotFound() : Ok(task);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var task = await _taskService.LogHoursAsync(id, request, userId, role, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
     }
 
     /// <summary>Deleting a task requires the tasks.delete permission.</summary>
@@ -231,12 +160,6 @@ public class TasksController : ControllerBase
         [FromBody] UpdateTaskStatusRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _statusValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!await CanAccessTaskAsync(id))
         {
             return Forbid();
@@ -247,19 +170,8 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var task = await _taskService.ChangeStatusAsync(id, request, userId, role, cancellationToken);
-            return task is null ? NotFound() : Ok(task);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var task = await _taskService.ChangeStatusAsync(id, request, userId, role, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
     }
 
     [HttpPost("{id:int}/reassign")]
@@ -269,30 +181,13 @@ public class TasksController : ControllerBase
         [FromBody] ReassignTaskRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _reassignValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCurrentUser(out var userId, out var role))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var task = await _taskService.ReassignAsync(id, request, userId, role, cancellationToken);
-            return task is null ? NotFound() : Ok(task);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var task = await _taskService.ReassignAsync(id, request, userId, role, cancellationToken);
+        return task is null ? NotFound() : Ok(task);
     }
 
     [HttpGet("{id:int}/recipients")]
@@ -319,30 +214,13 @@ public class TasksController : ControllerBase
         [FromBody] SetRecipientsRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _recipientsValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCurrentUser(out var userId, out var role))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var updated = await _taskService.SetRecipientsAsync(id, request, userId, role, cancellationToken);
-            return updated ? NoContent() : NotFound();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var updated = await _taskService.SetRecipientsAsync(id, request, userId, role, cancellationToken);
+        return updated ? NoContent() : NotFound();
     }
 
     [HttpGet("{id:int}/comments")]
@@ -364,12 +242,6 @@ public class TasksController : ControllerBase
         [FromBody] AddCommentRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _commentValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!await CanAccessTaskAsync(id))
         {
             return Forbid();
@@ -380,15 +252,8 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var comment = await _commentService.AddAsync(id, request, userId, cancellationToken);
-            return Ok(comment);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var comment = await _commentService.AddAsync(id, request, userId, cancellationToken);
+        return Ok(comment);
     }
 
     [HttpPut("{id:int}/comments/{commentId:int}")]
@@ -399,12 +264,6 @@ public class TasksController : ControllerBase
         [FromBody] AddCommentRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _commentValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!await CanAccessTaskAsync(id))
         {
             return Forbid();
@@ -415,19 +274,8 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var comment = await _commentService.UpdateAsync(id, commentId, request, userId, cancellationToken);
-            return comment is null ? NotFound() : Ok(comment);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        var comment = await _commentService.UpdateAsync(id, commentId, request, userId, cancellationToken);
+        return comment is null ? NotFound() : Ok(comment);
     }
 
     [HttpDelete("{id:int}/comments/{commentId:int}")]
@@ -444,18 +292,7 @@ public class TasksController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return await _commentService.DeleteAsync(id, commentId, userId, cancellationToken) ? NoContent() : NotFound();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        return await _commentService.DeleteAsync(id, commentId, userId, cancellationToken) ? NoContent() : NotFound();
     }
 
     /// <summary>Administrator only: correct the hours added by one "worked hours logged" history entry.</summary>
@@ -476,16 +313,9 @@ public class TasksController : ControllerBase
             return Forbid();
         }
 
-        try
-        {
-            return await _activityService.UpdateHoursEntryAsync(id, entryId, request.Hours, userId, cancellationToken)
-                ? NoContent()
-                : NotFound();
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
+        return await _activityService.UpdateHoursEntryAsync(id, entryId, request.Hours, userId, cancellationToken)
+            ? NoContent()
+            : NotFound();
     }
 
     /// <summary>Administrator only: remove one "worked hours logged" history entry and rebuild the worked total.</summary>

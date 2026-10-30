@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -17,21 +16,18 @@ namespace TaskFlow.Api.Controllers;
 public class AssistantController : ControllerBase
 {
     private readonly IAiProviderConfigService _providers;
-    private readonly IChatModelGateway _gateway;
-    private readonly IValidator<UpdateAiProvidersRequest> _providersValidator;
+    private readonly IAiProviderConnectionTester _connectionTester;
     private readonly IAssistantService _assistant;
     private readonly IAssistantActionService _actions;
 
     public AssistantController(
         IAiProviderConfigService providers,
-        IChatModelGateway gateway,
-        IValidator<UpdateAiProvidersRequest> providersValidator,
+        IAiProviderConnectionTester connectionTester,
         IAssistantService assistant,
         IAssistantActionService actions)
     {
         _providers = providers;
-        _gateway = gateway;
-        _providersValidator = providersValidator;
+        _connectionTester = connectionTester;
         _assistant = assistant;
         _actions = actions;
     }
@@ -55,19 +51,7 @@ public class AssistantController : ControllerBase
         [FromBody] SendAssistantMessageRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            return Ok(await _assistant.SendAsync(new AssistantCaller(User), request, cancellationToken));
-        }
-        catch (AssistantRateLimitedException limited)
-        {
-            Response.Headers.RetryAfter = ((int)Math.Ceiling(limited.RetryAfter.TotalSeconds)).ToString();
-            return Problem(detail: limited.Message, statusCode: StatusCodes.Status429TooManyRequests, title: "Too many requests");
-        }
-        catch (AssistantRequestException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest, title: "TFA could not handle that");
-        }
+        return Ok(await _assistant.SendAsync(new AssistantCaller(User), request, cancellationToken));
     }
 
     /// <summary>Starts a new conversation. Earlier messages are no longer used as context.</summary>
@@ -110,19 +94,8 @@ public class AssistantController : ControllerBase
     private async Task<ActionResult<T>> RunActionAsync<T>(Func<Task<T?>> run)
         where T : class
     {
-        try
-        {
-            var result = await run();
-            return result is null ? NotFound() : Ok(result);
-        }
-        catch (AssistantActionConflictException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status409Conflict, title: "This action can no longer be done");
-        }
-        catch (AssistantRequestException exception)
-        {
-            return Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest, title: "TFA could not handle that");
-        }
+        var result = await run();
+        return result is null ? NotFound() : Ok(result);
     }
 
     // ---------------------------------------------------------------- providers
@@ -152,25 +125,12 @@ public class AssistantController : ControllerBase
         [FromBody] UpdateAiProvidersRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await _providersValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!TryGetCallerId(out var userId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            return Ok(await _providers.SaveAsync(userId, request, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["providers"] = [exception.Message] }));
-        }
+        return Ok(await _providers.SaveAsync(userId, request, cancellationToken));
     }
 
     /// <summary>Removes a model an administrator added. Built-in models and the one saved for its server stay.</summary>
@@ -186,18 +146,7 @@ public class AssistantController : ControllerBase
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = ["The model name is required."] }));
         }
 
-        try
-        {
-            return Ok(await _providers.RemoveModelAsync(kind, name.Trim(), cancellationToken));
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (ArgumentException exception)
-        {
-            return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = [exception.Message] }));
-        }
+        return Ok(await _providers.RemoveModelAsync(kind, name.Trim(), cancellationToken));
     }
 
     /// <summary>Sends one tiny request to the provider so an administrator can see whether it works.</summary>
@@ -205,25 +154,7 @@ public class AssistantController : ControllerBase
     [RequirePermission(PermissionKeys.SettingsAiTest)]
     public async Task<ActionResult<AiProviderTestResultDto>> TestProvider(AiProviderKind kind, CancellationToken cancellationToken)
     {
-        var request = new ChatModelRequest(
-            "This is a connection test. Reply with the single word OK.",
-            [new ChatMessage(AssistantMessageRole.User, "Reply with OK.")],
-            [],
-            string.Empty);
-
-        try
-        {
-            await _gateway.CompleteAsync(kind, request, cancellationToken);
-            return Ok(new AiProviderTestResultDto(true, "The connection works.", null));
-        }
-        catch (ProviderNotConfiguredException)
-        {
-            return Ok(new AiProviderTestResultDto(false, ProviderFailureMessages.NotConfigured(kind), null));
-        }
-        catch (ProviderFailureException failure)
-        {
-            return Ok(new AiProviderTestResultDto(false, ProviderFailureMessages.For(kind, failure.Kind, failure.RetryAfter), failure.Kind));
-        }
+        return Ok(await _connectionTester.TestAsync(kind, cancellationToken));
     }
 
     private bool TryGetCallerId(out int userId) =>

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
@@ -53,7 +54,7 @@ public class MfaService : IMfaService
 
         if (user.MfaEnabledAt is not null)
         {
-            throw new InvalidOperationException("Authenticator MFA is already on. Turn it off first to set it up again.");
+            throw new BusinessRuleException("Authenticator MFA is already on. Turn it off first to set it up again.");
         }
 
         var secret = Totp.NewSecret();
@@ -78,12 +79,12 @@ public class MfaService : IMfaService
 
         if (user.MfaEnabledAt is not null)
         {
-            throw new InvalidOperationException("Authenticator MFA is already on.");
+            throw new BusinessRuleException("Authenticator MFA is already on.");
         }
 
         if (string.IsNullOrEmpty(user.MfaSecretProtected))
         {
-            throw new InvalidOperationException("Start the setup first to get a key.");
+            throw new BusinessRuleException("Start the setup first to get a key.");
         }
 
         RequireOutcome(await VerifyAsync(user, code, allowBackupCode: false, cancellationToken: cancellationToken));
@@ -106,7 +107,7 @@ public class MfaService : IMfaService
 
         if (user.MfaEnabledAt is null)
         {
-            throw new InvalidOperationException("Authenticator MFA is not on.");
+            throw new BusinessRuleException("Authenticator MFA is not on.");
         }
 
         RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken: cancellationToken));
@@ -126,7 +127,7 @@ public class MfaService : IMfaService
 
         if (string.IsNullOrWhiteSpace(code))
         {
-            throw new InvalidOperationException(CodeRequiredMessage);
+            throw new BusinessRuleException(CodeRequiredMessage);
         }
 
         RequireOutcome(await VerifyAsync(user, code, allowBackupCode: true, cancellationToken: cancellationToken));
@@ -267,7 +268,7 @@ public class MfaService : IMfaService
         if (string.IsNullOrEmpty(password)
             || _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Failed)
         {
-            throw new InvalidOperationException(WrongPasswordMessage);
+            throw new BusinessRuleException(WrongPasswordMessage);
         }
     }
 
@@ -276,9 +277,9 @@ public class MfaService : IMfaService
         switch (outcome)
         {
             case MfaVerifyOutcome.LockedOut:
-                throw new InvalidOperationException(LockedMessage);
+                throw new BusinessRuleException(LockedMessage);
             case MfaVerifyOutcome.Invalid:
-                throw new InvalidOperationException(InvalidCodeMessage);
+                throw new BusinessRuleException(InvalidCodeMessage);
         }
     }
 

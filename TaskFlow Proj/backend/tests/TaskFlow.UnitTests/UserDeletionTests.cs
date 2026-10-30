@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -133,7 +134,7 @@ public class UserDeletionTests : IAsyncDisposable
         var admin = AddUser("admin4", SystemRoles.AdministratorId);
         AddUser("admin4b", SystemRoles.AdministratorId);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(admin.Id, admin.Id, default));
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.DeleteAsync(admin.Id, admin.Id, default));
 
         Assert.Contains("own account", ex.Message);
         Assert.False((await ReloadAsync(admin.Id)).IsDeleted);
@@ -145,7 +146,7 @@ public class UserDeletionTests : IAsyncDisposable
         var caller = AddUser("caller", SystemRoles.AdministratorId, active: false);
         var onlyAdmin = AddUser("only-admin", SystemRoles.AdministratorId);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(onlyAdmin.Id, caller.Id, default));
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.DeleteAsync(onlyAdmin.Id, caller.Id, default));
 
         Assert.Contains("only active Administrator", ex.Message);
         Assert.False((await ReloadAsync(onlyAdmin.Id)).IsDeleted);
@@ -169,7 +170,7 @@ public class UserDeletionTests : IAsyncDisposable
         AddTask(employee, admin, TaskStatus.Cancelled);
         AddTask(employee, admin, TaskStatus.ToDo, deleted: true);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.DeleteAsync(employee.Id, admin.Id, default));
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.DeleteAsync(employee.Id, admin.Id, default));
         Assert.Contains("1 unfinished task", ex.Message);
         Assert.False((await ReloadAsync(employee.Id)).IsDeleted);
 

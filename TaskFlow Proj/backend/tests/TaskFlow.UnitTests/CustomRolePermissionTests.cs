@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
@@ -65,10 +66,10 @@ public class CustomRolePermissionTests
         var nobody = InRole(harness, "cr-nobody", nothingRole);
 
         var created = await harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), creator.Id, creatorRole.Name, CancellationToken.None);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), nobody.Id, nothingRole.Name, CancellationToken.None));
         var update = new UpdateTaskRequest("Renamed", "Body", TaskPriority.High, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(4), 5m);
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.UpdateAsync(created.Id, update, creator.Id, creatorRole.Name, CancellationToken.None));
         var edited = await harness.TaskService.UpdateAsync(created.Id, update, editor.Id, editorRole.Name, CancellationToken.None);
 
@@ -87,9 +88,9 @@ public class CustomRolePermissionTests
         var viewer = InRole(harness, "cr2-viewer", viewOnly);
         var task = harness.AddTask(alice.Id, manager.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.ReassignAsync(task.Id, new ReassignTaskRequest(bob.Id, "Rebalancing"), viewer.Id, viewOnly.Name, CancellationToken.None));
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.SetRecipientsAsync(task.Id, new SetRecipientsRequest([bob.Id]), viewer.Id, viewOnly.Name, CancellationToken.None));
         var reassigned = await harness.TaskService.ReassignAsync(task.Id, new ReassignTaskRequest(bob.Id, "Rebalancing"), manager.Id, SystemRoles.Manager, CancellationToken.None);
 
@@ -108,7 +109,7 @@ public class CustomRolePermissionTests
         harness.Db.RolePermissions.RemoveRange(harness.Db.RolePermissions.Where(grant => grant.RoleId == role.Id));
         harness.Db.SaveChanges();
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.TaskService.CreateAsync(NewTask(assignee.Id, harness.AddProject().Id), user.Id, role.Name, CancellationToken.None));
     }
 }

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
@@ -37,7 +38,7 @@ public class TaskCommentServiceTests
         var user = harness.AddUser("tkc2");
         var task = harness.AddTask(user.Id, user.Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.CommentService.AddAsync(task.Id, new AddCommentRequest("   "), user.Id, CancellationToken.None));
     }
 
@@ -47,7 +48,7 @@ public class TaskCommentServiceTests
         await using var harness = TaskTrackingServiceHarness.Create();
         var user = harness.AddUser("tkc3");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.CommentService.AddAsync(9999, new AddCommentRequest("Hello"), user.Id, CancellationToken.None));
     }
 
@@ -114,7 +115,7 @@ public class TaskCommentServiceTests
         var task = harness.AddTask(author.Id, author.Id);
         var comment = await harness.CommentService.AddAsync(task.Id, new AddCommentRequest("Mine"), author.Id, CancellationToken.None);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.CommentService.UpdateAsync(task.Id, comment.Id, new AddCommentRequest("Hijack"), other.Id, CancellationToken.None));
 
         var listed = Assert.Single(await harness.CommentService.GetForTaskAsync(task.Id, CancellationToken.None));
@@ -129,7 +130,7 @@ public class TaskCommentServiceTests
         var task = harness.AddTask(user.Id, user.Id);
         var comment = await harness.CommentService.AddAsync(task.Id, new AddCommentRequest("Keep"), user.Id, CancellationToken.None);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.CommentService.UpdateAsync(task.Id, comment.Id, new AddCommentRequest("  "), user.Id, CancellationToken.None));
     }
 
@@ -159,7 +160,7 @@ public class TaskCommentServiceTests
         var task = harness.AddTask(author.Id, author.Id);
         var comment = await harness.CommentService.AddAsync(task.Id, new AddCommentRequest("Stay"), author.Id, CancellationToken.None);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             harness.CommentService.DeleteAsync(task.Id, comment.Id, other.Id, CancellationToken.None));
 
         Assert.Single(await harness.CommentService.GetForTaskAsync(task.Id, CancellationToken.None));
@@ -373,7 +374,7 @@ public class TaskActivityServiceTests
         await harness.ActivityService.AppendAsync(task.Id, TaskActivityEventType.Created, admin.Id, "Created", cancellationToken: CancellationToken.None);
         var notHours = await harness.Db.TaskActivityLogs.Where(log => log.EventType == TaskActivityEventType.Created).Select(log => log.Id).FirstAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             harness.ActivityService.UpdateHoursEntryAsync(task.Id, first, 0m, admin.Id, CancellationToken.None));
         Assert.False(await harness.ActivityService.UpdateHoursEntryAsync(task.Id, notHours, 2m, admin.Id, CancellationToken.None));
         Assert.False(await harness.ActivityService.DeleteHoursEntryAsync(task.Id, notHours, admin.Id, CancellationToken.None));

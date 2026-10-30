@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.Identity;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
@@ -65,7 +66,7 @@ public class UserServiceSelfServiceTests : IAsyncDisposable
         var user = AddUser("self2", "self2@taskflow.com");
         AddUser("other", "other@taskflow.com");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.UpdateOwnProfileAsync(user.Id, new UpdateOwnProfileRequest("Self 2", "other@taskflow.com")));
     }
 

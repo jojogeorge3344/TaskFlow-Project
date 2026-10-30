@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Users;
 using TaskFlow.Api.Models.Entities;
@@ -24,18 +25,18 @@ public class UserAllocationService : IUserAllocationService
     {
         if (inputs.Any(input => input.Percent < 1 || input.Percent > MaxTotal))
         {
-            throw new InvalidOperationException(PercentRangeMessage);
+            throw new BusinessRuleException(PercentRangeMessage);
         }
 
         if (inputs.GroupBy(input => input.ProjectId).Any(group => group.Count() > 1))
         {
-            throw new InvalidOperationException("A project can only appear once for a person.");
+            throw new BusinessRuleException("A project can only appear once for a person.");
         }
 
         var total = inputs.Sum(input => input.Percent);
         if (total > MaxTotal)
         {
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"Allocations total {total}%, which is over {MaxTotal}%. A person can be allocated at most {MaxTotal}% in total.");
         }
 
@@ -54,7 +55,7 @@ public class UserAllocationService : IUserAllocationService
         var found = await _dbContext.Departments.CountAsync(d => distinct.Contains(d.Id) && !d.IsDeleted, cancellationToken);
         if (found != distinct.Count)
         {
-            throw new InvalidOperationException("Department does not exist.");
+            throw new BusinessRuleException("Department does not exist.");
         }
     }
 
@@ -125,17 +126,17 @@ public class UserAllocationService : IUserAllocationService
     {
         if (members.Any(member => member.Percent < 1 || member.Percent > MaxTotal))
         {
-            throw new InvalidOperationException(PercentRangeMessage);
+            throw new BusinessRuleException(PercentRangeMessage);
         }
 
         if (members.GroupBy(member => member.UserId).Any(group => group.Count() > 1))
         {
-            throw new InvalidOperationException("A person can only appear once on a project.");
+            throw new BusinessRuleException("A person can only appear once on a project.");
         }
 
         if (members.Count > 0 && !members.Any(member => member.IsManager))
         {
-            throw new InvalidOperationException("Mark at least one person on the team as the project's manager.");
+            throw new BusinessRuleException("Mark at least one person on the team as the project's manager.");
         }
 
         await RequirePositionsAsync(members.Select(member => member.PositionId), cancellationToken);
@@ -150,7 +151,7 @@ public class UserAllocationService : IUserAllocationService
             .ToListAsync(cancellationToken);
         if (users.Count != userIds.Count)
         {
-            throw new InvalidOperationException("One or more people do not exist or are not active.");
+            throw new BusinessRuleException("One or more people do not exist or are not active.");
         }
 
         var notManagers = members
@@ -160,7 +161,7 @@ public class UserAllocationService : IUserAllocationService
             .ToList();
         if (notManagers.Count > 0)
         {
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"Only a person with the Manager role can manage a project: {string.Join(", ", notManagers.Select(u => u.FullName))}.");
         }
 
@@ -176,7 +177,7 @@ public class UserAllocationService : IUserAllocationService
             if (other + member.Percent > MaxTotal)
             {
                 var name = users.First(u => u.Id == member.UserId).FullName;
-                throw new InvalidOperationException(
+                throw new BusinessRuleException(
                     $"{name} would be allocated {other + member.Percent}% in total. They already have {other}% on other projects, so {MaxTotal - other}% remains.");
             }
         }
@@ -232,7 +233,7 @@ public class UserAllocationService : IUserAllocationService
         var found = await _dbContext.Projects.CountAsync(p => distinct.Contains(p.Id) && !p.IsDeleted, cancellationToken);
         if (found != distinct.Count)
         {
-            throw new InvalidOperationException("Project does not exist.");
+            throw new BusinessRuleException("Project does not exist.");
         }
     }
 
@@ -247,7 +248,7 @@ public class UserAllocationService : IUserAllocationService
         var found = await _dbContext.Positions.CountAsync(p => distinct.Contains(p.Id), cancellationToken);
         if (found != distinct.Count)
         {
-            throw new InvalidOperationException("Position does not exist.");
+            throw new BusinessRuleException("Position does not exist.");
         }
     }
 }

@@ -445,7 +445,7 @@ public class DepartmentsEndpointsTests : IClassFixture<TaskFlowApiFactory>
     private static async Task<string?> ErrorAsync(HttpResponseMessage response)
     {
         using var document = await JsonAsync(response);
-        return document.RootElement.GetProperty("error").GetString();
+        return document.RootElement.GetProperty("detail").GetString();
     }
 
     private static int OnlyId(JsonElement members) =>

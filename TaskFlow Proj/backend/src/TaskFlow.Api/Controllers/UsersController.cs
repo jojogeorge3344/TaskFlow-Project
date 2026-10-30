@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
@@ -16,21 +15,15 @@ namespace TaskFlow.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
-    private readonly IValidator<UpdateOwnProfileRequest> _profileValidator;
-    private readonly IValidator<ChangePasswordRequest> _passwordValidator;
     private readonly IMfaService _mfaService;
     private readonly IRoleService _roleService;
 
     public UsersController(
         IUserService userService,
-        IValidator<UpdateOwnProfileRequest> profileValidator,
-        IValidator<ChangePasswordRequest> passwordValidator,
         IMfaService mfaService,
         IRoleService roleService)
     {
         _userService = userService;
-        _profileValidator = profileValidator;
-        _passwordValidator = passwordValidator;
         _mfaService = mfaService;
         _roleService = roleService;
     }
@@ -56,26 +49,13 @@ public class UsersController : ControllerBase
     [Authorize]
     public async Task<ActionResult<UserDto>> UpdateOwn([FromBody] UpdateOwnProfileRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _profileValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
         {
             return Unauthorized();
         }
 
-        try
-        {
-            var user = await _userService.UpdateOwnProfileAsync(currentUserId, request, cancellationToken);
-            return user is null ? NotFound() : Ok(user);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var user = await _userService.UpdateOwnProfileAsync(currentUserId, request, cancellationToken);
+        return user is null ? NotFound() : Ok(user);
     }
 
     /// <summary>Changes the caller's own password after checking an authenticator code. Every session of
@@ -84,36 +64,23 @@ public class UsersController : ControllerBase
     [Authorize]
     public async Task<ActionResult> ChangeOwnPassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
-        var validation = await _passwordValidator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
-        }
-
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
         {
             return Unauthorized();
         }
 
-        try
+        // The authenticator code is the proof of identity. RequireCodeAsync passes silently when MFA is off, which the setup
+        // gate prevents; refuse here too so a gate regression cannot leave this endpoint unprotected.
+        var current = await _userService.GetOwnAsync(currentUserId, cancellationToken);
+        if (current is null || !current.MfaEnabled)
         {
-            // The authenticator code is the proof of identity. RequireCodeAsync passes silently when MFA is off, which the setup
-            // gate prevents; refuse here too so a gate regression cannot leave this endpoint unprotected.
-            var current = await _userService.GetOwnAsync(currentUserId, cancellationToken);
-            if (current is null || !current.MfaEnabled)
-            {
-                return BadRequest(new { error = "Set up two-step verification before changing your password." });
-            }
-
-            await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
-
-            var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
-            return user is null ? NotFound() : NoContent();
+            return Problem(detail: "Set up two-step verification before changing your password.", statusCode: StatusCodes.Status400BadRequest);
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        await _mfaService.RequireCodeAsync(currentUserId, request.MfaCode, cancellationToken);
+
+        var user = await _userService.ChangeOwnPasswordAsync(currentUserId, request, cancellationToken);
+        return user is null ? NotFound() : NoContent();
     }
 
     /// <summary>Read-only user list. Managers need it to pick assignees and recipients when
@@ -192,15 +159,8 @@ public class UsersController : ControllerBase
             return Forbid();
         }
 
-        try
-        {
-            var user = await _userService.CreateAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var user = await _userService.CreateAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]
@@ -219,38 +179,24 @@ public class UsersController : ControllerBase
             }
         }
 
-        try
+        var user = await _userService.UpdateAsync(id, request, cancellationToken);
+        if (user is null)
         {
-            var user = await _userService.UpdateAsync(id, request, cancellationToken);
-            if (user is null)
-            {
-                return NotFound();
-            }
-            return Ok(user);
+            return NotFound();
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(user);
     }
 
     [HttpPatch("{id}/status")]
     [RequirePermission(PermissionKeys.EmployeesStatus)]
     public async Task<ActionResult<UserDto>> UpdateStatus(int id, [FromBody] UserStatusRequest request, CancellationToken cancellationToken)
     {
-        try
+        var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
+        if (user is null)
         {
-            var user = await _userService.UpdateStatusAsync(id, request, cancellationToken);
-            if (user is null)
-            {
-                return NotFound();
-            }
-            return Ok(user);
+            return NotFound();
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        return Ok(user);
     }
 
     /// <summary>Deleting an employee requires the employees.delete permission.</summary>
@@ -263,15 +209,8 @@ public class UsersController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            var deleted = await _userService.DeleteAsync(id, currentUserId, cancellationToken);
-            return deleted ? NoContent() : NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var deleted = await _userService.DeleteAsync(id, currentUserId, cancellationToken);
+        return deleted ? NoContent() : NotFound();
     }
 
     private bool CanManageRoles() => User.HasClaim(AuthClaims.Permission, PermissionKeys.EmployeesRoleAssign);

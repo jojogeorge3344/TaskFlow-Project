@@ -44,7 +44,7 @@ public enum RoleFailure
 }
 
 /// <summary>A role or permission rule was broken. The message is safe to show to the administrator.</summary>
-public class RoleException : Exception
+public class RoleException : TaskFlow.Api.Common.Exceptions.AppException
 {
     public RoleException(RoleFailure failure, string message)
         : base(message)
@@ -53,6 +53,14 @@ public class RoleException : Exception
     }
 
     public RoleFailure Failure { get; }
+
+    public override int StatusCode => Failure switch
+    {
+        RoleFailure.NotFound => StatusCodes.Status404NotFound,
+        RoleFailure.Invalid => StatusCodes.Status400BadRequest,
+        RoleFailure.ReadOnly => StatusCodes.Status403Forbidden,
+        _ => StatusCodes.Status409Conflict
+    };
 }
 
 public interface IRoleService

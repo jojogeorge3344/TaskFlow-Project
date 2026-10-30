@@ -1,3 +1,4 @@
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -75,7 +76,7 @@ public class MfaServiceTests : IAsyncDisposable
     [Fact]
     public async Task Setup_needs_the_right_password_and_leaves_mfa_off()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.BeginSetupAsync(_user.Id, "wrong"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.BeginSetupAsync(_user.Id, "wrong"));
         Assert.Null((await ReloadAsync()).MfaSecretProtected);
 
         var setup = await _service.BeginSetupAsync(_user.Id, Password);
@@ -95,7 +96,7 @@ public class MfaServiceTests : IAsyncDisposable
         var second = (await _service.BeginSetupAsync(_user.Id, Password))!;
 
         Assert.NotEqual(first.Key, second.Key);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.EnableAsync(_user.Id, CodeNow(SecretFrom(first))));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.EnableAsync(_user.Id, CodeNow(SecretFrom(first))));
         Assert.NotNull(await _service.EnableAsync(_user.Id, CodeNow(SecretFrom(second))));
     }
 
@@ -106,7 +107,7 @@ public class MfaServiceTests : IAsyncDisposable
         var code = CodeNow(SecretFrom(setup));
         var wrong = code == "000000" ? "111111" : "000000";
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.EnableAsync(_user.Id, wrong));
+        var error = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.EnableAsync(_user.Id, wrong));
 
         Assert.Equal(MfaService.InvalidCodeMessage, error.Message);
         Assert.Null((await ReloadAsync()).MfaEnabledAt);
@@ -133,7 +134,7 @@ public class MfaServiceTests : IAsyncDisposable
     {
         await EnableAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.BeginSetupAsync(_user.Id, Password));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.BeginSetupAsync(_user.Id, Password));
     }
 
     // ------------------------------------------------------------------ verification
@@ -240,8 +241,8 @@ public class MfaServiceTests : IAsyncDisposable
     {
         var (secret, codes) = await EnableAsync();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RegenerateBackupCodesAsync(_user.Id, "wrong", CodeNow(secret)));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RegenerateBackupCodesAsync(_user.Id, Password, "000000"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RegenerateBackupCodesAsync(_user.Id, "wrong", CodeNow(secret)));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RegenerateBackupCodesAsync(_user.Id, Password, "000000"));
 
         var fresh = (await _service.RegenerateBackupCodesAsync(_user.Id, Password, CodeNow(secret)))!;
 
@@ -268,14 +269,14 @@ public class MfaServiceTests : IAsyncDisposable
     {
         var (secret, _) = await EnableAsync();
 
-        var missing = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, null));
+        var missing = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, null));
         Assert.Equal(MfaService.CodeRequiredMessage, missing.Message);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, "000000"));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, "000000"));
 
         var code = CodeNow(secret);
         await _service.RequireCodeAsync(_user.Id, code);
 
-        var replay = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, code));
+        var replay = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, code));
         Assert.Equal(MfaService.InvalidCodeMessage, replay.Message);
     }
 
@@ -286,7 +287,7 @@ public class MfaServiceTests : IAsyncDisposable
 
         await _service.RequireCodeAsync(_user.Id, codes[0]);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, codes[0]));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, codes[0]));
     }
 
     [Fact]
@@ -304,10 +305,10 @@ public class MfaServiceTests : IAsyncDisposable
 
         for (var i = 0; i < 5; i++)
         {
-            await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, wrong));
+            await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, wrong));
         }
 
-        var locked = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RequireCodeAsync(_user.Id, CodeNow(secret)));
+        var locked = await Assert.ThrowsAsync<BusinessRuleException>(() => _service.RequireCodeAsync(_user.Id, CodeNow(secret)));
         Assert.Equal(MfaService.LockedMessage, locked.Message);
     }
 
