@@ -26,9 +26,9 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Application.Dashboard.Analytics.IEmployeeAnalyticsService, TaskFlow.Infrastructure.Analytics.EmployeeAnalyticsService>();
 
         // Monitoring
-        services.AddScoped<TaskFlow.Application.Tasks.ITaskService, TaskFlow.Infrastructure.Services.TaskService>();
-        services.AddScoped<TaskFlow.Application.Tasks.ITaskCommentService, TaskFlow.Infrastructure.Services.TaskCommentService>();
-        services.AddScoped<TaskFlow.Application.Tasks.ITaskActivityService, TaskFlow.Infrastructure.Services.TaskActivityService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.ITaskService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Discussion.ITaskCommentService, TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.TaskCommentService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Activity.ITaskActivityService, TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.TaskActivityService>();
         services.AddScoped<TaskFlow.Application.Workload.IWorkloadService, TaskFlow.Infrastructure.Services.WorkloadService>();
 
         // Management

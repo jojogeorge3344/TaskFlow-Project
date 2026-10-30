@@ -1,6 +1,7 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 

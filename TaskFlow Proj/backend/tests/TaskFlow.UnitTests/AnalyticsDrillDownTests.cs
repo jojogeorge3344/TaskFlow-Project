@@ -1,5 +1,5 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;

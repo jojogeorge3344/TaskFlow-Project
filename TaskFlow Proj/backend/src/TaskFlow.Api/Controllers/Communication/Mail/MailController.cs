@@ -8,7 +8,6 @@ using TaskFlow.Api.Common.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Application.Tasks;
 
 namespace TaskFlow.Api.Controllers.Communication.Mail;
 

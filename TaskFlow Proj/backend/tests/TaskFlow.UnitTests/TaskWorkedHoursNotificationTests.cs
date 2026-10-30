@@ -1,9 +1,10 @@
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Interfaces.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Services;
@@ -77,14 +78,13 @@ public class TaskWorkedHoursNotificationTests
         var manager = harness.AddUser("wh-mgr4", SystemRoles.Manager);
         var assignee = harness.AddUser("wh-assignee4");
         var task = harness.AddTask(assignee.Id, manager.Id);
-        var service = new TaskService(
+        var service = TestServices.Tasks(
             harness.Db,
             harness.ActivityService,
             harness.NotificationPublisher,
             TimeProvider.System,
             harness.ReminderSettings,
             harness.Clock,
-            new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(harness.Db, harness.Clock),
             new ThrowingMail(),
             NullLogger<TaskService>.Instance);
 

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Abstractions;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;

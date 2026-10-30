@@ -88,15 +88,15 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
     }
 
     [Theory]
-    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.ChangeStatus), PermissionKeys.TasksStatus)]
-    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.GetActivity), PermissionKeys.TasksActivityView)]
-    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.AddComment), PermissionKeys.TasksCommentCreate)]
-    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.UpdateComment), PermissionKeys.TasksCommentEdit)]
-    [InlineData(nameof(TaskFlow.Api.Controllers.TasksController.DeleteComment), PermissionKeys.TasksCommentDelete)]
-    public void ActionsOnASingleTaskCarryTheirPermissionAlongsideTheTaskAccessRule(string action, string key)
+    [InlineData(typeof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.TasksController), nameof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.TasksController.ChangeStatus), PermissionKeys.TasksStatus)]
+    [InlineData(typeof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Activity.TaskActivityController), nameof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Activity.TaskActivityController.GetActivity), PermissionKeys.TasksActivityView)]
+    [InlineData(typeof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController), nameof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController.AddComment), PermissionKeys.TasksCommentCreate)]
+    [InlineData(typeof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController), nameof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController.UpdateComment), PermissionKeys.TasksCommentEdit)]
+    [InlineData(typeof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController), nameof(TaskFlow.Api.Controllers.Monitoring.TaskManagement.Discussion.TaskCommentsController.DeleteComment), PermissionKeys.TasksCommentDelete)]
+    public void ActionsOnASingleTaskCarryTheirPermissionAlongsideTheTaskAccessRule(Type controller, string action, string key)
     {
         // These also depend on whether the caller may see that task, so the permission is checked on the attribute.
-        var method = typeof(TaskFlow.Api.Controllers.TasksController).GetMethod(action)!;
+        var method = controller.GetMethod(action)!;
 
         Assert.Contains(
             method.GetCustomAttributes<AuthorizeAttribute>(),
@@ -163,7 +163,7 @@ public class ModuleBasedPermissionEndpointsTests : IClassFixture<TaskFlowApiFact
         var allowedPlainAuthorize = new[]
         {
             "ApplicationSettingsController", "AssistantController", "AuthController", "DashboardController", "MailController",
-            "MfaController", "NotificationsController", "TasksController", "EmployeesController"
+            "MfaController", "NotificationsController", "TasksController", "TaskCommentsController", "TaskActivityController", "EmployeesController"
         };
 
         foreach (var controller in typeof(Program).Assembly.GetTypes()

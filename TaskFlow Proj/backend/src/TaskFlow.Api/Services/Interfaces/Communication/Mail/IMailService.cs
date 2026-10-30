@@ -1,7 +1,6 @@
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Application.Tasks;
 
 namespace TaskFlow.Api.Services.Interfaces.Communication.Mail;
 

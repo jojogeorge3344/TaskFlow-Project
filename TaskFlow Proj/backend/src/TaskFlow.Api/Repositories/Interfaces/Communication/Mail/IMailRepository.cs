@@ -67,4 +67,8 @@ public interface IMailRepository : IBaseRepository<MailMessage>
     void AddMailboxItem(MailboxItem item);
 
     void RemoveMailboxItem(MailboxItem item);
+
+    /// <summary>Un-stages mail messages, recipients and mailbox items this request added but has not saved, leaving every
+    /// other change in place.</summary>
+    void DiscardStagedMail();
 }

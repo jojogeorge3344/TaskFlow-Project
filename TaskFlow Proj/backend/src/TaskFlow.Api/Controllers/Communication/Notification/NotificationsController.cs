@@ -5,7 +5,6 @@ using System.Security.Claims;
 using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Application.Tasks;
 
 namespace TaskFlow.Api.Controllers.Communication.Notification;
 

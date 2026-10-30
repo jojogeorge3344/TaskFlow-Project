@@ -1,4 +1,4 @@
-using TaskFlow.Application.Tasks;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Common.Security;
 
 namespace TaskFlow.UnitTests;

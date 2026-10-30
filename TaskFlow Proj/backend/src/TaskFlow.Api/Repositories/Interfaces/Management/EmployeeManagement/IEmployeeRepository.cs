@@ -52,4 +52,26 @@ public interface IEmployeeRepository : IBaseRepository<User>
     Task<IReadOnlyList<UserDepartment>> GetDepartmentMembershipsForUpdateAsync(int userId, CancellationToken cancellationToken = default);
 
     void RemoveDepartmentMemberships(IEnumerable<UserDepartment> memberships);
+
+    /// <summary>The live account, read-only.</summary>
+    Task<User?> GetLiveAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>How many of these ids are live accounts.</summary>
+    Task<int> CountLiveAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>The live account's full name, or null.</summary>
+    Task<string?> GetFullNameAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>The emails of the live, active accounts among these ids.</summary>
+    Task<IReadOnlyList<string>> GetActiveEmailsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>A manager's team: the active people, other than the manager, in a department they manage or on a project
+    /// they are flagged as a manager of.</summary>
+    Task<IReadOnlyList<int>> GetTeamMemberIdsAsync(int managerId, CancellationToken cancellationToken = default);
+
+    /// <summary>Which of these ids are live accounts.</summary>
+    Task<IReadOnlyList<int>> GetLiveIdsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>The account's full name, deleted accounts included, so history keeps showing it.</summary>
+    Task<string?> GetFullNameIncludingDeletedAsync(int id, CancellationToken cancellationToken = default);
 }

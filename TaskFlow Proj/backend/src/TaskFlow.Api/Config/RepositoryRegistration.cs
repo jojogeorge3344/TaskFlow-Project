@@ -41,6 +41,8 @@ public static class RepositoryRegistration
 
         // Monitoring
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.ITaskRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.TaskRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.Discussion.ITaskCommentRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion.TaskCommentRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.Activity.ITaskActivityRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity.TaskActivityRepository>();
 
         // Communication
         services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Communication.Mail.IMailRepository, TaskFlow.Api.Repositories.Communication.Mail.MailRepository>();

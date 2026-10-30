@@ -1,9 +1,10 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Interfaces.Communication.Notification;
 using TaskFlow.Api.Dtos.Settings.ReminderSettings;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
@@ -317,11 +318,10 @@ public class TaskManagementServiceTests
         await using var harness = TaskTrackingServiceHarness.Create();
         var manager = harness.AddUser("tm-mgr5", SystemRoles.Manager);
         var assignee = harness.AddUser("tm-assignee5");
-        var service = new TaskFlow.Infrastructure.Services.TaskService(
+        var service = TestServices.Tasks(
             harness.Db, harness.ActivityService, new FailingNotificationPublisher(), TimeProvider.System, harness.ReminderSettings, harness.Clock,
-            new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(harness.Db, harness.Clock),
             TestServices.Mail(harness.Db, TimeProvider.System, harness.Clock),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskFlow.Infrastructure.Services.TaskService>.Instance);
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskFlow.Api.Services.Monitoring.TaskManagement.TaskService>.Instance);
 
         var request = new CreateTaskRequest(
             "Never persisted", null, assignee.Id, TaskPriority.Low,

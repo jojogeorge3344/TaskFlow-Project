@@ -1,7 +1,8 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -79,7 +80,7 @@ public class TaskServiceTests
         Assert.DoesNotContain(board, card => card.Title == "Another team");
         Assert.Equal(2, board.Count);
 
-        var list = await harness.TaskService.ListAsync(new TaskFlow.Application.Tasks.TaskListFilter(), manager.Id, SystemRoles.Manager, CancellationToken.None);
+        var list = await harness.TaskService.ListAsync(new TaskFlow.Api.Dtos.Monitoring.TaskManagement.TaskListFilter(), manager.Id, SystemRoles.Manager, CancellationToken.None);
         Assert.Equal(2, list.Total);
 
         var assignees = await harness.TaskService.GetAssigneesAsync(manager.Id, SystemRoles.Manager, CancellationToken.None);

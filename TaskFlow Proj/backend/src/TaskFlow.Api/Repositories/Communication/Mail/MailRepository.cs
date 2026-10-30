@@ -214,6 +214,17 @@ public class MailRepository : BaseRepository<MailMessage>, IMailRepository
 
     public void RemoveMailboxItem(MailboxItem item) => Db.MailboxItems.Remove(item);
 
+    public void DiscardStagedMail()
+    {
+        foreach (var entry in Db.ChangeTracker.Entries()
+                     .Where(entry => entry.State == EntityState.Added
+                         && entry.Entity is MailMessage or MailRecipient or MailboxItem)
+                     .ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
     private static IQueryable<MailboxItem> InView(IQueryable<MailboxItem> items, MailView view) => view switch
     {
         MailView.Inbox => items.Where(item => item.Folder == MailFolder.Inbox && item.TrashedAt == null),

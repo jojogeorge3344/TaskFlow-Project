@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
@@ -28,13 +31,13 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         _connection = connection;
         Db = db;
 
-        ActivityService = new TaskActivityService(db, TimeProvider.System);
+        ActivityService = TestServices.TaskActivity(db, TimeProvider.System);
         NotificationPublisher = TestServices.NotificationPublisher(db, TimeProvider.System);
         NotificationService = TestServices.Notifications(db);
         ReminderSettings = new ReminderSettingsService(new ApplicationSettingsRepository(db), new UnitOfWork(db), TimeProvider.System, Options.Create(new ApplicationOptions()));
         Clock = new AppClock(new ApplicationSettingsRepository(db), TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
-        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), TestServices.Mail(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
-        CommentService = new TaskCommentService(db, ActivityService, NotificationPublisher, TimeProvider.System);
+        TaskService = TestServices.Tasks(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, TestServices.Mail(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
+        CommentService = TestServices.TaskComments(db, ActivityService, NotificationPublisher, TimeProvider.System);
     }
 
     public AppDbContext Db { get; }

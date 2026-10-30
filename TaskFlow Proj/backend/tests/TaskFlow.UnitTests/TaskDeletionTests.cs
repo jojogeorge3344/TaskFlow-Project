@@ -1,3 +1,5 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
@@ -9,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;

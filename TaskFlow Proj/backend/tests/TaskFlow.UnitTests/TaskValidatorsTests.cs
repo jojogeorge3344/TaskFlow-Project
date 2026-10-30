@@ -1,6 +1,8 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Validators;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion.Validators;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using FluentValidation.TestHelper;
-using TaskFlow.Application.Tasks;
-using TaskFlow.Application.Tasks.Validators;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;

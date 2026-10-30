@@ -1,4 +1,3 @@
-using TaskFlow.Application.Tasks;
 using NotificationType = TaskFlow.Api.Models.Enums.NotificationType;
 
 namespace TaskFlow.Api.Dtos.Communication.Notification;

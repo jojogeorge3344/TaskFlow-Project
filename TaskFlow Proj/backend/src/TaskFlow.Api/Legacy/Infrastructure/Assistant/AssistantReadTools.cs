@@ -1,8 +1,9 @@
+using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Interfaces.Communication.Mail;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

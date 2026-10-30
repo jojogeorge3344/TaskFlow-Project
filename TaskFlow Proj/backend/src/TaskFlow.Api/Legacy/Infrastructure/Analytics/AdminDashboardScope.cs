@@ -1,3 +1,4 @@
+using TaskFlow.Api.Repositories.Dashboard.Analytics;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Dashboard.Analytics;

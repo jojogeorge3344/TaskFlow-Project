@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
@@ -61,14 +63,13 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             NullLogger<AppClock>.Instance);
         var scope = new AdminDashboardScope(inner.Db, appClock);
         var managerScope = new ManagerDashboardScope(inner.Db, appClock);
-        var tasks = new TaskService(
+        var tasks = TestServices.Tasks(
             inner.Db,
-            new TaskActivityService(inner.Db, inner.Clock),
+            TestServices.TaskActivity(inner.Db, inner.Clock),
             TestServices.NotificationPublisher(inner.Db, inner.Clock),
             inner.Clock,
             new ReminderSettingsService(new ApplicationSettingsRepository(inner.Db), new UnitOfWork(inner.Db), inner.Clock, Options.Create(new ApplicationOptions())),
             appClock,
-            managerScope,
             TestServices.Mail(inner.Db, inner.Clock, appClock),
             NullLogger<TaskService>.Instance);
         return new AnalyticsHarness(

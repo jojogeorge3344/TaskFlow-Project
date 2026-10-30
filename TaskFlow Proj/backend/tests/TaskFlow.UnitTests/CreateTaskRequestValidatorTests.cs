@@ -1,6 +1,6 @@
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Validators;
+using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using FluentValidation.TestHelper;
-using TaskFlow.Application.Tasks;
-using TaskFlow.Application.Tasks.Validators;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using ReminderFrequency = TaskFlow.Api.Models.Enums.ReminderFrequency;
 

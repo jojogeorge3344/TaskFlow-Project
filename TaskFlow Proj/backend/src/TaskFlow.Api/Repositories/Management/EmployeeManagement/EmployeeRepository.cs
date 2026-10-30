@@ -112,6 +112,46 @@ public class EmployeeRepository : BaseRepository<User>, IEmployeeRepository
 
     public void RemoveDepartmentMemberships(IEnumerable<UserDepartment> memberships) => Db.UserDepartments.RemoveRange(memberships);
 
+    public Task<User?> GetLiveAsync(int id, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(user => user.Id == id && !user.IsDeleted, cancellationToken);
+
+    public Task<int> CountLiveAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) =>
+        Set.CountAsync(user => ids.Contains(user.Id) && !user.IsDeleted, cancellationToken);
+
+    public Task<string?> GetFullNameAsync(int id, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().Where(user => user.Id == id).Select(user => user.FullName).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetActiveEmailsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) =>
+        await Set.AsNoTracking()
+            .Where(user => ids.Contains(user.Id) && user.IsActive && !user.IsDeleted)
+            .Select(user => user.Email)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<int>> GetTeamMemberIdsAsync(int managerId, CancellationToken cancellationToken = default)
+    {
+        var managedDepartments = Db.DepartmentManagers
+            .Where(link => link.ManagerUserId == managerId)
+            .Select(link => link.DepartmentId);
+
+        // The projects this person is flagged as a manager of: their members belong to the team as well.
+        var managedProjects = Db.UserProjectAllocations
+            .Where(allocation => allocation.UserId == managerId && allocation.IsProjectManager)
+            .Select(allocation => allocation.ProjectId);
+
+        return await Set
+            .Where(user => user.IsActive && user.Id != managerId
+                && (user.DepartmentMemberships.Any(m => managedDepartments.Contains(m.DepartmentId))
+                    || user.ProjectAllocations.Any(a => managedProjects.Contains(a.ProjectId))))
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<int>> GetLiveIdsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) =>
+        await Set.AsNoTracking().Where(user => ids.Contains(user.Id)).Select(user => user.Id).ToListAsync(cancellationToken);
+
+    public Task<string?> GetFullNameIncludingDeletedAsync(int id, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().IgnoreQueryFilters().Where(user => user.Id == id).Select(user => user.FullName).FirstOrDefaultAsync(cancellationToken);
+
     /// <summary>Loads users as DTOs. A user's managers are the managers of their departments plus the flagged managers of the
     /// projects they are on, and a manager's reports are the people in the departments they manage plus the people on the
     /// projects they manage; neither is stored on the user, so both are read in their own batched queries (a correlated

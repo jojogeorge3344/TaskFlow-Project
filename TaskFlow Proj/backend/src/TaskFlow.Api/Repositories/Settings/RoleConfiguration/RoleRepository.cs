@@ -36,4 +36,10 @@ public class RoleRepository : BaseRepository<Role>, IRoleRepository
 
     public Task<bool> NameTakenAsync(string name, int? exceptRoleId, CancellationToken cancellationToken = default) =>
         Set.AnyAsync(role => role.Name == name && role.Id != exceptRoleId, cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetPermissionKeysByRoleNameAsync(string roleName, CancellationToken cancellationToken = default) =>
+        await Db.RolePermissions.AsNoTracking()
+            .Where(grant => grant.Role.Name == roleName)
+            .Select(grant => grant.Permission.Key)
+            .ToListAsync(cancellationToken);
 }

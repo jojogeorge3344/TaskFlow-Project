@@ -1,3 +1,11 @@
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Services.Interfaces.Communication.Mail;
+using TaskFlow.Api.Services.Interfaces.Communication.Notification;
+using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Config;
@@ -82,6 +90,48 @@ internal static class TestServices
             settings,
             mailOptions,
             logger);
+
+    public static TaskService Tasks(
+        AppDbContext db,
+        ITaskActivityService activity,
+        INotificationPublisher publisher,
+        TimeProvider timeProvider,
+        IReminderSettingsService reminderSettings,
+        IAppClock clock,
+        IMailService mail,
+        ILogger<TaskService> logger) =>
+        new(
+            new TaskRepository(db),
+            new EmployeeRepository(db),
+            new ProjectRepository(db),
+            new RoleRepository(db),
+            new UnitOfWork(db),
+            activity,
+            publisher,
+            timeProvider,
+            reminderSettings,
+            clock,
+            mail,
+            logger);
+
+    public static TaskActivityService TaskActivity(AppDbContext db, TimeProvider timeProvider) =>
+        new(new TaskActivityRepository(db), new TaskRepository(db), new UnitOfWork(db), timeProvider);
+
+    public static TaskCommentService TaskComments(
+        AppDbContext db,
+        ITaskActivityService activity,
+        INotificationPublisher publisher,
+        TimeProvider timeProvider) =>
+        new(
+            new TaskCommentRepository(db),
+            new TaskRepository(db),
+            new EmployeeRepository(db),
+            new MailRepository(db),
+            new ApplicationSettingsRepository(db),
+            new UnitOfWork(db),
+            activity,
+            publisher,
+            timeProvider);
 
     public static ProjectService Projects(AppDbContext db, IUserAllocationService? allocations = null) =>
         new(new ProjectRepository(db), allocations ?? Allocations(db), new UnitOfWork(db));

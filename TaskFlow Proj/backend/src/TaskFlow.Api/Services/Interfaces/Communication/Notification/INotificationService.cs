@@ -1,6 +1,5 @@
 using TaskFlow.Api.Dtos.Communication.Notification;
 using TaskFlow.Api.Common.Models;
-using TaskFlow.Application.Tasks;
 
 namespace TaskFlow.Api.Services.Interfaces.Communication.Notification;
 
