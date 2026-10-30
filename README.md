@@ -278,3 +278,44 @@ The browser asks for microphone permission the first time. After a page reload i
 page listen again; the TFA button then says "Click anywhere on the page to turn "Hey TF assistant" back on". A microphone
 error stops voice for that visit only and is never saved as your choice, so the next visit tries again. Voice uses the
 browser's speech recognition and speech output, and Chrome processes the audio on Google's servers. Typing always works.
+
+## Backend structure
+
+The API is one project, `TaskFlow Proj/backend/src/TaskFlow.Api`, organised by layer first. Every layer uses the same
+module tree, which follows the permission catalogue (the modules on the Roles screen):
+
+```
+TaskFlow.Api/
+  Controllers/<Module>/<SubModule>/        HTTP only: routing, model binding, status codes
+  Services/Interfaces/<Module>/...         I<Name>Service contracts
+  Services/<Module>/<SubModule>/           business rules (pure rule classes in Rules/)
+  Repositories/Interfaces/<Module>/...     I<Name>Repository contracts, IUnitOfWork, IBaseRepository
+  Repositories/<Module>/<SubModule>/       data access over EF Core
+  Dtos/<Module>/<SubModule>/               requests, responses, Validators/
+  Models/Entities/  Models/Enums/          database entities and enums
+  Integrations/Interfaces/ + <Area>/       AI providers, JWT, TOTP, key protection, file storage
+  Middleware/  Filters/  Authorization/    exception handling, request logging, session validation, MFA gate,
+                                           request validation, permission policies
+  Config/                                  DI registration per layer, options classes
+  Common/                                  exceptions, security keys and policies, shared rules, BaseRepository
+  Persistence/                             AppDbContext, migrations, seeders
+```
+
+Modules: `Auth` (`Mfa`, `PasswordRecovery`), `Dashboard` (`Analytics`), `Monitoring` (`TaskManagement` with
+`Discussion` and `Activity`, `Board` (frontend only), `EmployeeWorkload`), `Management` (`EmployeeManagement` with `Allocations`,
+`ProjectManagement` with `Positions`, `DepartmentManagement`), `Communication` (`Mail` with `Attachments`,
+`Notification` with `Reminders`), `Reports`, `Settings` (`ApplicationSettings`, `ReminderSettings`, `RoleConfiguration`,
+`TfaSettings`), `Profile` and `Assistant`.
+
+Layer rules, checked by `tests/TaskFlow.UnitTests/ArchitectureTests.cs` on every test run:
+
+- A request flows Controller → Service → Repository → database, and a layer only calls the one below it, through its
+  interface. Controllers never reach repositories, integrations or EF Core.
+- Only `Persistence`, `Repositories` and the startup code touch `AppDbContext`. Repositories never return `IQueryable`
+  and never save: the service that owns the use case commits through `IUnitOfWork`.
+- Controllers never take or return entities, never validate requests themselves (the global `ValidationFilter` runs the
+  FluentValidation validators) and never catch exceptions. Services throw `AppException` subclasses
+  (`BusinessRuleException` 400, `ForbiddenException` 403, `NotFoundException` 404, `ConflictException` 409,
+  `RateLimitedException` 429), and `GlobalExceptionHandler` turns them into ProblemDetails.
+- Each file's namespace matches its folder, each layer folder holds only module paths, classes are named for their
+  layer (`*Controller`, `*Service`, `*Repository`) and there are no empty folders.

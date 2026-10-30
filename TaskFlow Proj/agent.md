@@ -20,10 +20,8 @@ assumption. When something is ambiguous or would change scope, ask before acting
 TaskFlow Proj/
 ├─ backend/                        # .NET solution
 │  ├─ TaskFlow.sln
-│  ├─ src/TaskFlow.Api/            # controllers, middleware, DI, Program.cs
-│  ├─ src/TaskFlow.Application/    # services, DTOs, validators, interfaces
-│  ├─ src/TaskFlow.Domain/         # entities, enums, business rules
-│  ├─ src/TaskFlow.Infrastructure/ # EF Core, migrations, SMTP, scheduler
+│  ├─ src/TaskFlow.Api/            # one project, layer-first: Controllers, Services, Repositories,
+│  │                                 #   Dtos, Models, Integrations, Middleware, Config, Common, Persistence
 │  └─ tests/                       # unit + integration
 ├─ frontend/                       # Angular 19 workspace (Angular CLI, standalone)
 │  ├─ proxy.conf.json              # dev proxy: /api/*  →  https://localhost:7055
@@ -64,7 +62,7 @@ the SPA. (Run `npm install` in `frontend/` first.)
 |---|---|---|
 | Build backend | `dotnet build` | `backend/` |
 | Run API | `dotnet run --project src/TaskFlow.Api` | `backend/` |
-| Apply migrations | `dotnet ef database update --project src/TaskFlow.Infrastructure --startup-project src/TaskFlow.Api` | `backend/` |
+| Apply migrations | `dotnet ef database update --project src/TaskFlow.Api` | `backend/` |
 | Backend tests | `dotnet test` | `backend/` |
 | Install frontend deps | `npm install` | `frontend/` |
 | Run frontend | `npm start` | `frontend/` |
@@ -79,9 +77,12 @@ If you cannot find the right command, ask.
 ## 4. Hard Rules
 
 **Architecture**
-- Respect layer direction: `Api → Application → Domain`; `Infrastructure → Application/Domain`.
-  Never reference a higher layer from a lower one.
-- Controllers stay thin; business rules live in Application services; pure rules in Domain.
+- Respect the layer flow: Controller → Service → Repository → database, each through the interface of the layer
+  below. Only `Persistence` and `Repositories` touch `AppDbContext`; repositories never save (services commit through
+  `IUnitOfWork`). `ArchitectureTests` enforces this; see the "Backend structure" section of the workspace README.
+- Controllers stay thin; business rules live in services (pure rules in `Services/<Module>/Rules` or `Common/Rules`).
+- Put new code in the module folder of every layer it touches (`Controllers/<Module>/<SubModule>`, same path under
+  `Services`, `Repositories`, `Dtos`), with the namespace matching the folder.
 
 **Data**
 - All timestamps stored in **UTC**. Convert only at the boundary using `Application.Timezone`.

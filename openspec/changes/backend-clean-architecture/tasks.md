@@ -73,7 +73,7 @@
 ## 12. Lock down
 
 - [x] 12.1 Delete the now-empty `Legacy/` and `Common/Rules` (if empty) folders and `IApplicationDbContext`. Widen the architecture tests to the whole assembly (exempting `Persistence.*`). Verify that `ArchitectureTests` and the full `dotnet test` pass
-- [ ] 12.2 Check every module/sub-module path against the design D2 table, and confirm there are no empty folders (`find backend/src -type d -empty`). Update the backend section of `README.md` with the new folder tree and layer rules
+- [x] 12.2 Check every module/sub-module path against the design D2 table, and confirm there are no empty folders (`find backend/src -type d -empty`). Update the backend section of `README.md` with the new folder tree and layer rules
 - [ ] 12.3 Deploy to the Render dev environment and smoke-test login with MFA, task create/move/comment, the dashboards for all three roles, mail send, and the assistant chat
 
 ## Workflow follow-up
