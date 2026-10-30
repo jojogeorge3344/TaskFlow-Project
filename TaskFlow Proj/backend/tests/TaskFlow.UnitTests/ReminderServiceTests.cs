@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
@@ -24,11 +25,11 @@ public class ReminderServiceTests
     private static ReminderService Service(TaskTrackingServiceHarness harness, FixedTimeProvider clock)
     {
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
-        return new ReminderService(
+        return TestServices.Reminders(
             harness.Db,
             new AppClock(new ApplicationSettingsRepository(harness.Db), clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(new ApplicationSettingsRepository(harness.Db), new UnitOfWork(harness.Db), clock, options),
-            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
+            Options.Create(new TaskFlow.Api.Config.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
     }
 

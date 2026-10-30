@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Communication.Notification;
+using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
@@ -27,11 +29,11 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         Db = db;
 
         ActivityService = new TaskActivityService(db, TimeProvider.System);
-        NotificationPublisher = new NotificationPublisher(db, TimeProvider.System);
-        NotificationService = new NotificationService(db);
+        NotificationPublisher = TestServices.NotificationPublisher(db, TimeProvider.System);
+        NotificationService = TestServices.Notifications(db);
         ReminderSettings = new ReminderSettingsService(new ApplicationSettingsRepository(db), new UnitOfWork(db), TimeProvider.System, Options.Create(new ApplicationOptions()));
         Clock = new AppClock(new ApplicationSettingsRepository(db), TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
-        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), new MailService(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
+        TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), TestServices.Mail(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
         CommentService = new TaskCommentService(db, ActivityService, NotificationPublisher, TimeProvider.System);
     }
 

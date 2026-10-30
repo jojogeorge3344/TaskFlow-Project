@@ -1,3 +1,6 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Mail;
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
@@ -7,7 +10,6 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Mail;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;

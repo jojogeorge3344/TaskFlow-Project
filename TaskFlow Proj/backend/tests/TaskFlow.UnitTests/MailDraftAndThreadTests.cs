@@ -1,5 +1,6 @@
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Mail;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;

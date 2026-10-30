@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -37,7 +38,7 @@ public class MfaServiceTests : IAsyncDisposable
         TestAccessControl.Seed(_db);
 
         _protector = new MfaSecretProtector(new EphemeralDataProtectionProvider(), _clock);
-        _service = new MfaService(_db, _hasher, _protector, new NotificationPublisher(_db, _clock), Options.Create(_options), _clock);
+        _service = new MfaService(_db, _hasher, _protector, TestServices.NotificationPublisher(_db, _clock), Options.Create(_options), _clock);
 
         _user = new User
         {
@@ -371,7 +372,7 @@ public class MfaServiceTests : IAsyncDisposable
         // A second request that loaded the user before the first one finished.
         await using var otherDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         var otherUser = await otherDb.Users.FirstAsync(candidate => candidate.Id == _user.Id);
-        var otherService = new MfaService(otherDb, _hasher, _protector, new NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
+        var otherService = new MfaService(otherDb, _hasher, _protector, TestServices.NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
 
         Assert.Equal(MfaVerifyOutcome.Success, await _service.VerifyAsync(_user, code, true));
         Assert.Equal(MfaVerifyOutcome.Invalid, await otherService.VerifyAsync(otherUser, code, true));
@@ -384,7 +385,7 @@ public class MfaServiceTests : IAsyncDisposable
 
         await using var otherDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         var otherUser = await otherDb.Users.FirstAsync(candidate => candidate.Id == _user.Id);
-        var otherService = new MfaService(otherDb, _hasher, _protector, new NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
+        var otherService = new MfaService(otherDb, _hasher, _protector, TestServices.NotificationPublisher(otherDb, _clock), Options.Create(_options), _clock);
 
         // Both requests see the code as unused; only the first save may win.
         var firstRow = await _db.MfaBackupCodes.FirstAsync(row => row.UserId == _user.Id && row.UsedAt == null);

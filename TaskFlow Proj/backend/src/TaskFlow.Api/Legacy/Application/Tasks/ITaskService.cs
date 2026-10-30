@@ -1,3 +1,5 @@
+using TaskFlow.Api.Common.Models;
+
 namespace TaskFlow.Application.Tasks;
 
 public interface ITaskService

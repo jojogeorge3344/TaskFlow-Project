@@ -1,7 +1,9 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Notification.Reminders;
+using TaskFlow.Api.Services.Communication.Notification.Reminders;
+using TaskFlow.Api.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Reminders;
 using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 

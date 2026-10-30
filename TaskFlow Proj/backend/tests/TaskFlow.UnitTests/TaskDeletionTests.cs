@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
@@ -95,11 +96,11 @@ public class TaskDeletionTests
         harness.AddRecipient(task.Id, assignee.Id);
         var clock = new FixedTimeProvider(new DateTime(2026, 10, 14, 10, 0, 0, DateTimeKind.Utc));
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
-        var reminders = new ReminderService(
+        var reminders = TestServices.Reminders(
             harness.Db,
             new AppClock(new ApplicationSettingsRepository(harness.Db), clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(new ApplicationSettingsRepository(harness.Db), new UnitOfWork(harness.Db), clock, options),
-            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
+            Options.Create(new TaskFlow.Api.Config.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 
         await harness.TaskService.DeleteAsync(task.Id, creator.Id, default);

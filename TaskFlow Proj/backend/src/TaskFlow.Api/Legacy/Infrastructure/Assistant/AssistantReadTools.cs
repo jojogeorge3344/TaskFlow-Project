@@ -1,7 +1,7 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Mail;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;

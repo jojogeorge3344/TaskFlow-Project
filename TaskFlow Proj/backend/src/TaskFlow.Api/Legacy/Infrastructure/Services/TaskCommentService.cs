@@ -1,9 +1,10 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Notification;
+using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;

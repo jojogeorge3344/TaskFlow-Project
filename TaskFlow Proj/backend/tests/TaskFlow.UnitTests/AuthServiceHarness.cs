@@ -47,7 +47,7 @@ internal sealed class AuthServiceHarness : IAsyncDisposable
             TimeProvider.System);
 
         var mfaProtector = new TaskFlow.Infrastructure.Services.MfaSecretProtector(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TimeProvider.System);
-        var mfaService = new TaskFlow.Application.Mfa.MfaService(db, passwordHasher, mfaProtector, new TaskFlow.Infrastructure.Services.NotificationPublisher(db, TimeProvider.System), Options.Create(new TaskFlow.Application.Mfa.MfaOptions()), TimeProvider.System);
+        var mfaService = new TaskFlow.Application.Mfa.MfaService(db, passwordHasher, mfaProtector, TestServices.NotificationPublisher(db, TimeProvider.System), Options.Create(new TaskFlow.Application.Mfa.MfaOptions()), TimeProvider.System);
         var service = new AuthService(db, tokenService, passwordHasher, TimeProvider.System, mfaService, mfaProtector, Options.Create(new TaskFlow.Application.Mfa.MfaOptions()));
 
         return new AuthServiceHarness(connection, db, service, passwordHasher);

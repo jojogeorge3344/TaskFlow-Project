@@ -1,10 +1,10 @@
+using TaskFlow.Api.Dtos.Communication.Mail.Validators;
 using TaskFlow.Api.Dtos.Profile.Validators;
 using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Text.Json;
 using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using Task = System.Threading.Tasks.Task;

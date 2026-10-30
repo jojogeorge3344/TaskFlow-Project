@@ -1,7 +1,10 @@
+using TaskFlow.Api.Services.Communication.Mail.Attachments;
+using TaskFlow.Api.Integrations.Storage;
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Common.Exceptions;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Mail;
-using TaskFlow.Infrastructure.Mail;
 using TaskFlow.Infrastructure.Services;
 using Task = System.Threading.Tasks.Task;
 
@@ -19,7 +22,7 @@ public sealed class MailAttachmentTests : IDisposable
         }
     }
 
-    private MailAttachmentService Attachments(MailTestHarness mail) => new(mail.Tracking.Db, new LocalMailFileStore(_root), mail.Clock);
+    private MailAttachmentService Attachments(MailTestHarness mail) => TestServices.MailAttachments(mail.Tracking.Db, new LocalMailFileStore(_root), mail.Clock);
 
     private static MemoryStream Bytes(int count) => new(Enumerable.Repeat((byte)'x', count).ToArray());
 

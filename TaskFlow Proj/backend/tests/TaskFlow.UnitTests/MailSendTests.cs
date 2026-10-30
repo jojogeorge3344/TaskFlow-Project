@@ -1,7 +1,9 @@
+using TaskFlow.Api.Dtos.Communication.Mail.Validators;
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Rules;
+using TaskFlow.Api.Common.Exceptions;
 using FluentValidation.TestHelper;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Mail;
-using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 

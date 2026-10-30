@@ -39,14 +39,14 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.DepartmentManagement.IDepartmentService, TaskFlow.Api.Services.Management.DepartmentManagement.DepartmentService>();
 
         // Communication
-        services.AddScoped<TaskFlow.Application.Mail.IMailService, TaskFlow.Infrastructure.Services.MailService>();
-        services.AddScoped<TaskFlow.Application.Mail.IMailAttachmentService, TaskFlow.Infrastructure.Services.MailAttachmentService>();
-        services.AddScoped<TaskFlow.Application.Tasks.INotificationPublisher, TaskFlow.Infrastructure.Services.NotificationPublisher>();
-        services.AddScoped<TaskFlow.Application.Notifications.INotificationService, TaskFlow.Infrastructure.Services.NotificationService>();
-        services.AddScoped<TaskFlow.Application.Reminders.IReminderService, TaskFlow.Infrastructure.Services.ReminderService>();
-        services.Configure<TaskFlow.Infrastructure.Services.ReminderEngineOptions>(
-            configuration.GetSection(TaskFlow.Infrastructure.Services.ReminderEngineOptions.SectionName));
-        services.AddHostedService<TaskFlow.Infrastructure.Services.ReminderSchedulerService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Mail.IMailService, TaskFlow.Api.Services.Communication.Mail.MailService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Mail.Attachments.IMailAttachmentService, TaskFlow.Api.Services.Communication.Mail.Attachments.MailAttachmentService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.INotificationPublisher, TaskFlow.Api.Services.Communication.Notification.NotificationPublisher>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.INotificationService, TaskFlow.Api.Services.Communication.Notification.NotificationService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.Reminders.IReminderService, TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderService>();
+        services.Configure<TaskFlow.Api.Config.ReminderEngineOptions>(
+            configuration.GetSection(TaskFlow.Api.Config.ReminderEngineOptions.SectionName));
+        services.AddHostedService<TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderSchedulerService>();
 
         // Reports
         services.AddScoped<TaskFlow.Application.Reports.IReportService, TaskFlow.Infrastructure.Services.ReportService>();

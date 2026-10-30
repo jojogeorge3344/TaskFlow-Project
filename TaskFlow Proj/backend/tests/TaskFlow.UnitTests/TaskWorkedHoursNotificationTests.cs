@@ -1,6 +1,8 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Mail;
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Notification;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         TestAccessControl.Seed(_db);
 
         _user = AddUser("recover-user");
-        _service = new PasswordRecoveryService(_db, _hasher, new NotificationPublisher(_db, _clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
+        _service = new PasswordRecoveryService(_db, _hasher, TestServices.NotificationPublisher(_db, _clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<PasswordRecoveryService>.Instance, _clock);
     }
 
     private User AddUser(string username)
@@ -174,7 +175,7 @@ public class PasswordRecoveryServiceTests : IAsyncDisposable
         Assert.Equal(PasswordVerificationResult.Success, _hasher.VerifyHashedPassword(_user, _user.PasswordHash, NewPassword));
     }
 
-    private sealed class ThrowingPublisher : TaskFlow.Application.Tasks.INotificationPublisher
+    private sealed class ThrowingPublisher : TaskFlow.Api.Services.Interfaces.Communication.Notification.INotificationPublisher
     {
         public Task PublishAsync(int userId, int? taskId, TaskFlow.Api.Models.Enums.NotificationType type, string message, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Notifications are down.");

@@ -55,4 +55,6 @@ public sealed class UnitOfWork : IUnitOfWork
         await transaction.CommitAsync(cancellationToken);
         return result;
     }
+
+    public void DetachAll() => _db.ChangeTracker.Clear();
 }

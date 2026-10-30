@@ -64,9 +64,6 @@ public record TaskListItemDto(
     int? ProjectId = null,
     string? ProjectName = null);
 
-/// <summary>One page of results with the total count and page metadata (TDD §8.4).</summary>
-public record PagedResult<T>(IReadOnlyCollection<T> Items, int Total, int Page, int PageSize);
-
 public record TaskCommentDto(int Id, string Body, int AuthorUserId, string AuthorName, DateTime CreatedAt, DateTime? EditedAt = null);
 
 public record ActivityEntryDto(

@@ -41,8 +41,8 @@
 
 ## 6. Module: Communication
 
-- [ ] 6.1 `Communication/Mail` (+ `Attachments`): repositories (move the transactional send onto `ExecuteInTransactionAsync`), services and controller. Move `LocalMailFileStore` to `Integrations/Storage`. Verify that the `Mail*Tests` unit tests and `MailEndpointsTests` pass
-- [ ] 6.2 `Communication/Notification` (+ `Reminders`): repositories for notifications and reminder history, `NotificationService`, `NotificationPublisher`, `ReminderService` and the hosted `ReminderSchedulerService`. Move `ReminderCalculator`/`ReminderIntervals` to `Services/Communication/Notification/Reminders/Rules`. Verify that the `Reminder*Tests`, `NotificationServiceTests` and `NotificationsEndpointsTests` pass
+- [x] 6.1 `Communication/Mail` (+ `Attachments`): repositories (move the transactional send onto `ExecuteInTransactionAsync`), services and controller. Move `LocalMailFileStore` to `Integrations/Storage`. Verify that the `Mail*Tests` unit tests and `MailEndpointsTests` pass
+- [x] 6.2 `Communication/Notification` (+ `Reminders`): repositories for notifications and reminder history, `NotificationService`, `NotificationPublisher`, `ReminderService` and the hosted `ReminderSchedulerService`. `ReminderCalculator`/`ReminderIntervals` stay in `Common/Rules` because tasks, analytics, the dashboard and the assistant use them too (design D2: rules shared across modules go to Common/Rules). Verify that the `Reminder*Tests`, `NotificationServiceTests` and `NotificationsEndpointsTests` pass
 
 ## 7. Module: Monitoring
 

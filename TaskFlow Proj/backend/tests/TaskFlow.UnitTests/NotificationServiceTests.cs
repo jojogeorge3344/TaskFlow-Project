@@ -1,4 +1,4 @@
-using TaskFlow.Application.Notifications;
+using TaskFlow.Api.Dtos.Communication.Notification;
 using TaskFlow.Api.Models.Enums;
 using Task = System.Threading.Tasks.Task;
 

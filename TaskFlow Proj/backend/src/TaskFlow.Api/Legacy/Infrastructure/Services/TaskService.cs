@@ -1,3 +1,7 @@
+using TaskFlow.Api.Services.Interfaces.Communication.Notification;
+using TaskFlow.Api.Services.Interfaces.Communication.Mail;
+using TaskFlow.Api.Dtos.Communication.Mail;
+using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings;
 using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using TaskFlow.Api.Common.Exceptions;
@@ -5,7 +9,6 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Application.Mail;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;

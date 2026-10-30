@@ -26,8 +26,8 @@ public static class IntegrationRegistration
         // Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
         services.AddSingleton<TaskFlow.Application.Mfa.IMfaSecretProtector, TaskFlow.Infrastructure.Services.MfaSecretProtector>();
 
-        services.AddSingleton<TaskFlow.Application.Mail.IMailFileStore, TaskFlow.Infrastructure.Mail.LocalMailFileStore>();
-        services.Configure<TaskFlow.Infrastructure.Mail.MailOptions>(configuration.GetSection(TaskFlow.Infrastructure.Mail.MailOptions.SectionName));
+        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Storage.IMailFileStore, TaskFlow.Api.Integrations.Storage.LocalMailFileStore>();
+        services.Configure<TaskFlow.Api.Config.MailOptions>(configuration.GetSection(TaskFlow.Api.Config.MailOptions.SectionName));
 
         services.Configure<AiProviderOptions>(configuration.GetSection(AiProviderOptions.SectionName));
         var dataProtection = services

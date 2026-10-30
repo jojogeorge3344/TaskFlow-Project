@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Dashboard.Analytics;
-using TaskFlow.Application.Mail;
 
 namespace TaskFlow.UnitTests;
 

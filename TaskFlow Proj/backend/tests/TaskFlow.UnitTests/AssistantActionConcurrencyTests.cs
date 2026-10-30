@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Communication.Mail;
+using TaskFlow.Api.Dtos.Communication.Mail.Validators;
 using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
 using TaskFlow.Api.Services.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile.Validators;
@@ -12,7 +14,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Mail.Validators;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
@@ -47,7 +48,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
     private AssistantActionService NewService(AppDbContext db)
     {
         var clock = new FixedTimeProvider(new DateTime(2026, 10, 19, 9, 0, 0));
-        var mail = new MailService(db, clock, new AppClock(new ApplicationSettingsRepository(db), clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
+        var mail = TestServices.Mail(db, clock, new AppClock(new ApplicationSettingsRepository(db), clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
         return new AssistantActionService(
             db,
             mail,

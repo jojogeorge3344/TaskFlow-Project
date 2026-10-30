@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
@@ -212,11 +213,11 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
     {
         await using var db = NewContext(interceptors);
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
-        var service = new ReminderService(
+        var service = TestServices.Reminders(
             db,
             new AppClock(new ApplicationSettingsRepository(db), _clock, options, NullLogger<AppClock>.Instance),
             new ReminderSettingsService(new ApplicationSettingsRepository(db), new UnitOfWork(db), _clock, options),
-            Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
+            Options.Create(new TaskFlow.Api.Config.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 
         await service.GenerateDueAsync();

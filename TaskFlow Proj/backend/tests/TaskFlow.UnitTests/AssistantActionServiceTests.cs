@@ -288,7 +288,7 @@ public class AssistantActionServiceTests
         var card = await h.PrepareMailAsync(h.Asha, h.Ravi);
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
             h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "confirmed"),
-            new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
+            new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
         var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);
@@ -310,7 +310,7 @@ public class AssistantActionServiceTests
         await h.Db.SaveChangesAsync();
         var service = new TaskFlow.Infrastructure.Assistant.AssistantActionService(
             h.Db, h.Mail, h.Users, h.Authorizer, new FailingAudit(h.Audit, "failed"),
-            new TaskFlow.Application.Mail.Validators.SendMailRequestValidator(),
+            new TaskFlow.Api.Dtos.Communication.Mail.Validators.SendMailRequestValidator(),
             new TaskFlow.Api.Dtos.Profile.Validators.UpdateOwnProfileRequestValidator(), h.Clock);
 
         var result = await service.ConfirmAsync(AssistantActionHarness.Caller(h.Asha), card.Id);

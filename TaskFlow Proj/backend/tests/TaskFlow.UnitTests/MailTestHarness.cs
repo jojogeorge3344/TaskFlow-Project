@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Communication.Mail;
+using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ApplicationSettings;
@@ -5,7 +7,6 @@ using TaskFlow.Api.Config;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Mail;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Services;
 using User = TaskFlow.Api.Models.Entities.User;
@@ -37,7 +38,7 @@ internal sealed class MailTestHarness : IAsyncDisposable
 
     /// <summary>A fresh service each call, like a new request scope.</summary>
     public MailService Mail =>
-        new(
+        TestServices.Mail(
             Tracking.Db,
             Clock,
             new AppClock(new ApplicationSettingsRepository(Tracking.Db), Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));

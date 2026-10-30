@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Communication.Notification;
+using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
@@ -62,12 +64,12 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
         var tasks = new TaskService(
             inner.Db,
             new TaskActivityService(inner.Db, inner.Clock),
-            new NotificationPublisher(inner.Db, inner.Clock),
+            TestServices.NotificationPublisher(inner.Db, inner.Clock),
             inner.Clock,
             new ReminderSettingsService(new ApplicationSettingsRepository(inner.Db), new UnitOfWork(inner.Db), inner.Clock, Options.Create(new ApplicationOptions())),
             appClock,
             managerScope,
-            new MailService(inner.Db, inner.Clock, appClock),
+            TestServices.Mail(inner.Db, inner.Clock, appClock),
             NullLogger<TaskService>.Instance);
         return new AnalyticsHarness(
             inner,

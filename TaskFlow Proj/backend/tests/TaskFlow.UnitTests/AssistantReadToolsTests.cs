@@ -1,3 +1,4 @@
+using TaskFlow.Api.Services.Communication.Mail;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
@@ -23,7 +24,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _h.DisposeAsync();
 
-    private MailService Mail() => new(_h.Tracking.Db, TimeProvider.System, _h.Tracking.Clock);
+    private MailService Mail() => TestServices.Mail(_h.Tracking.Db, TimeProvider.System, _h.Tracking.Clock);
 
     private static JsonElement Args(string json = "{}") => JsonDocument.Parse(json).RootElement.Clone();
 
