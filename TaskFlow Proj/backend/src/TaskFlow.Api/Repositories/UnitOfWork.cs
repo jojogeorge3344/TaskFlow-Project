@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Repositories.Interfaces;
 
@@ -14,7 +16,23 @@ public sealed class UnitOfWork : IUnitOfWork
         _db = db;
     }
 
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => _db.SaveChangesAsync(cancellationToken);
+    /// <summary>Saves, turning the database's race and unique-index failures into <see cref="ConcurrencyConflictException"/>
+    /// and <see cref="UniqueConstraintException"/>.</summary>
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyConflictException(exception);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException?.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            throw new UniqueConstraintException(exception);
+        }
+    }
 
     public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken cancellationToken = default) =>
         ExecuteInTransactionAsync(

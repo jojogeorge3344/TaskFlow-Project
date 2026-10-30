@@ -228,7 +228,7 @@ public class TaskCommentServiceTests
         var author = harness.AddUser("tkc17");
         var assignee = harness.AddUser("tkc18");
         var task = harness.AddTask(assignee.Id, author.Id);
-        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationInAppEnabled, "false");
+        harness.SetSetting(TaskFlow.Api.Common.Constants.SettingKeys.NotificationInAppEnabled, "false");
 
         await harness.CommentService.AddAsync(task.Id, new AddCommentRequest("Quiet"), author.Id, CancellationToken.None);
 
@@ -244,7 +244,7 @@ public class TaskCommentServiceTests
         var author = harness.AddUser("tkc19");
         var assignee = harness.AddUser("tkc20");
         var task = harness.AddTask(assignee.Id, author.Id);
-        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationMailEnabled, "false");
+        harness.SetSetting(TaskFlow.Api.Common.Constants.SettingKeys.NotificationMailEnabled, "false");
 
         await harness.CommentService.AddAsync(task.Id, new AddCommentRequest("No mail"), author.Id, CancellationToken.None);
 
@@ -418,7 +418,7 @@ public class NotificationPublisherTests
     {
         await using var harness = TaskTrackingServiceHarness.Create();
         var user = harness.AddUser("tkn3");
-        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationInAppEnabled, "false");
+        harness.SetSetting(TaskFlow.Api.Common.Constants.SettingKeys.NotificationInAppEnabled, "false");
 
         await harness.NotificationPublisher.PublishAsync(user.Id, taskId: null, NotificationType.System, "Muted", CancellationToken.None);
 
@@ -430,7 +430,7 @@ public class NotificationPublisherTests
     {
         await using var harness = TaskTrackingServiceHarness.Create();
         var user = harness.AddUser("tkn4");
-        harness.SetSetting(TaskFlow.Application.Settings.SettingKeys.NotificationInAppEnabled, "true");
+        harness.SetSetting(TaskFlow.Api.Common.Constants.SettingKeys.NotificationInAppEnabled, "true");
 
         await harness.NotificationPublisher.PublishAsync(user.Id, taskId: null, NotificationType.System, "Loud", CancellationToken.None);
 

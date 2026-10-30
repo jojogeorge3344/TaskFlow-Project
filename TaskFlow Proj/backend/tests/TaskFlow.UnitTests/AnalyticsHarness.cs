@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
@@ -6,7 +11,6 @@ using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -49,7 +53,7 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
     {
         var inner = DashboardServiceHarness.Create(now, timezone);
         var appClock = new AppClock(
-            inner.Db,
+            new ApplicationSettingsRepository(inner.Db),
             inner.Clock,
             Options.Create(new ApplicationOptions { Timezone = timezone }),
             NullLogger<AppClock>.Instance);
@@ -60,7 +64,7 @@ internal sealed class AnalyticsHarness : IAsyncDisposable
             new TaskActivityService(inner.Db, inner.Clock),
             new NotificationPublisher(inner.Db, inner.Clock),
             inner.Clock,
-            new ReminderSettingsService(inner.Db, inner.Clock, Options.Create(new ApplicationOptions())),
+            new ReminderSettingsService(new ApplicationSettingsRepository(inner.Db), new UnitOfWork(inner.Db), inner.Clock, Options.Create(new ApplicationOptions())),
             appClock,
             managerScope,
             new MailService(inner.Db, inner.Clock, appClock),

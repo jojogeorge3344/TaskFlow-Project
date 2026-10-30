@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,7 +14,6 @@ using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -93,8 +97,8 @@ public class TaskDeletionTests
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
         var reminders = new ReminderService(
             harness.Db,
-            new AppClock(harness.Db, clock, options, NullLogger<AppClock>.Instance),
-            new ReminderSettingsService(harness.Db, clock, options),
+            new AppClock(new ApplicationSettingsRepository(harness.Db), clock, options, NullLogger<AppClock>.Instance),
+            new ReminderSettingsService(new ApplicationSettingsRepository(harness.Db), new UnitOfWork(harness.Db), clock, options),
             Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 

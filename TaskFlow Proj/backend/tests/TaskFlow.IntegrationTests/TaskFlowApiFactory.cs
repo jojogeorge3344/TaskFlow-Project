@@ -46,10 +46,10 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<TaskFlow.Application.Assistant.IChatModelProvider>();
+            services.RemoveAll<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>();
             foreach (var provider in Providers.Values)
             {
-                services.AddSingleton<TaskFlow.Application.Assistant.IChatModelProvider>(provider);
+                services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(provider);
             }
         });
 

@@ -1,3 +1,4 @@
+using TaskFlow.Api.Integrations.Interfaces.Ai;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;

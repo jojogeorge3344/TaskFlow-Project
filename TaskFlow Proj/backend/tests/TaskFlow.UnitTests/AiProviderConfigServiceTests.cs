@@ -1,9 +1,16 @@
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Persistence.Seeders;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Dtos.Settings.TfaSettings.Validators;
+using TaskFlow.Api.Dtos.Settings.TfaSettings;
+using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Assistant.Validators;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 
@@ -19,7 +26,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
     private AiProviderConfigService Service() =>
-        new(_harness.Db, new AiKeyProtector(_provider), TimeProvider.System);
+        new(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(_provider), TimeProvider.System);
 
     private static UpdateAiProviderRequest Update(
         AiProviderKind kind, bool enabled = true, string? model = null, string? baseUrl = null, string? key = null, bool? clear = null) =>
@@ -282,7 +289,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     {
         await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
 
-        var withNewKeyRing = new AiProviderConfigService(_harness.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
+        var withNewKeyRing = new AiProviderConfigService(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
 
         Assert.Empty(await withNewKeyRing.GetAvailableAsync());
         Assert.Null(await withNewKeyRing.GetRuntimeAsync(AiProviderKind.Gemini));
@@ -292,7 +299,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     public async Task AKeyThatCannotBeReadIsReportedSoTheAdministratorKnowsToEnterItAgain()
     {
         await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
-        var withNewKeyRing = new AiProviderConfigService(_harness.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
+        var withNewKeyRing = new AiProviderConfigService(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
 
         var config = await withNewKeyRing.GetAdminConfigAsync();
 
@@ -318,7 +325,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     {
         await Save(Update(AiProviderKind.Gemini, key: "AIzaSyExampleKey1234"));
         var logger = new CapturingLogger<AiProviderConfigService>();
-        var withNewKeyRing = new AiProviderConfigService(_harness.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System, logger);
+        var withNewKeyRing = new AiProviderConfigService(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System, logger);
 
         var runtime = await withNewKeyRing.GetRuntimeAsync(AiProviderKind.Gemini);
 

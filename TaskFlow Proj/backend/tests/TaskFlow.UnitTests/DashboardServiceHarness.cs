@@ -1,3 +1,7 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
 using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +11,6 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -61,7 +64,7 @@ internal sealed class DashboardServiceHarness : IAsyncDisposable
         TestAccessControl.Seed(db);
 
         var clock = new FakeTimeProvider(now ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
-        var appClock = new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
+        var appClock = new AppClock(new ApplicationSettingsRepository(db), clock, Options.Create(new ApplicationOptions { Timezone = timezone }), NullLogger<AppClock>.Instance);
         var service = new DashboardService(db, appClock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, appClock));
 
         return new DashboardServiceHarness(connection, db, service, clock);

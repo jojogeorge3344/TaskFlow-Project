@@ -1,3 +1,10 @@
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
@@ -38,7 +45,7 @@ public class ChatModelGatewayTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
-    private AiProviderConfigService Config() => new(_harness.Db, new AiKeyProtector(_dataProtection), TimeProvider.System);
+    private AiProviderConfigService Config() => new(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(_dataProtection), TimeProvider.System);
 
     private ChatModelGateway Gateway(FakeHttpHandler handler) =>
         new(Config(), new ChatModelProviderRegistry([new OpenAiProvider(new HttpClient(handler))]), _logger);

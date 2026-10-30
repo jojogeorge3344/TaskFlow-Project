@@ -1,11 +1,16 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Dtos.Settings.ReminderSettings;
+using TaskFlow.Api.Config;
+using TaskFlow.Api.Common.Constants;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TaskFlow.Application.Settings;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.UnitTests;
@@ -21,8 +26,8 @@ public class ReminderServiceTests
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
         return new ReminderService(
             harness.Db,
-            new AppClock(harness.Db, clock, options, NullLogger<AppClock>.Instance),
-            new ReminderSettingsService(harness.Db, clock, options),
+            new AppClock(new ApplicationSettingsRepository(harness.Db), clock, options, NullLogger<AppClock>.Instance),
+            new ReminderSettingsService(new ApplicationSettingsRepository(harness.Db), new UnitOfWork(harness.Db), clock, options),
             Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
     }

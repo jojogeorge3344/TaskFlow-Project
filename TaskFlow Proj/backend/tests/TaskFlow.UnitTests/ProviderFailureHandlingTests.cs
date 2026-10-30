@@ -1,3 +1,10 @@
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using TaskFlow.Application.Assistant;
@@ -60,7 +67,7 @@ public class ProviderFailureHandlingTests
     {
         await using var harness = TaskTrackingServiceHarness.Create();
         var protector = new AiKeyProtector(new EphemeralDataProtectionProvider());
-        var config = new AiProviderConfigService(harness.Db, protector, TimeProvider.System);
+        var config = new AiProviderConfigService(new AiProviderConfigRepository(harness.Db), new AiModelRepository(harness.Db), new UnitOfWork(harness.Db), protector, TimeProvider.System);
         await config.SaveAsync(1, new UpdateAiProvidersRequest(
         [
             new UpdateAiProviderRequest(AiProviderKind.Ollama, true, "llama3.1:8b", "http://localhost:11434", null, null),

@@ -1,3 +1,9 @@
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Persistence.Seeders;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Common.Constants;
 using Task = System.Threading.Tasks.Task;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +27,7 @@ public class AiProviderSeederTests : IAsyncLifetime
 
     private AiProviderSeeder Seeder() => new(_harness.Db, TimeProvider.System);
 
-    private AiProviderConfigService Service() => new(_harness.Db, new AiKeyProtector(_provider), TimeProvider.System);
+    private AiProviderConfigService Service() => new(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(_provider), TimeProvider.System);
 
     [Fact]
     public async Task AFreshDatabaseGetsEveryBuiltInModel()

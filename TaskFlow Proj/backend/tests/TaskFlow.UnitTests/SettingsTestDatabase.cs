@@ -1,10 +1,14 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Settings;
 
 namespace TaskFlow.UnitTests;
 
@@ -56,20 +60,22 @@ internal sealed class SettingsTestDatabase : IAsyncDisposable
 
     public AppClock Clock(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
         new(
-            Db,
+            new ApplicationSettingsRepository(Db),
             timeProvider ?? TimeProvider.System,
             Options.Create(new ApplicationOptions { Timezone = configuredTimezone }),
             NullLogger<AppClock>.Instance);
 
     public ReminderSettingsService ReminderSettings(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
         new(
-            Db,
+            new ApplicationSettingsRepository(Db),
+            new UnitOfWork(Db),
             timeProvider ?? TimeProvider.System,
             Options.Create(new ApplicationOptions { Timezone = configuredTimezone }));
 
     public ApplicationSettingsService ApplicationSettings(TimeProvider? timeProvider = null, string configuredTimezone = "UTC") =>
         new(
-            Db,
+            new ApplicationSettingsRepository(Db),
+            new UnitOfWork(Db),
             timeProvider ?? TimeProvider.System,
             Options.Create(new ApplicationOptions { Timezone = configuredTimezone }));
 

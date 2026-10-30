@@ -1,5 +1,6 @@
+using TaskFlow.Api.Dtos.Settings.ApplicationSettings;
+using TaskFlow.Api.Common.Constants;
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Application.Settings;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;
@@ -7,9 +8,9 @@ namespace TaskFlow.UnitTests;
 public class ApplicationSettingsServiceTests
 {
     private static async Task Initialize(SettingsTestDatabase database) =>
-        await new TaskFlow.Infrastructure.Settings.SettingsInitializer(
+        await new TaskFlow.Api.Persistence.Seeders.SettingsInitializer(
             database.Db, TimeProvider.System, Microsoft.Extensions.Options.Options.Create(
-                new TaskFlow.Infrastructure.Settings.ApplicationOptions { Timezone = "Asia/Kolkata" }))
+                new TaskFlow.Api.Config.ApplicationOptions { Timezone = "Asia/Kolkata" }))
             .InitializeAsync();
 
     [Fact]

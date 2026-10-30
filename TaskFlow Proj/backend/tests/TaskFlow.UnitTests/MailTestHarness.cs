@@ -1,10 +1,13 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
@@ -37,7 +40,7 @@ internal sealed class MailTestHarness : IAsyncDisposable
         new(
             Tracking.Db,
             Clock,
-            new AppClock(Tracking.Db, Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
+            new AppClock(new ApplicationSettingsRepository(Tracking.Db), Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
 
     public static SendMailRequest To(IEnumerable<User> to, string subject = "Weekly report", string body = "Please review.", IEnumerable<User>? cc = null) =>
         new(to.Select(user => user.Email).ToList(), cc?.Select(user => user.Email).ToList(), subject, body, null);

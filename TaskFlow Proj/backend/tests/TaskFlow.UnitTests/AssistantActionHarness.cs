@@ -1,3 +1,7 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using System.Security.Claims;
 using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.Identity;
@@ -13,7 +17,6 @@ using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using User = TaskFlow.Api.Models.Entities.User;
 using Task = System.Threading.Tasks.Task;
 
@@ -75,7 +78,7 @@ internal sealed class AssistantActionHarness : IAsyncDisposable
 
     public UserService Users => new(Db, new PasswordHasher<User>(), new UserAllocationService(Db));
 
-    public MailService Mail => new(Db, Clock, new AppClock(Db, Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
+    public MailService Mail => new(Db, Clock, new AppClock(new ApplicationSettingsRepository(Db), Clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
 
     public AssistantAuditLog Audit => new(Db, Clock);
 

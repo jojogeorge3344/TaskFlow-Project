@@ -1,6 +1,6 @@
+using TaskFlow.Api.Dtos.Settings.ReminderSettings.Validators;
+using TaskFlow.Api.Dtos.Settings.ReminderSettings;
 using FluentValidation.TestHelper;
-using TaskFlow.Application.Settings;
-using TaskFlow.Application.Settings.Validators;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.UnitTests;

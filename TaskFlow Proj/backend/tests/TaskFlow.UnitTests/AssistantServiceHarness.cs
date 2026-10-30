@@ -1,3 +1,13 @@
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Dtos.Settings.TfaSettings;
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using System.Security.Claims;
 using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.DataProtection;
@@ -5,7 +15,6 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
-using TaskFlow.Infrastructure.Settings;
 using User = TaskFlow.Api.Models.Entities.User;
 
 namespace TaskFlow.UnitTests;
@@ -58,7 +67,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
         Tracking = TaskTrackingServiceHarness.Create();
         Asha = Tracking.AddUser("asha", SystemRoles.Employee);
         Ravi = Tracking.AddUser("ravi", SystemRoles.Manager);
-        Config = new AiProviderConfigService(Tracking.Db, new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
+        Config = new AiProviderConfigService(new AiProviderConfigRepository(Tracking.Db), new AiModelRepository(Tracking.Db), new UnitOfWork(Tracking.Db), new AiKeyProtector(new EphemeralDataProtectionProvider()), TimeProvider.System);
         RateLimiter = new AssistantRateLimiter(TimeProvider.System);
     }
 
@@ -90,7 +99,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
             RateLimiter,
             Toolbox,
             new NoCards(),
-            new ApplicationSettingsService(Tracking.Db, TimeProvider.System, Options.Create(new ApplicationOptions())),
+            new ApplicationSettingsService(new ApplicationSettingsRepository(Tracking.Db), new UnitOfWork(Tracking.Db), TimeProvider.System, Options.Create(new ApplicationOptions())),
             Tracking.Clock,
             TimeProvider.System);
 

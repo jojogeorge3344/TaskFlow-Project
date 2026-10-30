@@ -1,9 +1,9 @@
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Mail;
-using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;

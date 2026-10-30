@@ -29,9 +29,9 @@
 
 ## 4. Module: Settings
 
-- [ ] 4.1 `Settings/ApplicationSettings` and `Settings/ReminderSettings`: create repositories, services, controllers and DTOs/validators in their module folders. Move `AppClock`'s settings read behind the repository. Verify that `ApplicationSettingsServiceTests`, `ReminderSettingsServiceTests`, `AppClockTests` and `SettingsEndpointsTests` pass
-- [ ] 4.2 `Settings/RoleConfiguration`: `RoleRepository`, `RoleService` and `RolesController` in module folders. Verify that `CustomRolePermissionTests`, `RolesEndpointsTests` and `ModuleBasedPermissionEndpointsTests` pass
-- [ ] 4.3 `Settings/TfaSettings`: AI provider config repository, service and endpoints. Move the providers to `Integrations/Ai`. Verify that `AiProviderConfigServiceTests`, `AssistantProviderEndpointsTests` and `ProviderFailureHandlingTests` pass
+- [x] 4.1 `Settings/ApplicationSettings` and `Settings/ReminderSettings`: create repositories, services, controllers and DTOs/validators in their module folders. Move `AppClock`'s settings read behind the repository. Verify that `ApplicationSettingsServiceTests`, `ReminderSettingsServiceTests`, `AppClockTests` and `SettingsEndpointsTests` pass
+- [x] 4.2 `Settings/RoleConfiguration`: `RoleRepository`, `RoleService` and `RolesController` in module folders. Verify that `CustomRolePermissionTests`, `RolesEndpointsTests` and `ModuleBasedPermissionEndpointsTests` pass
+- [x] 4.3 `Settings/TfaSettings`: AI provider config repository, service and endpoints. Move the providers to `Integrations/Ai`. Verify that `AiProviderConfigServiceTests`, `AssistantProviderEndpointsTests` and `ProviderFailureHandlingTests` pass. Done: the provider-config endpoints moved out of AssistantController into Controllers/Settings/TfaSettings/AiProvidersController (same routes); ChatModelGateway went to Services/Assistant (see design D6)
 
 ## 5. Module: Management
 

@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Interfaces.Settings.RoleConfiguration;
+using TaskFlow.Api.Dtos.Settings.RoleConfiguration;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -5,7 +7,6 @@ using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Authentication;
 using TaskFlow.Application.Mfa;
-using TaskFlow.Application.Roles;
 using TaskFlow.Application.Users;
 
 namespace TaskFlow.Api.Controllers;

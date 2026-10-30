@@ -1,10 +1,11 @@
+using TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TaskFlow.Application.Mail;
 using TaskFlow.Application.Reminders;
-using TaskFlow.Application.Settings;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;

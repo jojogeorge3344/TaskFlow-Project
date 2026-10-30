@@ -25,11 +25,24 @@ public static class RepositoryRegistration
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Settings
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Settings.ApplicationSettings.IApplicationSettingsRepository, TaskFlow.Api.Repositories.Settings.ApplicationSettings.ApplicationSettingsRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Settings.RoleConfiguration.IRoleRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.RoleRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Settings.RoleConfiguration.IPermissionRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.PermissionRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Settings.TfaSettings.IAiProviderConfigRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.AiProviderConfigRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Settings.TfaSettings.IAiModelRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.AiModelRepository>();
+
+        // Management
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement.IEmployeeRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.EmployeeRepository>();
+
+        // Auth
+        services.AddScoped<TaskFlow.Api.Repositories.Interfaces.Auth.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokenRepository>();
+
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
         services.AddScoped<AccessControlSeeder>();
-        services.AddScoped<TaskFlow.Infrastructure.Assistant.AiProviderSeeder>();
+        services.AddScoped<TaskFlow.Api.Persistence.Seeders.AiProviderSeeder>();
         services.AddScoped<DatabaseSeeder>();
-        services.AddScoped<TaskFlow.Infrastructure.Settings.SettingsInitializer>();
+        services.AddScoped<TaskFlow.Api.Persistence.Seeders.SettingsInitializer>();
 
         return services;
     }

@@ -40,8 +40,8 @@ if (OperatingSystem.IsWindows())
 {
     var keyRingFolder = StorageRoot.ResolveUnder(
         storageRoot,
-        app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Infrastructure.Assistant.AiProviderOptions>>().Value.KeyRingPath);
-    var keyRingCheck = TaskFlow.Infrastructure.Assistant.KeyRingProtectionCheck.Check(keyRingFolder);
+        app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Api.Config.AiProviderOptions>>().Value.KeyRingPath);
+    var keyRingCheck = TaskFlow.Api.Integrations.Ai.KeyRingProtectionCheck.Check(keyRingFolder);
     if (keyRingCheck.UnprotectedKeys > 0)
     {
         app.Logger.LogWarning(
@@ -65,10 +65,10 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
-    await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Settings.SettingsInitializer>().InitializeAsync();
+    await scope.ServiceProvider.GetRequiredService<TaskFlow.Api.Persistence.Seeders.SettingsInitializer>().InitializeAsync();
 
     await scope.ServiceProvider.GetRequiredService<AccessControlSeeder>().SeedAsync();
-    await scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Assistant.AiProviderSeeder>().SeedAsync();
+    await scope.ServiceProvider.GetRequiredService<TaskFlow.Api.Persistence.Seeders.AiProviderSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
 }
 

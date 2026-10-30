@@ -1,8 +1,11 @@
+using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
+using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Application.Assistant;
-using TaskFlow.Application.Settings;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;

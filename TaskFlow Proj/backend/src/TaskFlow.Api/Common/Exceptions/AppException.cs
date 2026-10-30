@@ -74,8 +74,8 @@ public class NotFoundException : AppException
 /// <summary>The resource is not in a state that allows this change (HTTP 409).</summary>
 public class ConflictException : AppException
 {
-    public ConflictException(string message)
-        : base(message)
+    public ConflictException(string message, Exception? innerException = null)
+        : base(message, innerException)
     {
     }
 

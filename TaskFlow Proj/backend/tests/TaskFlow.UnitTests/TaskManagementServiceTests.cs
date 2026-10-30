@@ -1,7 +1,7 @@
+using TaskFlow.Api.Dtos.Settings.ReminderSettings;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Application.Settings;
 using TaskFlow.Application.Tasks;
 using TaskFlow.Api.Models.Enums;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;

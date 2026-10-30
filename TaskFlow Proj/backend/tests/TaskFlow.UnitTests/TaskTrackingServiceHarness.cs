@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
 using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +11,6 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
@@ -25,8 +29,8 @@ internal sealed class TaskTrackingServiceHarness : IAsyncDisposable
         ActivityService = new TaskActivityService(db, TimeProvider.System);
         NotificationPublisher = new NotificationPublisher(db, TimeProvider.System);
         NotificationService = new NotificationService(db);
-        ReminderSettings = new ReminderSettingsService(db, TimeProvider.System, Options.Create(new ApplicationOptions()));
-        Clock = new AppClock(db, TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
+        ReminderSettings = new ReminderSettingsService(new ApplicationSettingsRepository(db), new UnitOfWork(db), TimeProvider.System, Options.Create(new ApplicationOptions()));
+        Clock = new AppClock(new ApplicationSettingsRepository(db), TimeProvider.System, Options.Create(new ApplicationOptions()), Microsoft.Extensions.Logging.Abstractions.NullLogger<AppClock>.Instance);
         TaskService = new TaskService(db, ActivityService, NotificationPublisher, TimeProvider.System, ReminderSettings, Clock, new TaskFlow.Infrastructure.Analytics.ManagerDashboardScope(db, Clock), new MailService(db, TimeProvider.System, Clock), Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskService>.Instance);
         CommentService = new TaskCommentService(db, ActivityService, NotificationPublisher, TimeProvider.System);
     }

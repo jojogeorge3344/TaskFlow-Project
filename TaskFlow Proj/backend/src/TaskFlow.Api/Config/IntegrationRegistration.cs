@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Assistant;
+using TaskFlow.Api.Integrations.Ai;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
@@ -46,7 +48,7 @@ public static class IntegrationRegistration
                     options.XmlRepository = new FileSystemXmlRepository(
                         new DirectoryInfo(StorageRoot.ResolveUnder(StorageRoot.Resolve(storage.Value.Root), aiOptions.Value.KeyRingPath)),
                         loggerFactory));
-        services.AddSingleton<TaskFlow.Application.Assistant.IAiKeyProtector, AiKeyProtector>();
+        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Ai.IAiKeyProtector, AiKeyProtector>();
 
         // The timeout is read from the bound options when a client is created. Provider clients never log request or response
         // headers or bodies, so keys and prompts stay out of the logs. Redirects are not followed: the address an administrator
@@ -58,11 +60,11 @@ public static class IntegrationRegistration
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
         services.AddHttpClient<OpenAiProvider>(ConfigureAiClient)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
-        services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<OllamaProvider>());
-        services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<GeminiProvider>());
-        services.AddTransient<TaskFlow.Application.Assistant.IChatModelProvider>(sp => sp.GetRequiredService<OpenAiProvider>());
-        services.AddScoped<TaskFlow.Application.Assistant.IChatModelProviderRegistry, ChatModelProviderRegistry>();
-        services.AddScoped<TaskFlow.Application.Assistant.IChatModelGateway, ChatModelGateway>();
+        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OllamaProvider>());
+        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<GeminiProvider>());
+        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OpenAiProvider>());
+        services.AddScoped<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProviderRegistry, ChatModelProviderRegistry>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IChatModelGateway, ChatModelGateway>();
 
         return services;
     }

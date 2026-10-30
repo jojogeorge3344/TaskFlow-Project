@@ -52,14 +52,14 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Application.Reports.IReportService, TaskFlow.Infrastructure.Services.ReportService>();
 
         // Settings
-        services.Configure<TaskFlow.Infrastructure.Settings.ApplicationOptions>(
-            configuration.GetSection(TaskFlow.Infrastructure.Settings.ApplicationOptions.SectionName));
-        services.AddScoped<TaskFlow.Application.Settings.IAppClock, TaskFlow.Infrastructure.Settings.AppClock>();
-        services.AddScoped<TaskFlow.Application.Settings.IReminderSettingsService, TaskFlow.Infrastructure.Settings.ReminderSettingsService>();
-        services.AddScoped<TaskFlow.Application.Settings.IApplicationSettingsService, TaskFlow.Infrastructure.Settings.ApplicationSettingsService>();
-        services.AddScoped<TaskFlow.Application.Roles.IRoleService, TaskFlow.Infrastructure.Services.RoleService>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAiProviderConfigService, TaskFlow.Infrastructure.Assistant.AiProviderConfigService>();
-        services.AddScoped<TaskFlow.Application.Assistant.IAiProviderConnectionTester, TaskFlow.Infrastructure.Assistant.AiProviderConnectionTester>();
+        services.Configure<TaskFlow.Api.Config.ApplicationOptions>(
+            configuration.GetSection(TaskFlow.Api.Config.ApplicationOptions.SectionName));
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings.IAppClock, TaskFlow.Api.Services.Settings.ApplicationSettings.AppClock>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings.IReminderSettingsService, TaskFlow.Api.Services.Settings.ReminderSettings.ReminderSettingsService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings.IApplicationSettingsService, TaskFlow.Api.Services.Settings.ApplicationSettings.ApplicationSettingsService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.RoleConfiguration.IRoleService, TaskFlow.Api.Services.Settings.RoleConfiguration.RoleService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.TfaSettings.IAiProviderConfigService, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConfigService>();
+        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.TfaSettings.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConnectionTester>();
 
         // Assistant
         services.AddSingleton<TaskFlow.Application.Assistant.IAssistantRateLimiter, TaskFlow.Infrastructure.Assistant.AssistantRateLimiter>();

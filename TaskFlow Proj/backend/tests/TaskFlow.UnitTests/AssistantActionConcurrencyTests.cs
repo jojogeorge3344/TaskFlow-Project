@@ -1,3 +1,7 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using Microsoft.AspNetCore.Identity;
 using TaskFlow.Api.Common.Security;
 using Microsoft.Data.Sqlite;
@@ -11,7 +15,6 @@ using TaskFlow.Api.Models.Enums;
 using TaskFlow.Infrastructure.Assistant;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
 using User = TaskFlow.Api.Models.Entities.User;
 
@@ -42,7 +45,7 @@ public class AssistantActionConcurrencyTests : IAsyncLifetime
     private AssistantActionService NewService(AppDbContext db)
     {
         var clock = new FixedTimeProvider(new DateTime(2026, 10, 19, 9, 0, 0));
-        var mail = new MailService(db, clock, new AppClock(db, clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
+        var mail = new MailService(db, clock, new AppClock(new ApplicationSettingsRepository(db), clock, Options.Create(new ApplicationOptions { Timezone = "UTC" }), NullLogger<AppClock>.Instance));
         return new AssistantActionService(
             db,
             mail,

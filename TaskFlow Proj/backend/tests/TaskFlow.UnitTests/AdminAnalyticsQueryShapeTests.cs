@@ -1,3 +1,7 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using System.Data.Common;
 using System.Diagnostics;
 using Microsoft.Data.Sqlite;
@@ -11,7 +15,6 @@ using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Infrastructure.Analytics;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Infrastructure.Settings;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -49,7 +52,7 @@ public class AdminAnalyticsQueryShapeTests
         TestAccessControl.Seed(db);
 
         var clock = new AppClock(
-            db,
+            new ApplicationSettingsRepository(db),
             new FakeTimeProvider(Now),
             Options.Create(new ApplicationOptions { Timezone = "UTC" }),
             NullLogger<AppClock>.Instance);

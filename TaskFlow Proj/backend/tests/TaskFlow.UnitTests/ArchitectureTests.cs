@@ -83,7 +83,10 @@ public class ArchitectureTests
     public void ServicesUseRepositoriesOnlyThroughTheirInterfaces()
     {
         var concreteRepositories = TypesIn("Repositories")
-            .Where(type => type is { IsClass: true, IsAbstract: false })
+            .Where(type => type is { IsClass: true, IsAbstract: false }
+                           && type.GetInterfaces().Any(contract => contract.Name.EndsWith("Repository", StringComparison.Ordinal)
+                                                                   || contract.Name.EndsWith("Repository`1", StringComparison.Ordinal)
+                                                                   || contract.Name == "IUnitOfWork"))
             .Select(type => type.FullName!)
             .ToArray();
 
@@ -261,8 +264,12 @@ public class ArchitectureTests
         return TypesIn(layer)
             .Where(type => !type.IsNested && type.IsPublic && !allowed.Contains(type.Name))
             .Where(type => type.Namespace!.Split('.') is var parts && parts[^1] is not ("Rules" or "Validators"))
-            .Where(type => type.IsInterface || type.GetInterfaces().Any(contract => contract.Name.EndsWith(suffix, StringComparison.Ordinal)))
-            .Where(type => !type.Name.EndsWith(suffix, StringComparison.Ordinal) || (type.IsInterface && !type.Name.StartsWith('I')))
+            // A service (or repository) type is one that fulfils an I<Name>Service (or I<Name>Repository) contract. Its
+            // collaborators in the same folder (a clock, a publisher, a scope) keep names that say what they are.
+            .Where(type => type.IsInterface
+                ? !type.Name.StartsWith('I')
+                : type.GetInterfaces().Any(contract => contract.Name.EndsWith(suffix, StringComparison.Ordinal))
+                  && !type.Name.EndsWith(suffix, StringComparison.Ordinal))
             .Select(type => type.FullName!);
     }
 

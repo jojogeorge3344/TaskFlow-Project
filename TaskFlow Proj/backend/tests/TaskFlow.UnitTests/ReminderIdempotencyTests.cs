@@ -1,3 +1,8 @@
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Config;
 using System.Data.Common;
 using TaskFlow.Api.Common.Security;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +13,6 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Infrastructure.Services;
-using TaskFlow.Infrastructure.Settings;
 using Task = System.Threading.Tasks.Task;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
@@ -210,8 +214,8 @@ public sealed class ReminderIdempotencyTests : IAsyncLifetime
         var options = Options.Create(new ApplicationOptions { Timezone = "UTC" });
         var service = new ReminderService(
             db,
-            new AppClock(db, _clock, options, NullLogger<AppClock>.Instance),
-            new ReminderSettingsService(db, _clock, options),
+            new AppClock(new ApplicationSettingsRepository(db), _clock, options, NullLogger<AppClock>.Instance),
+            new ReminderSettingsService(new ApplicationSettingsRepository(db), new UnitOfWork(db), _clock, options),
             Options.Create(new TaskFlow.Infrastructure.Mail.MailOptions { AppBaseUrl = "http://localhost:4200" }),
             NullLogger<ReminderService>.Instance);
 

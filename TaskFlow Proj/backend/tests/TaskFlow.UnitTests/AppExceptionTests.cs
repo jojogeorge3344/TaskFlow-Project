@@ -3,7 +3,6 @@ using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Application.Assistant;
 using TaskFlow.Application.Dashboard.Analytics;
 using TaskFlow.Application.Mail;
-using TaskFlow.Application.Roles;
 
 namespace TaskFlow.UnitTests;
 
