@@ -36,7 +36,7 @@ The constraints that shape this design, all verified against the current code:
 
 The prose for all five documents lives in one TypeScript module as structured data: an array of documents, each with sections, each with blocks. A block is a paragraph, a list, a table or a callout.
 
-**Why:** the prose is the artefact an examiner or reviewer reads. Keeping it in one file makes it reviewable in one pass and makes the content impossible to break structurally — a table row count, a heading level or a table of contents entry is derived from the data rather than hand-written five times.
+**Why:** the prose is the artefact a reviewer reads. Keeping it in one file makes it reviewable in one pass and makes the content impossible to break structurally — a table row count, a heading level or a table of contents entry is derived from the data rather than hand-written five times.
 
 **Alternatives considered.** *Five separate components with their own templates* — rejected: duplicates the layout, the table of contents and the accessibility work five times over, and the documents would drift apart in styling. *Markdown files fetched at runtime and rendered* — rejected: needs a markdown dependency the project does not have, and the `**` catch-all plus `base href` routing makes fetching static assets an extra failure mode for no benefit. *Content served by the backend* — rejected: no backend change is warranted for static text, and it would put a database row in front of every legal statement.
 
@@ -54,13 +54,13 @@ A single `LegalPageComponent` renders whichever document the route names. Each r
 
 **Why:** one component means one set of layout rules and one spec file, and adding a sixth document later is a registry entry plus a route rather than a new component.
 
-**Alternatives considered.** *Five routes pointing at five components* — rejected: five copies of the same layout. *A single route with the document id as a path parameter* (`/legal/:documentId`) — rejected: it hides the five documents behind one URL, so the addresses an examiner writes down, and the footer links, would not name them.
+**Alternatives considered.** *Five routes pointing at five components* — rejected: five copies of the same layout. *A single route with the document id as a path parameter* (`/legal/:documentId`) — rejected: it hides the five documents behind one URL, so the addresses a reviewer writes down, and the footer links, would not name them.
 
 ### D3 — The legal routes are top-level and public
 
 The five routes are registered in `app.routes.ts` as siblings of `login`, outside the `authGuard` shell route, and ahead of the `**` catch-all.
 
-**Why:** a legal notice that needs a password is not a notice. An examiner opening the project, a visitor, or a user who has not yet created an account can all read the terms, the privacy policy and the copyright notice. Registering them outside the shell also means they need no permission catalog entry and no role plumbing — the `permissionGuard` catalogue has no legal permission to grant.
+**Why:** a legal notice that needs a password is not a notice. A reviewer opening the project, a visitor, or a user who has not yet created an account can all read the terms, the privacy policy and the copyright notice. Registering them outside the shell also means they need no permission catalog entry and no role plumbing — the `permissionGuard` catalogue has no legal permission to grant.
 
 **Alternatives considered.** *Children of the shell route* — rejected: they would need an account to read and would appear in the signed-in chrome. *A single `/legal` index that links to the five* — rejected: adds a hop, and the requirement is that each document has its own address.
 

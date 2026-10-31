@@ -1,11 +1,11 @@
 # TaskFlow — Project Overview
 
 **TaskFlow – Intelligent Task Allocation & Tracking System**
-MCA Academic Mini Project · Designed 2026-10-11
+Personal Project (Skill Development) · Designed 2026-10-11
 
 This document is the entry point for the codebase: what TaskFlow is, how it is built,
 where everything lives, and the conventions that keep it consistent. The authoritative
-design lives in `../Artifacts/TDD-TaskFlow.md`; this file is a condensed, actionable
+design lives in `../TF - Documents/TF - TDD/TDD-TaskFlow.md`; this file is a condensed, actionable
 mirror of it.
 
 ---
@@ -237,8 +237,8 @@ the API runs behind HTTPS.
 "sample data for demonstration" deliverable.
 
 Configuration sources: `appsettings.json` (non-secret defaults), environment
-variables/user-secrets (JWT key, SMTP password), and the `application_settings` table
-(runtime-editable, non-secret). See TDD §16.
+variables/user-secrets (JWT signing key), and the `ApplicationSettings` table
+(runtime-editable, non-secret). See TDD §18.
 
 ---
 
@@ -268,7 +268,12 @@ variables/user-secrets (JWT key, SMTP password), and the `application_settings` 
 
 | Document | Location |
 |---|---|
-| Technical Design Document | `../Artifacts/TDD-TaskFlow.md` |
-| Business Requirements (BRD v1.0) | `../Requirements/BRD for Task management.docx` |
-| Screen specs 01–20 | `../Requirements/screens wise feature/` |
+| Business Requirements – approved BRD set v1.0 (overall + 16 sub-modules) | `../TF - Documents/TF - BRD/` |
+| Functional Requirements – FRD set | `../TF - Documents/TF - FRD/` |
+| High-Level Design – HLD set | `../TF - Documents/TF - HLD/` |
+| Low-Level Design – LLD set | `../TF - Documents/TF - LLD/` |
+| Technical Design Document | `../TF - Documents/TF - TDD/TDD-TaskFlow.md` |
+| Screen specs 01–20 | `../TF - Documents/Screens Wise Feature Development Plan/` |
+| Permission documents | `../TF - Documents/Permission Requirement/` |
+| Workflow docs (application / technical) | `TFWorkflow/`, `TFTechnicalWorkflow/` |
 | OpenSpec workspace | `../openspec/` |

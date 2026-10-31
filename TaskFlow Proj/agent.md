@@ -2,7 +2,7 @@
 
 Operating instructions for AI assistants and automation contributors working in this
 repository. Read this before making changes. For product context, see `project.md`; for the
-authoritative design, see `../Artifacts/TDD-TaskFlow.md`.
+authoritative design, see `../TF - Documents/TF - TDD/TDD-TaskFlow.md`.
 
 ---
 
@@ -36,9 +36,12 @@ Planning material lives **outside** this folder, at the workspace root:
 
 | Path | Contents | Treat as |
 |---|---|---|
-| `../Requirements/BRD for Task management.docx` | Business requirements | Source of truth for *what* |
-| `../Requirements/screens wise feature/01..20*.md` | Per-screen specs | Source of truth for UI behaviour |
-| `../Artifacts/TDD-TaskFlow.md` | Technical design | Source of truth for *how* |
+| `../TF - Documents/TF - BRD/` | Approved BRD set v1.0 (overall + 16 sub-modules, signed off 31-Oct-2026) | Source of truth for *what* |
+| `../TF - Documents/TF - FRD/` | Functional requirements and use cases per sub-module | Source of truth for behaviour, validations and messages |
+| `../TF - Documents/TF - HLD/`, `../TF - Documents/TF - LLD/` | High- and low-level design per sub-module | Design reference per sub-module |
+| `../TF - Documents/TF - TDD/TDD-TaskFlow.md` | Technical design (whole system) | Source of truth for *how* |
+| `../TF - Documents/Screens Wise Feature Development Plan/01..20*.md` | Per-screen specs | Original UI plan (absorbed by the BRD set) |
+| `../TF - Documents/Permission Requirement/` | Permission documents per role | Must match `PermissionCatalog.cs` |
 | `../openspec/` | OpenSpec workspace (changes, specs) | Planning workflow |
 
 Do **not** edit files under `.opencode/` (tooling/skills) as part of feature work.
@@ -126,8 +129,8 @@ If you cannot find the right command, ask.
 
 ## 6. Recording Decisions
 
-- Changes to *what the system must do* → OpenSpec specs / the BRD.
-- Changes to *how it is built* → TDD (`../Artifacts/TDD-TaskFlow.md`) and/or OpenSpec design.
+- Changes to *what the system must do* → OpenSpec specs / the sub-module BRD (approved: record a new version) and its FRD.
+- Changes to *how it is built* → TDD (`../TF - Documents/TF - TDD/TDD-TaskFlow.md`), the sub-module HLD/LLD and/or OpenSpec design.
 - Changes to stack, structure, or conventions → update `project.md` in the same change.
 
 Keep `project.md`, `agent.md`, the TDD, and OpenSpec specs in sync; do not duplicate facts
