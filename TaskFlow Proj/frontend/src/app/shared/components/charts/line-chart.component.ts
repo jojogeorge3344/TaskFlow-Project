@@ -1,7 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { ChartConfiguration, ChartEvent } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartSeries } from '../../utils/chart-colors';
 import { LineSeries, PointClick } from './line-chart.model';
 
 @Component({

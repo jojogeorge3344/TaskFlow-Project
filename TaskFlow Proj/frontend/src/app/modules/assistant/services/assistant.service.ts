@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
 import { AuthService } from '../../../shared/auth/auth.service';
-import { AiProviderKind, AiProviderOption, AssistantActionResult, AssistantConversation, AssistantFailure, AssistantMessage, AssistantPendingAction, AssistantReply, EditMailAction } from '../models/assistant.model';
+import { AiProviderKind, AiProviderOption, AssistantActionResult, AssistantConversation, AssistantMessage, AssistantPendingAction, AssistantReply, EditMailAction } from '../models/assistant.model';
 import { FailedSend } from './assistant.model';
 
 export const TFA_PROVIDER_KEY = 'tfa.provider';

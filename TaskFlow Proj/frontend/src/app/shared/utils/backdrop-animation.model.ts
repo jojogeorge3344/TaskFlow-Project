@@ -1,4 +1,4 @@
-export interface Node {
+export interface BackdropNode {
   x: number;
   y: number;
   vx: number;

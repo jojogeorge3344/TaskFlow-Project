@@ -9,7 +9,6 @@ import { apiErrorMessage } from '../../../../shared/utils/api-error';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ToastService } from '../../../../shared/services/toast.service';
 import {
-  CheckState,
   TreeFeature,
   TreeModule,
   TreeScreen,

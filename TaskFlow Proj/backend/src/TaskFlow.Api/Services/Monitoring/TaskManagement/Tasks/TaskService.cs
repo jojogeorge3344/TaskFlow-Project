@@ -508,9 +508,9 @@ public class TaskService : ITaskService
                 cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
-        catch (ConcurrencyConflictException)
+        catch (ConcurrencyConflictException exception)
         {
-            throw new BusinessRuleException("The task's worked hours changed while you were saving. Please try again.");
+            throw new ConflictException("The task's worked hours changed while you were saving. Please try again.", exception);
         }
 
         await NotifyHoursChangedAsync(task, recipients, previous, total, currentUserId, cancellationToken);

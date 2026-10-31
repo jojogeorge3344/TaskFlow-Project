@@ -118,7 +118,11 @@ describe('two-step setup state and the API gate', () => {
     let failed = false;
 
     http.get('/api/v1/tasks').subscribe({ error: () => (failed = true) });
-    httpMock.expectOne('/api/v1/tasks').flush({ code: 'mfa_setup_required', error: 'Set up two-step verification to continue.' }, { status: 403, statusText: 'Forbidden' });
+    httpMock.expectOne('/api/v1/tasks').flush(
+      // The API's ProblemDetails body (MfaSetupGateMiddleware): the code is an extension next to the detail.
+      { title: 'Forbidden', status: 403, detail: 'Set up two-step verification to continue.', code: 'mfa_setup_required' },
+      { status: 403, statusText: 'Forbidden' }
+    );
 
     expect(failed).toBeTrue();
     expect(service.currentUser()?.mfaSetupRequired).toBeTrue();
@@ -130,7 +134,7 @@ describe('two-step setup state and the API gate', () => {
     const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
 
     http.get('/api/v1/settings').subscribe({ error: () => undefined });
-    httpMock.expectOne('/api/v1/settings').flush({ error: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
+    httpMock.expectOne('/api/v1/settings').flush({ title: 'Forbidden', status: 403, detail: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
 
     expect(service.currentUser()?.mfaSetupRequired).toBeFalsy();
     expect(navigate).not.toHaveBeenCalled();

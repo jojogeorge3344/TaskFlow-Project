@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Api.Common;
 using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail.Messages;
 

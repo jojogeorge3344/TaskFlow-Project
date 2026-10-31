@@ -77,7 +77,8 @@ public class TaskLogHoursTests
         // Another request logs hours after this one loaded the task: the tracked copy still holds the old total.
         await harness.Db.Database.ExecuteSqlRawAsync("UPDATE \"Tasks\" SET \"ActualHours\" = 5 WHERE \"Id\" = {0}", task.Id);
 
-        var error = await Assert.ThrowsAsync<BusinessRuleException>(() =>
+        // A lost race is a retryable conflict (409), like every other concurrent change.
+        var error = await Assert.ThrowsAsync<ConflictException>(() =>
             harness.TaskService.LogHoursAsync(task.Id, new LogHoursRequest(1m), assignee.Id, SystemRoles.Employee, CancellationToken.None));
 
         Assert.Contains("worked hours changed", error.Message);

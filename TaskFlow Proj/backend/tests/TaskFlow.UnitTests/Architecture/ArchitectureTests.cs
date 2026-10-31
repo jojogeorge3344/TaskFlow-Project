@@ -113,15 +113,13 @@ public class ArchitectureTests
     [Fact]
     public void OnlyPersistenceAndRepositoriesReachTheDbContext()
     {
-        // Config registers the DbContext and Program migrates and seeds at startup; BaseRepository is the repositories' base.
+        // Config registers the DbContext and Program migrates and seeds at startup.
         var offenders = Types.InAssembly(Api)
             .That().DoNotResideInNamespaceMatching($@"^{Regex.Escape(Root)}\.(Persistence|Repositories|Config)(\.|$)")
             .Should().NotHaveDependencyOnAny($"{Root}.Persistence.AppDbContext", "Microsoft.EntityFrameworkCore.DbContext")
             .GetResult().FailingTypeNames ?? [];
 
-        Assert.Empty(offenders.Where(name => !name.Contains('<')
-                                             && name != $"{Root}.Common.BaseRepository`1"
-                                             && name != "Program"));
+        Assert.Empty(offenders.Where(name => !name.Contains('<') && name != "Program"));
     }
 
     [Fact]
@@ -180,6 +178,17 @@ public class ArchitectureTests
         Assert.Empty(offenders.Distinct());
     }
 
+    /// <summary>Covers what the signature check above cannot see: an <c>IActionResult</c> action returning an entity, or a
+    /// DTO with an entity property.</summary>
+    [Fact]
+    public void ControllersAndDtosDoNotDependOnEntities()
+    {
+        foreach (var layer in new[] { "Controllers", "Dtos" })
+        {
+            AssertNoDependency($"{Root}.{layer}", $"{Root}.Models.Entities");
+        }
+    }
+
     // ---------------------------------------------------------------- repositories
 
     [Fact]
@@ -198,7 +207,7 @@ public class ArchitectureTests
     [Fact]
     public void OnlyTheUnitOfWorkCommits()
     {
-        var offenders = SourceFiles("Repositories").Append(Path.Combine(SourceRoot, "Common", "BaseRepository.cs"))
+        var offenders = SourceFiles("Repositories")
             .Where(file => Path.GetFileName(file) is not ("UnitOfWork.cs" or "IUnitOfWork.cs"))
             .Where(file => Regex.IsMatch(StripComments(File.ReadAllText(file)), @"\bSaveChanges(Async)?\s*\(|\bBeginTransaction"))
             .Select(Path.GetFileName)
@@ -219,7 +228,10 @@ public class ArchitectureTests
             .SelectMany(layer => TypesIn(layer).Select(type => (layer, type)))
             .Where(item => ModulePathOf(item.type.Namespace!, item.layer) is var path
                            && !IsAllowedModulePath(path)
-                           && !(item.layer is "Services" or "Repositories" && IsAllowedModulePath(ParentPath(path))))
+                           && !(item.layer is "Services" or "Repositories" && ParentPath(path) is { Length: > 0 } parent
+                                && IsAllowedModulePath(parent))
+                           // The repositories' shared base (IBaseRepository, BaseRepository, IUnitOfWork, UnitOfWork).
+                           && !(item.layer == "Repositories" && path == "Base"))
             .Select(item => item.type.FullName)
             .ToList();
 
@@ -313,7 +325,11 @@ public class ArchitectureTests
         var offenders = types
             .Where(type => type.IsInterface && type.Namespace?.StartsWith($"{Root}.", StringComparison.Ordinal) == true)
             .SelectMany(contract => types
-                .Where(type => type is { IsClass: true, IsAbstract: false } && type.GetInterfaces().Contains(contract)
+                // Abstract classes count, and a generic contract matches its closed forms (BaseRepository<T> : IBaseRepository<T>).
+                .Where(type => type.IsClass
+                               && DirectInterfaces(type).Any(implemented => implemented == contract
+                                                                          || (contract.IsGenericTypeDefinition && implemented.IsGenericType
+                                                                              && implemented.GetGenericTypeDefinition() == contract))
                                && type.Namespace != contract.Namespace)
                 .Select(type => $"{contract.FullName} / {type.FullName}"))
             .ToList();
@@ -410,6 +426,16 @@ public class ArchitectureTests
                 @"^(?:public|internal)\s+(?:(?:sealed|static|abstract|partial|readonly)\s+)*(?:record\s+struct|record\s+class|class|interface|record|enum|struct)\s+(\w+)",
                 RegexOptions.Multiline)
             .Select(match => match.Groups[1].Value);
+
+    /// <summary>The interfaces a class declares itself: not those it gets from its base class or from its other interfaces.</summary>
+    private static IEnumerable<Type> DirectInterfaces(Type type)
+    {
+        var all = type.GetInterfaces();
+        var inherited = all.SelectMany(contract => contract.GetInterfaces())
+            .Concat(type.BaseType?.GetInterfaces() ?? [])
+            .ToHashSet();
+        return all.Where(contract => !inherited.Contains(contract));
+    }
 
     private static string ParentPath(string path) => path.Contains('.') ? path[..path.LastIndexOf('.')] : string.Empty;
 

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Repositories.Base;
 
-namespace TaskFlow.Api.Common;
+namespace TaskFlow.Api.Repositories.Base;
 
 /// <summary>The shared part of every entity repository. Module repositories derive from it and add queries named for what
 /// they find; they use <see cref="Set"/> and <see cref="Db"/> internally and never hand a query to their caller.</summary>

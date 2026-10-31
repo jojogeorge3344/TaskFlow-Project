@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Project, ProjectMember, ProjectTask, ProjectTaskFilter } from '../models/project.model';
-import { TASK_PRIORITIES, TASK_STATUSES, TaskPriority, TaskStatus } from '../../../monitoring/task-management/models/task.model';
+import { TASK_PRIORITIES, TASK_STATUSES, TaskStatus } from '../../../monitoring/task-management/models/task.model';
 import { ProjectService } from '../services/project.service';
 import { apiErrorMessage } from '../../../../shared/utils/api-error';
 import { Filters } from './project-detail.model';
