@@ -161,10 +161,11 @@ function importsOf(file) {
   return targets;
 }
 
-// A route's lazily loaded component is a routed screen and belongs in a pages/ folder (the shell is a layout).
+// A component a route file loads is a routed screen and belongs in a pages/ folder (the shell is a layout). Every
+// component import counts, inline or through a variable such as `const legalPage = () => import(...)`.
 for (const [file, source] of codeFiles) {
   if (!file.endsWith('.routes.ts')) continue;
-  for (const match of source.matchAll(/loadComponent\s*:\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+  for (const match of source.matchAll(/(?:import\(\s*|from\s*)['"](\.{1,2}\/[^'"]+\.component)['"]/g)) {
     const target = `${path.resolve(path.dirname(file), match[1])}.ts`;
     if (!/(^|\/)pages\//.test(rel(target)) && !rel(target).startsWith('layouts/')) {
       fail(target, `is routed from ${rel(file)} but is not in a pages/ folder`);
