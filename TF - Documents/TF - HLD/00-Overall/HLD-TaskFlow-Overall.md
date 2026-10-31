@@ -5,7 +5,7 @@
 > **Document:** High-Level Design – Overall (all modules, incl. Authentication and Legal)  ·  **Version:** 1.0  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** BRD-TaskFlow-Overall v1.0, FRD-TaskFlow-Overall v1.0, TDD v2.0, code fact sheet
+> **Based on:** BRD-TaskFlow-Overall v1.0, FRD-TaskFlow-Overall v1.0, TDD v2.0, the TaskFlow source code (backend, frontend and tests)
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -145,7 +145,7 @@ its code. The only outbound connections are to the AI provider an administrator 
 - Must work without the internet (only cloud AI providers need it).
 - Every employee email uses the fixed `@taskflow.com` domain (BR-24).
 - No message broker, cache server or external identity provider is installed; everything runs in-process.
-- Only packages listed in the fact sheet may be relied on (no Serilog, Playwright, AutoMapper, Bootstrap, SMTP client).
+- Only packages referenced in the project files (`*.csproj`, `package.json`) may be relied on (no Serilog, Playwright, AutoMapper, Bootstrap, SMTP client).
 
 ### 3.3 Architecture Principles
 - **Clean layering:** Controller → Service → Repository → EF Core, always through interfaces; services commit through `IUnitOfWork`; controllers are HTTP-only.
@@ -568,7 +568,7 @@ permission policies (BR-27). Detail: [HLD-Assistant](../08-TFA-Assistant/08.1-As
 
 ## 10. Technology Stack
 
-Versions are taken from the code fact sheet (`*.csproj`, `package.json`).
+Versions are taken from the project files (`*.csproj`, `package.json`).
 
 | Area | Technology | Version | Reason |
 |---|---|---|---|
@@ -589,8 +589,8 @@ Versions are taken from the code fact sheet (`*.csproj`, `package.json`).
 | Reactive / runtime | `rxjs`, `zone.js`, `tslib` | ~7.8.0, ~0.15.0, ^2.3.0 | HTTP and state streams |
 | Language | TypeScript | ~5.7.2 | Typed frontend |
 | Build | `@angular/cli`, `@angular-devkit/build-angular`, `@angular/compiler-cli` | ^19.2.27, ^19.2.27, ^19.2.0 | Build and dev server (`ng serve`) |
-| Frontend tests | `jasmine-core`, `karma` (+ chrome launcher, coverage, jasmine, html reporter), `@types/jasmine` | ~5.6.0, ~6.4.0, ~5.1.0 | Unit tests; `npm test` runs `check:structure` first |
-| Backend tests | xUnit: `TaskFlow.UnitTests` (100 files), `TaskFlow.IntegrationTests` (50 files) | – | Unit, integration (`WebApplicationFactory`) and architecture tests |
+| Frontend tests | `jasmine-core`, `karma` (+ chrome launcher, coverage, jasmine, html reporter), `@types/jasmine` | ~5.6.0, ~6.4.0, ~5.1.0 | Unit tests (97 `*.spec.ts` files, 1,099 specs); `npm test` runs `check:structure` first |
+| Backend tests | xUnit: `TaskFlow.UnitTests` (101 files, 1,042 tests, with `NetArchTest.Rules`), `TaskFlow.IntegrationTests` (50 files, 467 tests, with `Microsoft.AspNetCore.Mvc.Testing`) | xUnit 2.9.3, NetArchTest.Rules 1.3.2, Mvc.Testing 10.0.12 | Unit, integration (`WebApplicationFactory`) and architecture tests |
 | Styling | Custom CSS design tokens and `.tf-*` primitives | – | Responsive layout without a CSS framework |
 | Runtime tools | .NET 10 SDK, Node.js 22 LTS (recommended); optional Ollama | – | Build and run |
 
@@ -624,8 +624,14 @@ flowchart LR
 | Start-up | Resolve data folder → key-ring protection check (Windows) → apply migrations → `SettingsInitializer`, `AccessControlSeeder`, `AiProviderSeeder`, `DatabaseSeeder` → pipeline → scheduler |
 | Configuration | `appsettings.json` → environment files → user-secrets (Development) → environment variables (`Section__Key`); runtime settings in the `ApplicationSettings` table |
 
-> ⚠️ To be confirmed: `proxy.conf.json`, `launchSettings.json` and the environment-specific `appsettings` files are not in
-> the code snapshot; the ports are taken from the README and TDD. No production hosting target is documented.
+`proxy.conf.json` forwards `/api` to `https://localhost:7055`. `launchSettings.json` runs the API on
+`https://localhost:7055` and `http://localhost:5110` in `Development`, with the SPA proxy on the `https` profile.
+`appsettings.Development.json` sets only log levels. `appsettings.Environment.json` holds the active Local values
+(`Cors:AllowedOrigins` and `Mail:AppBaseUrl` = `http://localhost:4200`, `Seed:Enabled` = `false`) and commented-out
+values for the other environments. The develop target is on Render (`config/api-base-url.ts`,
+`appsettings.Environment.json`); QA and production use `example.com` placeholders.
+
+> ⚠️ To be confirmed: the production hosting target (QA and production URLs are placeholders).
 
 ---
 
@@ -689,7 +695,7 @@ flowchart LR
 | Assumption | A-01 | One organisation, one API instance, one application timezone | Section 3.2 |
 | Assumption | A-02 | Users have an authenticator app on a phone | BR-03 |
 | Open issue | O-01 | No security headers (HSTS, CSP, X-Frame-Options, Referrer-Policy) set by the API | ⚠️ To be confirmed: reverse proxy responsibility |
-| Open issue | O-02 | Production hosting of the built SPA and the environment `appsettings` files are not in the snapshot | ⚠️ To be confirmed |
+| Open issue | O-02 | Production hosting of the built SPA is not set: QA and production URLs in `config/api-base-url.ts` and `appsettings.Environment.json` are `example.com` placeholders | ⚠️ To be confirmed |
 | Open issue | O-03 | Login form asks for an email format although the server accepts a username; code box takes 6 characters while backup codes are `XXXXX-XXXXX` | ⚠️ To be confirmed (overall BRD SCREEN 1) |
 | Open issue | O-04 | An unknown `/legal/...` address is caught by the catch-all route and opens Login, so "Legal document not found" may not be reached | ⚠️ To be confirmed (FR-LEGAL-07) |
 | Open issue | O-05 | Mail UI does not check `mail.attachments` / `mail.organize`; TFA card does not check `assistant.actions.confirm` (server still refuses) | See HLD-Mail, HLD-Assistant |

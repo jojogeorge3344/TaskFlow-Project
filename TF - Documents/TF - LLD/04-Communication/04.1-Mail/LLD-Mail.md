@@ -908,7 +908,7 @@ Read-only use of shared tables: `Users` (`FullName`, `Email`, `IsActive`, `IsDel
 
 ## 9. Testing Design
 
-Test sources were not available; only file names (`tests-filelist.json`). Coverage below is inferred from the names.
+Coverage below was checked against the test sources (backend test methods and frontend `describe` / `it` names).
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
@@ -921,9 +921,14 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 | Endpoints | `TaskFlow.IntegrationTests/Communication/Mail/MailEndpointsTests.cs` | Integration | 16 endpoints, `mail.*` policies, 404 for foreign items, download headers |
 | Cross-module | `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskWorkedHoursNotificationTests.cs` | Unit | Comment and worked-hours mails |
 | Cross-cutting | `ArchitectureTests.cs`, `GlobalExceptionHandlerTests.cs`, `PermissionAuthorizationTests.cs` | Unit / Integration | Layer rules, 400 / 409 mapping, policies |
-| Frontend | – (no spec files in the fact sheet) | Manual UI check | Screen behaviour, narrow layout, linkify |
-
-> ⚠️ To be confirmed: the per-test mapping above (and in §11) is inferred from file names; confirm against the test sources.
+| Mail page | `frontend/src/app/modules/communication/mail/pages/mail.component.spec.ts` | Frontend unit | Folder unread and draft counts, folder and opened mail from the URL, reader for a mail and composer for a draft, reload after send, one pane at a time on narrow screens, all panes on wide screens |
+| Mail list | `frontend/src/app/modules/communication/mail/components/mail-list.component.spec.ts` | Frontend unit | Unread rows in bold, Sent shows recipients, "TaskFlow" for system mail, reload on folder change, open marks read, star without opening, search after a pause, empty state |
+| Mail reader | `frontend/src/app/modules/communication/mail/components/mail-reader.component.spec.ts` | Frontend unit | Conversation and badge refresh, clickable links (in-app or new tab), no HTML from a body, Reply / Reply all / Forward, system mail (no Reply, Forward and task link kept), star and important, Trash, Restore and Delete forever in Trash, mark unread, attachment download |
+| Compose panel | `frontend/src/app/modules/communication/mail/components/compose-dialog.component.spec.ts` | Frontend unit | Send to TaskFlow users, non-user blocks Send, recipient and content required, Reply all prefill and title, forwarded files, draft save / continue / discard, size and blocked-type check before upload, upload and remove, server field errors, typed address on Send and on draft save |
+| Recipient picker | `frontend/src/app/modules/communication/mail/components/recipient-picker.component.spec.ts` | Frontend unit | Suggestions while typing, typed TaskFlow address accepted, non-user flagged, outside chips checked once, chip removal (button, Backspace), typed text committed as a chip |
+| Mail API client | `frontend/src/app/modules/communication/mail/services/mail.service.spec.ts` | Frontend unit | Folder list with search and paging, unread badge count (failures ignored), item actions, send with badge refresh, drafts and compose prefill, multipart upload and blob download, contacts search |
+| Linkify | `frontend/src/app/modules/communication/mail/utils/linkify.spec.ts` | Frontend unit | Only http(s) addresses become links, closing punctuation left out, several links, other schemes not linked, `sameOriginPath` |
+| Menu badge | `frontend/src/app/layouts/shell.component.spec.ts` | Frontend unit | Mail entry with its unread badge, badge hidden when nothing is unread, count refreshed on the interval |
 
 ---
 
@@ -961,33 +966,33 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 | FR-MAIL-01 | `COMMUNICATION_ROUTES` `mail` + `permissionGuard` (`mail.read`); server `GET /api/v1/mail` policy | `MailEndpointsTests`; Manual UI check |
 | FR-MAIL-02, FR-MAIL-05 | `GET /api/v1/mail` · `MailService.ListAsync` · `MailRepository.InView` / `ListAsync`; `MAIL_FOLDERS` | `MailboxTests` |
 | FR-MAIL-03 | `GET /api/v1/mail/summary` · `MailService.GetSummaryAsync` · `CountAsync` | `MailboxTests` |
-| FR-MAIL-04 | `GET /api/v1/mail/unread-count` · `GetUnreadCountAsync`; `shell.component.ts` `refreshBadges()` | `MailEndpointsTests`; Manual UI check |
-| FR-MAIL-06 | `MailListItemDto` · `MailRepository.ListAsync` (`Preview`, `HasAttachments`, system sender) · `MailListComponent` | `MailboxTests` |
+| FR-MAIL-04 | `GET /api/v1/mail/unread-count` · `GetUnreadCountAsync`; `shell.component.ts` `refreshBadges()` | `MailEndpointsTests`; `shell.component.spec.ts`, `mail.service.spec.ts` |
+| FR-MAIL-06 | `MailListItemDto` · `MailRepository.ListAsync` (`Preview`, `HasAttachments`, system sender) · `MailListComponent` | `MailboxTests`; `mail-list.component.spec.ts` |
 | FR-MAIL-07 | `GET /api/v1/mail` `search` · escaped `LIKE` in `MailRepository.ListAsync` | `MailboxTests` |
-| FR-MAIL-08 | `MailListComponent` / `MailReaderComponent` empty states | Manual UI check |
+| FR-MAIL-08 | `MailListComponent` / `MailReaderComponent` empty states | `mail-list.component.spec.ts` (list empty state); reader empty state: Manual UI check |
 | FR-MAIL-09 | `GET /api/v1/mail/items/{itemId}` · `BuildDetailAsync` · `GetConversationMessageIdsAsync` | `MailDraftAndThreadTests` |
 | FR-MAIL-10 | `MailService.OpenAsync` (`IsRead = true`) | `MailboxTests` |
-| FR-MAIL-11 | `linkify.ts` `linkify()` in `MailReaderComponent` | Manual UI check |
-| FR-MAIL-12 | `MailMessageDto.TaskId` · `MailReaderComponent` "Open the task" | Manual UI check |
+| FR-MAIL-11 | `linkify.ts` `linkify()` in `MailReaderComponent` | `linkify.spec.ts`, `mail-reader.component.spec.ts` |
+| FR-MAIL-12 | `MailMessageDto.TaskId` · `MailReaderComponent` "Open the task" | `mail-reader.component.spec.ts` |
 | FR-MAIL-13, FR-MAIL-14, FR-MAIL-15 | `PATCH /api/v1/mail/items/{itemId}` · `UpdateFlagsAsync` · `UpdateMailFlagsRequest` | `MailboxTests` |
 | FR-MAIL-16 | `POST /api/v1/mail/items/{itemId}/trash` · `TrashAsync` | `MailboxTests` |
 | FR-MAIL-17 | `POST /api/v1/mail/items/{itemId}/restore` · `RestoreAsync` | `MailboxTests` |
 | FR-MAIL-18 | `DELETE /api/v1/mail/items/{itemId}` · `DeleteForeverAsync` · `ConflictException` | `MailboxTests` |
 | FR-MAIL-19 | Per-owner `MailboxItem` rows · `GetItemForUpdateAsync` | `MailboxTests` |
 | FR-MAIL-20 | `MailRepository.Mine` · null → 404 in `MailController` | `MailboxTests`, `MailEndpointsTests` |
-| FR-MAIL-21 | `LoadParentAsync` / `GetComposeAsync` system check · `MailReaderComponent` hides Reply | `MailDraftAndThreadTests` |
-| FR-MAIL-22 | `MailReaderComponent.canReply()` (`!isSystem && !isTrashed`); Forward also hidden for trashed items | Manual UI check |
-| FR-MAIL-23 | `MailRepository.LoadPeopleAsync` (`IgnoreQueryFilters`, "Unknown user") | `MailboxTests` |
-| FR-MAIL-24 | `MailComponent` (`MAIL_NARROW_QUERY`, folder button) | Manual UI check |
+| FR-MAIL-21 | `LoadParentAsync` / `GetComposeAsync` system check · `MailReaderComponent` hides Reply | `MailDraftAndThreadTests`; `mail-reader.component.spec.ts` |
+| FR-MAIL-22 | `MailReaderComponent.canReply()` (`!isSystem && !isTrashed`); Forward also hidden for trashed items | `mail-reader.component.spec.ts` (no Reply in Trash) |
+| FR-MAIL-23 | `MailRepository.LoadPeopleAsync` (`IgnoreQueryFilters`, "Unknown user") | No automated test found |
+| FR-MAIL-24 | `MailComponent` (`MAIL_NARROW_QUERY`, folder button) | `mail.component.spec.ts` |
 | FR-MAIL-25 | `TaskCommentService.AddInboxMail` · `MailEnabledAsync` · `DiscardStagedMail` | `TaskCommentActivityNotificationTests` |
-| FR-MAIL-26 | `TaskService` reassign → `IMailService.SendAsync` | `TaskServiceTests` (inferred from the name; no dedicated reassignment-mail test file) |
+| FR-MAIL-26 | `TaskService` reassign → `IMailService.SendAsync` | `TaskServiceTests` (`ReassignAsync_NotifiesAndMailsNewAssigneePreviousAssigneeAndRecipients`) |
 | FR-MAIL-27 | `TaskService` worked hours → `IMailService.SendAsync` | `TaskWorkedHoursNotificationTests` |
 | FR-MAIL-28 | `GET /api/v1/mail/attachments/{attachmentId}` · `MailAttachmentService.OpenAsync` · `GetDownloadableAsync` | `MailAttachmentTests` |
 | FR-MAIL-29 | `MailController.Download` (`File(...)`, `nosniff`) · `SafeTypes` | `MailEndpointsTests` |
 | FR-MAIL-30 | `MailComponent` / `MailReaderComponent` error messages on 403 / 404 | Manual UI check |
-| FR-MAIL-31, FR-MAIL-32 | `canCompose()` · `ComposeDialogComponent` titles (`ComposeRequest`) | `MailEndpointsTests` (policy); Manual UI check |
-| FR-MAIL-33 | `GET /api/v1/mail/contacts` · `GetContactsAsync` · `SearchContactsAsync` (10) · `RecipientPickerComponent` | `MailSendTests` |
-| FR-MAIL-34, FR-MAIL-35 | `RecipientPickerComponent` check · `ResolveRecipientsAsync` (`GetActiveUserIdsByEmailAsync`) | `MailSendTests` |
+| FR-MAIL-31, FR-MAIL-32 | `canCompose()` · `ComposeDialogComponent` titles (`ComposeRequest`) | `MailEndpointsTests` (policy); `compose-dialog.component.spec.ts` |
+| FR-MAIL-33 | `GET /api/v1/mail/contacts` · `GetContactsAsync` · `SearchContactsAsync` (10) · `RecipientPickerComponent` | `MailboxTests` (`Contacts_lists_up_to_ten_active_users_matching_the_search`), `MailEndpointsTests`; `recipient-picker.component.spec.ts` |
+| FR-MAIL-34, FR-MAIL-35 | `RecipientPickerComponent` check · `ResolveRecipientsAsync` (`GetActiveUserIdsByEmailAsync`) | `MailSendTests`; `recipient-picker.component.spec.ts`, `compose-dialog.component.spec.ts` |
 | FR-MAIL-36, FR-MAIL-37 | `SendMailRequestValidator` (`InclusiveBetween`, `BeAnAddress`) · `ResolveRecipientsAsync` | `MailSendTests` |
 | FR-MAIL-38 | `ResolveRecipientsAsync` (Cc minus To) · unique `IX_MailRecipients_MessageId_UserId` | `MailSendTests` |
 | FR-MAIL-39, FR-MAIL-40 | `SendMailRequestValidator` · `SendAsync` empty check | `MailSendTests` |
@@ -996,13 +1001,13 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 | FR-MAIL-45 | `SendAsync` (`ConversationId`, `ParentMessageId`) | `MailDraftAndThreadTests` |
 | FR-MAIL-47 | `POST /api/v1/mail/drafts` · `CreateDraftAsync` · `ApplyDraftFields` | `MailDraftAndThreadTests` |
 | FR-MAIL-48 | `PUT /api/v1/mail/drafts/{messageId}` · `UpdateDraftAsync`; `SendAsync` with `DraftId` | `MailDraftAndThreadTests` |
-| FR-MAIL-49 | `ComposeDialogComponent` Discard → `DELETE /api/v1/mail/items/{itemId}` and `DELETE /api/v1/mail/attachments/{attachmentId}` | `MailAttachmentTests`; Manual UI check |
+| FR-MAIL-49 | `ComposeDialogComponent` Discard → `DELETE /api/v1/mail/items/{itemId}` and `DELETE /api/v1/mail/attachments/{attachmentId}` | `MailAttachmentTests`; `compose-dialog.component.spec.ts` |
 | FR-MAIL-50, FR-MAIL-51 | `POST /api/v1/mail/attachments` · `UploadAsync` · `LocalMailFileStore.SaveAsync` · `PlanAttachmentsAsync` | `MailAttachmentTests` |
-| FR-MAIL-52 | `MailRules.BlockedExtensions` · `UploadAsync` · `MAIL_LIMITS.blockedExtensions` | `MailAttachmentTests` |
+| FR-MAIL-52 | `MailRules.BlockedExtensions` · `UploadAsync` · `MAIL_LIMITS.blockedExtensions` | `MailAttachmentTests`; `compose-dialog.component.spec.ts` |
 | FR-MAIL-53 | `GetPendingUploadsAsync` · `UploadAsync` | `MailAttachmentTests` |
 | FR-MAIL-54 | `DELETE /api/v1/mail/attachments/{attachmentId}` · `DeleteAsync` | `MailAttachmentTests` |
 | FR-MAIL-55 | `GetOwnAvailableForUpdateAsync` · `PlanAttachmentsAsync` | `MailAttachmentTests` |
-| FR-MAIL-56 | `GlobalExceptionHandler` `errors` keys · `ComposeField` mapping in `ComposeDialogComponent` | `GlobalExceptionHandlerTests`; Manual UI check |
+| FR-MAIL-56 | `GlobalExceptionHandler` `errors` keys · `ComposeField` mapping in `ComposeDialogComponent` | `GlobalExceptionHandlerTests`; `compose-dialog.component.spec.ts` |
 
 FR coverage: 56 of 56 FR-MAIL requirements traced; endpoints documented: 16 of 16.
 

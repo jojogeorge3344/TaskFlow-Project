@@ -730,35 +730,35 @@ TFA sends no in-app notification of its own; a confirmed mail is delivered throu
 
 ## 11. Requirements Traceability Matrix
 
-Test cases are the automated test files whose names match the behaviour; coverage is inferred from the file names only.
+Test cases are the automated test suites (backend test classes and frontend `*.spec.ts` files) that cover the behaviour; the mapping was checked against the test sources.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-TFA-01 | FR-TFA-01, FR-TFA-02, FR-TFA-04, FR-TFA-23 | TFA Panel | UC-TFA-01 | `AssistantEndpointsTests` |
+| REQ-TFA-01 | FR-TFA-01, FR-TFA-02, FR-TFA-04, FR-TFA-23 | TFA Panel | UC-TFA-01 | `AssistantEndpointsTests`, `AssistantToolGateTests`, `tfa-panel.component.spec.ts` |
 | REQ-TFA-02 | FR-TFA-03 | TFA Panel | UC-TFA-01 | `AssistantEndpointsTests` |
 | REQ-TFA-03 | FR-TFA-06 | TFA Panel | UC-TFA-01 | `AssistantEndpointsTests` |
-| REQ-TFA-04 | FR-TFA-05, FR-TFA-07 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
+| REQ-TFA-04 | FR-TFA-05, FR-TFA-07 | TFA Panel | UC-TFA-01 | `AssistantServiceTests`, `tfa-panel.component.spec.ts` |
 | REQ-TFA-05 | FR-TFA-08 | TFA Panel | UC-TFA-01 | `SecretScreenTests` |
 | REQ-TFA-06 | FR-TFA-09 | TFA Panel | UC-TFA-01 | `AssistantReadToolsTests` |
 | REQ-TFA-07 | FR-TFA-10 | TFA Panel | UC-TFA-02 | `TaskPrioritiserTests` |
 | REQ-TFA-08 | FR-TFA-11 | TFA Panel | UC-TFA-02 | `TaskPrioritiserTests`, `AssistantReadToolsTests` |
-| REQ-TFA-09 | FR-TFA-12, FR-TFA-13, FR-TFA-14 | TFA Panel | UC-TFA-01 | `ChatModelGatewayTests` |
-| REQ-TFA-10 | FR-TFA-15 | TFA Panel | UC-TFA-01 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-11 | FR-TFA-16 | TFA Panel | UC-TFA-01 | `ProviderFailureHandlingTests` |
-| REQ-TFA-12 | FR-TFA-04, FR-TFA-17 | TFA Panel | UC-TFA-03 | `AssistantEndpointsTests` |
+| REQ-TFA-09 | FR-TFA-12, FR-TFA-13, FR-TFA-14 | TFA Panel | UC-TFA-01 | `ChatModelGatewayTests`, `AssistantServiceTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| REQ-TFA-10 | FR-TFA-15 | TFA Panel | UC-TFA-01 | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| REQ-TFA-11 | FR-TFA-16 | TFA Panel | UC-TFA-01 | `ProviderFailureHandlingTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| REQ-TFA-12 | FR-TFA-04, FR-TFA-17 | TFA Panel | UC-TFA-03 | `AssistantEndpointsTests`, `tfa-panel.component.spec.ts` |
 | REQ-TFA-13 | FR-TFA-18 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
 | REQ-TFA-14 | FR-TFA-19 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
 | REQ-TFA-15 | FR-TFA-20 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
-| REQ-TFA-16 | FR-TFA-21 | TFA Panel | UC-TFA-01 | ⚠️ To be confirmed (no frontend spec) |
+| REQ-TFA-16 | FR-TFA-21 | TFA Panel | UC-TFA-01 | `assistant.service.spec.ts` |
 | REQ-TFA-17 | FR-TFA-22 | TFA Panel | UC-TFA-01, UC-TFA-02 | `AssistantReadToolsTests` |
 | REQ-TFA-18 | FR-TFA-25 | How-to Help | UC-TFA-04 | `HelpKnowledgeBaseTests` |
 | REQ-TFA-19 | FR-TFA-26 | How-to Help | UC-TFA-04 | `HelpKnowledgeBaseTests` |
 | REQ-TFA-20 | FR-TFA-27 | How-to Help | UC-TFA-04 | `HelpKnowledgeBaseTests` |
 | REQ-TFA-21 | FR-TFA-28 | How-to Help | UC-TFA-04 | `HelpKnowledgeBaseTests` |
-| REQ-TFA-22 | FR-TFA-24, FR-TFA-29, FR-TFA-33 | Action Card | UC-TFA-05 – UC-TFA-07 | `AssistantActionServiceTests` |
+| REQ-TFA-22 | FR-TFA-24, FR-TFA-29, FR-TFA-33 | Action Card | UC-TFA-05 – UC-TFA-07 | `AssistantActionServiceTests`, `tfa-panel.component.spec.ts` (footer: no automated test) |
 | REQ-TFA-23 | FR-TFA-23, FR-TFA-30 | Action Card | UC-TFA-05 – UC-TFA-07 | `AssistantToolGateTests`, `AssistantActionServiceTests` |
 | REQ-TFA-24 | FR-TFA-31 | Action Card | UC-TFA-05 | `AssistantActionServiceTests` |
-| REQ-TFA-25 | FR-TFA-32 | Action Card | UC-TFA-05 | `AssistantActionConcurrencyTests` |
+| REQ-TFA-25 | FR-TFA-32 | Action Card | UC-TFA-05 | `AssistantActionConcurrencyTests`, `AssistantActionServiceTests`, `tfa-panel.component.spec.ts` |
 | REQ-TFA-26 | FR-TFA-34, FR-TFA-36 | Action Card | UC-TFA-05 | `AssistantActionToolsTests` |
 | REQ-TFA-27 | FR-TFA-35 | Action Card | UC-TFA-05 | `AssistantActionToolsTests` |
 | REQ-TFA-28 | FR-TFA-37, FR-TFA-38 | Action Card | UC-TFA-05 | `AssistantActionServiceTests` |
@@ -768,17 +768,17 @@ Test cases are the automated test files whose names match the behaviour; coverag
 | REQ-TFA-32 | FR-TFA-42 | Action Card | UC-TFA-05 | `AssistantReadToolsTests` |
 | REQ-TFA-33 | FR-TFA-43 | Action Card | – | `AssistantReadToolsTests` |
 | REQ-TFA-34 | FR-TFA-44 | Action Card | – | `AssistantReadToolsTests` |
-| REQ-TFA-35 | FR-TFA-45, FR-TFA-46 | Action Card | UC-TFA-05, UC-TFA-06 | `AssistantActionServiceTests` |
-| REQ-TFA-36 | FR-TFA-47 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-37 | FR-TFA-48 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-38 | FR-TFA-49 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-39 | FR-TFA-50 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-40 | FR-TFA-51 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-41 | FR-TFA-52 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-TFA-42 | FR-TFA-53 | Background Safeguards | UC-TFA-09 | ⚠️ To be confirmed (no dedicated test file name) |
-| REQ-TFA-43 | FR-TFA-54 | Background Safeguards | UC-TFA-05 – UC-TFA-07 | ⚠️ To be confirmed (no dedicated test file name) |
-| REQ-TFA-44 | FR-TFA-55 | Background Safeguards | – | ⚠️ To be confirmed (no dedicated test file name) |
-| REQ-TFA-45 | FR-TFA-56 | Background Safeguards | UC-TFA-07 | ⚠️ To be confirmed (no dedicated test file name) |
+| REQ-TFA-35 | FR-TFA-45, FR-TFA-46 | Action Card | UC-TFA-05, UC-TFA-06 | `AssistantActionServiceTests` (FR-TFA-46 network-failure texts: no automated test) |
+| REQ-TFA-36 | FR-TFA-47 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts`, `speak.service.spec.ts` |
+| REQ-TFA-37 | FR-TFA-48 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| REQ-TFA-38 | FR-TFA-49 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| REQ-TFA-39 | FR-TFA-50 | Voice Controls | UC-TFA-08 | `tfa-panel.component.spec.ts`, `speak.service.spec.ts` |
+| REQ-TFA-40 | FR-TFA-51 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| REQ-TFA-41 | FR-TFA-52 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| REQ-TFA-42 | FR-TFA-53 | Background Safeguards | UC-TFA-09 | `ProviderFailureHandlingTests`, `AssistantServiceTests`, `AssistantEndpointsTests` |
+| REQ-TFA-43 | FR-TFA-54 | Background Safeguards | UC-TFA-05 – UC-TFA-07 | `AssistantActionServiceTests` |
+| REQ-TFA-44 | FR-TFA-55 | Background Safeguards | – | `AssistantActionServiceTests` |
+| REQ-TFA-45 | FR-TFA-56 | Background Safeguards | UC-TFA-07 | `AssistantToolGateTests`, `AssistantActionServiceTests` |
 | BR-TFA-01 | FR-TFA-01, FR-TFA-23, FR-TFA-30 | TFA Panel, Action Card | UC-TFA-07 | `AssistantToolGateTests` |
 | BR-TFA-02 | FR-TFA-20, FR-TFA-24, FR-TFA-29 | Action Card | UC-TFA-05 | `AssistantActionServiceTests` |
 | BR-TFA-03 | FR-TFA-08 | TFA Panel | UC-TFA-01 | `SecretScreenTests` |
@@ -790,9 +790,9 @@ Test cases are the automated test files whose names match the behaviour; coverag
 | BR-TFA-09 | FR-TFA-34, FR-TFA-39 | Action Card | UC-TFA-05, UC-TFA-06 | `AssistantActionToolsTests` |
 | BR-TFA-10 | FR-TFA-40, FR-TFA-43 | Action Card | UC-TFA-07 | `AssistantActionToolsTests` |
 | BR-TFA-11 | FR-TFA-12, FR-TFA-13, FR-TFA-15 | TFA Panel | UC-TFA-01 | `ChatModelGatewayTests` |
-| BR-TFA-12 | FR-TFA-53 | Background Safeguards | UC-TFA-09 | ⚠️ To be confirmed |
-| BR-TFA-13 | FR-TFA-54, FR-TFA-55 | Background Safeguards | – | ⚠️ To be confirmed |
-| BR-TFA-14 | FR-TFA-52 | Voice Controls | UC-TFA-08 | ⚠️ To be confirmed |
+| BR-TFA-12 | FR-TFA-53 | Background Safeguards | UC-TFA-09 | `ProviderFailureHandlingTests`, `AssistantServiceTests`, `AssistantEndpointsTests` |
+| BR-TFA-13 | FR-TFA-54, FR-TFA-55 | Background Safeguards | – | `AssistantActionServiceTests` |
+| BR-TFA-14 | FR-TFA-52 | Voice Controls | UC-TFA-08 | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
 
 **Untraced BRD items:** 0 (45 of 45 `REQ-TFA-nn`, 14 of 14 `BR-TFA-nn`).
 

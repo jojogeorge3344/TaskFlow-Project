@@ -14,7 +14,7 @@
 
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
-| 1.0 | 31-Oct-2026 | Jojo George | Initial version: Overview (route selection, counter endpoints) and Analytics (Administrator, Manager, Employee analytics, filters, drill-down rules), derived from the code and verified against the code fact sheet |
+| 1.0 | 31-Oct-2026 | Jojo George | Initial version: Overview (route selection, counter endpoints) and Analytics (Administrator, Manager, Employee analytics, filters, drill-down rules), derived from and verified against the TaskFlow source code (backend, frontend and tests) |
 
 **Related documents:** BRD – Dashboard (`../../../BRD/01-Dashboard/01.1-Dashboard/BRD-Dashboard.md`) · FRD – Dashboard
 (`../../../FRD/01-Dashboard/01.1-Dashboard/FRD-Dashboard.md`) · HLD – Dashboard
@@ -788,7 +788,8 @@ Code constants (not configurable): `AnalyticsFilterResolver.DefaultRangeDays` 30
 
 ## 9. Testing Design
 
-Paths relative to `backend/tests`. Only file names are available; "Covers" is inferred from the names.
+Backend paths relative to `backend/tests`, frontend paths to `frontend/src/app/`. "Covers" was checked against the test
+sources.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
@@ -803,7 +804,18 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 | Support | `TaskFlow.UnitTests/TestSupport/AnalyticsHarness.cs` | Support | Shared harness |
 | Endpoints | `TaskFlow.IntegrationTests/Dashboard/Analytics/AdminAnalyticsEndpointsTests.cs`, `ManagerAnalyticsEndpointsTests.cs`, `EmployeeAnalyticsEndpointsTests.cs` | Integration | Endpoints, policies, validation responses |
 | Isolation | `TaskFlow.IntegrationTests/Dashboard/Analytics/ManagerAnalyticsIsolationTests.cs`, `EmployeeAnalyticsIsolationTests.cs` | Integration | Team and own-data isolation |
-| Frontend | – | – | No frontend spec file is in the snapshot |
+| Admin dashboard page | `modules/dashboard/pages/admin-dashboard.component.spec.ts` | Frontend unit | Load and greeting, summary cards, every section, filter change and reset, loading, empty and error-with-retry states, drill-down to the Task List with the dashboard filters |
+| Manager dashboard page | `modules/dashboard/pages/manager-dashboard.component.spec.ts` | Frontend unit | Team summary cards, manager sections without a department view, in-scope filter options, loading, empty and error states, empty-team message, Administrator note with a link to their own dashboard, drill-down, delayed-task link |
+| Employee dashboard page | `modules/dashboard/pages/employee-dashboard.component.spec.ts` | Frontend unit | Period selector only, summary, deadlines (soonest first, Overdue in text, task link), trend, own projects, department aggregates and small-department rule, empty, loading and error states, drill-down |
+| Filter bar | `modules/dashboard/components/dashboard-filter-bar.component.spec.ts` | Frontend unit | Presets, custom range, basis and entity filters, end-before-start message, reset, selectors hidden per role |
+| Shared charts | `modules/dashboard/components/charts/charts.spec.ts` | Frontend unit | KPI card, stacked bar, donut, line and progress list: values in text, empty and loading states, clicks (not on zero segments), tooltip text |
+| Admin analytics sections | `modules/dashboard/analytics/components/analytics-sections.spec.ts` | Frontend unit | Department, task, employee (top 10 / view all), manager and project sections: counts, empty and loading states, drill-down clicks, weekly trend point |
+| Manager team sections | `modules/dashboard/analytics/components/team-sections.spec.ts` | Frontend unit | Team employees (High workload and Overdue in text), team tasks, attention lists linking to tasks, empty and loading states |
+| Admin analytics service | `modules/dashboard/analytics/services/dashboard-analytics.service.spec.ts` | Frontend unit | Options then default last-30-days load, kept filters, all employees, sign-out reset, entity filters, invalid range not sent, newest response wins, retry, reset |
+| Manager analytics service | `modules/dashboard/analytics/services/manager-analytics.service.spec.ts` | Frontend unit | Scoped options, no department or manager parameter, invalid range, retry, sign-out, late responses, reset |
+| Employee analytics service | `modules/dashboard/analytics/services/employee-analytics.service.spec.ts` | Frontend unit | Period only, reload per period, newest response wins, retry, sign-out |
+| Overview service | `modules/dashboard/services/dashboard.service.spec.ts` | Frontend unit | Employee stats endpoint and error propagation |
+| Dashboard routes | `routes/app.routes.spec.ts`, `shared/auth/role-routes.spec.ts` | Frontend unit | `permissionGuard` on `/admin` and `/manager`, `/me` open to every signed-in user; dashboard route per role |
 
 ---
 
@@ -835,12 +847,12 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
-| FR-DASH-01, FR-DASH-02 | `dashboardRouteFor`, `ROLE_ROUTES` (`shared/auth/role-routes.ts`); `nav-items.ts` | Manual UI check (AC-DASH-01) |
-| FR-DASH-03, FR-DASH-04 | `DASHBOARD_ROUTES` + `permissionGuard` (`/admin`, `/manager`) | `AnalyticsScopeTests`; manual UI check |
+| FR-DASH-01, FR-DASH-02 | `dashboardRouteFor`, `ROLE_ROUTES` (`shared/auth/role-routes.ts`); `nav-items.ts` | `role-routes.spec.ts` (AC-DASH-01) |
+| FR-DASH-03, FR-DASH-04 | `DASHBOARD_ROUTES` + `permissionGuard` (`/admin`, `/manager`) | `AnalyticsScopeTests`; `app.routes.spec.ts` |
 | FR-DASH-05 | `DASHBOARD_ROUTES` `me` (no guard) · `GET /api/v1/dashboard/employee/analytics` | `EmployeeAnalyticsEndpointsTests` |
 | FR-DASH-06 | `RequirePermission(dashboard.view.organization / dashboard.view.team)` on endpoints 1, 2, 4 – 7 | `AdminAnalyticsEndpointsTests`, `ManagerAnalyticsEndpointsTests`, `DashboardEndpointsTests` |
 | FR-DASH-07 | `perm:dashboard.analytics.view` on endpoints 4, 6, 8 | `AdminAnalyticsEndpointsTests`, `EmployeeAnalyticsEndpointsTests` |
-| FR-DASH-08, FR-DASH-09 | `loading` / `error` signals, `retry()` in the three analytics services and pages | Manual UI check (AC-DASH-03) |
+| FR-DASH-08, FR-DASH-09 | `loading` / `error` signals, `retry()` in the three analytics services and pages | `dashboard-analytics.service.spec.ts`, `manager-analytics.service.spec.ts`, `employee-analytics.service.spec.ts`, the three dashboard page specs (AC-DASH-03) |
 | FR-DASH-10, FR-DASH-11, FR-DASH-12 | `TaskBucketRules.IsCounted`, `BucketOf`, `CompletionPercent`; `BucketCountsDto` | `TaskBucketRulesTests`, `AdminAnalyticsServiceTests` |
 | FR-DASH-13 | `AnalyticsTaskSet.TeamUserIds` / `OwnUserId` (assignee or `TaskRecipients`) · `CountByPersonAsync` | `ManagerAnalyticsServiceTests`, `EmployeeAnalyticsServiceTests` |
 | FR-DASH-14 | `IAppClock.GetTimeZoneAsync`, `ReminderCalculator.LocalMidnightUtc`, `DeadlineBucketRules.BoundsFor` | `EmployeeAnalyticsServiceTests`, `AnalyticsScopeTests` |
@@ -850,21 +862,21 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 | FR-DASH-20, FR-DASH-21, FR-DASH-22 | `AdminAnalyticsService.TrendAsync` (`DailyTrendMaxDays`, `StartOfWeek`, `TasksIgnoringDates`) · `LineChartComponent` | `AdminAnalyticsServiceTests` |
 | FR-DASH-23 | `CountByDeadlineAsync` + `DeadlineBucketRules` | `AdminAnalyticsServiceTests` |
 | FR-DASH-24 | `ByDepartmentAsync` / `CountByDepartmentAsync` · `DepartmentAnalyticsComponent`, `StackedBarChartComponent` | `AdminAnalyticsServiceTests` |
-| FR-DASH-25, FR-DASH-26 | `ByEmployeeAsync` (`TopEmployees`, `AllEmployees`) · `DashboardAnalyticsService.setAllEmployees`, `EmployeeAnalyticsComponent` | `AdminAnalyticsServiceTests`; manual UI check |
+| FR-DASH-25, FR-DASH-26 | `ByEmployeeAsync` (`TopEmployees`, `AllEmployees`) · `DashboardAnalyticsService.setAllEmployees`, `EmployeeAnalyticsComponent` | `AdminAnalyticsServiceTests`; `analytics-sections.spec.ts`, `dashboard-analytics.service.spec.ts` |
 | FR-DASH-27 | `ByManagerAsync` · `ManagerAnalyticsComponent` | `AdminAnalyticsServiceTests` |
 | FR-DASH-28 | `ByProjectAsync` (`ProjectedEnd`) · `ProjectAnalyticsComponent`, `ProgressListComponent` | `AdminAnalyticsServiceTests` |
-| FR-DASH-29 | Empty-state templates in `admin-dashboard.component.html` and analytics components (`isEmpty`) | Manual UI check |
+| FR-DASH-29 | Empty-state templates in `admin-dashboard.component.html` and analytics components (`isEmpty`) | `admin-dashboard.component.spec.ts`, `analytics-sections.spec.ts`, `charts.spec.ts` |
 | FR-DASH-30, FR-DASH-31 | `canFilter()` · `GET /api/v1/dashboard/admin/analytics/filters` (`perm:dashboard.filters.use`) · `GetFilterOptionsAsync` | `AdminAnalyticsEndpointsTests` |
-| FR-DASH-32, FR-DASH-33, FR-DASH-39 | `defaultFilter`, `RANGE_PRESETS`, `presetRange`, `reset()` · `DashboardFilterBarComponent` | Manual UI check |
+| FR-DASH-32, FR-DASH-33, FR-DASH-39 | `defaultFilter`, `RANGE_PRESETS`, `presetRange`, `reset()` · `DashboardFilterBarComponent` | `dashboard-filter-bar.component.spec.ts`, `dashboard-analytics.service.spec.ts` |
 | FR-DASH-34 | `DashboardTaskFilters.ApplyDateRange` (`AnalyticsDateBasis`) | `AdminAnalyticsServiceTests` |
 | FR-DASH-35 | `DashboardTaskFilters.ApplyEntityFilters` | `AdminAnalyticsServiceTests` |
-| FR-DASH-36 | `validateRange` / `rangeError` | Manual UI check |
+| FR-DASH-36 | `validateRange` / `rangeError` | `dashboard-filter-bar.component.spec.ts`, `dashboard-analytics.service.spec.ts` |
 | FR-DASH-37 | `AnalyticsFilterResolver.ResolveAsync` (`MaxRangeDays`, basis, `EnsureExistsAsync`) | `AnalyticsScopeTests`, `AdminAnalyticsEndpointsTests` |
-| FR-DASH-38 | `DashboardAnalyticsService.update` + `switchMap`; `rangeLabel`, `basisLabel` | Manual UI check |
+| FR-DASH-38 | `DashboardAnalyticsService.update` + `switchMap`; `rangeLabel`, `basisLabel` | `dashboard-analytics.service.spec.ts` |
 | FR-DASH-40, FR-DASH-49, FR-DASH-57 | `GET /api/v1/dashboard/manager/analytics` · `ManagerAnalyticsService.GetAsync` (`TeamSummaryDto`, `ByProjectAsync`) · `TeamTaskAnalyticsComponent` | `ManagerAnalyticsServiceTests` |
 | FR-DASH-41, FR-DASH-42 | `ManagerDashboardScope.TeamUserIdsAsync` → `EmployeeRepository.GetTeamMemberIdsAsync`; `AnalyticsTaskSet.TeamUserIds` | `ManagerScopeTests`, `ManagerAnalyticsIsolationTests` |
-| FR-DASH-43, FR-DASH-44 | `noTeam`, `isAdministrator` in `ManagerDashboardComponent` (`teamSize == 0`) | `ManagerAnalyticsServiceTests`; manual UI check |
-| FR-DASH-45, FR-DASH-46 | `AttentionAsync` / `GetOverdueAsync` (`DaysOverdue`) · `TeamAttentionComponent` → `/tasks/:id` | `ManagerAnalyticsServiceTests`; manual UI check |
+| FR-DASH-43, FR-DASH-44 | `noTeam`, `isAdministrator` in `ManagerDashboardComponent` (`teamSize == 0`) | `ManagerAnalyticsServiceTests`; `manager-dashboard.component.spec.ts` |
+| FR-DASH-45, FR-DASH-46 | `AttentionAsync` / `GetOverdueAsync` (`DaysOverdue`) · `TeamAttentionComponent` → `/tasks/:id` | `ManagerAnalyticsServiceTests`; `team-sections.spec.ts` |
 | FR-DASH-47, FR-DASH-48 | `AttentionAsync` projects needing attention · `drillDownQuery` | `ManagerAnalyticsServiceTests`, `ManagerDrillDownScopeTests` |
 | FR-DASH-50, FR-DASH-51, FR-DASH-52, FR-DASH-53 | `ManagerAnalyticsService.ByEmployeeAsync`, `ManagerTeamThresholds.IsHighWorkload`, `HasOverdue` · `TeamEmployeeAnalyticsComponent` | `ManagerAnalyticsServiceTests` |
 | FR-DASH-54 | `ManagerDashboardScope.ScopeAsync` drops `DepartmentId`, `ManagerId` | `ManagerScopeTests` |
@@ -873,7 +885,7 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 | FR-DASH-58 | `EffectivePermissions.Expand` (organization ⇒ team) · `GET /api/v1/dashboard/manager/analytics` | `ManagerAnalyticsEndpointsTests` |
 | FR-DASH-59, FR-DASH-61 | `GET /api/v1/dashboard/employee/analytics` · `EmployeeAnalyticsService.GetAsync` (`EmployeeSummaryDto`) | `EmployeeAnalyticsServiceTests` |
 | FR-DASH-60 | `EmployeeDashboardScope.OwnTasks(userId)`; controller reads only `period` | `EmployeeAnalyticsIsolationTests` |
-| FR-DASH-62, FR-DASH-63, FR-DASH-64 | `UpcomingAsync` / `GetOpenDueBeforeAsync` · `deadlineLabel()` in `EmployeeDashboardComponent` → `/tasks/:id` | `EmployeeAnalyticsServiceTests`; manual UI check |
+| FR-DASH-62, FR-DASH-63, FR-DASH-64 | `UpcomingAsync` / `GetOpenDueBeforeAsync` · `deadlineLabel()` in `EmployeeDashboardComponent` → `/tasks/:id` | `EmployeeAnalyticsServiceTests`; `employee-dashboard.component.spec.ts` |
 | FR-DASH-65 | `ParsePeriod`, `EMPLOYEE_PERIODS`, `EmployeeAnalyticsService.setPeriod` (Angular) | `EmployeeAnalyticsEndpointsTests` |
 | FR-DASH-66, FR-DASH-67 | `EmployeeAnalyticsService.TrendAsync`, `CompletedInPeriod` | `EmployeeAnalyticsServiceTests` |
 | FR-DASH-68 | `ProjectsAsync` (`GetProjectProgressAsync`, `GetAllocatedProjectIdsAsync`) | `EmployeeAnalyticsServiceTests` |

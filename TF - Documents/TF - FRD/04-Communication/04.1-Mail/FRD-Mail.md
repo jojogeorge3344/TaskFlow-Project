@@ -596,8 +596,9 @@ User messages are listed per screen in §4.1.1 and §4.1.2.
 
 ## 11. Requirements Traceability Matrix
 
-Test case column: automated test suite names from the TaskFlow test projects. Coverage is inferred from the suite
-names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual UI check" = no automated frontend test listed.
+Test case column: automated test suites from the TaskFlow test projects (backend test classes and frontend `*.spec.ts`
+files). The mapping was checked against the test sources; per-test mapping belongs in the LLD. "Manual UI check" = no
+automated test covers the behaviour.
 
 **BRD requirements → FRD**
 
@@ -606,14 +607,14 @@ names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual 
 | REQ-MAIL-01 | FR-MAIL-01 | Mail | UC-MAIL-01 | `MailEndpointsTests` |
 | REQ-MAIL-02 | FR-MAIL-02 | Mail | UC-MAIL-01 | `MailboxTests` |
 | REQ-MAIL-03 | FR-MAIL-03 | Mail | UC-MAIL-01 | `MailboxTests` |
-| REQ-MAIL-04 | FR-MAIL-04 | Mail (menu) | UC-MAIL-01 | `MailEndpointsTests` |
-| REQ-MAIL-05 | FR-MAIL-05, FR-MAIL-08 | Mail | UC-MAIL-01 | `MailboxTests` |
-| REQ-MAIL-06 | FR-MAIL-06 | Mail | UC-MAIL-01 | `MailboxTests` |
+| REQ-MAIL-04 | FR-MAIL-04 | Mail (menu) | UC-MAIL-01 | `MailEndpointsTests`, `shell.component.spec.ts` |
+| REQ-MAIL-05 | FR-MAIL-05, FR-MAIL-08 | Mail | UC-MAIL-01 | `MailboxTests`, `mail-list.component.spec.ts` |
+| REQ-MAIL-06 | FR-MAIL-06 | Mail | UC-MAIL-01 | `MailboxTests`, `mail-list.component.spec.ts` |
 | REQ-MAIL-07 | FR-MAIL-07, FR-MAIL-08 | Mail | UC-MAIL-01 | `MailboxTests` |
 | REQ-MAIL-08 | FR-MAIL-09, FR-MAIL-30 | Mail | UC-MAIL-01 | `MailDraftAndThreadTests` |
 | REQ-MAIL-09 | FR-MAIL-10 | Mail | UC-MAIL-01 | `MailboxTests` |
-| REQ-MAIL-10 | FR-MAIL-11 | Mail | UC-MAIL-01 | Manual UI check |
-| REQ-MAIL-11 | FR-MAIL-12 | Mail | UC-MAIL-01, UC-MAIL-05 | Manual UI check |
+| REQ-MAIL-10 | FR-MAIL-11 | Mail | UC-MAIL-01 | `linkify.spec.ts`, `mail-reader.component.spec.ts` |
+| REQ-MAIL-11 | FR-MAIL-12 | Mail | UC-MAIL-01, UC-MAIL-05 | `mail-reader.component.spec.ts` |
 | REQ-MAIL-12 | FR-MAIL-13, FR-MAIL-30 | Mail | UC-MAIL-02 | `MailboxTests` |
 | REQ-MAIL-13 | FR-MAIL-14, FR-MAIL-30 | Mail | UC-MAIL-02 | `MailboxTests` |
 | REQ-MAIL-14 | FR-MAIL-15, FR-MAIL-30 | Mail | UC-MAIL-02 | `MailboxTests` |
@@ -622,17 +623,17 @@ names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual 
 | REQ-MAIL-17 | FR-MAIL-19 | Mail | UC-MAIL-02, UC-MAIL-03 | `MailboxTests` |
 | REQ-MAIL-18 | FR-MAIL-20 | Mail | UC-MAIL-01 | `MailboxTests`, `MailEndpointsTests` |
 | REQ-MAIL-19 | FR-MAIL-21 | Mail | UC-MAIL-05, UC-MAIL-07 | `MailDraftAndThreadTests` |
-| REQ-MAIL-20 | FR-MAIL-22 | Mail | UC-MAIL-07 | Manual UI check |
-| REQ-MAIL-21 | FR-MAIL-23 | Mail | UC-MAIL-01 | `MailboxTests` |
-| REQ-MAIL-22 | FR-MAIL-24 | Mail | UC-MAIL-01 | Manual UI check |
+| REQ-MAIL-20 | FR-MAIL-22 | Mail | UC-MAIL-07 | `mail-reader.component.spec.ts` |
+| REQ-MAIL-21 | FR-MAIL-23 | Mail | UC-MAIL-01 | Manual UI check |
+| REQ-MAIL-22 | FR-MAIL-24 | Mail | UC-MAIL-01 | `mail.component.spec.ts` |
 | REQ-MAIL-23 | FR-MAIL-25 | Mail | UC-MAIL-05 | `TaskCommentActivityNotificationTests` |
-| REQ-MAIL-24 | FR-MAIL-26 | Mail | UC-MAIL-05 | ⚠️ To be confirmed: no dedicated test found |
+| REQ-MAIL-24 | FR-MAIL-26 | Mail | UC-MAIL-05 | `TaskServiceTests` |
 | REQ-MAIL-25 | FR-MAIL-27 | Mail | UC-MAIL-05 | `TaskWorkedHoursNotificationTests` |
 | REQ-MAIL-26 | FR-MAIL-28 | Mail | UC-MAIL-04 | `MailAttachmentTests` |
 | REQ-MAIL-27 | FR-MAIL-29 | Mail | UC-MAIL-04 | `MailEndpointsTests` |
-| REQ-MAIL-28 | FR-MAIL-31, FR-MAIL-32 | Compose panel | UC-MAIL-06 | `MailEndpointsTests` |
-| REQ-MAIL-29 | FR-MAIL-33 | Compose panel | UC-MAIL-06 | `MailSendTests` |
-| REQ-MAIL-30 | FR-MAIL-34, FR-MAIL-37 | Compose panel | UC-MAIL-06 | `MailSendTests` |
+| REQ-MAIL-28 | FR-MAIL-31, FR-MAIL-32 | Compose panel | UC-MAIL-06 | `MailEndpointsTests`, `compose-dialog.component.spec.ts` |
+| REQ-MAIL-29 | FR-MAIL-33 | Compose panel | UC-MAIL-06 | `MailboxTests`, `MailEndpointsTests`, `recipient-picker.component.spec.ts` |
+| REQ-MAIL-30 | FR-MAIL-34, FR-MAIL-37 | Compose panel | UC-MAIL-06 | `MailSendTests`, `recipient-picker.component.spec.ts` |
 | REQ-MAIL-31 | FR-MAIL-35, FR-MAIL-56 | Compose panel | UC-MAIL-06 | `MailSendTests` |
 | REQ-MAIL-32 | FR-MAIL-36, FR-MAIL-37, FR-MAIL-56 | Compose panel | UC-MAIL-06 | `MailSendTests` |
 | REQ-MAIL-33 | FR-MAIL-38 | Compose panel | UC-MAIL-06 | `MailSendTests` |
@@ -645,7 +646,7 @@ names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual 
 | REQ-MAIL-40 | FR-MAIL-45 | Compose panel | UC-MAIL-07 | `MailDraftAndThreadTests` |
 | REQ-MAIL-41 | FR-MAIL-47 | Compose panel | UC-MAIL-08 | `MailDraftAndThreadTests` |
 | REQ-MAIL-42 | FR-MAIL-48 | Compose panel | UC-MAIL-08 | `MailDraftAndThreadTests` |
-| REQ-MAIL-43 | FR-MAIL-49, FR-MAIL-54 | Compose panel | UC-MAIL-08, UC-MAIL-09 | `MailAttachmentTests` |
+| REQ-MAIL-43 | FR-MAIL-49, FR-MAIL-54 | Compose panel | UC-MAIL-08, UC-MAIL-09 | `MailAttachmentTests`, `compose-dialog.component.spec.ts` |
 | REQ-MAIL-44 | FR-MAIL-50, FR-MAIL-54, FR-MAIL-55 | Compose panel | UC-MAIL-09 | `MailAttachmentTests` |
 | REQ-MAIL-45 | FR-MAIL-51 | Compose panel | UC-MAIL-09 | `MailAttachmentTests` |
 | REQ-MAIL-46 | FR-MAIL-52 | Compose panel | UC-MAIL-09 | `MailAttachmentTests` |
@@ -666,15 +667,15 @@ names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual 
 | BR-MAIL-09 | FR-MAIL-53 | Compose panel | UC-MAIL-09 | `MailAttachmentTests` |
 | BR-MAIL-10 | FR-MAIL-47 | Compose panel | UC-MAIL-08 | `MailDraftAndThreadTests` |
 | BR-MAIL-11 | FR-MAIL-28, FR-MAIL-55 | Mail, Compose panel | UC-MAIL-04 | `MailAttachmentTests` |
-| BR-MAIL-12 | FR-MAIL-23 | Mail | UC-MAIL-01 | `MailboxTests` |
-| BR-MAIL-13 | FR-MAIL-25, FR-MAIL-26, FR-MAIL-27 | Mail | UC-MAIL-05 | `TaskCommentActivityNotificationTests` |
+| BR-MAIL-12 | FR-MAIL-23 | Mail | UC-MAIL-01 | Manual UI check |
+| BR-MAIL-13 | FR-MAIL-25, FR-MAIL-26, FR-MAIL-27 | Mail | UC-MAIL-05 | `TaskCommentActivityNotificationTests`, `TaskServiceTests`, `TaskWorkedHoursNotificationTests` |
 | NFR-MAIL-01 | FR-MAIL-05 | Mail | UC-MAIL-01 | `MailboxTests` |
 | NFR-MAIL-02 | FR-MAIL-20, FR-MAIL-28 | Mail | UC-MAIL-01, UC-MAIL-04 | `MailEndpointsTests` |
-| NFR-MAIL-03 | FR-MAIL-11, FR-MAIL-29, FR-MAIL-52 | Mail, Compose panel | UC-MAIL-04, UC-MAIL-09 | `MailAttachmentTests` |
-| NFR-MAIL-04 | FR-MAIL-56 | Compose panel | UC-MAIL-06 | Manual UI check |
-| NFR-MAIL-05 | FR-MAIL-24 | Mail | UC-MAIL-01 | Manual UI check |
+| NFR-MAIL-03 | FR-MAIL-11, FR-MAIL-29, FR-MAIL-52 | Mail, Compose panel | UC-MAIL-04, UC-MAIL-09 | `MailAttachmentTests`, `MailEndpointsTests`, `linkify.spec.ts`, `mail-reader.component.spec.ts` |
+| NFR-MAIL-04 | FR-MAIL-56 | Compose panel | UC-MAIL-06 | `compose-dialog.component.spec.ts` |
+| NFR-MAIL-05 | FR-MAIL-24 | Mail | UC-MAIL-01 | `mail.component.spec.ts` |
 | NFR-MAIL-06 | FR-MAIL-35, FR-MAIL-55 | Compose panel | UC-MAIL-06 | `MailSendTests` |
-| NFR-MAIL-07 | FR-MAIL-04 | Mail (menu) | UC-MAIL-01 | Manual UI check |
+| NFR-MAIL-07 | FR-MAIL-04 | Mail (menu) | UC-MAIL-01 | `shell.component.spec.ts`, `mail.service.spec.ts` |
 | NFR-MAIL-08 | §8 Mail attachment | Mail, Compose panel | UC-MAIL-09 | – (deployment / backup check) |
 | NFR-MAIL-09 | FR-MAIL-01, FR-MAIL-13 – FR-MAIL-18, FR-MAIL-28, FR-MAIL-31 (§3.2) | Mail, Compose panel | All | `MailEndpointsTests` |
 

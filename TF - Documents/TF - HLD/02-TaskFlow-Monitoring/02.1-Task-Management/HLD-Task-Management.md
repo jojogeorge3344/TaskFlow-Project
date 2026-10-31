@@ -125,7 +125,6 @@ No external (third-party) system is called by this sub-module.
 - Single API process and a single SQLite file (overall HLD); no message broker, so side effects run in-process.
 - No SMTP: all task mail is internal Mail.
 - Reminder intervals and additional recipients are fixed after creation (no edit screen).
-- The frontend page files for the full Discussion and Activity pages are not in the reviewed snapshot (⚠️ To be confirmed, §14).
 
 ### 3.3 Architecture Principles
 - Thin controllers: HTTP, claims and policies only; business rules live in services.
@@ -191,7 +190,7 @@ flowchart TB
 | Create / Copy Task (frontend) | Create form with recipients and reminders; copy prefill | `TaskCreateComponent` | Tasks API, Employees API, Projects API, Reminder Settings API, Application Settings (default priority) |
 | Task Details (frontend) | Details, edit form, Move to, Time tracking, delete, Discussion and Activity summary tabs | `TaskDetailsComponent` | Tasks, comments and activity APIs |
 | Reassign Task (frontend) | People picker, reason, "What happens next", confirmation | `ReassignComponent` | Tasks API, Employees API |
-| Discussion / Activity pages (frontend) | Full comment thread; filtered history; Administrator hours correction | `TaskDiscussionComponent`, `ActivityComponent` (⚠️ To be confirmed – not in the snapshot) | Comments and activity APIs |
+| Discussion / Activity pages (frontend) | Full comment thread; filtered history; Administrator hours correction | `TaskDiscussionComponent`, `ActivityComponent`, `activity-meta` (event labels) | Comments and activity APIs |
 | Tasks API + task service | Task scope, list and drill-down, create, edit, status, worked hours, reassign, recipients, soft delete | `TasksController`, `TaskService`, `TaskRepository` | Management repositories, `IReminderSettingsService`, `IAppClock`, Notification, Mail, history |
 | Comments API + comment service | Add, edit, soft-delete own comments; notify members; system mail | `TaskCommentsController`, `TaskCommentService`, `TaskCommentRepository` | `TaskRepository`, Notification, Mail repository, Application Settings |
 | Activity API + history service | Single writer of the history; filtered read; Administrator worked-hours correction | `TaskActivityController`, `TaskActivityService`, `TaskActivityRepository` | `TaskRepository` |
@@ -511,7 +510,6 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | Open issue | Picking a Project in the normal list filter is treated as a drill-down, so a Manager loses own non-team tasks | Separate the two filters – Jojo George |
 | Open issue | The Task List "Board view" button is not gated by `board.view` | Gate the button – Jojo George |
 | Open issue | Two overdue rules: instant rule (board, dashboard, reports) vs day rule (list stage) differ on the deadline day | Documented in TDD §7.5 – Jojo George |
-| Open issue | ⚠️ To be confirmed: `TaskDiscussionComponent`, `ActivityComponent` and the activity metadata util are referenced by the routes but not in the reviewed snapshot | Verify the frontend files – Jojo George |
 
 ---
 

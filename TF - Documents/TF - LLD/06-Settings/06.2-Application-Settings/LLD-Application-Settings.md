@@ -438,27 +438,29 @@ No background job belongs to this sub-module.
 | Key | Default | Purpose |
 |---|---|---|
 | `Application:Timezone` | `Asia/Kolkata` (code default `UTC`) | Seeds `Application.Timezone`; fallback while the row is missing or blank |
-| `ConnectionStrings:Default` | `<secret>` | SQLite database |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
 | `Storage:Root` | `""` | Root folder for the database |
 
 ---
 
 ## 9. Testing Design
 
-Test file names from `tests-filelist.json`; contents were not available, coverage inferred from names.
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/settings/application-settings`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Service | `TaskFlow.UnitTests/Settings/ApplicationSettings/General/ApplicationSettingsServiceTests.cs` | Unit | Defaults and save |
-| Validator | `TaskFlow.UnitTests/Settings/ApplicationSettings/General/ApplicationSettingsValidatorTests.cs` | Unit | Name and timezone rules |
+| Service | `TaskFlow.UnitTests/Settings/ApplicationSettings/General/ApplicationSettingsServiceTests.cs` | Unit | Fresh-database defaults, missing / unreadable rows fall back to defaults and configured timezone, save round trip, who / when recorded, incomplete request saves nothing |
+| Validator | `TaskFlow.UnitTests/Settings/ApplicationSettings/General/ApplicationSettingsValidatorTests.cs` | Unit | Defaults valid, blank name, unknown timezone, missing fields, priority outside the enum |
 | Clock | `TaskFlow.UnitTests/Settings/ApplicationSettings/Clock/AppClockTests.cs` | Unit | Timezone resolution, UTC fallback |
-| Endpoints | `TaskFlow.IntegrationTests/Settings/ApplicationSettings/ApplicationSettingsEndpointsTests.cs` | Integration | GET open to signed-in users, PUT authorization |
-| Seeder | `TaskFlow.UnitTests/Persistence/SettingsInitializerTests.cs` | Unit | Missing rows inserted |
+| Endpoints | `TaskFlow.IntegrationTests/Settings/ApplicationSettings/ApplicationSettingsEndpointsTests.cs` | Integration | GET for every signed-in role, PUT saves, Manager 403 on PUT, unknown timezone 400 with nothing saved, blank name 400, 401 |
+| Seeder | `TaskFlow.UnitTests/Persistence/SettingsInitializerTests.cs` | Unit | Default keys inserted once, new application keys seeded, saved name not overwritten, timezone seeded from configuration |
 | Policies | `TaskFlow.IntegrationTests/Common/PermissionAuthorizationTests.cs` | Integration | Policy per key |
 | Support | `TaskFlow.UnitTests/TestSupport/SettingsTestDatabase.cs`, `FakeTimeProvider.cs` | Support | Test DB, clock |
 | Structure | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 
-Frontend spec files: 0.
+| Frontend page | `pages/application-settings.component.spec.ts` | Frontend unit | Loads values, saves and confirms, blocks a blank name, server 400 field errors, hides Saved after an edit, timezone datalist allows custom ids, link to Reminder Settings, retryable load error |
+| Frontend service | `services/application-settings.service.spec.ts` | Frontend unit | GET / PUT, cached brand name defaults to TaskFlow, updated on read and after save, blank name falls back to TaskFlow |
 
 ---
 
@@ -486,27 +488,27 @@ Frontend spec files: 0.
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-APP-01 | `GET /api/v1/settings/application` · `ApplicationSettingsService.GetAsync` · `ApplicationSettingsComponent.load` | `ApplicationSettingsEndpointsTests`, `ApplicationSettingsServiceTests` |
-| FR-APP-02 | `ApplicationSettingsComponent.load` (`loadError`, Retry) | – (no frontend specs) |
+| FR-APP-02 | `ApplicationSettingsComponent.load` (`loadError`, Retry) | `application-settings.component.spec.ts` |
 | FR-APP-03 | `PUT /api/v1/settings/application` · `UpdateAsync` (`Application.Name`) | `ApplicationSettingsServiceTests` |
 | FR-APP-04 | Validator `Name` rules · `name.Trim()` · `requiredText` | `ApplicationSettingsValidatorTests` |
-| FR-APP-05 | Angular `ApplicationSettingsService.appName` · shell | – (no frontend specs) |
+| FR-APP-05 | Angular `ApplicationSettingsService.appName` · shell | `application-settings.service.spec.ts`, `shell.component.spec.ts` |
 | FR-APP-06 | `timezoneSuggestions` · validator `BeKnownTimezone` | `ApplicationSettingsValidatorTests` |
 | FR-APP-07 | Validator `Timezone` rules · `fieldError('timezone')` | `ApplicationSettingsValidatorTests` |
 | FR-APP-08 | `AppClock.GetTimeZoneAsync` / `TodayLocalAsync` (read per call) | `AppClockTests` |
 | FR-APP-09 | `AppClock` catch → `TimeZoneInfo.Utc` + `LogError` | `AppClockTests` |
 | FR-APP-10 | `TaskPriority` · validator `IsInEnum` | `ApplicationSettingsValidatorTests` |
-| FR-APP-11 | Create Task `loadDefaultPriority()` | – (no frontend specs) |
+| FR-APP-11 | Create Task `loadDefaultPriority()` | `task-create.component.spec.ts` |
 | FR-APP-12 | `UpdateAsync` (`Notification.InAppEnabled`) | `ApplicationSettingsServiceTests` |
 | FR-APP-13 | `NotificationPublisher.InAppEnabledAsync` (gap for reminders, see §10) | – (Notification tests by name not identified) |
-| FR-APP-14 | Reminder defaults `RouterLink` in the page | – (no frontend specs) |
+| FR-APP-14 | Reminder defaults `RouterLink` in the page | `application-settings.component.spec.ts` |
 | FR-APP-15 | `UpdateApplicationSettingsRequestValidator` via `ValidationFilter` | `ApplicationSettingsValidatorTests`, `ApplicationSettingsEndpointsTests` |
 | FR-APP-16 | Validator `NotEmpty`/`NotNull` · `ArgumentException` guard | `ApplicationSettingsValidatorTests` |
 | FR-APP-17 | `SettingsInitializer` · `ReadString`/`ReadPriority`/`ReadBool` | `SettingsInitializerTests`, `ApplicationSettingsServiceTests` |
 | FR-APP-18 | `[Authorize]` on `Get` | `ApplicationSettingsEndpointsTests` |
 | FR-APP-19 | `ApplicationSettingsDto` (four fields only) | `ApplicationSettingsEndpointsTests` |
 | FR-APP-20 | `Set()` writes `UpdatedByUserId`, `UpdatedAt` | `ApplicationSettingsServiceTests` |
-| FR-APP-21 | `ApplicationSettingsComponent.save` (`saving`, toast, `saveError`) | – (no frontend specs) |
-| FR-APP-22 | `permissionGuard` (`settings/application`) · `buildNavigation()` | – (no frontend specs) |
+| FR-APP-21 | `ApplicationSettingsComponent.save` (`saving`, toast, `saveError`) | `application-settings.component.spec.ts` |
+| FR-APP-22 | `permissionGuard` (`settings/application`) · `buildNavigation()` | `app.routes.spec.ts`, `nav-items.spec.ts` |
 | FR-APP-23 | `[RequirePermission(PermissionKeys.SettingsApplication)]` on `Update` | `ApplicationSettingsEndpointsTests`, `PermissionAuthorizationTests` |
 
 ---

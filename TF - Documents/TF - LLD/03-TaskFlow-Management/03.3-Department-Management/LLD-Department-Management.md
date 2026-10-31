@@ -15,7 +15,7 @@
 
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
-| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from the code and verified against the code fact sheet |
+| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from and verified against the TaskFlow source code (backend, frontend and tests) |
 
 **Related documents:**
 
@@ -44,7 +44,7 @@ delete when empty) and their membership – department managers (`DepartmentMana
   Employee Management LLD) and manager-duty clean-up on role change or delete (`EmployeeRepository.ClearManagerDutiesAsync`).
 - Naming: `*Controller`, `I*Service` / `*Service`, `I*Repository` / `*Repository`, DTOs `*Dto` / `*Request`.
 - API base path `/api/v1`; JSON camelCase; errors as ProblemDetails.
-- **Endpoint count:** `DepartmentsController` has **7** actions (code fact sheet section 3); all 7 are documented in 4.1.1.
+- **Endpoint count:** `DepartmentsController` has **7** actions (counted from the code); all 7 are documented in 4.1.1.
 
 ---
 
@@ -492,7 +492,7 @@ All keys except `departments.view` require `departments.view` (`PermissionCatalo
 
 | Key | Default | Purpose |
 |---|---|---|
-| `ConnectionStrings:Default` | `<secret>` | SQLite database (shared) |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database (shared) |
 | Code constant `SystemRoles.ManagerId` | 2 | Only this role may be a department manager |
 
 Department Management has no settings of its own.
@@ -501,15 +501,19 @@ Department Management has no settings of its own.
 
 ## 9. Testing Design
 
-Test contents were not available (file names only); "Covers" is inferred (⚠️ To be confirmed).
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/management/department-management`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Endpoints | `TaskFlow.IntegrationTests/Management/DepartmentManagement/DepartmentsEndpointsTests.cs` | Integration | All 7 actions, authorization, delete guard, member rules, name reuse |
-| Validators | `TaskFlow.UnitTests/Management/DepartmentManagement/DepartmentRequestValidatorsTests.cs` | Unit | `CreateDepartmentRequestValidator`, `UpdateDepartmentRequestValidator` |
-| Manager derivation | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | Department managers as managers and team |
-| Migration | `TaskFlow.UnitTests/Persistence/DepartmentFollowUpMigrationTests.cs` | Unit | `FixDepartmentFollowUps` |
-| Frontend | – | – | No frontend spec files in the snapshot |
+| Endpoints | `TaskFlow.IntegrationTests/Management/DepartmentManagement/DepartmentsEndpointsTests.cs` | Integration | Create / rename / delete, duplicate name, Manager view-only, Employee 403, 401, members replace and clear, delete blocked while members exist, invalid manager / inactive employee rejects the whole replace, 404, blank / overlong names, deleted manager's link cleared, deleted name reusable |
+| Validators | `TaskFlow.UnitTests/Management/DepartmentManagement/DepartmentRequestValidatorsTests.cs` | Unit | `CreateDepartmentRequestValidator`, `UpdateDepartmentRequestValidator`: blank name, 200 / 201-character name, 500 / 501-character description |
+| Manager derivation | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | A user's managers are their departments' managers (listed once); a manager's reports are the people in their departments |
+| Migration | `TaskFlow.UnitTests/Persistence/DepartmentFollowUpMigrationTests.cs` | Unit | `FixDepartmentFollowUps`: old grants get the new keys; a fresh database is left to the seeder |
+| List page | `pages/department-list.component.spec.ts` | Frontend unit | Header count, cards with member counts and "No description", client-side search and no-match, add / edit / members dialogs, Delete guarded while members exist, delete after confirmation and toast, empty / error states |
+| Add / edit dialog | `components/department-form-dialog.component.spec.ts` | Frontend unit | "Add department" title, "Name is required", duplicate-name server error, update, toast and `saved` |
+| Members dialog | `components/department-members-dialog.component.spec.ts` | Frontend unit | Loads members and pickers, managers and employees tagged by role, inactive member kept, saves managers and employees separately, search, sort, select / clear shown and clear all, save and load errors |
+| Frontend service | `services/department.service.spec.ts` | Frontend unit | List, get, create, update, delete, members read and `PUT` replace, error propagation |
 
 ---
 
@@ -531,23 +535,23 @@ Test contents were not available (file names only); "Covers" is inferred (⚠️
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-DEPT-01, FR-DEPT-02, FR-DEPT-03, FR-DEPT-12 | `GET /api/v1/departments` · `DepartmentRepository.GetAllWithCountsAsync` · `DepartmentListComponent` | `DepartmentsEndpointsTests` |
-| FR-DEPT-04 | `DepartmentListComponent` client-side search | Manual UI |
-| FR-DEPT-05 | `management.routes.ts` (`departments`, `DepartmentScreenPermissions`); `nav-items.ts` | Manual UI |
+| FR-DEPT-04 | `DepartmentListComponent` client-side search | `department-list.component.spec.ts` |
+| FR-DEPT-05 | `management.routes.ts` (`departments`, `DepartmentScreenPermissions`); `nav-items.ts` | `app.routes.spec.ts`, `nav-items.spec.ts` |
 | FR-DEPT-06, FR-DEPT-07 | `canCreate` / `canEdit` / `canDelete` / `canMembers`; `[RequirePermission]` per action | `DepartmentsEndpointsTests` |
-| FR-DEPT-08 | Delete disabled with tooltip when counts > 0 | Manual UI |
+| FR-DEPT-08 | Delete disabled with tooltip when counts > 0 | `department-list.component.spec.ts` |
 | FR-DEPT-09, FR-DEPT-10 | `DELETE /api/v1/departments/{id}` · `DepartmentService.DeleteAsync`, `HasMembersAsync` | `DepartmentsEndpointsTests` |
 | FR-DEPT-11 | `IX_Departments_Name` filtered `"IsDeleted" = 0`; `NameTakenAsync` live only | `DepartmentsEndpointsTests` |
 | FR-DEPT-13 | `POST /api/v1/departments` · `CreateDepartmentRequestValidator` | `DepartmentRequestValidatorsTests` |
 | FR-DEPT-14, FR-DEPT-15 | `NameTakenAsync`; `PUT /api/v1/departments/{id}` · `UpdateDepartmentRequestValidator` | `DepartmentsEndpointsTests`, `DepartmentRequestValidatorsTests` |
-| FR-DEPT-16 | `DepartmentFormDialogComponent` toasts | Manual UI |
-| FR-DEPT-17, FR-DEPT-18 | `GET /api/v1/departments/{id}/members` · `GetManagersAsync`, `GetEmployeesAsync` (`MemberRefDto.IsActive`); dialog people lists | Manual UI |
-| FR-DEPT-19, FR-DEPT-20, FR-DEPT-21, FR-DEPT-22 | `DepartmentMembersDialogComponent` (`MemberSort`, `MemberOption`) | Manual UI |
+| FR-DEPT-16 | `DepartmentFormDialogComponent` toasts | `department-form-dialog.component.spec.ts` |
+| FR-DEPT-17, FR-DEPT-18 | `GET /api/v1/departments/{id}/members` · `GetManagersAsync`, `GetEmployeesAsync` (`MemberRefDto.IsActive`); dialog people lists | `department-members-dialog.component.spec.ts` |
+| FR-DEPT-19, FR-DEPT-20, FR-DEPT-21, FR-DEPT-22 | `DepartmentMembersDialogComponent` (`MemberSort`, `MemberOption`) | `department-members-dialog.component.spec.ts` |
 | FR-DEPT-23 | Dialog split by option kind into `managerIds` / `employeeIds` | `DepartmentsEndpointsTests` |
 | FR-DEPT-24, FR-DEPT-25, FR-DEPT-26 | `PUT /api/v1/departments/{id}/members` · `DepartmentService.ReplaceMembersAsync` checks | `DepartmentsEndpointsTests` |
 | FR-DEPT-27, FR-DEPT-28 | Diff of this department's `DepartmentManagers` and `UserDepartments` only | `DepartmentsEndpointsTests` |
 | FR-DEPT-29, FR-DEPT-30 | `EmployeeRepository.LoadDtosAsync` (managers), `GetTeamMemberIdsAsync` | `ManagerAssignmentTests` |
-| FR-DEPT-31 | Members dialog toast | Manual UI |
-| FR-DEPT-32 | `UserAllocationService.StageForUserAsync` (Employee Management create) | Manual UI |
+| FR-DEPT-31 | Members dialog toast | `department-members-dialog.component.spec.ts` |
+| FR-DEPT-32 | `UserAllocationService.StageForUserAsync` (Employee Management create) | `UserAllocationServiceTests`, `employee-form-panel.component.spec.ts` |
 | FR-DEPT-33 | `EmployeeRepository.ClearManagerDutiesAsync` (role change away from Manager, delete) | `ManagerAssignmentTests` |
 
 **Coverage:** FR-DEPT-01 – FR-DEPT-33 (33 of 33) trace to an endpoint or class; 7 of 7 endpoints documented.

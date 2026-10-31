@@ -5,7 +5,7 @@
 > **Document:** Low-Level Design – Overall (shared design, Authentication, Legal, index of 16 sub-module LLDs)  ·  **Version:** 1.0  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** FRD-TaskFlow-Overall v1.0, BRD-TaskFlow-Overall v1.0, TDD-TaskFlow v2.0, code snapshot of 31-Oct-2026
+> **Based on:** FRD-TaskFlow-Overall v1.0, BRD-TaskFlow-Overall v1.0, TDD-TaskFlow v2.0, the TaskFlow source code (backend, frontend and tests) of 31-Oct-2026
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -139,8 +139,14 @@ src/app/
 | Frontend: one folder per module and sub-module with `pages`, `components`, `services`, `models`, `utils`; module routes in `<module>.routes.ts` | `npm run check:structure` (`scripts/check-frontend-structure.mjs`, runs before `ng test`) |
 | The access token is held in memory only (`TokenStore`), never in browser storage | `shared/auth/token.store.ts` |
 
-> ⚠️ To be confirmed: the bodies of `ArchitectureTests.cs` and `scripts/check-frontend-structure.mjs` are not in the
-> snapshot (only the file names); the rules above are the ones the code comments and the sub-module LLDs state.
+`ArchitectureTests.cs` holds 22 checks (NetArchTest and source-file scans). Controllers do not reach repositories,
+`Persistence`, `Integrations` or EF Core, and do not catch exceptions or use FluentValidation. Services do not reach
+`Persistence` or controllers and use repositories only through their interfaces. Only `Persistence`, `Repositories` and
+`Config` reach `AppDbContext`, and only `UnitOfWork` calls `SaveChanges` or `BeginTransaction`. Entities do not cross the
+HTTP boundary. The other checks cover folders, namespaces and type names. No test checks that repositories never call
+services. `check-frontend-structure.mjs` checks the module tree and the five layer folders, allows only
+`<module>.routes.ts` directly in a top-level module folder, keeps `HttpClient` in `services/` or `shared/auth/`, keeps
+routed components in `pages/`, and requires `shared/` code to be used by more than one module or by the app shell.
 
 ---
 
@@ -1432,10 +1438,11 @@ the shell. Hard-coded: `RefreshTokenCookie.Name` `taskflow_refresh`, `PasswordRe
 
 ## 9. Testing Design
 
-Two backend test projects under `backend/tests/` (150 files in `tests-filelist.json`): `TaskFlow.UnitTests` (xUnit,
+Two backend test projects under `backend/tests/` (151 `.cs` files): `TaskFlow.UnitTests` (xUnit,
 service and rule tests with in-memory SQLite harnesses) and `TaskFlow.IntegrationTests` (`TaskFlowApiFactory` –
-`WebApplicationFactory<Program>` end-to-end over HTTP). No frontend spec files are in the snapshot; `npm test` runs
-`check:structure` and `ng test` (Karma / Jasmine).
+`WebApplicationFactory<Program>` end-to-end over HTTP). Frontend specs (Jasmine, run by Karma) sit beside the code under
+`frontend/src/app/`: 97 `*.spec.ts` files with 1,099 specs. `npm test` runs `check:structure` and then `ng test`. The
+suites run 1,042 unit tests, 467 integration tests and 1,099 frontend specs, all passing.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
@@ -1458,7 +1465,10 @@ service and rule tests with in-memory SQLite harnesses) and `TaskFlow.Integratio
 | Persistence | `TaskFlow.UnitTests/Persistence/RolesMigrationTests.cs`, `EmailDomainMigrationTests.cs`, `DepartmentFollowUpMigrationTests.cs`, `UserProjectAllocationsMigrationTests.cs`, `DatabaseSeederTests.cs`, `SettingsInitializerTests.cs`, `StorageRootTests.cs` | Unit | Migrations, seeders, storage root |
 | Shared rules | `TaskFlow.UnitTests/Common/EmailDomainTests.cs`, `MobileNumberPolicyTests.cs`, `TaskBucketRulesTests.cs` | Unit | `EmailPolicy`, `MobileNumberPolicy`, buckets |
 | Test support | `TaskFlow.IntegrationTests/TestSupport/TaskFlowApiFactory.cs`, `MfaTestSupport.cs`, `CapturingLoggerProvider.cs`, `ScriptedChatProvider.cs`, `WindowsOnlyFactAttribute.cs`; `TaskFlow.UnitTests/TestSupport/*` (`FakeTimeProvider`, `TestAccessControl`, `AcceptingMfaService`, harnesses) | Support | Factories, fakes, harnesses |
-| Legal | None | – | No backend code; no frontend spec in the snapshot |
+| Frontend authentication | `modules/auth/login/pages/login.component.spec.ts`, `login.component.mfa.spec.ts`, `modules/auth/login/components/login-background.component.spec.ts`, `modules/auth/account-recovery/pages/account-recovery.component.spec.ts`, `modules/auth/security-setup/pages/security-setup.component.spec.ts` | Frontend spec | Login, code step, account recovery, Security Setup |
+| Frontend session and routes | `shared/auth/auth.service.spec.ts`, `auth.service.mfa.spec.ts`, `auth.service.recovery.spec.ts`, `auth.guard.spec.ts`, `auth.interceptor.spec.ts`, `auth.mfa-gate.spec.ts`, `role-routes.spec.ts`; `routes/app.routes.spec.ts`, `app.routes.recovery.spec.ts` | Frontend spec | Session, guards, interceptor, MFA gate, role routing, route table |
+| Frontend shared and shell | `shared/components/` (backdrop, confirm dialog, drawer, icon), `shared/services/` (theme, toast), `shared/utils/` (4), `shared/testing/permission-gating.spec.ts`; `layouts/` (4); `app.component.spec.ts` | Frontend spec | Shared components, services, utilities, permission gating, shell |
+| Legal | `modules/legal/pages/legal-page.component.spec.ts`, `modules/legal/utils/legal-documents.spec.ts`, `shared/components/legal-footer/legal-footer.component.spec.ts` | Frontend spec | Legal pages, document content, footer; no backend code |
 
 Module tests: see section 9 of each sub-module LLD.
 
@@ -1486,10 +1496,6 @@ Module tests: see section 9 of each sub-module LLD.
 - Legal: content is hard-coded (rebuild needed for changes, "Last updated" typed by hand); the not-found fallback cannot
   be reached by URL; `trackBlock` uses `block.kind`, so two blocks of the same kind in a section produce duplicate track
   keys; the footer's `aria-current` is never set because the footer is not rendered on legal pages.
-- > ⚠️ To be confirmed: `login.component.css`, `security-setup.component.css`, `legal-page.component.css` and
-  `legal-footer.component.css` are referenced by `styleUrl` but are not in the snapshot.
-- > ⚠️ To be confirmed: bodies of `ArchitectureTests.cs` and `scripts/check-frontend-structure.mjs` (not in the
-  snapshot).
 
 ---
 

@@ -461,18 +461,19 @@ _Not applicable for this sub-module._ Workload has no configuration keys of its 
 
 ## 9. Testing Design
 
-Paths are relative to `backend/tests`. Only the file names are available; coverage is inferred from them.
+Backend paths are relative to `backend/tests`, frontend paths to `frontend/src/app/`. "Covers" was checked against the
+test sources.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
 | Workload endpoint | `TaskFlow.IntegrationTests/Monitoring/EmployeeWorkload/WorkloadEndpointsTests.cs` | Integration | `GET /api/v1/workload` – 200 / 403, project filter, response shape |
-| Workload service | `TaskFlow.UnitTests/Monitoring/EmployeeWorkload/WorkloadServiceTests.cs` | Unit | Counts (active, high priority, overdue, completed), zero rows, ordering |
+| Workload service | `TaskFlow.UnitTests/Monitoring/EmployeeWorkload/WorkloadServiceTests.cs` | Unit | Counts (active, high priority, overdue, completed; In-QA counts as active), project allocations, project filter, zero-load active employees only, non-Employee roles and deleted tasks excluded, overdue rule as on the Dashboard |
 | Custom roles | `TaskFlow.UnitTests/Monitoring/EmployeeWorkload/CustomRoleWorkloadTests.cs` | Unit | Who is listed when a custom role holds or lacks `tasks.view.all` |
 | Harness | `TaskFlow.UnitTests/TestSupport/WorkloadReportHarness.cs` | Support | Shared fixture for workload and report tests |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer, folder and naming rules |
-| Frontend | – | – | No spec file for `WorkloadComponent` (facts: 0 frontend spec files); client rules checked manually |
-
-> ⚠️ To be confirmed: the exact cases inside each test file (only file names are available).
+| Workload page | `modules/monitoring/employee-workload/pages/workload.component.spec.ts` | Frontend unit | Rows with counts, bar and "N employees" summary, projects with percentages and Allocated %, Project filter (reload), Employee filter (no reload), High load at twice the average, **Tasks →** link with `assignedToUserId`, filters and link hidden without `workload.filters.use` / `workload.tasks.open`, error state and retry |
+| Workload service (Angular) | `modules/monitoring/employee-workload/services/workload.service.spec.ts` | Frontend unit | `GET /api/v1/workload` with and without `projectId`; error propagation |
+| Workload route | `routes/app.routes.spec.ts` | Frontend unit | `permissionGuard` with `workload.view` on `/workload` |
 
 ---
 
@@ -502,20 +503,20 @@ Paths are relative to `backend/tests`. Only the file names are available; covera
 | FR-WORK-05 | `GetTaskCountsAsync` (Overdue, `IAppClock.UtcNow`) · `workload-cell--overdue` | `WorkloadServiceTests.cs` |
 | FR-WORK-06 | `GetTaskCountsAsync` (Completed) | `WorkloadServiceTests.cs` |
 | FR-WORK-07 | `WorkloadService.GetWorkloadAsync` (zero default) | `WorkloadServiceTests.cs` |
-| FR-WORK-08 | `GetEmployeesAsync` (`ProjectAllocationDto`) · `AllocatedPercent` sum | `WorkloadEndpointsTests.cs` |
-| FR-WORK-09 | `WorkloadComponent.summary`, `averageLabel()` | Manual UI |
-| FR-WORK-10 | `WorkloadComponent.isHighLoad` | Manual UI |
-| FR-WORK-11 | `workload.component.html` legend | Manual UI |
-| FR-WORK-12 | `WorkloadComponent.maxActive`, `barWidth` | Manual UI |
-| FR-WORK-13 | `GET /api/v1/workload` (`projectId`) · `WorkloadComponent.setProject` | `WorkloadEndpointsTests.cs` |
-| FR-WORK-14 | `WorkloadComponent.setEmployee`, `filteredRows`, `reset` | Manual UI |
-| FR-WORK-15 | **Tasks →** `routerLink ['/tasks']` + `assignedToUserId` · `GET /api/v1/tasks` scope in `TaskService` | `TasksEndpointsTests.cs` |
-| FR-WORK-16 | `WorkloadComponent.canFilter` (`workload.filters.use`) | Manual UI |
-| FR-WORK-17 | `WorkloadComponent.canOpenTasks` (`workload.tasks.open`) | Manual UI |
-| FR-WORK-18 | `[RequirePermission(PermissionKeys.WorkloadView)]` · `permissionGuard` · `nav-items.ts` | `WorkloadEndpointsTests.cs` |
+| FR-WORK-08 | `GetEmployeesAsync` (`ProjectAllocationDto`) · `AllocatedPercent` sum | `WorkloadServiceTests.cs`, `workload.component.spec.ts` |
+| FR-WORK-09 | `WorkloadComponent.summary`, `averageLabel()` | `workload.component.spec.ts` (row count; the average is not asserted) |
+| FR-WORK-10 | `WorkloadComponent.isHighLoad` | `workload.component.spec.ts` |
+| FR-WORK-11 | `workload.component.html` legend | Manual UI (the legend text is not asserted) |
+| FR-WORK-12 | `WorkloadComponent.maxActive`, `barWidth` | `workload.component.spec.ts` (bar shown; the scaling is not asserted) |
+| FR-WORK-13 | `GET /api/v1/workload` (`projectId`) · `WorkloadComponent.setProject` | `WorkloadEndpointsTests.cs`, `WorkloadServiceTests.cs`, `workload.component.spec.ts`, `workload.service.spec.ts` |
+| FR-WORK-14 | `WorkloadComponent.setEmployee`, `filteredRows`, `reset` | `workload.component.spec.ts` |
+| FR-WORK-15 | **Tasks →** `routerLink ['/tasks']` + `assignedToUserId` · `GET /api/v1/tasks` scope in `TaskService` | `TasksEndpointsTests.cs`, `workload.component.spec.ts`, `task-list.component.spec.ts` |
+| FR-WORK-16 | `WorkloadComponent.canFilter` (`workload.filters.use`) | `workload.component.spec.ts` |
+| FR-WORK-17 | `WorkloadComponent.canOpenTasks` (`workload.tasks.open`) | `workload.component.spec.ts` |
+| FR-WORK-18 | `[RequirePermission(PermissionKeys.WorkloadView)]` · `permissionGuard` · `nav-items.ts` | `WorkloadEndpointsTests.cs`, `app.routes.spec.ts` |
 | FR-WORK-19 | `WorkloadService.GetWorkloadAsync` (no caller scope) | `WorkloadServiceTests.cs` |
 | FR-WORK-20 | Only `GET`; no `IUnitOfWork` in `WorkloadService` | Code inspection (no write path) |
-| FR-WORK-21 | Empty array · `WorkloadComponent.load` error text and empty state | Manual UI |
+| FR-WORK-21 | Empty array · `WorkloadComponent.load` error text and empty state | `workload.component.spec.ts` (error state and retry; the empty state is not tested) |
 | FR-WORK-22 | Same rules as `TaskBucketRules` / `ToCard` (`Deadline < now`, not Completed/Cancelled, not deleted) | `WorkloadServiceTests.cs` |
 
 ---

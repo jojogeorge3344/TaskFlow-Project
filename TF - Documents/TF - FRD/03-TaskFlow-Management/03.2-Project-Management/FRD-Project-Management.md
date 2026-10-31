@@ -608,58 +608,58 @@ The global NFRs of the overall BRD apply (notably NFR-08 server validation, NFR-
 
 ## 11. Requirements Traceability Matrix
 
-Test evidence lists the automated test suites whose names match the behaviour; their contents were not available
-(⚠️ To be confirmed). "Manual UI" = screen behaviour checked by hand.
+Test evidence lists the automated test suites that cover the behaviour; the mapping was checked against the test
+sources. Frontend specs (`*.spec.ts`) are under `frontend/src/app`. "Manual UI" = screen behaviour checked by hand.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-PROJ-01 | FR-PROJ-01 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-02 | FR-PROJ-02 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-03 | FR-PROJ-03 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-04 | FR-PROJ-04 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-05 | FR-PROJ-05, FR-PROJ-06 | 4.1.1 | UC-PROJ-01 | ProjectTeamEndpointsTests |
-| REQ-PROJ-06 | FR-PROJ-07 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-07 | FR-PROJ-08 | 4.1.1 | UC-PROJ-02 | Manual UI |
-| REQ-PROJ-08 | FR-PROJ-09, FR-PROJ-10, FR-PROJ-11 | 4.1.1 | UC-PROJ-02 | ⚠️ To be confirmed (no matching suite name) |
-| REQ-PROJ-09 | FR-PROJ-12 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-10 | FR-PROJ-14 | 4.1.2 | UC-PROJ-03 | `ProjectRequestValidatorsTests.cs` |
-| REQ-PROJ-11 | FR-PROJ-15 | 4.1.2 | UC-PROJ-03, UC-PROJ-04 | ⚠️ To be confirmed |
-| REQ-PROJ-12 | FR-PROJ-16 | 4.1.2 | UC-PROJ-04 | Manual UI |
-| REQ-PROJ-13 | FR-PROJ-17 | 4.1.2 | UC-PROJ-03 | Manual UI |
-| REQ-PROJ-14 | FR-PROJ-18 | 4.1.2 | UC-PROJ-03, UC-PROJ-04 | Manual UI |
-| REQ-PROJ-15 | FR-PROJ-19 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-16 | FR-PROJ-20, FR-PROJ-21 | 4.1.3 | UC-PROJ-05 | Manual UI |
-| REQ-PROJ-17 | FR-PROJ-22 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-18 | FR-PROJ-23 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-19 | FR-PROJ-24, FR-PROJ-30 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-20 | FR-PROJ-25 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-21 | FR-PROJ-26 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-22 | FR-PROJ-21, FR-PROJ-27 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests |
+| REQ-PROJ-01 | FR-PROJ-01 | 4.1.1 | UC-PROJ-01 | UserAllocationServiceTests (managers by name), project-list.component.spec.ts |
+| REQ-PROJ-02 | FR-PROJ-02 | 4.1.1 | UC-PROJ-01 | project-list.component.spec.ts |
+| REQ-PROJ-03 | FR-PROJ-03 | 4.1.1 | UC-PROJ-01 | project-list.component.spec.ts |
+| REQ-PROJ-04 | FR-PROJ-04 | 4.1.1 | UC-PROJ-01 | app.routes.spec.ts, nav-items.spec.ts |
+| REQ-PROJ-05 | FR-PROJ-05, FR-PROJ-06 | 4.1.1 | UC-PROJ-01 | ProjectTeamEndpointsTests, ModuleBasedPermissionEndpointsTests, project-list.component.spec.ts |
+| REQ-PROJ-06 | FR-PROJ-07 | 4.1.1 | UC-PROJ-01 | project-list.component.spec.ts |
+| REQ-PROJ-07 | FR-PROJ-08 | 4.1.1 | UC-PROJ-02 | project-list.component.spec.ts |
+| REQ-PROJ-08 | FR-PROJ-09, FR-PROJ-10, FR-PROJ-11 | 4.1.1 | UC-PROJ-02 | ProjectTeamEndpointsTests, UserAllocationServiceTests, ManagerAssignmentTests, project-list.component.spec.ts (FR-PROJ-10 tasks kept: no automated test) |
+| REQ-PROJ-09 | FR-PROJ-12 | 4.1.1 | UC-PROJ-01 | project-list.component.spec.ts |
+| REQ-PROJ-10 | FR-PROJ-14 | 4.1.2 | UC-PROJ-03 | ProjectRequestValidatorsTests, UsersEndpointsTests, project-form-dialog.component.spec.ts |
+| REQ-PROJ-11 | FR-PROJ-15 | 4.1.2 | UC-PROJ-03, UC-PROJ-04 | project-form-dialog.component.spec.ts (server message shown; no backend test of the duplicate check) |
+| REQ-PROJ-12 | FR-PROJ-16 | 4.1.2 | UC-PROJ-04 | ProjectRequestValidatorsTests, project-form-dialog.component.spec.ts |
+| REQ-PROJ-13 | FR-PROJ-17 | 4.1.2 | UC-PROJ-03 | project-form-dialog.component.spec.ts, project-list.component.spec.ts, project-team-dialog.component.spec.ts |
+| REQ-PROJ-14 | FR-PROJ-18 | 4.1.2 | UC-PROJ-03, UC-PROJ-04 | project-form-dialog.component.spec.ts |
+| REQ-PROJ-15 | FR-PROJ-19 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, project-team-dialog.component.spec.ts |
+| REQ-PROJ-16 | FR-PROJ-20, FR-PROJ-21 | 4.1.3 | UC-PROJ-05 | employee-picker.component.spec.ts, project-team-dialog.component.spec.ts |
+| REQ-PROJ-17 | FR-PROJ-22 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests, project-team-dialog.component.spec.ts |
+| REQ-PROJ-18 | FR-PROJ-23 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests, employee-picker.component.spec.ts |
+| REQ-PROJ-19 | FR-PROJ-24, FR-PROJ-30 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests, project-team-dialog.component.spec.ts |
+| REQ-PROJ-20 | FR-PROJ-25 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests, project-team-dialog.component.spec.ts |
+| REQ-PROJ-21 | FR-PROJ-26 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests |
+| REQ-PROJ-22 | FR-PROJ-21, FR-PROJ-27 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests, ProjectTeamEndpointsTests, project-team-dialog.component.spec.ts |
 | REQ-PROJ-23 | FR-PROJ-28 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests |
-| REQ-PROJ-24 | FR-PROJ-29 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| REQ-PROJ-25 | FR-PROJ-31 | 4.1.3 | UC-PROJ-05 | Manual UI |
-| REQ-PROJ-26 | FR-PROJ-32 | 4.1.3 | UC-PROJ-06 | ⚠️ To be confirmed |
-| REQ-PROJ-27 | FR-PROJ-33 | 4.1.3 | UC-PROJ-06 | ⚠️ To be confirmed |
-| REQ-PROJ-28 | FR-PROJ-34 | 4.1.3 | UC-PROJ-06 | ⚠️ To be confirmed |
-| REQ-PROJ-29 | FR-PROJ-35 | 4.1.3 | UC-PROJ-06 | Manual UI |
-| REQ-PROJ-30 | FR-PROJ-36 | 4.1.3 | UC-PROJ-06 | Manual UI |
-| REQ-PROJ-31 | FR-PROJ-37 | 4.1.4 | UC-PROJ-07 | Manual UI |
-| REQ-PROJ-32 | FR-PROJ-38 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests |
-| REQ-PROJ-33 | FR-PROJ-39, FR-PROJ-44 | 4.1.4 | UC-PROJ-07 | Manual UI |
-| REQ-PROJ-34 | FR-PROJ-40, FR-PROJ-44 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests |
-| REQ-PROJ-35 | FR-PROJ-41 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests |
-| REQ-PROJ-36 | FR-PROJ-42 | 4.1.4 | UC-PROJ-07 | Manual UI |
-| REQ-PROJ-37 | FR-PROJ-43 | 4.1.4 | UC-PROJ-07 | Manual UI |
-| BR-PROJ-01 | FR-PROJ-45 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests |
-| BR-PROJ-02 | FR-PROJ-14, FR-PROJ-15 | 4.1.2 | UC-PROJ-03 | ⚠️ To be confirmed |
-| BR-PROJ-03 | FR-PROJ-27 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests |
-| BR-PROJ-04 | FR-PROJ-22, FR-PROJ-23 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| BR-PROJ-05 | FR-PROJ-24, FR-PROJ-25 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| BR-PROJ-06 | FR-PROJ-26 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| BR-PROJ-07 | FR-PROJ-28 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests |
-| BR-PROJ-08 | FR-PROJ-32, FR-PROJ-33, FR-PROJ-34, FR-PROJ-36 | 4.1.3 | UC-PROJ-06 | ⚠️ To be confirmed |
-| BR-PROJ-09 | FR-PROJ-09, FR-PROJ-10 | 4.1.1 | UC-PROJ-02 | ⚠️ To be confirmed |
-| BR-PROJ-10 | FR-PROJ-30 | 4.1.3 | UC-PROJ-05 | ManagerAssignmentTests |
+| REQ-PROJ-24 | FR-PROJ-29 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests, project-team-dialog.component.spec.ts |
+| REQ-PROJ-25 | FR-PROJ-31 | 4.1.3 | UC-PROJ-05 | project-team-dialog.component.spec.ts expects a new row to start with no position (conflicts with FR-PROJ-31) |
+| REQ-PROJ-26 | FR-PROJ-32 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, UserAllocationServiceTests, position-combobox.component.spec.ts |
+| REQ-PROJ-27 | FR-PROJ-33 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, position-combobox.component.spec.ts, project-team-dialog.component.spec.ts |
+| REQ-PROJ-28 | FR-PROJ-34 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, UserAllocationServiceTests |
+| REQ-PROJ-29 | FR-PROJ-35 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, UserAllocationServiceTests, UserProjectAllocationsMigrationTests |
+| REQ-PROJ-30 | FR-PROJ-36 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, UserAllocationServiceTests (no permission from a position); Manual check (no rename / delete) |
+| REQ-PROJ-31 | FR-PROJ-37 | 4.1.4 | UC-PROJ-07 | project-list.component.spec.ts |
+| REQ-PROJ-32 | FR-PROJ-38 | 4.1.4 | UC-PROJ-07 | project-detail.component.spec.ts |
+| REQ-PROJ-33 | FR-PROJ-39, FR-PROJ-44 | 4.1.4 | UC-PROJ-07 | project-detail.component.spec.ts |
+| REQ-PROJ-34 | FR-PROJ-40, FR-PROJ-44 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests, project-detail.component.spec.ts |
+| REQ-PROJ-35 | FR-PROJ-41 | 4.1.4 | UC-PROJ-07 | ProjectTaskTests, project-detail.component.spec.ts |
+| REQ-PROJ-36 | FR-PROJ-42 | 4.1.4 | UC-PROJ-07 | project-detail.component.spec.ts |
+| REQ-PROJ-37 | FR-PROJ-43 | 4.1.4 | UC-PROJ-07 | project-detail.component.spec.ts |
+| BR-PROJ-01 | FR-PROJ-45 | 4.1.4 | UC-PROJ-07 | Manual UI (no test of organisation-wide access) |
+| BR-PROJ-02 | FR-PROJ-14, FR-PROJ-15 | 4.1.2 | UC-PROJ-03 | ProjectRequestValidatorsTests, project-form-dialog.component.spec.ts |
+| BR-PROJ-03 | FR-PROJ-27 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests, ProjectTeamEndpointsTests |
+| BR-PROJ-04 | FR-PROJ-22, FR-PROJ-23 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests |
+| BR-PROJ-05 | FR-PROJ-24, FR-PROJ-25 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests |
+| BR-PROJ-06 | FR-PROJ-26 | 4.1.3 | UC-PROJ-05 | UserAllocationServiceTests |
+| BR-PROJ-07 | FR-PROJ-28 | 4.1.3 | UC-PROJ-05 | ProjectTeamEndpointsTests, UserAllocationServiceTests |
+| BR-PROJ-08 | FR-PROJ-32, FR-PROJ-33, FR-PROJ-34, FR-PROJ-36 | 4.1.3 | UC-PROJ-06 | ProjectTeamEndpointsTests, UserAllocationServiceTests, position-combobox.component.spec.ts |
+| BR-PROJ-09 | FR-PROJ-09, FR-PROJ-10 | 4.1.1 | UC-PROJ-02 | ProjectTeamEndpointsTests, UserAllocationServiceTests (FR-PROJ-10 tasks kept: no automated test) |
+| BR-PROJ-10 | FR-PROJ-30 | 4.1.3 | UC-PROJ-05 | ManagerAssignmentTests, UserAllocationServiceTests, ManagerAssignmentEndpointsTests |
 | BR-PROJ-11 | FR-PROJ-13, FR-PROJ-45 | 4.1.1, 4.1.4 | UC-PROJ-01, UC-PROJ-07 | Manual UI |
 
 **Coverage:** 37 of 37 `REQ-PROJ` requirements and 11 of 11 `BR-PROJ` rules trace to at least one FR; 0 untraced.

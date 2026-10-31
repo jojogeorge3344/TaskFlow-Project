@@ -450,7 +450,7 @@ Management (migration `20261013104629_AddTaskReminderSettings`); this sub-module
 | `Application:Timezone` | `Asia/Kolkata` (code default `UTC`) | Fallback for the read-only timezone while `Application.Timezone` is missing |
 | `Reminders:SchedulerEnabled` | `true` | Reminder engine that consumes these settings (Notification) |
 | `Reminders:TickSeconds` | `60` | Interval of the reminder run |
-| `ConnectionStrings:Default` | `<secret>` | SQLite database |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
 
 Runtime-editable keys: see 5.2.
 
@@ -458,20 +458,22 @@ Runtime-editable keys: see 5.2.
 
 ## 9. Testing Design
 
-Test file names from `tests-filelist.json`; test contents were not available, so coverage is inferred from names only.
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/settings/reminder-settings`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Service | `TaskFlow.UnitTests/Settings/ReminderSettings/ReminderSettingsServiceTests.cs` | Unit | Defaults and save |
-| Validator | `TaskFlow.UnitTests/Settings/ReminderSettings/ReminderSettingsValidatorTests.cs` | Unit | Ranges and first-before-second rule |
-| Endpoints | `TaskFlow.IntegrationTests/Settings/ReminderSettings/SettingsEndpointsTests.cs` | Integration | GET/PUT, authorization |
-| Seeder | `TaskFlow.UnitTests/Persistence/SettingsInitializerTests.cs` | Unit | Missing rows inserted, existing kept |
+| Service | `TaskFlow.UnitTests/Settings/ReminderSettings/ReminderSettingsServiceTests.cs` | Unit | Fresh-database defaults, missing / unreadable rows fall back to defaults and configured timezone, save round trip, who / when recorded, timezone unchanged |
+| Validator | `TaskFlow.UnitTests/Settings/ReminderSettings/ReminderSettingsValidatorTests.cs` | Unit | Defaults valid, second interval 0 valid, first / second out of range, second not before first, unknown overdue frequency, missing fields and intervals invalid |
+| Endpoints | `TaskFlow.IntegrationTests/Settings/ReminderSettings/SettingsEndpointsTests.cs` | Integration | GET for Manager and Administrator, PUT saves and ignores the timezone, invalid values and missing fields 400 with nothing changed, Employee 403, 401 |
+| Seeder | `TaskFlow.UnitTests/Persistence/SettingsInitializerTests.cs` | Unit | Every default key inserted once, only missing keys added, existing values never overwritten, timezone seeded from configuration |
 | Policies | `TaskFlow.IntegrationTests/Common/PermissionAuthorizationTests.cs`, `ModuleBasedPermissionEndpointsTests.cs` | Integration | Policy per key |
-| Consumers | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderServiceTests.cs`, `ReminderCalculatorTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs` | Unit | Engine switches, defaults on create |
+| Consumers | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderServiceTests.cs`, `ReminderCalculatorTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs` | Unit | Reminder switches (disabled, mail on / off, deadline-day toggle), schedule from the intervals and overdue frequency, configured defaults applied on task create |
 | Support | `TaskFlow.UnitTests/TestSupport/SettingsTestDatabase.cs`, `FakeTimeProvider.cs` | Support | Test database, clock |
 | Structure | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 
-Frontend spec files: 0.
+| Frontend page | `pages/reminder-settings.component.spec.ts` | Frontend unit | Loads values with read-only timezone, shows a stored non-preset interval, saves without the timezone, hides Saved after an edit, field error linked to its select, blocks a second interval not shorter than the first, server 400 field errors, retryable load error, Mail delivery option |
+| Frontend service | `services/reminder-settings.service.spec.ts` | Frontend unit | GET read; PUT of the editable fields |
 
 ---
 
@@ -498,7 +500,7 @@ Frontend spec files: 0.
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-REM-01 | `GET /api/v1/settings/reminders` · `ReminderSettingsService.GetAsync` · `ReminderSettingsComponent.load` | `SettingsEndpointsTests`, `ReminderSettingsServiceTests` |
-| FR-REM-02 | `ReminderSettingsComponent.load` (`loading`, `loadError`, Retry) | – (no frontend specs) |
+| FR-REM-02 | `ReminderSettingsComponent.load` (`loading`, `loadError`, Retry) | `reminder-settings.component.spec.ts` |
 | FR-REM-03 | `PUT /api/v1/settings/reminders` · `UpdateAsync` (`Reminder.Enabled`) | `ReminderSettingsServiceTests` |
 | FR-REM-04 | `ReminderService.GenerateDueAsync` (returns 0 when `Enabled` false) | `ReminderServiceTests` |
 | FR-REM-05 | `UpdateAsync` (`Reminder.DeadlineDayEnabled`) · `ReminderCalculator.DueReminders` | `ReminderCalculatorTests` |
@@ -516,10 +518,10 @@ Frontend spec files: 0.
 | FR-REM-17 | Defaults copied once into `Tasks` columns; never rewritten | `TaskServiceTests` |
 | FR-REM-18 | `ReminderService` reads `GetAsync()` on every run | `ReminderServiceTests` |
 | FR-REM-19 | `Set()` writes `UpdatedByUserId`, `UpdatedAt` | `ReminderSettingsServiceTests` |
-| FR-REM-20 | `ReminderSettingsComponent.save` (toast, `savedAt`, `saveError`) | – (no frontend specs) |
-| FR-REM-21 | `permissionGuard` (`settings/reminders`) · `buildNavigation()` | – (no frontend specs) |
+| FR-REM-20 | `ReminderSettingsComponent.save` (toast, `savedAt`, `saveError`) | `reminder-settings.component.spec.ts` |
+| FR-REM-21 | `permissionGuard` (`settings/reminders`) · `buildNavigation()` | `app.routes.spec.ts`, `nav-items.spec.ts` |
 | FR-REM-22 | `[RequirePermission(PermissionKeys.SettingsReminders)]` on the controller | `SettingsEndpointsTests`, `PermissionAuthorizationTests` |
-| FR-REM-23 | `withReminderDay()` in `ReminderSettingsComponent.apply` | – (no frontend specs) |
+| FR-REM-23 | `withReminderDay()` in `ReminderSettingsComponent.apply` | `reminder-settings.component.spec.ts` |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

@@ -15,7 +15,7 @@
 
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
-| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from the code and verified against the code fact sheet |
+| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from and verified against the TaskFlow source code (backend, frontend and tests) |
 
 **Related documents:**
 
@@ -47,8 +47,7 @@ to implement or maintain the code.
   validators `*RequestValidator`.
 - API base path `/api/v1`; JSON camelCase; enums serialised as strings (`JsonStringEnumConverter`); errors as
   RFC 7807 ProblemDetails (`ValidationProblemDetails` for field errors).
-- **Endpoint count:** `EmployeesController` has **8** actions in the code fact sheet (section 3); all 8 are documented
-  in 4.1.1.
+- **Endpoint count:** `EmployeesController` has **8** actions (counted from the code); all 8 are documented in 4.1.1.
 
 ---
 
@@ -657,7 +656,7 @@ All `employees.*` keys except `employees.view` require `employees.view` (`Permis
 | `Jwt:AccessTokenMinutes` | 30 | Lifetime of the access tokens that a stamp rotation invalidates |
 | `Jwt:RefreshTokenDays` | 7 | Lifetime of the refresh tokens revoked by `EndSessionsAsync` |
 | `Mfa:Required` | true | New users must set up MFA after sign-in (setup gate); affects the post-reset flow |
-| `ConnectionStrings:Default` | `<secret>` | SQLite database (shared) |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database (shared) |
 | Code constant `EmailPolicy.Domain` | `taskflow.com` | Fixed employee email domain (`MaxLocalPartLength = 64`) |
 | Code constant `IUserAllocationService.MaxTotalPercent` | 100 | Allocation cap per person |
 | Code constants `SystemRoles.AdministratorId` / `ManagerId` / `EmployeeId` | 1 / 2 / 3 | Role checks |
@@ -666,26 +665,30 @@ All `employees.*` keys except `employees.view` require `employees.view` (`Permis
 
 ## 9. Testing Design
 
-Test file names come from the test file list; their contents were not available, so "Covers" is inferred from the
-names (⚠️ To be confirmed).
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/management`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Endpoints | `TaskFlow.IntegrationTests/Management/EmployeeManagement/UsersEndpointsTests.cs` | Integration | `/api/v1/users` actions, authorization, uniqueness, role rules |
-| Delete | `TaskFlow.IntegrationTests/Management/EmployeeManagement/AdminDeleteEndpointsTests.cs` | Integration | `DELETE /api/v1/users/{id}`, self-delete |
+| Endpoints | `TaskFlow.IntegrationTests/Management/EmployeeManagement/UsersEndpointsTests.cs` | Integration | List for a Manager, 403 for an Employee, create with a role name, short-password 400, password ignored on update, sessions ended on username / role change and on deactivation |
+| Delete | `TaskFlow.IntegrationTests/Management/EmployeeManagement/AdminDeleteEndpointsTests.cs` | Integration | `DELETE /api/v1/users/{id}`: Administrator only, unknown 404, self-delete, unfinished tasks, manager clean-up, history kept |
 | Last Administrator | `TaskFlow.IntegrationTests/Management/EmployeeManagement/LastAdministratorTests.cs` | Integration | Role-change and delete guard |
 | Last Administrator | `TaskFlow.IntegrationTests/Management/EmployeeManagement/LastAdministratorStatusTests.cs` | Integration | Deactivation guard |
 | Manager links | `TaskFlow.IntegrationTests/Management/EmployeeManagement/ManagerAssignmentEndpointsTests.cs` | Integration | Derived managers, clean-up on role change |
 | MFA reset | `TaskFlow.IntegrationTests/Auth/Mfa/MfaAdminResetEndpointsTests.cs` | Integration | `POST /api/v1/users/{id}/mfa/reset` |
-| Manager derivation | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | Managers and reports |
-| Soft delete | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/UserDeletionTests.cs` | Unit | Delete rules, reserved email / username |
-| Password ignored | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/UserServiceSelfServiceTests.cs` | Unit | Update paths |
-| Allocations | `TaskFlow.UnitTests/Management/EmployeeManagement/Allocations/UserAllocationServiceTests.cs` | Unit | 1–100, duplicates, 100% cap (shared with PROJ) |
-| MFA service | `TaskFlow.UnitTests/Auth/Mfa/MfaServiceTests.cs` | Unit | `ResetAsync` clears MFA state |
-| Email policy | `TaskFlow.UnitTests/Common/EmailDomainTests.cs`, `TaskFlow.UnitTests/Persistence/EmailDomainMigrationTests.cs` | Unit | `EmailPolicy`; domain migration |
+| Manager derivation | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | Managers and reports from departments; role change removes manager projects |
+| Soft delete | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/UserDeletionTests.cs` | Unit | Soft delete keeps email / username, sessions revoked, self / last Administrator / unfinished tasks refused, manager links cleared |
+| Role safeguards | `TaskFlow.IntegrationTests/Settings/RoleConfiguration/RoleAssignmentSafeguardTests.cs` | Integration | Administrator role needs `roles.administrator.assign`; update never changes the password; role list needs `employees.role.assign` |
+| Own profile | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/UserServiceSelfServiceTests.cs` | Unit | Own-profile and own-password paths of `UserService` (not the admin update) |
+| Allocations | `TaskFlow.UnitTests/Management/EmployeeManagement/Allocations/UserAllocationServiceTests.cs` | Unit | 1–100, same project twice, unknown project / position, 100% cap, departments saved with the user, project / department filters (shared with PROJ) |
+| MFA service | `TaskFlow.UnitTests/Auth/Mfa/MfaServiceTests.cs` | Unit | Admin reset clears MFA, ends sessions and notifies the user |
+| Email policy | `TaskFlow.UnitTests/Common/EmailDomainTests.cs`, `TaskFlow.UnitTests/Persistence/EmailDomainMigrationTests.cs` | Unit | Fixed domain, lower case, 64-character local part, duplicate address / username including deleted users; domain migration |
 | Allocation migration | `TaskFlow.UnitTests/Persistence/UserProjectAllocationsMigrationTests.cs` | Unit | Column-to-table migration |
 | Permissions | `TaskFlow.UnitTests/Settings/RoleConfiguration/PermissionCatalogTests.cs`, `TaskFlow.IntegrationTests/Common/PermissionAuthorizationTests.cs` | Unit / Integration | Catalogue, policy wiring |
-| Frontend | – | – | No frontend spec files in the snapshot (fact sheet section 11) |
+| List page | `employee-management/pages/employee-list.component.spec.ts` | Frontend unit | Header count and badges, 300 ms search, select filters, `projectId` query parameter, empty / error states, deactivate / activate, delete offered only to an Administrator and not on the own row |
+| MFA reset | `employee-management/pages/employee-mfa-reset.spec.ts` | Frontend unit | Two-step status in the details panel, Reset MFA shown only with the permission and MFA on, confirm, toast, server error |
+| Form and details panels | `employee-management/components/employee-form-panel.component.spec.ts` | Frontend unit | Add / edit fields, fixed email domain, 6-character password, roles, departments, allocation rows and 100% cap, read-only lists when editing, own username / role change signs out, 409 message; details panel managers, projects and departments |
+| Frontend services | `employee-management/services/allocation-services.spec.ts` | Frontend unit | `PositionService` list and get-or-create, `ProjectService` members, `UserService` project / department filters |
 
 ---
 
@@ -696,7 +699,6 @@ names (⚠️ To be confirmed).
 - The screen needs `projects.view` and `departments.view` silently for its option lists; failures leave the lists empty.
 - Allocations and departments given on create need only `employees.create`, not `projects.members.manage` / `departments.members.manage`.
 - The frontend still sends `password` on update (`newPassword`); the server ignores it.
-- The employee form imports `PositionService` from `project-management/positions/services/position.service`, which is not in the frontend snapshot. ⚠️ To be confirmed.
 - The API supports `departmentId` on the list, but the screen offers only Project, Role and Status filters.
 - Search placeholder says "Name or email" but the query also matches `Username`.
 - ⚠️ To be confirmed: the Assistant tool `propose_role_change` (policy `roles.manage`) reaches `EmployeeService.UpdateAsync` without the controller's `employees.role.assign` / `roles.administrator.assign` checks.
@@ -711,38 +713,38 @@ names (⚠️ To be confirmed).
 |---|---|---|
 | FR-EMP-01, FR-EMP-02, FR-EMP-03, FR-EMP-04 | `GET /api/v1/users` · `EmployeeRepository.GetListAsync`, `LoadDtosAsync`, `UserDto.TotalAllocatedPercent` · `EmployeeListComponent` | `UsersEndpointsTests` |
 | FR-EMP-05, FR-EMP-06, FR-EMP-09, FR-EMP-10 | `GET /api/v1/users` (`search`, `projectId`, `isActive`) · `UserListFilter` · `UserService.getAll` | `UsersEndpointsTests` |
-| FR-EMP-07, FR-EMP-08 | `GET /api/v1/users` (`role`); `GET /api/v1/users/roles` · `EmployeesController.GetRoleOptions`, `RoleService.assignable` | `UsersEndpointsTests`; manual UI (fallback message) |
-| FR-EMP-11 | `EmployeeListComponent` empty / error states | Manual UI |
-| FR-EMP-12, FR-EMP-13 | `management.routes.ts` `permissionGuard` + `EmployeeScreenPermissions`; `nav-items.ts`; button bindings | Manual UI |
+| FR-EMP-07, FR-EMP-08 | `GET /api/v1/users` (`role`); `GET /api/v1/users/roles` · `EmployeesController.GetRoleOptions`, `RoleService.assignable` | `UsersEndpointsTests`, `RoleAssignmentSafeguardTests`; Manual UI (filter and fallback message) |
+| FR-EMP-11 | `EmployeeListComponent` empty / error states | `employee-list.component.spec.ts` |
+| FR-EMP-12, FR-EMP-13 | `management.routes.ts` `permissionGuard` + `EmployeeScreenPermissions`; `nav-items.ts`; button bindings | `app.routes.spec.ts`, `nav-items.spec.ts`, `employee-list.component.spec.ts` |
 | FR-EMP-14 | `[RequirePermission]` on every action; `PermissionPolicy` | `UsersEndpointsTests`, `PermissionAuthorizationTests` |
 | FR-EMP-15, FR-EMP-21 | Own-row check in `EmployeeListComponent`; `EmployeeService.DeleteAsync` self check | `AdminDeleteEndpointsTests`, `UserDeletionTests` |
-| FR-EMP-16, FR-EMP-19 | `ConfirmDialogComponent`, `ToastService` · `PATCH /api/v1/users/{id}/status` | Manual UI |
+| FR-EMP-16, FR-EMP-19 | `ConfirmDialogComponent`, `ToastService` · `PATCH /api/v1/users/{id}/status` | `employee-list.component.spec.ts` |
 | FR-EMP-17 | `EmployeeService.UpdateStatusAsync` → `EnsureAnotherActiveAdministratorAsync` | `LastAdministratorStatusTests` |
 | FR-EMP-18 | `PATCH /api/v1/users/{id}/status` · `EndSessionsAsync` | `LastAdministratorStatusTests`, `UsersEndpointsTests` |
-| FR-EMP-20, FR-EMP-27 | Delete confirm and toast · `DELETE /api/v1/users/{id}` | Manual UI |
+| FR-EMP-20, FR-EMP-27 | Delete confirm and toast · `DELETE /api/v1/users/{id}` | `employee-list.component.spec.ts` |
 | FR-EMP-22 | `EmployeeService.DeleteAsync` → `EnsureAnotherActiveAdministratorAsync` | `LastAdministratorTests` |
 | FR-EMP-23 | `ITaskRepository.CountUnfinishedAssignedToAsync` | `UserDeletionTests` |
 | FR-EMP-24, FR-EMP-26 | `DeleteAsync` (`IsDeleted`, `IsActive`); query filter; `EmailPrefixTakenAsync` / `UsernameTakenAsync` with `IgnoreQueryFilters()` | `UserDeletionTests`, `AdminDeleteEndpointsTests` |
 | FR-EMP-25 | `ClearManagerDutiesAsync`, `EndSessionsAsync` | `UserDeletionTests`, `ManagerAssignmentTests` |
 | FR-EMP-28, FR-EMP-29, FR-EMP-30, FR-EMP-31 | `EmployeeDetailsPanelComponent` · `UserDto` (`Managers`, `ManagerProjects`, `Reports`, `MfaEnabled`, `LastLoginAt`) | `UsersEndpointsTests`, `ManagerAssignmentTests` |
 | FR-EMP-32 | `EmployeeRepository.LoadDtosAsync` (derived managers) | `ManagerAssignmentTests`, `ManagerAssignmentEndpointsTests` |
-| FR-EMP-33 | Details **Edit** → `Panel` `{ mode: 'edit' }` | Manual UI |
-| FR-EMP-34, FR-EMP-35, FR-EMP-38 | Details **Reset MFA** button, confirm, toast · `UserService.resetMfa` | Manual UI |
+| FR-EMP-33 | Details **Edit** → `Panel` `{ mode: 'edit' }` | `employee-list.component.spec.ts`, `employee-form-panel.component.spec.ts` |
+| FR-EMP-34, FR-EMP-35, FR-EMP-38 | Details **Reset MFA** button, confirm, toast · `UserService.resetMfa` | `employee-mfa-reset.spec.ts` |
 | FR-EMP-36, FR-EMP-37 | `POST /api/v1/users/{id}/mfa/reset` · `MfaService.ResetAsync`, `NotificationPublisher.PublishAsync` | `MfaAdminResetEndpointsTests`, `MfaServiceTests` |
 | FR-EMP-39, FR-EMP-44, FR-EMP-45 | `POST /api/v1/users` · `CreateUserRequestValidator`, `EmployeeService.CreateAsync`, `IPasswordHasher<User>` | `UsersEndpointsTests` |
 | FR-EMP-40 | `EmailPolicy`, `RequireValidEmail` | `UsersEndpointsTests`, `EmailDomainTests` |
 | FR-EMP-41, FR-EMP-42 | `EmailPrefixTakenAsync`, `UsernameTakenAsync` | `UsersEndpointsTests` |
-| FR-EMP-43 | `IX_Users_Username`, `IX_Users_Email` · `UnitOfWork` → `UniqueConstraintException` (409) | `UsersEndpointsTests` (⚠️ To be confirmed) |
+| FR-EMP-43 | `IX_Users_Username`, `IX_Users_Email` · `UnitOfWork` → `UniqueConstraintException` (409) | No automated test of two saves at the same moment; `EmailDomainTests` covers the duplicate checks |
 | FR-EMP-46, FR-EMP-47 | `EmployeesController.Create` / `Update` inline checks `CanManageRoles()`, `CanAssignAdministrator()` | `UsersEndpointsTests`, `RoleAssignmentSafeguardTests` |
 | FR-EMP-48, FR-EMP-50 | `UserAllocationService.ValidateDepartmentsAsync`, `ValidateForUserAsync`, `RequireRoleAsync` | `UserAllocationServiceTests`, `UsersEndpointsTests` |
 | FR-EMP-49, FR-EMP-51, FR-EMP-52 | `ValidateForUserAsync`, `StageForUserAsync`; form allocation bar (`MAX_TOTAL_PERCENT`) | `UserAllocationServiceTests` |
-| FR-EMP-53, FR-EMP-55 | `EmployeeFormPanelComponent` edit mode (read-only lists, notice) | Manual UI |
-| FR-EMP-54 | `EmployeeService.UpdateAsync` (`passwordChanged = false`); `UpdateUserRequestValidator` has no password rule | `UserServiceSelfServiceTests` |
+| FR-EMP-53, FR-EMP-55 | `EmployeeFormPanelComponent` edit mode (read-only lists, notice) | `employee-form-panel.component.spec.ts` |
+| FR-EMP-54 | `EmployeeService.UpdateAsync` (`passwordChanged = false`); `UpdateUserRequestValidator` has no password rule | `UsersEndpointsTests`, `RoleAssignmentSafeguardTests` |
 | FR-EMP-56 | `UpdateAsync` → `EndSessionsAsync` on username / role change | `UsersEndpointsTests` |
-| FR-EMP-57 | `EmployeeFormPanelComponent` → `AuthService.clearSession()`, `LOGIN_REASON_CREDENTIALS_CHANGED` | Manual UI |
+| FR-EMP-57 | `EmployeeFormPanelComponent` → `AuthService.clearSession()`, `LOGIN_REASON_CREDENTIALS_CHANGED` | `employee-form-panel.component.spec.ts` |
 | FR-EMP-58 | `UpdateAsync` → `EnsureAnotherActiveAdministratorAsync` | `LastAdministratorTests` |
 | FR-EMP-59 | `UpdateAsync` → `ClearManagerDutiesAsync` when the old role is Manager | `ManagerAssignmentTests`, `ManagerAssignmentEndpointsTests` |
-| FR-EMP-60 | Form toasts; `apiErrorMessage` | Manual UI |
+| FR-EMP-60 | Form toasts; `apiErrorMessage` | `employee-form-panel.component.spec.ts` |
 
 **Coverage:** FR-EMP-01 – FR-EMP-60 (60 of 60) trace to an endpoint or class; 8 of 8 endpoints documented.
 

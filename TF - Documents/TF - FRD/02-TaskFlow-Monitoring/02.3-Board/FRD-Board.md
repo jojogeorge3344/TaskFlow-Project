@@ -345,35 +345,36 @@ This sub-module stores no data of its own.
 
 ## 11. Requirements Traceability Matrix
 
-Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests`) whose names match the
-behaviour; coverage is inferred from the file names. "Manual UI" = checked by hand on the screen.
+Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests` and the frontend
+`*.spec.ts` files under `frontend/src/app/`) that test the behaviour; the mapping was checked against the test sources.
+"Manual UI" = checked by hand on the screen.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-BOARD-01 | FR-BOARD-01, FR-BOARD-19 | Board | UC-BOARD-01 | `TasksEndpointsTests.cs`, `TaskServiceTests.cs` |
-| REQ-BOARD-02 | FR-BOARD-02 | Board | UC-BOARD-01 | `TaskServiceTests.cs` |
-| REQ-BOARD-03 | FR-BOARD-03 | Board | UC-BOARD-01 | Manual UI |
+| REQ-BOARD-01 | FR-BOARD-01, FR-BOARD-19 | Board | UC-BOARD-01 | `TasksEndpointsTests.cs`, `TaskServiceTests.cs`, `kanban.component.spec.ts` |
+| REQ-BOARD-02 | FR-BOARD-02 | Board | UC-BOARD-01 | `TaskDeletionTests.cs` (deleted tasks; no test for hiding cancelled cards) |
+| REQ-BOARD-03 | FR-BOARD-03 | Board | UC-BOARD-01 | `TaskServiceTests.cs`, `kanban.component.spec.ts` |
 | REQ-BOARD-04 | FR-BOARD-04 | Board | UC-BOARD-01 | `TaskTrackingDomainTests.cs` |
-| REQ-BOARD-05 | FR-BOARD-05 | Board | UC-BOARD-01 | Manual UI |
+| REQ-BOARD-05 | FR-BOARD-05 | Board | UC-BOARD-01 | `kanban.component.spec.ts` (same-column drop ignored; the deadline order is not asserted) |
 | REQ-BOARD-06 | FR-BOARD-06 | Board | UC-BOARD-01 | Manual UI |
-| REQ-BOARD-07 | FR-BOARD-07 | Board | UC-BOARD-02 | `CustomRolePermissionTests.cs` |
-| REQ-BOARD-08 | FR-BOARD-08 | Board | UC-BOARD-02 | `TaskTrackingDomainTests.cs` |
-| REQ-BOARD-09 | FR-BOARD-10 | Board | UC-BOARD-02 | Manual UI |
-| REQ-BOARD-10 | FR-BOARD-11 | Board | UC-BOARD-02 | Manual UI |
-| REQ-BOARD-11 | FR-BOARD-12 | Board | UC-BOARD-02 | `TaskManagementServiceTests.cs` |
-| REQ-BOARD-12 | FR-BOARD-13, FR-BOARD-16 | Board | UC-BOARD-03 | Manual UI |
-| REQ-BOARD-13 | FR-BOARD-14 | Board | UC-BOARD-03 | Manual UI |
-| REQ-BOARD-14 | FR-BOARD-15 | Board | UC-BOARD-03 | Manual UI |
-| REQ-BOARD-15 | FR-BOARD-16, FR-BOARD-17 | Board | UC-BOARD-03 | Manual UI |
-| REQ-BOARD-16 | FR-BOARD-18, FR-BOARD-19 | Board | UC-BOARD-01 | Manual UI |
-| REQ-BOARD-17 | FR-BOARD-20 | Board | UC-BOARD-04 | Manual UI |
-| REQ-BOARD-18 | FR-BOARD-21, FR-BOARD-22 | Board | UC-BOARD-01 | `ModuleBasedPermissionEndpointsTests.cs` |
-| BR-BOARD-01 | FR-BOARD-01 | Board | UC-BOARD-01 | `TaskServiceTests.cs` |
-| BR-BOARD-02 | FR-BOARD-08 | Board | UC-BOARD-02 | `TaskTrackingDomainTests.cs` |
+| REQ-BOARD-07 | FR-BOARD-07 | Board | UC-BOARD-02 | `PermissionAuthorizationTests.cs` (every catalog key has a policy); disabled dragging: Manual UI |
+| REQ-BOARD-08 | FR-BOARD-08 | Board | UC-BOARD-02 | `TaskTrackingDomainTests.cs`, `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| REQ-BOARD-09 | FR-BOARD-10 | Board | UC-BOARD-02 | `kanban.component.spec.ts` |
+| REQ-BOARD-10 | FR-BOARD-11 | Board | UC-BOARD-02 | `kanban.component.spec.ts` |
+| REQ-BOARD-11 | FR-BOARD-12 | Board | UC-BOARD-02 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| REQ-BOARD-12 | FR-BOARD-13, FR-BOARD-16 | Board | UC-BOARD-03 | `kanban.component.spec.ts` |
+| REQ-BOARD-13 | FR-BOARD-14 | Board | UC-BOARD-03 | `kanban.component.spec.ts` |
+| REQ-BOARD-14 | FR-BOARD-15 | Board | UC-BOARD-03 | `kanban.component.spec.ts` |
+| REQ-BOARD-15 | FR-BOARD-16, FR-BOARD-17 | Board | UC-BOARD-03 | `kanban.component.spec.ts` (filtered-empty state; "Drop tasks here" is not asserted) |
+| REQ-BOARD-16 | FR-BOARD-18, FR-BOARD-19 | Board | UC-BOARD-01 | `kanban.component.spec.ts` (error state; **Refresh** is not asserted) |
+| REQ-BOARD-17 | FR-BOARD-20 | Board | UC-BOARD-04 | `kanban.component.spec.ts`, `task-details.component.spec.ts` |
+| REQ-BOARD-18 | FR-BOARD-21, FR-BOARD-22 | Board | UC-BOARD-01 | `ModuleBasedPermissionEndpointsTests.cs`, `app.routes.spec.ts`, `nav-items.spec.ts` |
+| BR-BOARD-01 | FR-BOARD-01 | Board | UC-BOARD-01 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| BR-BOARD-02 | FR-BOARD-08 | Board | UC-BOARD-02 | `TaskTrackingDomainTests.cs`, `TasksEndpointsTests.cs` |
 | BR-BOARD-03 | FR-BOARD-04 | Board | UC-BOARD-01 | `TaskTrackingDomainTests.cs` |
-| BR-BOARD-04 | FR-BOARD-13 | Board | UC-BOARD-03 | Manual UI |
-| BR-BOARD-05 | FR-BOARD-14, FR-BOARD-15 | Board | UC-BOARD-03 | Manual UI |
-| BR-BOARD-06 | FR-BOARD-09 | Board | UC-BOARD-02 | Manual UI |
+| BR-BOARD-04 | FR-BOARD-13 | Board | UC-BOARD-03 | `kanban.component.spec.ts` |
+| BR-BOARD-05 | FR-BOARD-14, FR-BOARD-15 | Board | UC-BOARD-03 | `kanban.component.spec.ts` |
+| BR-BOARD-06 | FR-BOARD-09 | Board | UC-BOARD-02 | `kanban.component.spec.ts` |
 
 ---
 

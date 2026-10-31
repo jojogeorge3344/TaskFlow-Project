@@ -564,51 +564,51 @@ My Profile sends no in-app notification and no mail (BR-PROF-12). The main user-
 
 ## 11. Requirements Traceability Matrix
 
-Test cases are the automated test files whose names match the behaviour; coverage is inferred from the file names only.
+Test cases are the automated test suites (backend test classes and frontend `*.spec.ts` files) that cover the behaviour; the mapping was checked against the test sources.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
 | REQ-PROF-01 | FR-PROF-01 | My Profile | UC-PROF-01 | `UserProfileEndpointsTests` |
-| REQ-PROF-02 | FR-PROF-02, FR-PROF-03, FR-PROF-37 | My Profile | UC-PROF-01 | `UserProfileEndpointsTests` |
-| REQ-PROF-03 | FR-PROF-04 | My Profile | UC-PROF-01 | `UserProfileEndpointsTests` |
-| REQ-PROF-04 | FR-PROF-05 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests` |
-| REQ-PROF-05 | FR-PROF-06, FR-PROF-07, FR-PROF-13 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests` |
-| REQ-PROF-06 | FR-PROF-08 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests` |
-| REQ-PROF-07 | FR-PROF-09 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests` |
-| REQ-PROF-08 | FR-PROF-10 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests` |
-| REQ-PROF-09 | FR-PROF-11 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests` |
-| REQ-PROF-10 | FR-PROF-12 | My Profile | UC-PROF-02 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-PROF-11 | FR-PROF-14 | My Profile | UC-PROF-01 | ⚠️ To be confirmed (no frontend spec) |
+| REQ-PROF-02 | FR-PROF-02, FR-PROF-03, FR-PROF-37 | My Profile | UC-PROF-01 | `UserProfileEndpointsTests`, `profile.component.spec.ts`, `profile.component.layout.spec.ts` |
+| REQ-PROF-03 | FR-PROF-04 | My Profile | UC-PROF-01 | `UserProfileEndpointsTests`, `profile.component.spec.ts` |
+| REQ-PROF-04 | FR-PROF-05 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests`, `UserProfileEndpointsTests` |
+| REQ-PROF-05 | FR-PROF-06, FR-PROF-07, FR-PROF-13 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests`, `UserProfileEndpointsTests`, `profile.component.spec.ts`, `profile.component.layout.spec.ts` |
+| REQ-PROF-06 | FR-PROF-08 | My Profile | UC-PROF-02 | `EmailDomainTests`, `profile.component.spec.ts` |
+| REQ-PROF-07 | FR-PROF-09 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests`, `EmailDomainTests` |
+| REQ-PROF-08 | FR-PROF-10 | My Profile | UC-PROF-02 | `ProfileMobileNumberEndpointsTests` |
+| REQ-PROF-09 | FR-PROF-11 | My Profile | UC-PROF-02 | `ProfileMobileNumberEndpointsTests`, `profile.component.layout.spec.ts` |
+| REQ-PROF-10 | FR-PROF-12 | My Profile | UC-PROF-02 | `profile.component.spec.ts` |
+| REQ-PROF-11 | FR-PROF-14 | My Profile | UC-PROF-01 | `profile.component.spec.ts` |
 | REQ-PROF-12 | FR-PROF-15 | My Profile, Security Setup | UC-PROF-01, UC-PROF-02 | `MfaSetupGateEndpointsTests` |
 | REQ-PROF-13 | FR-PROF-16 | My Profile (via TFA card) | UC-PROF-02 | `AssistantActionServiceTests` |
-| REQ-PROF-14 | FR-PROF-19 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| REQ-PROF-15 | FR-PROF-18, FR-PROF-20, FR-PROF-28 | Change Password | UC-PROF-03 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-PROF-16 | FR-PROF-21 | Change Password | UC-PROF-03 | ⚠️ To be confirmed (no frontend spec) |
-| REQ-PROF-17 | FR-PROF-22 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| REQ-PROF-18 | FR-PROF-23 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| REQ-PROF-19 | FR-PROF-24 | Change Password | UC-PROF-03 | `MfaServiceTests` |
+| REQ-PROF-14 | FR-PROF-19 | Change Password | UC-PROF-03 | `ChangePasswordRequestValidatorTests`, `UserProfileEndpointsTests` |
+| REQ-PROF-15 | FR-PROF-18, FR-PROF-20, FR-PROF-28 | Change Password | UC-PROF-03 | `profile.component.layout.spec.ts`, `change-password.component.spec.ts` |
+| REQ-PROF-16 | FR-PROF-21 | Change Password | UC-PROF-03 | `change-password.component.spec.ts` |
+| REQ-PROF-17 | FR-PROF-22 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests`, `change-password.component.spec.ts` |
+| REQ-PROF-18 | FR-PROF-23 | Change Password | UC-PROF-03 | `UserProfileEndpointsTests` |
+| REQ-PROF-19 | FR-PROF-24 | Change Password | UC-PROF-03 | `MfaServiceTests`, `MfaStepUpEndpointsTests` |
 | REQ-PROF-20 | FR-PROF-25 | Change Password | UC-PROF-03 | `MfaServiceTests`, `MfaSignInEndpointsTests` |
-| REQ-PROF-21 | FR-PROF-26 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| REQ-PROF-22 | FR-PROF-27, FR-PROF-28 | Change Password | UC-PROF-03 | ⚠️ To be confirmed (no frontend spec) |
+| REQ-PROF-21 | FR-PROF-26 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests`, `change-password.component.spec.ts` |
+| REQ-PROF-22 | FR-PROF-27, FR-PROF-28 | Change Password | UC-PROF-03 | `change-password.component.spec.ts` |
 | REQ-PROF-23 | FR-PROF-30, FR-PROF-31 | Security Setup | UC-PROF-04 | `MfaEnrolmentEndpointsTests` |
 | REQ-PROF-24 | FR-PROF-32 | Security Setup | UC-PROF-04 | `MfaEnrolmentEndpointsTests` |
 | REQ-PROF-25 | FR-PROF-33, FR-PROF-37 | Security Setup | UC-PROF-04 | `MfaEnrolmentEndpointsTests` |
 | REQ-PROF-26 | FR-PROF-34 | Security Setup | UC-PROF-04 | `MfaEnrolmentEndpointsTests` |
 | REQ-PROF-27 | FR-PROF-35 | Security Setup | UC-PROF-04 | `MfaServiceTests`, `TotpTests` |
 | REQ-PROF-28 | FR-PROF-36 | All signed-in screens | UC-PROF-04 | `MfaSetupGateEndpointsTests` |
-| REQ-PROF-29 | FR-PROF-38, FR-PROF-39 | – (server only) | UC-PROF-05 | ⚠️ To be confirmed (no test file name) |
+| REQ-PROF-29 | FR-PROF-38, FR-PROF-39 | – (server only) | UC-PROF-05 | `MfaServiceTests`, `MfaEnrolmentEndpointsTests`, `MfaStepUpEndpointsTests` |
 | BR-PROF-01 | FR-PROF-01 | My Profile, Change Password, Security Setup | UC-PROF-01 – UC-PROF-05 | `UserProfileEndpointsTests` |
-| BR-PROF-02 | FR-PROF-03, FR-PROF-05 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests` |
-| BR-PROF-03 | FR-PROF-08, FR-PROF-09 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests` |
-| BR-PROF-04 | FR-PROF-10 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests` |
-| BR-PROF-05 | §3.2, FR-PROF-15, FR-PROF-36 | All | UC-PROF-01 | ⚠️ To be confirmed |
+| BR-PROF-02 | FR-PROF-03, FR-PROF-05 | My Profile | UC-PROF-02 | `UpdateOwnProfileRequestValidatorTests`, `UserProfileEndpointsTests` |
+| BR-PROF-03 | FR-PROF-08, FR-PROF-09 | My Profile | UC-PROF-02 | `UserProfileEndpointsTests`, `EmailDomainTests` |
+| BR-PROF-04 | FR-PROF-10 | My Profile | UC-PROF-02 | `ProfileMobileNumberEndpointsTests` |
+| BR-PROF-05 | §3.2, FR-PROF-15, FR-PROF-36 | All | UC-PROF-01 | `PermissionCatalogTests` (Always On entries), `MfaSetupGateEndpointsTests` |
 | BR-PROF-06 | FR-PROF-22 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| BR-PROF-07 | FR-PROF-23 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
+| BR-PROF-07 | FR-PROF-23 | Change Password | UC-PROF-03 | `UserProfileEndpointsTests` |
 | BR-PROF-08 | FR-PROF-26 | Change Password | UC-PROF-03 | `MfaStepUpEndpointsTests` |
-| BR-PROF-09 | FR-PROF-25, FR-PROF-39 | Change Password, Security Setup | UC-PROF-03, UC-PROF-04 | `MfaServiceTests` |
+| BR-PROF-09 | FR-PROF-25, FR-PROF-39 | Change Password, Security Setup | UC-PROF-03, UC-PROF-04 | `MfaServiceTests`, `MfaStepUpEndpointsTests` |
 | BR-PROF-10 | FR-PROF-24 | Change Password, Security Setup | UC-PROF-03 | `MfaServiceTests` |
 | BR-PROF-11 | FR-PROF-34, FR-PROF-35 | Security Setup | UC-PROF-04 | `MfaEnrolmentEndpointsTests` |
-| BR-PROF-12 | FR-PROF-17, FR-PROF-29 | My Profile, Change Password | UC-PROF-02, UC-PROF-03 | ⚠️ To be confirmed |
+| BR-PROF-12 | FR-PROF-17, FR-PROF-29 | My Profile, Change Password | UC-PROF-02, UC-PROF-03 | No automated test found |
 | BR-PROF-13 | FR-PROF-16 | My Profile (via TFA card) | UC-PROF-02 | `AssistantActionToolsTests` |
 
 **Untraced BRD items:** 0 (29 of 29 `REQ-PROF-nn`, 13 of 13 `BR-PROF-nn`).

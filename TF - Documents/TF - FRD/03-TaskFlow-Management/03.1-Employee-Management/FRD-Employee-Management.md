@@ -649,74 +649,74 @@ The global NFRs of the overall BRD apply (notably NFR-04 passwords, NFR-08 serve
 
 ## 11. Requirements Traceability Matrix
 
-Test evidence lists the automated test suites whose names match the behaviour; their contents were not available
-(⚠️ To be confirmed). "Manual UI" = screen behaviour checked by hand.
+Test evidence lists the automated test suites that cover the behaviour; the mapping was checked against the test
+sources. Frontend specs (`*.spec.ts`) are under `frontend/src/app`. "Manual UI" = screen behaviour checked by hand.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-EMP-01 | FR-EMP-01, FR-EMP-11 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests |
-| REQ-EMP-02 | FR-EMP-02 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests |
-| REQ-EMP-03 | FR-EMP-03 | 4.1.1 | UC-EMP-01 | Manual UI |
-| REQ-EMP-04 | FR-EMP-04, FR-EMP-11 | 4.1.1 | UC-EMP-01 | Manual UI |
-| REQ-EMP-05 | FR-EMP-05, FR-EMP-10 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests |
-| REQ-EMP-06 | FR-EMP-06, FR-EMP-10 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests |
-| REQ-EMP-07 | FR-EMP-07, FR-EMP-08, FR-EMP-10 | 4.1.1 | UC-EMP-01 | Manual UI |
-| REQ-EMP-08 | FR-EMP-09, FR-EMP-10 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests |
+| REQ-EMP-01 | FR-EMP-01, FR-EMP-11 | 4.1.1 | UC-EMP-01 | UsersEndpointsTests, AdminDeleteEndpointsTests, employee-list.component.spec.ts |
+| REQ-EMP-02 | FR-EMP-02 | 4.1.1 | UC-EMP-01 | employee-list.component.spec.ts |
+| REQ-EMP-03 | FR-EMP-03 | 4.1.1 | UC-EMP-01 | employee-list.component.spec.ts |
+| REQ-EMP-04 | FR-EMP-04, FR-EMP-11 | 4.1.1 | UC-EMP-01 | employee-list.component.spec.ts |
+| REQ-EMP-05 | FR-EMP-05, FR-EMP-10 | 4.1.1 | UC-EMP-01 | employee-list.component.spec.ts (server-side matching not covered) |
+| REQ-EMP-06 | FR-EMP-06, FR-EMP-10 | 4.1.1 | UC-EMP-01 | UserAllocationServiceTests, ProjectTeamEndpointsTests, employee-list.component.spec.ts, allocation-services.spec.ts |
+| REQ-EMP-07 | FR-EMP-07, FR-EMP-08, FR-EMP-10 | 4.1.1 | UC-EMP-01 | RoleAssignmentSafeguardTests (role options); Manual UI (filter and fallback message) |
+| REQ-EMP-08 | FR-EMP-09, FR-EMP-10 | 4.1.1 | UC-EMP-01 | employee-list.component.spec.ts |
 | REQ-EMP-09 | FR-EMP-10 | 4.1.1 | UC-EMP-01 | Manual UI |
-| REQ-EMP-10 | FR-EMP-12 | 4.1.1 | UC-EMP-01 | Manual UI |
-| REQ-EMP-11 | FR-EMP-13, FR-EMP-14 | 4.1.1 | UC-EMP-02, UC-EMP-03 | UsersEndpointsTests |
-| REQ-EMP-12 | FR-EMP-15 | 4.1.1 | UC-EMP-03 | Manual UI |
-| REQ-EMP-13 | FR-EMP-16, FR-EMP-19 | 4.1.1 | UC-EMP-02 | Manual UI |
-| REQ-EMP-14 | FR-EMP-18 | 4.1.1 | UC-EMP-02 | LastAdministratorStatusTests |
+| REQ-EMP-10 | FR-EMP-12 | 4.1.1 | UC-EMP-01 | app.routes.spec.ts, nav-items.spec.ts |
+| REQ-EMP-11 | FR-EMP-13, FR-EMP-14 | 4.1.1 | UC-EMP-02, UC-EMP-03 | UsersEndpointsTests, AdminDeleteEndpointsTests, PermissionAuthorizationTests, employee-list.component.spec.ts |
+| REQ-EMP-12 | FR-EMP-15 | 4.1.1 | UC-EMP-03 | employee-list.component.spec.ts |
+| REQ-EMP-13 | FR-EMP-16, FR-EMP-19 | 4.1.1 | UC-EMP-02 | employee-list.component.spec.ts |
+| REQ-EMP-14 | FR-EMP-18 | 4.1.1 | UC-EMP-02 | UsersEndpointsTests |
 | REQ-EMP-15 | FR-EMP-17 | 4.1.1 | UC-EMP-02 | LastAdministratorStatusTests |
-| REQ-EMP-16 | FR-EMP-20, FR-EMP-24, FR-EMP-27 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests |
+| REQ-EMP-16 | FR-EMP-20, FR-EMP-24, FR-EMP-27 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests, employee-list.component.spec.ts |
 | REQ-EMP-17 | FR-EMP-21 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests |
-| REQ-EMP-18 | FR-EMP-23 | 4.1.1 | UC-EMP-03 | UserDeletionTests |
-| REQ-EMP-19 | FR-EMP-22 | 4.1.1 | UC-EMP-03 | LastAdministratorTests |
-| REQ-EMP-20 | FR-EMP-25 | 4.1.1 | UC-EMP-03 | UserDeletionTests, ManagerAssignmentTests |
-| REQ-EMP-21 | FR-EMP-26 | 4.1.1 | UC-EMP-03 | UserDeletionTests |
-| REQ-EMP-22 | FR-EMP-28, FR-EMP-33 | 4.1.2 | UC-EMP-04 | Manual UI |
-| REQ-EMP-23 | FR-EMP-29 | 4.1.2 | UC-EMP-04 | UsersEndpointsTests |
-| REQ-EMP-24 | FR-EMP-30 | 4.1.2 | UC-EMP-04 | ManagerAssignmentTests |
-| REQ-EMP-25 | FR-EMP-31 | 4.1.2 | UC-EMP-04 | Manual UI |
-| REQ-EMP-26 | FR-EMP-32 | 4.1.2 | UC-EMP-04 | ManagerAssignmentTests, ManagerAssignmentEndpointsTests |
-| REQ-EMP-27 | FR-EMP-34 | 4.1.2 | UC-EMP-05 | Manual UI |
-| REQ-EMP-28 | FR-EMP-35, FR-EMP-36, FR-EMP-38 | 4.1.2 | UC-EMP-05 | ⚠️ To be confirmed (no matching suite name) |
-| REQ-EMP-29 | FR-EMP-37 | 4.1.2 | UC-EMP-05 | ⚠️ To be confirmed (no matching suite name) |
-| REQ-EMP-30 | FR-EMP-39 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests |
-| REQ-EMP-31 | FR-EMP-40 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UsersEndpointsTests |
-| REQ-EMP-32 | FR-EMP-41, FR-EMP-43 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests |
-| REQ-EMP-33 | FR-EMP-42, FR-EMP-43 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests |
-| REQ-EMP-34 | FR-EMP-44 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests |
-| REQ-EMP-35 | FR-EMP-45 | 4.1.3 | UC-EMP-06 | Manual UI |
-| REQ-EMP-36 | FR-EMP-08, FR-EMP-46, FR-EMP-50 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UsersEndpointsTests |
-| REQ-EMP-37 | FR-EMP-47 | 4.1.3 | UC-EMP-07 | UsersEndpointsTests |
-| REQ-EMP-38 | FR-EMP-48 | 4.1.3 | UC-EMP-06 | Manual UI |
-| REQ-EMP-39 | FR-EMP-49, FR-EMP-50 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests |
-| REQ-EMP-40 | FR-EMP-51 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests |
-| REQ-EMP-41 | FR-EMP-52 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests |
-| REQ-EMP-42 | FR-EMP-53 | 4.1.3 | UC-EMP-07 | Manual UI |
-| REQ-EMP-43 | FR-EMP-54 | 4.1.3 | UC-EMP-07 | UserServiceSelfServiceTests |
-| REQ-EMP-44 | FR-EMP-55 | 4.1.3 | UC-EMP-07 | Manual UI |
+| REQ-EMP-18 | FR-EMP-23 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests |
+| REQ-EMP-19 | FR-EMP-22 | 4.1.1 | UC-EMP-03 | UserDeletionTests |
+| REQ-EMP-20 | FR-EMP-25 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests |
+| REQ-EMP-21 | FR-EMP-26 | 4.1.1 | UC-EMP-03 | UserDeletionTests, EmailDomainTests |
+| REQ-EMP-22 | FR-EMP-28, FR-EMP-33 | 4.1.2 | UC-EMP-04 | employee-list.component.spec.ts, employee-form-panel.component.spec.ts |
+| REQ-EMP-23 | FR-EMP-29 | 4.1.2 | UC-EMP-04 | employee-form-panel.component.spec.ts |
+| REQ-EMP-24 | FR-EMP-30 | 4.1.2 | UC-EMP-04 | ManagerAssignmentTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-25 | FR-EMP-31 | 4.1.2 | UC-EMP-04 | employee-mfa-reset.spec.ts (two-step status); Manual UI (other fields) |
+| REQ-EMP-26 | FR-EMP-32 | 4.1.2 | UC-EMP-04 | ManagerAssignmentTests, ManagerAssignmentEndpointsTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-27 | FR-EMP-34 | 4.1.2 | UC-EMP-05 | employee-mfa-reset.spec.ts |
+| REQ-EMP-28 | FR-EMP-35, FR-EMP-36, FR-EMP-38 | 4.1.2 | UC-EMP-05 | MfaAdminResetEndpointsTests, MfaServiceTests, employee-mfa-reset.spec.ts |
+| REQ-EMP-29 | FR-EMP-37 | 4.1.2 | UC-EMP-05 | MfaAdminResetEndpointsTests, MfaServiceTests |
+| REQ-EMP-30 | FR-EMP-39 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-31 | FR-EMP-40 | 4.1.3 | UC-EMP-06, UC-EMP-07 | EmailDomainTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-32 | FR-EMP-41, FR-EMP-43 | 4.1.3 | UC-EMP-06 | EmailDomainTests, employee-form-panel.component.spec.ts (409 message) |
+| REQ-EMP-33 | FR-EMP-42, FR-EMP-43 | 4.1.3 | UC-EMP-06 | EmailDomainTests, employee-form-panel.component.spec.ts (409 message) |
+| REQ-EMP-34 | FR-EMP-44 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-35 | FR-EMP-45 | 4.1.3 | UC-EMP-06 | employee-form-panel.component.spec.ts |
+| REQ-EMP-36 | FR-EMP-08, FR-EMP-46, FR-EMP-50 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UsersEndpointsTests, RoleAssignmentSafeguardTests, UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-37 | FR-EMP-47 | 4.1.3 | UC-EMP-07 | RoleAssignmentSafeguardTests |
+| REQ-EMP-38 | FR-EMP-48 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-39 | FR-EMP-49, FR-EMP-50 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-40 | FR-EMP-51 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-41 | FR-EMP-52 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-42 | FR-EMP-53 | 4.1.3 | UC-EMP-07 | employee-form-panel.component.spec.ts |
+| REQ-EMP-43 | FR-EMP-54 | 4.1.3 | UC-EMP-07 | UsersEndpointsTests, RoleAssignmentSafeguardTests, employee-form-panel.component.spec.ts |
+| REQ-EMP-44 | FR-EMP-55 | 4.1.3 | UC-EMP-07 | employee-form-panel.component.spec.ts |
 | REQ-EMP-45 | FR-EMP-56 | 4.1.3 | UC-EMP-07 | UsersEndpointsTests |
-| REQ-EMP-46 | FR-EMP-57 | 4.1.3 | UC-EMP-07 | Manual UI |
+| REQ-EMP-46 | FR-EMP-57 | 4.1.3 | UC-EMP-07 | employee-form-panel.component.spec.ts |
 | REQ-EMP-47 | FR-EMP-58 | 4.1.3 | UC-EMP-07 | LastAdministratorTests |
-| REQ-EMP-48 | FR-EMP-59 | 4.1.3 | UC-EMP-07 | ManagerAssignmentTests, ManagerAssignmentEndpointsTests |
-| REQ-EMP-49 | FR-EMP-60 | 4.1.3 | UC-EMP-06, UC-EMP-07 | Manual UI |
-| BR-EMP-01 | FR-EMP-18 | 4.1.1 | UC-EMP-02 | LastAdministratorStatusTests |
-| BR-EMP-02 | FR-EMP-40 | 4.1.3 | UC-EMP-06 | UsersEndpointsTests |
-| BR-EMP-03 | FR-EMP-26, FR-EMP-41, FR-EMP-42 | 4.1.1, 4.1.3 | UC-EMP-03, UC-EMP-06 | UsersEndpointsTests |
-| BR-EMP-04 | FR-EMP-17, FR-EMP-22, FR-EMP-58 | 4.1.1, 4.1.3 | UC-EMP-02, UC-EMP-03, UC-EMP-07 | LastAdministratorTests, LastAdministratorStatusTests |
-| BR-EMP-05 | FR-EMP-15, FR-EMP-21 | 4.1.1 | UC-EMP-03 | AdminDeleteEndpointsTests |
+| REQ-EMP-48 | FR-EMP-59 | 4.1.3 | UC-EMP-07 | ManagerAssignmentTests |
+| REQ-EMP-49 | FR-EMP-60 | 4.1.3 | UC-EMP-06, UC-EMP-07 | employee-form-panel.component.spec.ts |
+| BR-EMP-01 | FR-EMP-18 | 4.1.1 | UC-EMP-02 | UsersEndpointsTests |
+| BR-EMP-02 | FR-EMP-40 | 4.1.3 | UC-EMP-06 | EmailDomainTests |
+| BR-EMP-03 | FR-EMP-26, FR-EMP-41, FR-EMP-42 | 4.1.1, 4.1.3 | UC-EMP-03, UC-EMP-06 | EmailDomainTests, UserDeletionTests |
+| BR-EMP-04 | FR-EMP-17, FR-EMP-22, FR-EMP-58 | 4.1.1, 4.1.3 | UC-EMP-02, UC-EMP-03, UC-EMP-07 | LastAdministratorTests, LastAdministratorStatusTests, UserDeletionTests |
+| BR-EMP-05 | FR-EMP-15, FR-EMP-21 | 4.1.1 | UC-EMP-03 | AdminDeleteEndpointsTests, UserDeletionTests, employee-list.component.spec.ts |
 | BR-EMP-06 | FR-EMP-23 | 4.1.1 | UC-EMP-03 | UserDeletionTests |
-| BR-EMP-07 | FR-EMP-01, FR-EMP-24 | 4.1.1 | UC-EMP-03 | UserDeletionTests |
-| BR-EMP-08 | FR-EMP-18, FR-EMP-25, FR-EMP-36, FR-EMP-56 | 4.1.1 – 4.1.3 | UC-EMP-02, UC-EMP-03, UC-EMP-05, UC-EMP-07 | UsersEndpointsTests |
-| BR-EMP-09 | FR-EMP-46, FR-EMP-47 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UsersEndpointsTests |
+| BR-EMP-07 | FR-EMP-01, FR-EMP-24 | 4.1.1 | UC-EMP-03 | UserDeletionTests, AdminDeleteEndpointsTests |
+| BR-EMP-08 | FR-EMP-18, FR-EMP-25, FR-EMP-36, FR-EMP-56 | 4.1.1 – 4.1.3 | UC-EMP-02, UC-EMP-03, UC-EMP-05, UC-EMP-07 | UsersEndpointsTests, UserDeletionTests, MfaAdminResetEndpointsTests |
+| BR-EMP-09 | FR-EMP-46, FR-EMP-47 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UsersEndpointsTests, RoleAssignmentSafeguardTests |
 | BR-EMP-10 | FR-EMP-49, FR-EMP-51, FR-EMP-52 | 4.1.3 | UC-EMP-06 | UserAllocationServiceTests |
-| BR-EMP-11 | FR-EMP-48, FR-EMP-53 | 4.1.3 | UC-EMP-06, UC-EMP-07 | Manual UI |
+| BR-EMP-11 | FR-EMP-48, FR-EMP-53 | 4.1.3 | UC-EMP-06, UC-EMP-07 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
 | BR-EMP-12 | FR-EMP-32 | 4.1.2 | UC-EMP-04 | ManagerAssignmentTests |
-| BR-EMP-13 | FR-EMP-54 | 4.1.3 | UC-EMP-07 | UserServiceSelfServiceTests |
-| BR-EMP-14 | FR-EMP-25, FR-EMP-59 | 4.1.1, 4.1.3 | UC-EMP-03, UC-EMP-07 | ManagerAssignmentTests |
+| BR-EMP-13 | FR-EMP-54 | 4.1.3 | UC-EMP-07 | UsersEndpointsTests, RoleAssignmentSafeguardTests, employee-form-panel.component.spec.ts |
+| BR-EMP-14 | FR-EMP-25, FR-EMP-59 | 4.1.1, 4.1.3 | UC-EMP-03, UC-EMP-07 | ManagerAssignmentTests, UserDeletionTests |
 
 **Coverage:** 49 of 49 `REQ-EMP` requirements and 14 of 14 `BR-EMP` rules trace to at least one FR; 0 untraced.
 

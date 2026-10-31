@@ -379,7 +379,7 @@ _Not applicable for this sub-module._
 | Open issue | ⚠️ To be confirmed: without `settings.ai.edit` the inputs stay editable and only **Save** is hidden; whether the screen should be fully read-only for view-only users. | Jojo George |
 | Open issue | ⚠️ To be confirmed: a user with `settings.ai.test` but without `settings.ai.edit` cannot test while there are unsaved changes (the automatic save is refused); whether such users should test the saved configuration instead. | Jojo George |
 | Open issue | ⚠️ To be confirmed: only the screen ensures that one server is active; whether more than one active provider should also be refused when saving. | Jojo George |
-| Open issue | ⚠️ To be confirmed: the exact conditions that show **Ready to use** versus **In use** on the provider card. | Jojo George |
+| Note | Checked against `ai-provider-settings.component.ts` (`statusText()`): the active server (the first enabled server that is configured, else the first enabled one) shows **In use** when it is configured, otherwise **Not configured**; any other server shows **Ready to use**, or **Needs an API key** when it needs a key that is missing or unreadable. | Jojo George |
 
 **Change from original BRD**
 

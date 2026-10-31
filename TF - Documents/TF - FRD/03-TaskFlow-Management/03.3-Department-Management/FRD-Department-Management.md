@@ -487,48 +487,48 @@ The global NFRs of the overall BRD apply (notably NFR-08 server validation, NFR-
 
 ## 11. Requirements Traceability Matrix
 
-Test evidence lists the automated test suites whose names match the behaviour; their contents were not available
-(⚠️ To be confirmed). "Manual UI" = screen behaviour checked by hand.
+Test evidence lists the automated test suites that cover the behaviour; the mapping was checked against the test
+sources. Frontend specs (`*.spec.ts`) are under `frontend/src/app`. "Manual UI" = screen behaviour checked by hand.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-DEPT-01 | FR-DEPT-01 | 4.1.1 | UC-DEPT-01 | DepartmentsEndpointsTests |
-| REQ-DEPT-02 | FR-DEPT-02 | 4.1.1 | UC-DEPT-01 | Manual UI |
-| REQ-DEPT-03 | FR-DEPT-03 | 4.1.1 | UC-DEPT-01 | Manual UI |
-| REQ-DEPT-04 | FR-DEPT-04 | 4.1.1 | UC-DEPT-01 | Manual UI |
-| REQ-DEPT-05 | FR-DEPT-05 | 4.1.1 | UC-DEPT-01 | Manual UI |
+| REQ-DEPT-01 | FR-DEPT-01 | 4.1.1 | UC-DEPT-01 | DepartmentsEndpointsTests, department-list.component.spec.ts |
+| REQ-DEPT-02 | FR-DEPT-02 | 4.1.1 | UC-DEPT-01 | department-list.component.spec.ts |
+| REQ-DEPT-03 | FR-DEPT-03 | 4.1.1 | UC-DEPT-01 | department-list.component.spec.ts |
+| REQ-DEPT-04 | FR-DEPT-04 | 4.1.1 | UC-DEPT-01 | department-list.component.spec.ts |
+| REQ-DEPT-05 | FR-DEPT-05 | 4.1.1 | UC-DEPT-01 | app.routes.spec.ts, nav-items.spec.ts |
 | REQ-DEPT-06 | FR-DEPT-06, FR-DEPT-07 | 4.1.1 | UC-DEPT-01 | DepartmentsEndpointsTests |
-| REQ-DEPT-07 | FR-DEPT-08, FR-DEPT-09 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests |
-| REQ-DEPT-08 | FR-DEPT-10 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests |
+| REQ-DEPT-07 | FR-DEPT-08, FR-DEPT-09 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests, department-list.component.spec.ts |
+| REQ-DEPT-08 | FR-DEPT-10 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests, department-list.component.spec.ts |
 | REQ-DEPT-09 | FR-DEPT-11 | 4.1.1 | UC-DEPT-02, UC-DEPT-03 | DepartmentsEndpointsTests |
-| REQ-DEPT-10 | FR-DEPT-12 | 4.1.1 | UC-DEPT-01 | Manual UI |
-| REQ-DEPT-11 | FR-DEPT-13 | 4.1.2 | UC-DEPT-03 | DepartmentRequestValidatorsTests |
-| REQ-DEPT-12 | FR-DEPT-14 | 4.1.2 | UC-DEPT-03 | DepartmentsEndpointsTests |
-| REQ-DEPT-13 | FR-DEPT-15 | 4.1.2 | UC-DEPT-03 | DepartmentsEndpointsTests |
-| REQ-DEPT-14 | FR-DEPT-16 | 4.1.2 | UC-DEPT-03 | Manual UI |
-| REQ-DEPT-15 | FR-DEPT-17, FR-DEPT-22 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| REQ-DEPT-16 | FR-DEPT-18 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| REQ-DEPT-17 | FR-DEPT-19 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| REQ-DEPT-18 | FR-DEPT-20 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| REQ-DEPT-19 | FR-DEPT-21 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| REQ-DEPT-20 | FR-DEPT-23 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
-| REQ-DEPT-21 | FR-DEPT-24 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests, DepartmentRequestValidatorsTests |
+| REQ-DEPT-10 | FR-DEPT-12 | 4.1.1 | UC-DEPT-01 | department-list.component.spec.ts |
+| REQ-DEPT-11 | FR-DEPT-13 | 4.1.2 | UC-DEPT-03 | DepartmentRequestValidatorsTests, DepartmentsEndpointsTests, department-form-dialog.component.spec.ts |
+| REQ-DEPT-12 | FR-DEPT-14 | 4.1.2 | UC-DEPT-03 | DepartmentsEndpointsTests, department-form-dialog.component.spec.ts |
+| REQ-DEPT-13 | FR-DEPT-15 | 4.1.2 | UC-DEPT-03 | DepartmentsEndpointsTests, DepartmentRequestValidatorsTests, department-form-dialog.component.spec.ts |
+| REQ-DEPT-14 | FR-DEPT-16 | 4.1.2 | UC-DEPT-03 | department-form-dialog.component.spec.ts |
+| REQ-DEPT-15 | FR-DEPT-17, FR-DEPT-22 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| REQ-DEPT-16 | FR-DEPT-18 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| REQ-DEPT-17 | FR-DEPT-19 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| REQ-DEPT-18 | FR-DEPT-20 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| REQ-DEPT-19 | FR-DEPT-21 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| REQ-DEPT-20 | FR-DEPT-23 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests, department-members-dialog.component.spec.ts |
+| REQ-DEPT-21 | FR-DEPT-24 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
 | REQ-DEPT-22 | FR-DEPT-25 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
 | REQ-DEPT-23 | FR-DEPT-26 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
 | REQ-DEPT-24 | FR-DEPT-27 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
-| REQ-DEPT-25 | FR-DEPT-28 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
+| REQ-DEPT-25 | FR-DEPT-28 | 4.1.3 | UC-DEPT-04 | UserAllocationServiceTests, ManagerAssignmentTests, employee-form-panel.component.spec.ts |
 | REQ-DEPT-26 | FR-DEPT-29, FR-DEPT-30 | 4.1.3 | UC-DEPT-04 | ManagerAssignmentTests |
-| REQ-DEPT-27 | FR-DEPT-31 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| BR-DEPT-01 | FR-DEPT-11, FR-DEPT-13, FR-DEPT-14 | 4.1.1, 4.1.2 | UC-DEPT-03 | DepartmentRequestValidatorsTests |
-| BR-DEPT-02 | FR-DEPT-08, FR-DEPT-09 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests |
+| REQ-DEPT-27 | FR-DEPT-31 | 4.1.3 | UC-DEPT-04 | department-members-dialog.component.spec.ts |
+| BR-DEPT-01 | FR-DEPT-11, FR-DEPT-13, FR-DEPT-14 | 4.1.1, 4.1.2 | UC-DEPT-03 | DepartmentsEndpointsTests, DepartmentRequestValidatorsTests |
+| BR-DEPT-02 | FR-DEPT-08, FR-DEPT-09 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests, department-list.component.spec.ts |
 | BR-DEPT-03 | FR-DEPT-01, FR-DEPT-10 | 4.1.1 | UC-DEPT-02 | DepartmentsEndpointsTests |
 | BR-DEPT-04 | FR-DEPT-24, FR-DEPT-25 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
 | BR-DEPT-05 | FR-DEPT-26, FR-DEPT-27 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
-| BR-DEPT-06 | FR-DEPT-28 | 4.1.3 | UC-DEPT-04 | DepartmentsEndpointsTests |
+| BR-DEPT-06 | FR-DEPT-28 | 4.1.3 | UC-DEPT-04 | UserAllocationServiceTests, ManagerAssignmentTests, employee-form-panel.component.spec.ts |
 | BR-DEPT-07 | FR-DEPT-29 | 4.1.3 | UC-DEPT-04 | ManagerAssignmentTests |
 | BR-DEPT-08 | FR-DEPT-30 | 4.1.3 | UC-DEPT-04 | ManagerAssignmentTests |
-| BR-DEPT-09 | FR-DEPT-32 | 4.1.3 | UC-DEPT-04 | Manual UI |
-| BR-DEPT-10 | FR-DEPT-33 | 4.1.3 | UC-DEPT-04 | ManagerAssignmentTests |
+| BR-DEPT-09 | FR-DEPT-32 | 4.1.3 | UC-DEPT-04 | UserAllocationServiceTests, employee-form-panel.component.spec.ts |
+| BR-DEPT-10 | FR-DEPT-33 | 4.1.3 | UC-DEPT-04 | ManagerAssignmentTests (role change), DepartmentsEndpointsTests, AdminDeleteEndpointsTests (delete) |
 
 **Coverage:** 27 of 27 `REQ-DEPT` requirements and 10 of 10 `BR-DEPT` rules trace to at least one FR; 0 untraced.
 

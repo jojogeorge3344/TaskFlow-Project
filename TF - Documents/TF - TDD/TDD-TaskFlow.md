@@ -1597,7 +1597,7 @@ the confirm endpoint. The model cannot call it (see §16).
 | **Total** | 21 controllers | **114** |
 
 The three `/api/v1/permissions` write rows are one C# method (`CatalogIsFixed`) carrying three HTTP attributes. They count as
-three HTTP actions, matching the fact sheet.
+three HTTP actions in the totals above.
 
 
 ---
@@ -2268,9 +2268,9 @@ All routes except Login, Account Recovery, Security Setup and Legal are children
 | Legal pages (added) | `/legal/copyright`, `/legal/terms`, `/legal/privacy`, `/legal/disclaimer`, `/legal/licenses` | `LegalPageComponent` (`data.documentId`) | public |
 | Fallback | `/` → `/login`; `**` → `/login` | – | – |
 
-> ⚠️ To be confirmed: the source files of `TaskDiscussionComponent` (`task-management/discussion/pages/`) and
-> `ActivityComponent` (`task-management/activity/pages/`) are referenced by `monitoring.routes.ts` but were not in the
-> reviewed copy of the frontend; their names are taken from the route table.
+`monitoring.routes.ts` lazy-loads `TaskDiscussionComponent` (`task-management/discussion/pages/task-discussion.component.ts`)
+and `ActivityComponent` (`task-management/activity/pages/activity.component.ts`, with event labels in
+`activity/utils/activity-meta.ts`). Each component has its `.html`, `.css` and `.spec.ts` file beside it.
 
 ---
 
@@ -2358,7 +2358,7 @@ BRD, FRD, HLD and LLD named in §1.6 (the "#" column below is the original BRD s
 | JWT signing key (`Jwt:Key`) | From configuration / environment only (`<secret>`); never in responses or logs |
 | AI provider API keys | Encrypted by `AiKeyProtector` (purpose `TaskFlow.AiProviderKeys`) into `AiProviderConfig.EncryptedApiKey`; only `KeyLast4` is ever shown; decrypted in memory for one provider call |
 | Data Protection key ring | Folder `AiProviders:KeyRingPath` (default `dp-keys`) under the data folder (`C:\TaskFlow`); `ProtectKeysWithDpapi()` on Windows, so it decrypts only for the Windows account running the API; `KeyRingProtectionCheck` logs a startup warning about unprotected keys. It protects AI keys, MFA secrets and MFA challenges |
-| Seed passwords | `Seed:Enabled` is on only in Development; `Seed:*Password` values are `<secret>` |
+| Seed passwords | `Seed:Enabled` is set only in `appsettings.Environment.json` (active value `false`); `Seed:*Password` values are `<secret>` |
 | Logging | `RequestLoggingMiddleware` logs method, path, status, elapsed time, user id and trace id, never bodies; AI provider `HttpClient`s have all loggers removed; `DeniedActionAuditHandler` logs refused authorizations with identifiers only |
 | Chat content | `SecretScreen` blocks messages that look like passwords or keys before any model call (§16.7) |
 
@@ -2723,13 +2723,16 @@ Later sources override earlier ones.
 | Order | Source | Holds |
 |---|---|---|
 | 1 | `appsettings.json` | Non-secret defaults (§18.2) |
-| 2 | `appsettings.{Environment}.json` (ASP.NET Core default) | Per-environment overrides, e.g. `Seed:Enabled` in Development (per README) |
+| 2 | `appsettings.{Environment}.json` (ASP.NET Core default) | Per-environment overrides; `appsettings.Development.json` sets only `Logging:LogLevel` (`Default` = `Information`, `Microsoft.AspNetCore` = `Warning`) |
 | 3 | `appsettings.Environment.json` (optional, `reloadOnChange: true`, added in `Program.cs`) | Per-environment values: CORS origins, mail links, seeding |
 | 4 | .NET user-secrets (`UserSecretsId` in `TaskFlow.Api.csproj`, Development) | Secrets such as `Jwt:Key` |
 | 5 | Environment variables (`Section__Key`, e.g. `Mfa__Required=false`, `Storage__Root`) | Deployment overrides and secrets |
 | – | `ApplicationSettings` table | Runtime-editable settings changed from the UI (§18.3) |
 
-> ⚠️ To be confirmed: neither `appsettings.Development.json` nor `appsettings.Environment.json` is in the code snapshot, so their actual values cannot be listed.
+`appsettings.Environment.json` holds one active value per key, with the other environments commented out. The active
+(Local) values are `Cors:AllowedOrigins` = `["http://localhost:4200"]` and `Mail:AppBaseUrl` = `http://localhost:4200`.
+The Develop lines (commented out) use `https://taskflow-project-2.onrender.com`. `Seed:Enabled` is active as `false`; the
+Local `true` line is commented out. Secrets such as `Jwt:Key` stay in user-secrets or environment variables.
 
 ### 18.2 Configuration keys and defaults
 
@@ -2790,7 +2793,11 @@ Inserted with defaults by `SettingsInitializer` on every start when missing; exi
 | Frontend production build | `ng build` (`npm run build`) |
 | API base URL of the SPA | `config/api-base-url.ts`: one `ACTIVE` environment (`local` = `''` relative calls via `proxy.conf.json`; `develop`, `qa`, `production` = absolute API URLs), prefixed by `api-base-url.interceptor.ts` |
 
-> ⚠️ To be confirmed: `proxy.conf.json` and `launchSettings.json` are not in the snapshot (ports taken from the README). `Program.cs` has no static-file middleware, so the built SPA is hosted separately from the API.
+`proxy.conf.json` forwards `/api` to `https://localhost:7055` (`secure: false`, `changeOrigin: true`); `angular.json` sets it
+as the `proxyConfig` of the `serve` target. `Properties/launchSettings.json` has two profiles: `https`
+(`https://localhost:7055;http://localhost:5110`, opens `http://localhost:4200`, `ASPNETCORE_ENVIRONMENT` = `Development`,
+loads `Microsoft.AspNetCore.SpaProxy`) and `http` (`http://localhost:5110`, `Development`, no SPA proxy). `Program.cs` has
+no static-file middleware, so the built SPA is hosted separately from the API.
 
 ### 18.5 Startup sequence and seeding rules
 
@@ -2842,13 +2849,20 @@ The key ring is kept apart so a copied database alone cannot be used to generate
 
 | Project | Tooling | Test classes | Scope |
 |---|---|---|---|
-| `TaskFlow.UnitTests` | xUnit | 81 (`*Tests.cs`) | Pure rules, services with fakes, validators, seeders/migrations on test databases, integrations, architecture rules |
+| `TaskFlow.UnitTests` | xUnit | 82 (`*Tests.cs`) | Pure rules, services with fakes, validators, seeders/migrations on test databases, integrations, architecture rules |
 | `TaskFlow.IntegrationTests` | xUnit + `WebApplicationFactory` (`TaskFlowApiFactory`) | 43 | HTTP endpoints end-to-end through the real pipeline, authentication, permissions, ProblemDetails |
-| Frontend | Jasmine + Karma (`ng test`), preceded by `npm run check:structure` | – | Component/service specs and folder-structure rules |
+| Frontend | Jasmine + Karma (`ng test`), preceded by `npm run check:structure` | 97 `*.spec.ts` files (1,099 specs) | Component/service specs and folder-structure rules |
 
-The 150 test files also include shared fixtures in `TestSupport/` (e.g. `FakeTimeProvider`, `FakeHttpHandler`, `ScriptedChatProvider`, `MfaTestSupport`, `TestAccessControl`, `WindowsOnlyFactAttribute` for DPAPI-dependent tests) and `GlobalUsings.cs`. Test folders mirror the code modules (§5). There is no end-to-end browser test tool (Playwright is not installed).
+The 151 test files also include shared fixtures in `TestSupport/` (e.g. `FakeTimeProvider`, `FakeHttpHandler`, `ScriptedChatProvider`, `MfaTestSupport`, `TestAccessControl`, `WindowsOnlyFactAttribute` for DPAPI-dependent tests) and `GlobalUsings.cs`. Test folders mirror the code modules (§5). There is no end-to-end browser test tool (Playwright is not installed).
 
-> ⚠️ To be confirmed: no `*.spec.ts` files are in the frontend snapshot, and the test projects' package references (e.g. a mocking library) were not supplied.
+Frontend specs sit beside the code they test under `src/app/` (`modules/`, `shared/`, `layouts/`, `routes/` and
+`app.component.spec.ts`). `angular.json` runs them with the `@angular-devkit/build-angular:karma` builder and
+`tsconfig.spec.json`; `package.json` references `jasmine-core`, `karma`, `karma-chrome-launcher`, `karma-coverage`,
+`karma-jasmine` and `karma-jasmine-html-reporter`. Both test projects target `net10.0` and reference `xunit`,
+`xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk` and `coverlet.collector`. `TaskFlow.UnitTests` adds
+`NetArchTest.Rules` (architecture rules); `TaskFlow.IntegrationTests` adds `Microsoft.AspNetCore.Mvc.Testing`. No mocking
+library is referenced; tests use hand-written fakes and harnesses. The suites run 1,042 unit tests, 467 integration
+tests and 1,099 frontend specs, all passing.
 
 ### 20.2 Coverage by area
 

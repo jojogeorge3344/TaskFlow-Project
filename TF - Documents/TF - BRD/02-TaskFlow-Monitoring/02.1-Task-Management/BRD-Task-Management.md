@@ -512,10 +512,11 @@ Tasks move to another person with a recorded reason, and nobody loses track of t
 Let the people on a task talk about it in one place, next to the task.
 
 **Screen Elements**
-- Comment history (author initials and name, time, "(edited)").
-- Comment box and post, edit and delete actions.
-
-> ⚠️ To be confirmed: the exact layout and button labels of the full discussion page; its page file is not in the reviewed code snapshot. The requirements below come from the Task Details tab, the server rules and the in-app help.
+- **Back to task #N**; chips with the task code, title and comment count.
+- Comment history grouped by day (author initials and name, "You" on the user's own comments, time, "(edited)"); "No comments yet" when there are none.
+- **Edit** (in place, with **Cancel** / **Save**) and **Delete** (after confirmation) on the user's own comments.
+- **Add a comment** box (at most 1000 characters on the page, counter "N / 1000 · Everyone on the task is notified") and **Post comment**.
+- Side panels: **Who is notified** (assignee and recipients) and **Task** (status, priority, deadline).
 
 **Functional Requirements**
 
@@ -556,11 +557,10 @@ Employees and managers communicate about task progress without relying on separa
 Keep an unchangeable, time-ordered record of everything that happened to a task.
 
 **Screen Elements**
-- Entries: event type, user who acted, old value, new value, time.
-- Filters: event type, person, from date, to date, text search.
-- For Administrators: correct or remove a "Worked hours logged" entry.
-
-> ⚠️ To be confirmed: the exact layout and controls of the full activity page; its page file is not in the reviewed code snapshot.
+- **Back to task #N** and an event count.
+- Entries, newest first and grouped by day: event type, time, message, old → new value, user who acted; "No activity found" when nothing matches.
+- Filters: event-type pills (All and the common types) and an "Other events" list, "Search activity…", From / To dates, **Clear** / **Apply**. The page has no filter by person.
+- For Administrators: **Edit hours** (min 0.25, step 0.25) or **Delete** on a "Worked hours logged" entry.
 
 **Functional Requirements**
 
@@ -675,7 +675,6 @@ _Not applicable for this sub-module._ The recommended stack is in the overall BR
 | Constraint | Reminder intervals and additional recipients can be set only when a task is created |
 | Constraint | Only Employee-role users can be picked as assignee on Create; any active user on Reassign |
 | Dependency | Creating a task also needs read access to employees, projects and Reminder Settings; reassigning needs read access to employees |
-| Dependency | The discussion and activity full pages: ⚠️ To be confirmed – layout not verified (page files not in the reviewed snapshot) |
 
 ---
 

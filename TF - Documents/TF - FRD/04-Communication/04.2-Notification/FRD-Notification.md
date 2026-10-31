@@ -549,40 +549,41 @@ Screen messages are listed in §4.1.1.
 
 ## 11. Requirements Traceability Matrix
 
-Test case column: automated test suite names from the TaskFlow test projects. Coverage is inferred from the suite
-names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual UI check" = no automated frontend test listed.
+Test case column: automated test suites from the TaskFlow test projects (backend test classes and frontend `*.spec.ts`
+files). The mapping was checked against the test sources; per-test mapping belongs in the LLD. "Manual UI check" = no
+automated test covers the behaviour.
 
 **BRD requirements → FRD**
 
 | BRD item | FRD requirement(s) | Screen / function | Use case | Test case |
 |---|---|---|---|---|
 | REQ-NOTIF-01 | FR-NOTIF-01 | Notification Center | UC-NOTIF-01 | `NotificationsEndpointsTests` |
-| REQ-NOTIF-02 | FR-NOTIF-02 | Header bell | UC-NOTIF-01 | Manual UI check |
-| REQ-NOTIF-03 | FR-NOTIF-03 | Header bell | UC-NOTIF-01, UC-NOTIF-04 | `NotificationsEndpointsTests` |
+| REQ-NOTIF-02 | FR-NOTIF-02 | Header bell | UC-NOTIF-01 | `shell.component.spec.ts` |
+| REQ-NOTIF-03 | FR-NOTIF-03 | Header bell | UC-NOTIF-01, UC-NOTIF-04 | `NotificationsEndpointsTests`, `shell.component.spec.ts` |
 | REQ-NOTIF-04 | FR-NOTIF-04 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
 | REQ-NOTIF-05 | FR-NOTIF-05, FR-NOTIF-06 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
-| REQ-NOTIF-06 | FR-NOTIF-07 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
+| REQ-NOTIF-06 | FR-NOTIF-07 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests`, `notification-center.component.spec.ts` |
 | REQ-NOTIF-07 | FR-NOTIF-08 | Notification Center | UC-NOTIF-01 | Manual UI check |
-| REQ-NOTIF-08 | FR-NOTIF-09 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
-| REQ-NOTIF-09 | FR-NOTIF-10 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
-| REQ-NOTIF-10 | FR-NOTIF-11 | Notification Center | UC-NOTIF-01 | Manual UI check |
-| REQ-NOTIF-11 | FR-NOTIF-12, FR-NOTIF-21 | Notification Center | UC-NOTIF-02 | `NotificationServiceTests` |
+| REQ-NOTIF-08 | FR-NOTIF-09 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests`, `notification-center.component.spec.ts` |
+| REQ-NOTIF-09 | FR-NOTIF-10 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests`, `notification-center.component.spec.ts` |
+| REQ-NOTIF-10 | FR-NOTIF-11 | Notification Center | UC-NOTIF-01 | `notification-center.component.spec.ts` |
+| REQ-NOTIF-11 | FR-NOTIF-12, FR-NOTIF-21 | Notification Center | UC-NOTIF-02 | `NotificationServiceTests`, `notification-center.component.spec.ts` |
 | REQ-NOTIF-12 | FR-NOTIF-13 | Notification Center | UC-NOTIF-02 | Manual UI check |
-| REQ-NOTIF-13 | FR-NOTIF-14, FR-NOTIF-21 | Notification Center | UC-NOTIF-02 | `NotificationServiceTests` |
-| REQ-NOTIF-14 | FR-NOTIF-15 | Notification Center | UC-NOTIF-02 | Manual UI check |
-| REQ-NOTIF-15 | FR-NOTIF-16 | Notification Center | UC-NOTIF-03 | Manual UI check |
+| REQ-NOTIF-13 | FR-NOTIF-14, FR-NOTIF-21 | Notification Center | UC-NOTIF-02 | `NotificationServiceTests`, `notification-center.component.spec.ts` |
+| REQ-NOTIF-14 | FR-NOTIF-15 | Notification Center | UC-NOTIF-02 | `notification-center.component.spec.ts`, `notification.service.spec.ts` |
+| REQ-NOTIF-15 | FR-NOTIF-16 | Notification Center | UC-NOTIF-03 | `notification-center.component.spec.ts` |
 | REQ-NOTIF-16 | FR-NOTIF-17 | Notification Center | UC-NOTIF-03 | `NotificationServiceTests` |
 | REQ-NOTIF-17 | FR-NOTIF-18 | Notification Center | UC-NOTIF-02 | `NotificationsEndpointsTests` |
-| REQ-NOTIF-18 | FR-NOTIF-19 | Notification Center | UC-NOTIF-01 | Manual UI check |
+| REQ-NOTIF-18 | FR-NOTIF-19 | Notification Center | UC-NOTIF-01 | `notification-center.component.spec.ts` |
 | REQ-NOTIF-19 | FR-NOTIF-20 | Notification Center | UC-NOTIF-02 | `NotificationServiceTests` |
-| REQ-NOTIF-20 | FR-NOTIF-22 | Event notifications | UC-NOTIF-04 | `TaskServiceTests` (to be confirmed) |
-| REQ-NOTIF-21 | FR-NOTIF-23, FR-NOTIF-24 | Event notifications | UC-NOTIF-04 | `TaskServiceTests` (to be confirmed) |
+| REQ-NOTIF-20 | FR-NOTIF-22 | Event notifications | UC-NOTIF-04 | `TaskManagementServiceTests` |
+| REQ-NOTIF-21 | FR-NOTIF-23, FR-NOTIF-24 | Event notifications | UC-NOTIF-04 | `TaskServiceTests` |
 | REQ-NOTIF-22 | FR-NOTIF-25 | Event notifications | UC-NOTIF-04 | `TaskCommentActivityNotificationTests` |
 | REQ-NOTIF-23 | FR-NOTIF-26 | Event notifications | UC-NOTIF-04 | `TaskWorkedHoursNotificationTests` |
-| REQ-NOTIF-24 | FR-NOTIF-27 | Event notifications | UC-NOTIF-04 | `MfaServiceTests`, `MfaAdminResetEndpointsTests` (to be confirmed) |
-| REQ-NOTIF-25 | FR-NOTIF-28 | Event notifications | UC-NOTIF-04 | `PasswordRecoveryServiceTests` (to be confirmed) |
-| REQ-NOTIF-26 | FR-NOTIF-29 | Event notifications | UC-NOTIF-04 | `NotificationServiceTests` |
-| REQ-NOTIF-27 | FR-NOTIF-30 | Event notifications | UC-NOTIF-04 | `NotificationServiceTests` |
+| REQ-NOTIF-24 | FR-NOTIF-27 | Event notifications | UC-NOTIF-04 | `MfaServiceTests`, `MfaAdminResetEndpointsTests` |
+| REQ-NOTIF-25 | FR-NOTIF-28 | Event notifications | UC-NOTIF-04 | `PasswordRecoveryServiceTests` |
+| REQ-NOTIF-26 | FR-NOTIF-29 | Event notifications | UC-NOTIF-04 | `NotificationPublisherTests`, `TaskCommentActivityNotificationTests` |
+| REQ-NOTIF-27 | FR-NOTIF-30 | Event notifications | UC-NOTIF-04 | `ReminderServiceTests` |
 | REQ-NOTIF-28 | FR-NOTIF-32 | Reminder engine | UC-NOTIF-05 | `ReminderSchedulerServiceTests` |
 | REQ-NOTIF-29 | FR-NOTIF-33 | Reminder engine | UC-NOTIF-05 | `ReminderServiceTests` |
 | REQ-NOTIF-30 | FR-NOTIF-34, FR-NOTIF-50 | Reminder engine | UC-NOTIF-05 | `ReminderServiceTests` |
@@ -616,11 +617,11 @@ names (test sources not reviewed); per-test mapping belongs in the LLD. "Manual 
 | BR-NOTIF-08 | FR-NOTIF-39 | Reminder engine | UC-NOTIF-05 | `ReminderCalculatorTests` |
 | BR-NOTIF-09 | FR-NOTIF-40 | Reminder engine | UC-NOTIF-05 | `ReminderCalculatorTests` |
 | BR-NOTIF-10 | FR-NOTIF-50 | Reminder engine | UC-NOTIF-05 | `ReminderIdempotencyTests` |
-| BR-NOTIF-11 | FR-NOTIF-29, FR-NOTIF-33 | Event notifications, Reminder engine | UC-NOTIF-04, UC-NOTIF-05 | `NotificationServiceTests`, `ReminderServiceTests` |
+| BR-NOTIF-11 | FR-NOTIF-29, FR-NOTIF-33 | Event notifications, Reminder engine | UC-NOTIF-04, UC-NOTIF-05 | `NotificationPublisherTests`, `ReminderServiceTests` |
 | BR-NOTIF-12 | FR-NOTIF-47 | Reminder engine | UC-NOTIF-05 | `ReminderServiceTests` |
-| BR-NOTIF-13 | FR-NOTIF-31 | Event notifications | UC-NOTIF-04 | `TaskCommentActivityNotificationTests` |
+| BR-NOTIF-13 | FR-NOTIF-31 | Event notifications | UC-NOTIF-04 | `TaskWorkedHoursNotificationTests` (mail failure only); no test fails a notification during a task change (see LLD §11) |
 | NFR-NOTIF-01 | FR-NOTIF-32 | Reminder engine | UC-NOTIF-05 | `ReminderSchedulerServiceTests` |
-| NFR-NOTIF-02 | FR-NOTIF-03 | Header bell | UC-NOTIF-01 | Manual UI check |
+| NFR-NOTIF-02 | FR-NOTIF-03 | Header bell | UC-NOTIF-01 | `shell.component.spec.ts` |
 | NFR-NOTIF-03 | FR-NOTIF-05, FR-NOTIF-06 | Notification Center | UC-NOTIF-01 | `NotificationServiceTests` |
 | NFR-NOTIF-04 | FR-NOTIF-42 | Reminder engine | UC-NOTIF-05 | `ReminderIdempotencyTests` |
 | NFR-NOTIF-05 | FR-NOTIF-49 | Reminder engine | UC-NOTIF-05 | `ReminderSchedulerServiceTests` |

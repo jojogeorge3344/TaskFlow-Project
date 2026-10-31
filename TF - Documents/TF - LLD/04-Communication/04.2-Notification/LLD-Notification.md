@@ -712,7 +712,7 @@ each written once however many 60-second passes run that day.
 |---|---|---|
 | `Reminders:SchedulerEnabled` | `true` | Starts the hosted reminder scheduler (`ReminderEngineOptions`) |
 | `Reminders:TickSeconds` | `60` | Seconds between passes (minimum 1) |
-| `Mail:AppBaseUrl` | not set in `appsettings.json` | Base address for the "Open the task:" line in reminder mails (omitted when not set) |
+| `Mail:AppBaseUrl` | `http://localhost:4200` in `appsettings.Environment.json` (Local line active; not set in `appsettings.json`) | Base address for the "Open the task:" line in reminder mails (omitted when not set) |
 | `Application:Timezone` | `Asia/Kolkata` | Fallback when the `Application.Timezone` row is empty |
 | `ApplicationSettings` `Reminder.Enabled` | `true` | Engine on / off (FR-NOTIF-33) |
 | `ApplicationSettings` `Reminder.DeadlineDayEnabled` | `true` | Due-today reminder (FR-NOTIF-39) |
@@ -727,7 +727,7 @@ Setting rows are seeded by `Persistence/Seeders/SettingsInitializer.cs`; default
 
 ## 9. Testing Design
 
-Test sources were not available; only file names (`tests-filelist.json`). Coverage below is inferred from the names.
+Coverage below was checked against the test sources (backend test methods and frontend `describe` / `it` names).
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
@@ -736,14 +736,14 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 | Engine | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderServiceTests.cs` | Unit | Settings off, candidates, recipients (creator, active only), texts, mail copy |
 | Idempotency | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderIdempotencyTests.cs` | Unit | Repeated / overlapping passes, task changed during pass |
 | Scheduler | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderSchedulerServiceTests.cs` | Unit | Start-up pass, interval, disabled, error swallowed |
-| Event sources | `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskWorkedHoursNotificationTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs`, `TaskFlow.UnitTests/Auth/Mfa/MfaServiceTests.cs`, `TaskFlow.UnitTests/Auth/PasswordRecovery/PasswordRecoveryServiceTests.cs` | Unit | Comment, worked-hours, assignment / reassignment, MFA reset and password-reset notifications |
+| Event sources | `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskWorkedHoursNotificationTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskManagementServiceTests.cs`, `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs`, `TaskFlow.UnitTests/Auth/Mfa/MfaServiceTests.cs`, `TaskFlow.IntegrationTests/Auth/Mfa/MfaAdminResetEndpointsTests.cs`, `TaskFlow.UnitTests/Auth/PasswordRecovery/PasswordRecoveryServiceTests.cs` | Unit / Integration | Comment, worked-hours, assignment (create) / reassignment, MFA reset and password-reset notifications |
+| Publisher | `NotificationPublisherTests` in `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs` | Unit | Unread row with task link, skipped when `Notification.InAppEnabled` is off, on when the setting row is missing |
 | Endpoints | `TaskFlow.IntegrationTests/Communication/Notification/NotificationsEndpointsTests.cs` | Integration | 4 endpoints, `notifications.*` policies, 404 for foreign rows |
 | Settings | `TaskFlow.IntegrationTests/Settings/ReminderSettings/SettingsEndpointsTests.cs`, `TaskFlow.UnitTests/Settings/ReminderSettings/ReminderSettingsServiceTests.cs` | Integration / Unit | Settings that drive the engine |
 | Cross-cutting | `ArchitectureTests.cs`, `PermissionAuthorizationTests.cs` | Unit / Integration | Layer rules, policies |
-| Frontend | – (no spec files in the fact sheet) | Manual UI check | Bell dot, filters, states |
-
-> ⚠️ To be confirmed: the per-test mapping above (and in §11) is inferred from file names; no test file for
-> `NotificationPublisher` appears in `tests-filelist.json`.
+| Notification Center | `frontend/src/app/modules/communication/notification/pages/notification-center.component.spec.ts` | Frontend unit | Type, message, time and task link per row, no link when the task is gone, type and read-state filters from page one, mark one / mark all read with the shared unread count, empty state, error state and Retry, last-page fallback after marking read |
+| Notification API client | `frontend/src/app/modules/communication/notification/services/notification.service.spec.ts` | Frontend unit | Query parameters from the filter, empty values left out, shared unread count, last count kept when the refresh fails, count lowered on mark read and reset on mark all |
+| Header bell | `frontend/src/app/layouts/shell.component.spec.ts` | Frontend unit | Bell linking to the center, dot only when the unread count is above zero, count refreshed on the interval |
 
 ---
 
@@ -752,8 +752,8 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 - Notifications are never deleted or archived; no `ReadAt` column.
 - `ReminderHistory.Status` is always `Sent` and `DeliveryAttempts` always 0; retries and failures are not tracked.
 - No live push; new notifications appear on navigation, every 15 s or when the tab becomes visible.
-- `Mail:AppBaseUrl` is not set by default, so reminder mails carry no "Open the task:" line (the Mail reader still
-  links the task through `TaskId`).
+- `Mail:AppBaseUrl` is set only in `appsettings.Environment.json` (`http://localhost:4200` on the active Local line);
+  when it is not set, reminder mails carry no "Open the task:" line (the Mail reader still links the task through `TaskId`).
 - Single-instance design: one scheduler per process; the database dedup also protects overlapping passes.
 - Reminder notifications are written through `INotificationRepository`, not `NotificationPublisher`, so they are
   written even when `Notification.InAppEnabled` is false.
@@ -778,29 +778,29 @@ Test sources were not available; only file names (`tests-filelist.json`). Covera
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-NOTIF-01 | `COMMUNICATION_ROUTES` `notifications` + `permissionGuard` (`notifications.view`); server policy on `GET /api/v1/notifications` | `NotificationsEndpointsTests`; Manual UI check |
-| FR-NOTIF-02 | `shell.component.html` bell (`canSeeNotifications`) · `nav-items.ts` | Manual UI check |
-| FR-NOTIF-03 | `GET /api/v1/notifications/unread-count` · `CountUnreadAsync` · `refreshBadges()` | `NotificationsEndpointsTests`; Manual UI check |
+| FR-NOTIF-02 | `shell.component.html` bell (`canSeeNotifications`) · `nav-items.ts` | `shell.component.spec.ts` |
+| FR-NOTIF-03 | `GET /api/v1/notifications/unread-count` · `CountUnreadAsync` · `refreshBadges()` | `NotificationsEndpointsTests`; `shell.component.spec.ts`, `notification.service.spec.ts` |
 | FR-NOTIF-04 | `GET /api/v1/notifications` · `NotificationRepository.ListAsync` (`UserId`, `CreatedAt` desc) | `NotificationServiceTests` |
 | FR-NOTIF-05, FR-NOTIF-06 | `NotificationService.ListAsync` (page clamp, pageSize 1–100 else 20) · `PAGE_SIZE` · range label | `NotificationServiceTests` |
-| FR-NOTIF-07, FR-NOTIF-17 | `NotificationRepository.ToDto` (task link only when not deleted) | `NotificationServiceTests` |
+| FR-NOTIF-07, FR-NOTIF-17 | `NotificationRepository.ToDto` (task link only when not deleted) | `NotificationServiceTests`; `notification-center.component.spec.ts` |
 | FR-NOTIF-08 | `NotificationCenterComponent` unread highlight | Manual UI check |
-| FR-NOTIF-09, FR-NOTIF-10, FR-NOTIF-11 | `NotificationFilter` (`type`, `isRead`) · `NotificationCenterComponent` filters, Reset / Clear filters | `NotificationServiceTests`; Manual UI check |
-| FR-NOTIF-12 | `POST /api/v1/notifications/{id}/read` · `MarkReadAsync` | `NotificationServiceTests`, `NotificationsEndpointsTests` |
+| FR-NOTIF-09, FR-NOTIF-10, FR-NOTIF-11 | `NotificationFilter` (`type`, `isRead`) · `NotificationCenterComponent` filters, Reset / Clear filters | `NotificationServiceTests`; `notification-center.component.spec.ts`, `notification.service.spec.ts` |
+| FR-NOTIF-12 | `POST /api/v1/notifications/{id}/read` · `MarkReadAsync` | `NotificationServiceTests`, `NotificationsEndpointsTests`; `notification-center.component.spec.ts` |
 | FR-NOTIF-13 | `NotificationCenterComponent.canManage()` | Manual UI check |
-| FR-NOTIF-14 | `POST /api/v1/notifications/read-all` · `MarkAllReadAsync` | `NotificationServiceTests`, `NotificationsEndpointsTests` |
-| FR-NOTIF-15 | `NotificationService` (TS) `unreadCount` updates; reload with Read-state filter | Manual UI check |
-| FR-NOTIF-16 | Task code link → task details route (Task Management access rules) | Manual UI check |
+| FR-NOTIF-14 | `POST /api/v1/notifications/read-all` · `MarkAllReadAsync` | `NotificationServiceTests`, `NotificationsEndpointsTests`; `notification-center.component.spec.ts` |
+| FR-NOTIF-15 | `NotificationService` (TS) `unreadCount` updates; reload with Read-state filter | `notification-center.component.spec.ts`, `notification.service.spec.ts` |
+| FR-NOTIF-16 | Task code link → task details route (Task Management access rules) | `notification-center.component.spec.ts` (link target) |
 | FR-NOTIF-18 | No delete endpoint in `NotificationsController` | `NotificationsEndpointsTests` |
-| FR-NOTIF-19, FR-NOTIF-21 | `NotificationCenterComponent` empty / no-match / error states and messages | Manual UI check |
+| FR-NOTIF-19, FR-NOTIF-21 | `NotificationCenterComponent` empty / no-match / error states and messages | `notification-center.component.spec.ts` (empty and load-error states); mark-failure messages: Manual UI check |
 | FR-NOTIF-20 | `GetOwnForUpdateAsync` (Id + UserId) · 404 | `NotificationServiceTests` |
-| FR-NOTIF-22, FR-NOTIF-23, FR-NOTIF-24 | `TaskService` → `INotificationPublisher.PublishAsync` (`TaskAssigned`, `Reassigned`) | `TaskServiceTests` (inferred from the name) |
+| FR-NOTIF-22, FR-NOTIF-23, FR-NOTIF-24 | `TaskService` → `INotificationPublisher.PublishAsync` (`TaskAssigned`, `Reassigned`) | `TaskManagementServiceTests` (create), `TaskServiceTests` (reassign) |
 | FR-NOTIF-25 | `TaskCommentService` → `PublishAsync` (`TaskComment`) | `TaskCommentActivityNotificationTests` |
 | FR-NOTIF-26 | `TaskService` worked hours → `PublishAsync` (`System`) | `TaskWorkedHoursNotificationTests` |
-| FR-NOTIF-27 | `MfaService` → `PublishAsync` (`System`) | `MfaServiceTests`, `MfaAdminResetEndpointsTests` (inferred from the names) |
-| FR-NOTIF-28 | `PasswordRecoveryService` → `PublishAsync` (`System`) | `PasswordRecoveryServiceTests` (inferred from the name) |
-| FR-NOTIF-29 | `NotificationPublisher.InAppEnabledAsync` (`Notification.InAppEnabled`) | ⚠️ To be confirmed: no `NotificationPublisher` test file |
-| FR-NOTIF-30 | `IEmployeeRepository.GetLiveIdsAsync` / `GetActiveByIdsAsync` (`Users` query filter) | `TaskCommentActivityNotificationTests`, `ReminderServiceTests` |
-| FR-NOTIF-31 | `try … catch` + `LogWarning` in `TaskService` / `TaskCommentService`; `DiscardStagedMail` | `TaskCommentActivityNotificationTests` |
+| FR-NOTIF-27 | `MfaService` → `PublishAsync` (`System`) | `MfaServiceTests`, `MfaAdminResetEndpointsTests` |
+| FR-NOTIF-28 | `PasswordRecoveryService` → `PublishAsync` (`System`) | `PasswordRecoveryServiceTests` |
+| FR-NOTIF-29 | `NotificationPublisher.InAppEnabledAsync` (`Notification.InAppEnabled`) | `NotificationPublisherTests` (in `TaskCommentActivityNotificationTests.cs`), `TaskCommentActivityNotificationTests` (`AddComment_InAppDisabled_SavesCommentWithoutNotifications`) |
+| FR-NOTIF-30 | `IEmployeeRepository.GetLiveIdsAsync` / `GetActiveByIdsAsync` (`Users` query filter) | `ReminderServiceTests` (`Inactive_and_deleted_recipients_are_skipped`) |
+| FR-NOTIF-31 | `try … catch` + `LogWarning` in `TaskService` / `TaskCommentService`; `DiscardStagedMail` | `TaskWorkedHoursNotificationTests` (`Update_WhenMailFails_StillSavesTheHours`, mail failure only); no test fails a notification during a task change, and `TaskManagementServiceTests.CreateAsync_NotificationFails_RollsBackTheTask` expects task creation to roll back |
 | FR-NOTIF-32 | `ReminderSchedulerService.ExecuteAsync` (start-up pass, `PeriodicTimer`, `Reminders:TickSeconds`) | `ReminderSchedulerServiceTests` |
 | FR-NOTIF-33 | `GenerateDueAsync` (`ReminderSettingsDto.Enabled`) | `ReminderServiceTests` |
 | FR-NOTIF-34 | `ReminderRepository.GetOpenTasksDueByAsync` (`UpcomingWindow` 32 days) | `ReminderServiceTests` |

@@ -398,7 +398,7 @@ HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overal
 | Open issue | ⚠️ To be confirmed: without `settings.ai.edit` the inputs stay editable and only **Save** is hidden; whether the screen should be fully read-only. | Jojo George |
 | Open issue | ⚠️ To be confirmed: a user with `settings.ai.test` but without `settings.ai.edit` cannot test while there are unsaved changes (the automatic save is refused). | Jojo George |
 | Open issue | ⚠️ To be confirmed: only the screen ensures one active server; whether the API should refuse several enabled providers. | Jojo George |
-| Open issue | ⚠️ To be confirmed: exact conditions for **Ready to use** versus **In use** on the provider card. | Jojo George |
+| Note | Checked against `ai-provider-settings.component.ts` (`statusText()`): the active server (the first enabled server that is configured, else the first enabled one) shows **In use** when it is configured, otherwise **Not configured**; any other server shows **Ready to use**, or **Needs an API key** when its key is missing or unreadable. | Jojo George |
 
 ---
 

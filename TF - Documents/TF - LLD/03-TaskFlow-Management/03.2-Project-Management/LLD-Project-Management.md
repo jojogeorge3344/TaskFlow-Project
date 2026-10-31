@@ -15,7 +15,7 @@
 
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
-| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from the code and verified against the code fact sheet |
+| 1.0 | 31-Oct-2026 | Jojo George | Initial version, derived from and verified against the TaskFlow source code (backend, frontend and tests) |
 
 **Related documents:**
 
@@ -44,8 +44,8 @@ for the Project Details screen, and positions (list, get-or-create) – enough t
 - Not covered: allocations given when an employee is created (Employee Management LLD), task CRUD (Task Management LLD).
 - Naming: `*Controller`, `I*Service` / `*Service`, `I*Repository` / `*Repository`, DTOs `*Dto` / `*Request` / `*Input`.
 - API base path `/api/v1`; JSON camelCase; enums as strings; errors as ProblemDetails.
-- **Endpoint count:** `ProjectsController` **9** + `PositionsController` **2** = **11** actions (code fact sheet
-  section 3); all 11 are documented in 4.1.1.
+- **Endpoint count:** `ProjectsController` **9** + `PositionsController` **2** = **11** actions (counted from the code); all 11
+  are documented in 4.1.1.
 
 ---
 
@@ -78,7 +78,7 @@ frontend/src/app/modules/management/
                                                            project-team-dialog.model.ts, employee-picker.component.ts
   project-management/services/project.service.ts
   project-management/models/project.model.ts
-  project-management/positions/services/position.service.ts   (imported; not in the snapshot – see section 10)
+  project-management/positions/services/position.service.ts
   components/position-combobox.component.ts                (shared with Employee Management)
 ```
 
@@ -142,7 +142,7 @@ Shared mechanisms are in the overall LLD (`../../00-Overall/LLD-TaskFlow-Overall
 | Frontend pages | `ProjectListComponent`, `ProjectDetailComponent` (+ `Filters`) | `project-management/pages/` | Cards, delete confirm; details summary, team, filtered tasks |
 | Frontend components | `ProjectFormDialogComponent`, `ProjectTeamDialogComponent` (+ `TeamRow`), `EmployeePickerComponent` (`EMPLOYEE_SEARCH_DEBOUNCE_MS = 250`), `PositionComboboxComponent` | `project-management/components/`, `management/components/` | Add / edit dialog; team dialog; person picker (`UserService.getAll({ search, isActive: true })`); position pick-or-type |
 | Frontend service | `ProjectService` | `project-management/services/project.service.ts` | `getAll`, `getById`, `getEmployees`, `getMembers`, `getTasks`, `replaceMembers`, `create`, `update`, `delete` |
-| Frontend service | `PositionService` | `project-management/positions/services/position.service.ts` | `getAll`, `getOrCreate` on `/api/v1/positions` (file missing from the snapshot) |
+| Frontend service | `PositionService` | `project-management/positions/services/position.service.ts` | `getAll`, `getOrCreate` on `/api/v1/positions` |
 | Frontend models | `Project`, `ProjectWithCount`, `CreateProjectRequest`, `UpdateProjectRequest`, `Position`, `ProjectMember`, `ProjectMemberInput`, `ProjectTask`, `ProjectTaskFilter` | `project-management/models/project.model.ts` | Client contracts |
 
 **Class diagram**
@@ -609,7 +609,7 @@ All keys except `projects.view` require `projects.view` (`PermissionCatalog`).
 
 | Key | Default | Purpose |
 |---|---|---|
-| `ConnectionStrings:Default` | `<secret>` | SQLite database (shared) |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database (shared) |
 | Code constant `IUserAllocationService.MaxTotalPercent` | 100 | Cap on one person's allocations across projects |
 | Code constant `PositionService.MaxNameLength` | 100 | Position name length |
 | Code constant `SystemRoles.ManagerId` | 2 | Only this role may be a project manager |
@@ -619,18 +619,26 @@ All keys except `projects.view` require `projects.view` (`PermissionCatalog`).
 
 ## 9. Testing Design
 
-Test contents were not available (file names only); "Covers" is inferred (⚠️ To be confirmed).
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/management`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Team endpoints | `TaskFlow.IntegrationTests/Management/ProjectManagement/ProjectTeamEndpointsTests.cs` | Integration | `PUT /api/v1/projects/{id}/members`, authorization, all-or-nothing |
-| Allocation rules | `TaskFlow.UnitTests/Management/EmployeeManagement/Allocations/UserAllocationServiceTests.cs` | Unit | Percent range, duplicates, manager flag, 100% cap |
-| Project tasks | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/ProjectTaskTests.cs` | Unit | Tasks mapped to projects, filters |
-| Manager links | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | Project managers in a manager's team |
-| Migrations | `TaskFlow.UnitTests/Persistence/UserProjectAllocationsMigrationTests.cs`, `TaskFlow.UnitTests/Persistence/DepartmentFollowUpMigrationTests.cs` | Unit | Allocation data move; `projects.*` key follow-up |
+| Team endpoints | `TaskFlow.IntegrationTests/Management/ProjectManagement/ProjectTeamEndpointsTests.cs` | Integration | Positions list / get-or-create (case-insensitive, blank 400, `positions.create`); team save after create; 100% cap with nothing saved; manager flag rules; view-only users refused; project delete frees allocations; employee list hides credentials |
+| Allocation rules | `TaskFlow.UnitTests/Management/EmployeeManagement/Allocations/UserAllocationServiceTests.cs` | Unit | Project-side rows (1–100, person once, unknown position, inactive person), manager flag and links, 100% cap and concurrent saves, all-or-nothing, delete frees percentages, position get-or-create and length, position grants nothing |
+| Project tasks | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/ProjectTaskTests.cs` | Unit | Task project validation and mapping; `GetTasksAsync` filters and assignee role |
+| Manager links | `TaskFlow.UnitTests/Management/EmployeeManagement/Employees/ManagerAssignmentTests.cs` | Unit | A manager's projects listed by name; deleted project drops out; role change removes manager projects |
+| Migrations | `TaskFlow.UnitTests/Persistence/UserProjectAllocationsMigrationTests.cs`, `TaskFlow.UnitTests/Persistence/DepartmentFollowUpMigrationTests.cs` | Unit | Allocation data move and seeded positions; `projects.*` key follow-up |
 | Permissions | `TaskFlow.UnitTests/Settings/RoleConfiguration/PermissionCatalogTests.cs`, `TaskFlow.IntegrationTests/Common/ModuleBasedPermissionEndpointsTests.cs` | Unit / Integration | Catalogue and policy wiring |
-| Project CRUD and positions | – | – | ⚠️ To be confirmed: no project or position test file is listed |
-| Frontend | – | – | No frontend spec files in the snapshot |
+| Project validators | `TaskFlow.UnitTests/Management/ProjectManagement/ProjectRequestValidatorsTests.cs` | Unit | `CreateProjectRequestValidator` and `UpdateProjectRequestValidator`: blank name, 200 / 201-character name, 500 / 501-character description |
+| Project create (validation) | `TaskFlow.IntegrationTests/Management/EmployeeManagement/UsersEndpointsTests.cs` (`CreateProject_WithoutAName_IsRejectedByTheValidator`) | Integration | `POST /api/v1/projects` without a name returns 400 |
+| List page | `project-management/pages/project-list.component.spec.ts` | Frontend unit | Cards, header count, managers by name, client-side search, View employees link, delete with team warning, team dialog after create (skippable), view-only user has no Add / Edit / Delete, empty / error states |
+| Details page | `project-management/pages/project-detail.component.spec.ts` | Frontend unit | Summary, team, tasks with return link, overdue badge and count, role filter options, server-side filters and clearing, no-match / empty states, "Project not found" |
+| Add / edit dialog | `project-management/components/project-form-dialog.component.spec.ts` | Frontend unit | "Add project" title, "Name is required", duplicate-name server error, `created` emitted only for a new project, update and toast |
+| Team dialog | `project-management/components/project-team-dialog.component.spec.ts` | Frontend unit | Assign team step, current members, row layout, new row with no position, employee search and remaining percentage, typed position created, 1–100, unfinished rows, 100% server error, manager required / several / only Manager role, load error |
+| Person picker | `project-management/components/employee-picker.component.spec.ts` | Frontend unit | Server search of active employees with remaining percentage, people on other rows left out, emits the choice |
+| Position combobox | `components/position-combobox.component.spec.ts` | Frontend unit | Lists positions, picks existing (ignoring case), creates a typed one, clears, shows the create error |
+| Frontend services | `employee-management/services/allocation-services.spec.ts` | Frontend unit | `PositionService` list and get-or-create; `ProjectService` read and replace members |
 
 ---
 
@@ -643,7 +651,6 @@ Test contents were not available (file names only); "Covers" is inferred (⚠️
 - `GET /api/v1/projects/{id}/tasks` ignores the task-view scope (`tasks.view.all`). ⚠️ To be confirmed whether intended.
 - `GET /api/v1/projects/{id}/employees` has no UI caller and returns 200 with an empty list for an unknown project.
 - The delete confirmation says "permanently deleted" but the delete is soft; tasks of a deleted project are not changed. ⚠️ To be confirmed how they should be shown.
-- `position.service.ts` (imported from `project-management/positions/services/`) is missing from the frontend snapshot. ⚠️ To be confirmed.
 - `GetAllWithCountsAsync` has no explicit ordering.
 - Only the Manager system role (id 2) can be a project manager; custom roles cannot.
 
@@ -653,28 +660,28 @@ Test contents were not available (file names only); "Covers" is inferred (⚠️
 
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
-| FR-PROJ-01, FR-PROJ-02, FR-PROJ-03, FR-PROJ-12, FR-PROJ-13 | `GET /api/v1/projects` · `ProjectRepository.GetAllWithCountsAsync` · `ProjectListComponent` | Manual UI |
-| FR-PROJ-04 | `management.routes.ts` (`projects`, `projects/:id`, `Permissions.ProjectsView`) | Manual UI |
+| FR-PROJ-01, FR-PROJ-02, FR-PROJ-03, FR-PROJ-12, FR-PROJ-13 | `GET /api/v1/projects` · `ProjectRepository.GetAllWithCountsAsync` · `ProjectListComponent` | `UserAllocationServiceTests` (managers by name), `project-list.component.spec.ts` |
+| FR-PROJ-04 | `management.routes.ts` (`projects`, `projects/:id`, `Permissions.ProjectsView`) | `app.routes.spec.ts`, `nav-items.spec.ts` |
 | FR-PROJ-05, FR-PROJ-06 | `[RequirePermission]` on every action; list button bindings | `ProjectTeamEndpointsTests`, `ModuleBasedPermissionEndpointsTests` |
-| FR-PROJ-07 | **View employees** → `/employees` with project filter (`EmployeeScreenPermissions`) | Manual UI |
-| FR-PROJ-08, FR-PROJ-11 | Delete confirm and toast · `ProjectService.delete` | Manual UI |
-| FR-PROJ-09, FR-PROJ-10 | `DELETE /api/v1/projects/{id}` · `ProjectService.DeleteAsync`, `ProjectRepository.RemoveTeamAsync` | ⚠️ To be confirmed |
-| FR-PROJ-14, FR-PROJ-15, FR-PROJ-16 | `POST /api/v1/projects`, `PUT /api/v1/projects/{id}` · `CreateProjectRequestValidator`, `UpdateProjectRequestValidator`, `NameTakenAsync`, `IX_Projects_Name` | ⚠️ To be confirmed |
-| FR-PROJ-17, FR-PROJ-18 | `ProjectFormDialogComponent` → `ProjectTeamDialogComponent` (**Assign team**, **Skip for now**) | Manual UI |
+| FR-PROJ-07 | **View employees** → `/employees` with project filter (`EmployeeScreenPermissions`) | `project-list.component.spec.ts` |
+| FR-PROJ-08, FR-PROJ-11 | Delete confirm and toast · `ProjectService.delete` | `project-list.component.spec.ts` |
+| FR-PROJ-09, FR-PROJ-10 | `DELETE /api/v1/projects/{id}` · `ProjectService.DeleteAsync`, `ProjectRepository.RemoveTeamAsync` | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests`, `ManagerAssignmentTests` (tasks kept: no automated test) |
+| FR-PROJ-14, FR-PROJ-15, FR-PROJ-16 | `POST /api/v1/projects`, `PUT /api/v1/projects/{id}` · `CreateProjectRequestValidator`, `UpdateProjectRequestValidator`, `NameTakenAsync`, `IX_Projects_Name` | `ProjectRequestValidatorsTests`, `UsersEndpointsTests`, `project-form-dialog.component.spec.ts` (duplicate name: UI only) |
+| FR-PROJ-17, FR-PROJ-18 | `ProjectFormDialogComponent` → `ProjectTeamDialogComponent` (**Assign team**, **Skip for now**) | `project-form-dialog.component.spec.ts`, `project-list.component.spec.ts`, `project-team-dialog.component.spec.ts` |
 | FR-PROJ-19 | `GET /api/v1/projects/{id}/members` · `ProjectRepository.GetMembersAsync` | `ProjectTeamEndpointsTests` |
-| FR-PROJ-20, FR-PROJ-21 | `EmployeePickerComponent` (`GET /api/v1/users`, `remainingPercent`); team dialog row check | Manual UI |
+| FR-PROJ-20, FR-PROJ-21 | `EmployeePickerComponent` (`GET /api/v1/users`, `remainingPercent`); team dialog row check | `employee-picker.component.spec.ts`, `project-team-dialog.component.spec.ts` |
 | FR-PROJ-22, FR-PROJ-23, FR-PROJ-24, FR-PROJ-25, FR-PROJ-26 | `PUT /api/v1/projects/{id}/members` · `UserAllocationService.ReplaceProjectMembersAsync` | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests` |
 | FR-PROJ-27 | `GetTotalsOnOtherProjectsAsync` + cap check | `UserAllocationServiceTests` |
 | FR-PROJ-28 | `IUnitOfWork.ExecuteInTransactionAsync` around check and write | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests` |
 | FR-PROJ-29 | Diff of `UserProjectAllocations`; toasts "Team saved" / "Team cleared" | `ProjectTeamEndpointsTests` |
 | FR-PROJ-30 | `ManagerProjects` sync; `EmployeeRepository.GetTeamMemberIdsAsync` | `ManagerAssignmentTests` |
 | FR-PROJ-31 | Team dialog default position **Member** | Manual UI |
-| FR-PROJ-32, FR-PROJ-33, FR-PROJ-34 | `GET /api/v1/positions`, `POST /api/v1/positions` · `PositionService.GetOrCreateAsync`, `PositionRepository.GetByNameAsync`, `PositionComboboxComponent` | ⚠️ To be confirmed |
-| FR-PROJ-35 | `Position` seed (`HasData`) in `AppDbContext` | Manual check |
-| FR-PROJ-36 | No position rename / delete endpoint; positions not in the permission model | Manual check |
-| FR-PROJ-37, FR-PROJ-39, FR-PROJ-43 | `GET /api/v1/projects/{id}`, `GET /api/v1/projects/{id}/members` · `ProjectDetailComponent` | Manual UI |
+| FR-PROJ-32, FR-PROJ-33, FR-PROJ-34 | `GET /api/v1/positions`, `POST /api/v1/positions` · `PositionService.GetOrCreateAsync`, `PositionRepository.GetByNameAsync`, `PositionComboboxComponent` | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests`, `position-combobox.component.spec.ts` |
+| FR-PROJ-35 | `Position` seed (`HasData`) in `AppDbContext` | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests`, `UserProjectAllocationsMigrationTests` |
+| FR-PROJ-36 | No position rename / delete endpoint; positions not in the permission model | `ProjectTeamEndpointsTests`, `UserAllocationServiceTests` (no permission from a position); Manual check (no rename / delete) |
+| FR-PROJ-37, FR-PROJ-39, FR-PROJ-43 | `GET /api/v1/projects/{id}`, `GET /api/v1/projects/{id}/members` · `ProjectDetailComponent` | `project-list.component.spec.ts`, `project-detail.component.spec.ts` |
 | FR-PROJ-38, FR-PROJ-40, FR-PROJ-41, FR-PROJ-45 | `GET /api/v1/projects/{id}/tasks` · `ProjectRepository.GetTasksAsync`, `ProjectTaskFilter` | `ProjectTaskTests` |
-| FR-PROJ-42, FR-PROJ-44 | `ProjectDetailComponent` (`Filters` reset, empty / error states) | Manual UI |
+| FR-PROJ-42, FR-PROJ-44 | `ProjectDetailComponent` (`Filters` reset, empty / error states) | `project-detail.component.spec.ts` |
 
 `GET /api/v1/projects/{id}/employees` traces to no FR (no UI caller).
 

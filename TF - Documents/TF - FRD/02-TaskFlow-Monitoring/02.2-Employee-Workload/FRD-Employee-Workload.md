@@ -342,34 +342,35 @@ This sub-module stores no data of its own; it reads the items below.
 
 ## 11. Requirements Traceability Matrix
 
-Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests`) whose names match the
-behaviour; coverage is inferred from the file names. "Manual UI" = checked by hand on the screen.
+Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests` and the frontend
+`*.spec.ts` files under `frontend/src/app/`) that test the behaviour; the mapping was checked against the test sources.
+"Manual UI" = checked by hand on the screen.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-WORK-01 | FR-WORK-01, FR-WORK-21 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs`, `CustomRoleWorkloadTests.cs` |
+| REQ-WORK-01 | FR-WORK-01, FR-WORK-21 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs`, `CustomRoleWorkloadTests.cs`, `workload.component.spec.ts` (error state; the empty state is not tested) |
 | REQ-WORK-02 | FR-WORK-03 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | REQ-WORK-03 | FR-WORK-04 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | REQ-WORK-04 | FR-WORK-05 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | REQ-WORK-05 | FR-WORK-06 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | REQ-WORK-06 | FR-WORK-07 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
-| REQ-WORK-07 | FR-WORK-08 | Employee Workload | UC-WORK-01 | `WorkloadEndpointsTests.cs` |
-| REQ-WORK-08 | FR-WORK-09 | Employee Workload | UC-WORK-01 | Manual UI |
-| REQ-WORK-09 | FR-WORK-10, FR-WORK-11 | Employee Workload | UC-WORK-01 | Manual UI |
-| REQ-WORK-10 | FR-WORK-12 | Employee Workload | UC-WORK-01 | Manual UI |
-| REQ-WORK-11 | FR-WORK-13, FR-WORK-21 | Employee Workload | UC-WORK-02 | `WorkloadEndpointsTests.cs` |
-| REQ-WORK-12 | FR-WORK-14 | Employee Workload | UC-WORK-02 | Manual UI |
-| REQ-WORK-13 | FR-WORK-16 | Employee Workload | UC-WORK-02 | Manual UI |
-| REQ-WORK-14 | FR-WORK-15, FR-WORK-17 | Employee Workload | UC-WORK-03 | Manual UI |
-| REQ-WORK-15 | FR-WORK-18 | Employee Workload | UC-WORK-01 | `WorkloadEndpointsTests.cs` |
+| REQ-WORK-07 | FR-WORK-08 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs`, `workload.component.spec.ts` |
+| REQ-WORK-08 | FR-WORK-09 | Employee Workload | UC-WORK-01 | `workload.component.spec.ts` (row count; the average is not asserted) |
+| REQ-WORK-09 | FR-WORK-10, FR-WORK-11 | Employee Workload | UC-WORK-01 | `workload.component.spec.ts` (highlight; the legend text is not asserted) |
+| REQ-WORK-10 | FR-WORK-12 | Employee Workload | UC-WORK-01 | `workload.component.spec.ts` (bar shown; the scaling is not asserted) |
+| REQ-WORK-11 | FR-WORK-13, FR-WORK-21 | Employee Workload | UC-WORK-02 | `WorkloadEndpointsTests.cs`, `WorkloadServiceTests.cs`, `workload.component.spec.ts` |
+| REQ-WORK-12 | FR-WORK-14 | Employee Workload | UC-WORK-02 | `workload.component.spec.ts` |
+| REQ-WORK-13 | FR-WORK-16 | Employee Workload | UC-WORK-02 | `workload.component.spec.ts` |
+| REQ-WORK-14 | FR-WORK-15, FR-WORK-17 | Employee Workload | UC-WORK-03 | `workload.component.spec.ts`, `task-list.component.spec.ts` |
+| REQ-WORK-15 | FR-WORK-18 | Employee Workload | UC-WORK-01 | `WorkloadEndpointsTests.cs`, `app.routes.spec.ts` |
 | REQ-WORK-16 | FR-WORK-19 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | REQ-WORK-17 | FR-WORK-20 | Employee Workload | UC-WORK-01, UC-WORK-02 | Manual UI |
 | BR-WORK-01 | FR-WORK-03, FR-WORK-04, FR-WORK-05, FR-WORK-06, FR-WORK-22 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs` |
 | BR-WORK-02 | FR-WORK-01, FR-WORK-02 | Employee Workload | UC-WORK-01 | `CustomRoleWorkloadTests.cs` |
-| BR-WORK-03 | FR-WORK-10 | Employee Workload | UC-WORK-01, UC-WORK-02 | Manual UI |
-| BR-WORK-04 | FR-WORK-08 | Employee Workload | UC-WORK-01 | `WorkloadEndpointsTests.cs` |
-| BR-WORK-05 | FR-WORK-15 | Employee Workload | UC-WORK-03 | `TasksEndpointsTests.cs` |
-| BR-WORK-06 | FR-WORK-16, FR-WORK-17, FR-WORK-18 | Employee Workload | UC-WORK-01, UC-WORK-02, UC-WORK-03 | `WorkloadEndpointsTests.cs` |
+| BR-WORK-03 | FR-WORK-10 | Employee Workload | UC-WORK-01, UC-WORK-02 | `workload.component.spec.ts` |
+| BR-WORK-04 | FR-WORK-08 | Employee Workload | UC-WORK-01 | `WorkloadServiceTests.cs`, `workload.component.spec.ts` |
+| BR-WORK-05 | FR-WORK-15 | Employee Workload | UC-WORK-03 | `TasksEndpointsTests.cs`, `task-list.component.spec.ts`, `workload.component.spec.ts` |
+| BR-WORK-06 | FR-WORK-16, FR-WORK-17, FR-WORK-18 | Employee Workload | UC-WORK-01, UC-WORK-02, UC-WORK-03 | `WorkloadEndpointsTests.cs`, `workload.component.spec.ts`, `app.routes.spec.ts` |
 
 ---
 

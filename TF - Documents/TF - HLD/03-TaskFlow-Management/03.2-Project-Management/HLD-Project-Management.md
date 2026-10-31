@@ -435,7 +435,6 @@ its data lives in `taskflow.db` in the TaskFlow data folder. See the overall HLD
 | Risk | The team picker silently needs `employees.view` | Grant it with `projects.members.manage` |
 | Open issue | ⚠️ To be confirmed: the delete confirmation says "permanently deleted" although it is a soft delete (R-PROJ-05) | Jojo George |
 | Open issue | `/api/v1/projects/{id}/employees` has no SPA caller and returns 200 with an empty list for an unknown project | Keep or remove – Jojo George |
-| Open issue | ⚠️ To be confirmed: the Angular positions service file imported by the combobox, team dialog and employee form is missing from the source snapshot | Jojo George |
 | Assumption | 100% means a person's full working time; only Manager-role people manage projects | – |
 
 ---

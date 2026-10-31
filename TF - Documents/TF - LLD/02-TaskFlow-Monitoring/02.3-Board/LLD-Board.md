@@ -501,22 +501,24 @@ _Not applicable for this sub-module._ The board has no configuration keys of its
 
 ## 9. Testing Design
 
-Paths are relative to `backend/tests`. Only the file names are available; coverage is inferred from them.
+Backend paths are relative to `backend/tests`, frontend paths to `frontend/src/app/`. "Covers" was checked against the
+test sources.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
 | Transition table | `TaskFlow.UnitTests/Monitoring/TaskManagement/Rules/TaskTrackingDomainTests.cs` | Unit | `TaskStatusTransitions.Can`, overdue rule |
-| Task service | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs` | Unit | Visibility / scope, board list |
-| Status change and history | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskManagementServiceTests.cs` | Unit | `ChangeStatusAsync`, activity entries |
-| Custom roles | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/CustomRolePermissionTests.cs` | Unit | `tasks.status.change` and scope for custom roles |
+| Task service | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskServiceTests.cs` | Unit | Visibility / scope, board list and project on cards, `ChangeStatusAsync` (allowed and disallowed moves, unrelated employee, `StatusChanged` / `Completed` entries, `CompletedAt`) |
+| Deleted tasks | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/TaskDeletionTests.cs` | Unit | A deleted task is gone from the board |
+| Custom roles | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/CustomRolePermissionTests.cs` | Unit | Task scope for custom roles (`tasks.view.all`); no `tasks.status.change` case |
 | Harness | `TaskFlow.UnitTests/TestSupport/TaskTrackingServiceHarness.cs` | Support | Shared fixture |
-| Task endpoints | `TaskFlow.IntegrationTests/Monitoring/TaskManagement/TasksEndpointsTests.cs` | Integration | `TasksController` actions incl. status change |
+| Task endpoints | `TaskFlow.IntegrationTests/Monitoring/TaskManagement/TasksEndpointsTests.cs` | Integration | `GET /api/v1/tasks/board` (Manager all, Employee scoped, 401), status change (allowed with history, disallowed 400) |
 | Module permissions | `TaskFlow.IntegrationTests/Common/ModuleBasedPermissionEndpointsTests.cs` | Integration | Endpoint keys such as `board.view` |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
-| Frontend | – | – | No spec file for `KanbanComponent` (facts: 0 frontend spec files); drag-and-drop and filters checked manually |
+| Board page | `modules/monitoring/board/pages/kanban.component.spec.ts` | Frontend unit | Five columns, card click to details with `returnUrl`, drop to another column, same-column drop ignored, rollback and toast on 4xx, error state, filter row by `board.filters.use`, Assignee filter for Managers only, Project / Status / Deadline filters (AND), Clear, filtered-empty state, drop while filtered |
+| Board route and menu | `routes/app.routes.spec.ts`, `layouts/nav-items.spec.ts` | Frontend unit | `permissionGuard` with `board.view`; Board menu placement and `board.view` gate |
 
-> ⚠️ To be confirmed: whether `TasksEndpointsTests.cs` or `ModuleBasedPermissionEndpointsTests.cs` call `GET /api/v1/tasks/board`
-> directly (only file names are available).
+Both `TasksEndpointsTests.cs` (`GetBoard_*`) and `ModuleBasedPermissionEndpointsTests.cs` (`board.view` row) call
+`GET /api/v1/tasks/board` directly.
 
 ---
 
@@ -540,28 +542,28 @@ Paths are relative to `backend/tests`. Only the file names are available; covera
 
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
-| FR-BOARD-01 | `GET /api/v1/tasks/board` · `TaskService.GetBoardAsync`, `VisibilityForCallerAsync`, `TaskRepository.GetBoardAsync` · `KanbanComponent.rebuild` | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
-| FR-BOARD-02 | `BOARD_STATUSES` (no Cancelled) · `!IsDeleted` in `Scoped` | `TaskServiceTests.cs` |
-| FR-BOARD-03 | `TaskCardDto` · `kanban.component.html` card | Manual UI |
+| FR-BOARD-01 | `GET /api/v1/tasks/board` · `TaskService.GetBoardAsync`, `VisibilityForCallerAsync`, `TaskRepository.GetBoardAsync` · `KanbanComponent.rebuild` | `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `kanban.component.spec.ts` |
+| FR-BOARD-02 | `BOARD_STATUSES` (no Cancelled) · `!IsDeleted` in `Scoped` | `TaskDeletionTests.cs` (deleted tasks; no test for hiding cancelled cards) |
+| FR-BOARD-03 | `TaskCardDto` · `kanban.component.html` card | `TaskServiceTests.cs`, `kanban.component.spec.ts` |
 | FR-BOARD-04 | `TaskService.ToCard` (`IsOverdue`) · `kanban__card--overdue` | `TaskTrackingDomainTests.cs` |
-| FR-BOARD-05 | `OrderBy(Deadline)` · `[cdkDropListSortingDisabled]` · `drop` same-container return | Manual UI |
+| FR-BOARD-05 | `OrderBy(Deadline)` · `[cdkDropListSortingDisabled]` · `drop` same-container return | `kanban.component.spec.ts` (same-column drop ignored; the deadline order is not asserted) |
 | FR-BOARD-06 | `taskCount()` header | Manual UI |
-| FR-BOARD-07 | `PATCH /api/v1/tasks/{id}/status` policy `perm:tasks.status.change` · `canMove` / `cdkDragDisabled` | `CustomRolePermissionTests.cs` |
-| FR-BOARD-08 | `TaskAccessHandler`, `TaskService.CanAccessTaskAsync`, `TaskStatusTransitions.Can`, `BusinessRuleException` | `TaskTrackingDomainTests.cs`, `TasksEndpointsTests.cs` |
-| FR-BOARD-09 | `KanbanComponent.drop` (same column / same status ignored) | Manual UI |
-| FR-BOARD-10 | `commitStatusChange`, `updateLocalStatus`, `apiErrorMessage` | Manual UI |
-| FR-BOARD-11 | `commitStatusChange` success toast | Manual UI |
-| FR-BOARD-12 | `TaskService.ChangeStatusAsync` · `TaskActivityService.AppendAsync` (`StatusChanged`, `Completed`) · `CompletedAt` | `TaskManagementServiceTests.cs` |
-| FR-BOARD-13 | `KanbanComponent.matches`, `localDateKey` | Manual UI |
-| FR-BOARD-14 | `GET /api/v1/tasks/assignees` · `TaskService.GetAssigneesAsync` · `canManage` | Manual UI |
-| FR-BOARD-15 | `canFilter` (`board.filters.use`) | Manual UI |
-| FR-BOARD-16 | `clearFilters`, `hasFilters` | Manual UI |
-| FR-BOARD-17 | `@empty` "Drop tasks here" · `filteredEmpty` | Manual UI |
+| FR-BOARD-07 | `PATCH /api/v1/tasks/{id}/status` policy `perm:tasks.status.change` · `canMove` / `cdkDragDisabled` | `PermissionAuthorizationTests.cs` (every catalog key has a policy); `cdkDragDisabled`: Manual UI |
+| FR-BOARD-08 | `TaskAccessHandler`, `TaskService.CanAccessTaskAsync`, `TaskStatusTransitions.Can`, `BusinessRuleException` | `TaskTrackingDomainTests.cs`, `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-BOARD-09 | `KanbanComponent.drop` (same column / same status ignored) | `kanban.component.spec.ts` |
+| FR-BOARD-10 | `commitStatusChange`, `updateLocalStatus`, `apiErrorMessage` | `kanban.component.spec.ts` |
+| FR-BOARD-11 | `commitStatusChange` success toast | `kanban.component.spec.ts` |
+| FR-BOARD-12 | `TaskService.ChangeStatusAsync` · `TaskActivityService.AppendAsync` (`StatusChanged`, `Completed`) · `CompletedAt` | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-BOARD-13 | `KanbanComponent.matches`, `localDateKey` | `kanban.component.spec.ts` |
+| FR-BOARD-14 | `GET /api/v1/tasks/assignees` · `TaskService.GetAssigneesAsync` · `canManage` | `kanban.component.spec.ts` |
+| FR-BOARD-15 | `canFilter` (`board.filters.use`) | `kanban.component.spec.ts` |
+| FR-BOARD-16 | `clearFilters`, `hasFilters` | `kanban.component.spec.ts` |
+| FR-BOARD-17 | `@empty` "Drop tasks here" · `filteredEmpty` | `kanban.component.spec.ts` (filtered-empty state; "Drop tasks here" is not asserted) |
 | FR-BOARD-18 | **Refresh** → `load()` | Manual UI |
-| FR-BOARD-19 | `load()` error branch | Manual UI |
-| FR-BOARD-20 | `open(task)` → `/tasks/{id}` with `returnUrl` | Manual UI |
-| FR-BOARD-21 | `[RequirePermission(PermissionKeys.BoardView)]` · `permissionGuard` · `nav-items.ts` | `ModuleBasedPermissionEndpointsTests.cs` |
-| FR-BOARD-22 | `nav-items.ts` (`canViewAllTasks` branch) | Manual UI |
+| FR-BOARD-19 | `load()` error branch | `kanban.component.spec.ts` |
+| FR-BOARD-20 | `open(task)` → `/tasks/{id}` with `returnUrl` | `kanban.component.spec.ts`, `task-details.component.spec.ts` |
+| FR-BOARD-21 | `[RequirePermission(PermissionKeys.BoardView)]` · `permissionGuard` · `nav-items.ts` | `ModuleBasedPermissionEndpointsTests.cs`, `app.routes.spec.ts`, `nav-items.spec.ts` |
+| FR-BOARD-22 | `nav-items.ts` (`canViewAllTasks` branch) | `nav-items.spec.ts` |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

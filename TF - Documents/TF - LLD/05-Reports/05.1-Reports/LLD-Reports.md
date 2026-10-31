@@ -14,7 +14,7 @@
 
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
-| 1.0 | 31-Oct-2026 | Jojo George | Initial version: Task Reports summary and CSV export (controller, service, CSV writer, repository, validator, Angular page), derived from the code and verified against the code fact sheet |
+| 1.0 | 31-Oct-2026 | Jojo George | Initial version: Task Reports summary and CSV export (controller, service, CSV writer, repository, validator, Angular page), derived from and verified against the TaskFlow source code (backend, frontend and tests) |
 
 **Related documents:** BRD – Reports (`../../../BRD/05-Reports/05.1-Reports/BRD-Reports.md`) · FRD – Reports
 (`../../../FRD/05-Reports/05.1-Reports/FRD-Reports.md`) · HLD – Reports (`../../../HLD/05-Reports/05.1-Reports/HLD-Reports.md`) ·
@@ -451,8 +451,8 @@ Shared items (password hashing, tokens, cookies, secrets) are in the overall LLD
 
 | Key | Default | Purpose |
 |---|---|---|
-| `ConnectionStrings:Default` | `<secret>` | SQLite database |
-| `Jwt:AccessTokenMinutes` / `Jwt:RefreshTokenDays` | `<secret>` | Session lifetime for report calls |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
+| `Jwt:AccessTokenMinutes` / `Jwt:RefreshTokenDays` | 30 / 7 | Session lifetime for report calls |
 | `Application:Timezone` | `Asia/Kolkata` | Not used by the report calculations (deadline bounds come from the browser) |
 
 Code constants: `ReportService.MaxExportRows` = 50000; `ReportCsv.FileName` = `taskflow-report.csv`, `ReportCsv.ContentType`
@@ -462,17 +462,19 @@ Code constants: `ReportService.MaxExportRows` = 50000; `ReportCsv.FileName` = `t
 
 ## 9. Testing Design
 
-Paths relative to `backend/tests`. Only file names are available; "Covers" is inferred from the names.
+Backend paths are relative to `backend/tests`; frontend paths to `frontend/src/app/modules/reports`. "Covers" was checked
+against the test sources.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Service | `TaskFlow.UnitTests/Reports/ReportServiceTests.cs` | Unit | Totals, filters, deleted tasks / people, project semantics, row cap and order |
-| CSV | `TaskFlow.UnitTests/Reports/ReportCsvTests.cs` | Unit | Header, column order, quoting, formula guard, date format |
-| Endpoints | `TaskFlow.IntegrationTests/Reports/ReportEndpointsTests.cs` | Integration | Both endpoints, validation, `reports.view` / `reports.export` |
+| Service | `TaskFlow.UnitTests/Reports/ReportServiceTests.cs` | Unit | Totals with no filter, combined / priority / project filters, empty scope zeros, inclusive deadline range, local-kind deadline bound, overdue rule as on the Dashboard, rows use the same filter, assignee and project on rows |
+| CSV | `TaskFlow.UnitTests/Reports/ReportCsvTests.cs` | Unit | Header row first, formula-character prefix, quoting of commas / quotes / newlines, invariant dates and numbers |
+| Endpoints | `TaskFlow.IntegrationTests/Reports/ReportEndpointsTests.cs` | Integration | Totals for a Manager and an Administrator, Employee 403 on both endpoints, combined filters, invalid deadline range 400, CSV attachment with header, formula injection escaped, export uses the same filter |
 | Permissions | `TaskFlow.UnitTests/Settings/RoleConfiguration/PermissionCatalogTests.cs` | Unit | Catalogue entries incl. report keys |
 | Permissions | `TaskFlow.IntegrationTests/Common/PermissionAuthorizationTests.cs`, `ModuleBasedPermissionEndpointsTests.cs` | Integration | Policy enforcement across modules |
-| Support | `TaskFlow.UnitTests/TestSupport/WorkloadReportHarness.cs` | Support | > ⚠️ To be confirmed: whether the report tests use it |
-| Frontend | – | – | No spec file for `ReportComponent` in the snapshot |
+| Support | `TaskFlow.UnitTests/TestSupport/WorkloadReportHarness.cs` | Support | Shared data set; used by `ReportServiceTests` (and the workload tests) |
+| Page | `pages/report.component.spec.ts` | Frontend unit | Headline totals and completion summary, filters applied, In-QA status option, CSV download, failed export, zeros for an empty scope, error state and retry, deadline bounds from local calendar days |
+| Frontend service | `services/report.service.spec.ts` | Frontend unit | Summary request with filters, empty filters omitted, CSV export as a blob with the same filters |
 
 ---
 
@@ -488,8 +490,6 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
   projects may appear because of `IgnoreQueryFilters`. > ⚠️ To be confirmed (R-RPT-06).
 - Counting differs from the Dashboard: Reports counts Cancelled in Total and all open tasks as Pending (BR-RPT-10).
 - The server message MSG-RPT-02 is not shown; the page shows MSG-RPT-01.
-- `report.component.ts` declares `styleUrl: './report.component.css'`, but the file is not in the source snapshot.
-  > ⚠️ To be confirmed.
 - The TDD names reports/tasks and reports/tasks/export routes and `ReportsComponent`; the code uses the two routes in §4
   and `ReportComponent`.
 - The help article `reports-and-workload.md` mentions summaries "by status, priority and employee"; the code returns four
@@ -501,14 +501,14 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
-| FR-RPT-01 | `nav-items.ts` (`has(Permissions.ReportsView)`) | Manual UI check (AC-RPT-01) |
-| FR-RPT-02 | `REPORTS_ROUTES` + `permissionGuard` → `dashboardRouteFor` | Manual UI check (AC-RPT-01) |
+| FR-RPT-01 | `nav-items.ts` (`has(Permissions.ReportsView)`) | `nav-items.spec.ts` |
+| FR-RPT-02 | `REPORTS_ROUTES` + `permissionGuard` → `dashboardRouteFor` | `app.routes.spec.ts` |
 | FR-RPT-03 | `[RequirePermission(PermissionKeys.ReportsView)]` on `ReportController`; `DeniedActionAuditHandler` | `ReportEndpointsTests`, `PermissionAuthorizationTests` |
 | FR-RPT-04 | `ReportComponent.ngOnInit` → `GET /api/v1/reports`, `/api/v1/projects`, `/api/v1/tasks/assignees` | `ReportEndpointsTests` |
-| FR-RPT-05, FR-RPT-06 | `loading` / `error` signals, `load()` retry in `ReportComponent` | Manual UI check |
-| FR-RPT-07 | `report.component.html` count cards | Manual UI check |
+| FR-RPT-05, FR-RPT-06 | `loading` / `error` signals, `load()` retry in `ReportComponent` | `report.component.spec.ts` (error state and Retry); subtitle text: Manual UI check |
+| FR-RPT-07 | `report.component.html` count cards | `report.component.spec.ts` |
 | FR-RPT-08, FR-RPT-09, FR-RPT-10, FR-RPT-11, FR-RPT-12 | `ReportRepository.GetSummaryAsync` (flags), `ReportService.GetSummaryAsync` (`IAppClock.UtcNow`) | `ReportServiceTests` |
-| FR-RPT-13 | `ReportComponent.completionRate` | Manual UI check |
+| FR-RPT-13 | `ReportComponent.completionRate` | `report.component.spec.ts` |
 | FR-RPT-14 | `GetSummaryAsync` fallback `ReportSummaryDto(0, 0, 0, 0)` | `ReportServiceTests` |
 | FR-RPT-15, FR-RPT-16 | `startOfLocalDay` / `endOfLocalDay`; `ReportService.AsUtc`; `Covered` inclusive bounds | `ReportServiceTests` |
 | FR-RPT-17 | Date inputs `[min]` / `[max]` in `report.component.html` | Manual UI check |
@@ -519,17 +519,17 @@ Paths relative to `backend/tests`. Only file names are available; "Covers" is in
 | FR-RPT-22 | `ProjectService.getAll()` → `/api/v1/projects` (`projects.view`) | Manual UI check |
 | FR-RPT-23, FR-RPT-24 | `Covered` – `Status`, `Priority`; `ReportFilterValidator.IsInEnum` | `ReportEndpointsTests` |
 | FR-RPT-25 | `ReportFilter` optional fields; `toParams` drops empty values; `Covered` adds only given filters | `ReportServiceTests` |
-| FR-RPT-26, FR-RPT-27 | `set*()` methods and `resetFilters()` call `load()` | Manual UI check |
-| FR-RPT-28, FR-RPT-29 | `Covered` – `IgnoreQueryFilters().Where(!IsDeleted)`; `GetProjectNamesByUserAsync` `IgnoreQueryFilters` | `ReportServiceTests` |
+| FR-RPT-26, FR-RPT-27 | `set*()` methods and `resetFilters()` call `load()` | `report.component.spec.ts` |
+| FR-RPT-28, FR-RPT-29 | `Covered` – `IgnoreQueryFilters().Where(!IsDeleted)`; `GetProjectNamesByUserAsync` `IgnoreQueryFilters` | `AdminDeleteEndpointsTests` (`ADeletedTaskLeavesReportsWorkloadAndDashboardCounts`, `ADeletedEmployeeLeavesPickersProjectsAndWorkloadButHistoryKeepsTheirName`) |
 | FR-RPT-30 | `ReportService` (no scope selector, D3) | `ReportEndpointsTests` |
 | FR-RPT-31 | `ReportComponent.canExport()` | Manual UI check |
 | FR-RPT-32 | `GET /api/v1/reports/export` – class `reports.view` + `perm:reports.export` | `ReportEndpointsTests`, `PermissionCatalogTests` |
-| FR-RPT-33, FR-RPT-34 | `ReportService.GetRowsAsync` (`MaxExportRows`), `ReportRepository.GetRowsAsync` (`OrderBy(Deadline).ThenBy(Id).Take`) | `ReportServiceTests` |
+| FR-RPT-33, FR-RPT-34 | `ReportService.GetRowsAsync` (`MaxExportRows`), `ReportRepository.GetRowsAsync` (`OrderBy(Deadline).ThenBy(Id).Take`) | `ReportServiceTests`, `ReportEndpointsTests` (export uses the same filter); deadline order and 50,000-row cap: No automated test |
 | FR-RPT-35 | `ReportController.Export` → `File(…, ReportCsv.ContentType, ReportCsv.FileName)`; `saveBlob(blob, REPORT_FILE_NAME)` | `ReportEndpointsTests` |
 | FR-RPT-36, FR-RPT-38 | `ReportCsv.Headers`, `ReportCsv.Write`, `FormatDate` | `ReportCsvTests` |
 | FR-RPT-37 | `ReportService.GetRowsAsync` (`string.Join(", ", names)`), `GetProjectNamesByUserAsync` (`OrderBy(Project.Name)`) | `ReportServiceTests`, `ReportCsvTests` |
 | FR-RPT-39 | `ReportCsv.Escape` (leading `=`, `+`, `-`, `@`) | `ReportCsvTests` |
-| FR-RPT-40, FR-RPT-41 | `ReportComponent.exporting`, `exportCsv()` error → `ToastService.error` | Manual UI check |
+| FR-RPT-40, FR-RPT-41 | `ReportComponent.exporting`, `exportCsv()` error → `ToastService.error` | `report.component.spec.ts` (failed-export toast); "Exporting…" label: Manual UI check |
 | FR-RPT-42 | Read-only queries (`AsNoTracking`); no notification, mail or activity dependency | Manual check – no data change |
 
 ---

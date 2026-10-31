@@ -600,15 +600,19 @@ flowchart LR
 | Access | Users who can access the task; writing needs `tasks.comment.create`, `tasks.comment.edit`, `tasks.comment.delete` |
 | Entry points | Task Details → **Discussion** → **Open full discussion →** |
 
-> ⚠️ To be confirmed: the exact layout and button labels of the full discussion page; its page file is not in the reviewed code snapshot. The behaviour below comes from the Task Details tab, the server rules and the in-app help.
+The full page (`TaskDiscussionComponent`, `discussion/pages/task-discussion.component.*`) has **Back to task #N**, chips
+with the task code, title and comment count, the thread, an **Add a comment** box and a side rail.
 
 **Screen elements**
 
 | Element | Type | Description | Mandatory | Visible to |
 |---|---|---|:---:|---|
-| Comment history | List | Author initials and name, time, "(edited)" mark; oldest first | – | Task access |
-| Comment box | Text area | New comment, at most 4000 characters | Yes (to post) | `tasks.comment.create` |
-| Post / Edit / Delete | Actions | Post a comment; edit or delete one of the user's own comments | – | `tasks.comment.create` / author with `tasks.comment.edit` / author with `tasks.comment.delete` |
+| Header chips | Chips | Task code, title and "N comments" | – | Task access |
+| Comment history | List | Grouped by day; author initials and name, "You" on the user's own comments, time, "(edited)" mark; oldest first. Empty state "No comments yet" | – | Task access |
+| Comment box | Text area | **Add a comment**, at most 1000 characters on the page (the server accepts 4000); counter "N / 1000 · Everyone on the task is notified"; **Post comment** | Yes (to post) | `tasks.comment.create` |
+| Edit / Delete | Actions | On the user's own comments: **Edit** opens the text in place with **Cancel** / **Save**; **Delete** asks "Delete comment?" first | – | author with `tasks.comment.edit` / author with `tasks.comment.delete` |
+| Who is notified | Panel | The assignee and each recipient | – | Task access |
+| Task | Panel | Status, priority and deadline | – | Task access |
 
 **Functional requirements**
 
@@ -686,15 +690,16 @@ flowchart LR
 | Access | `tasks.activity.view` and access to the task; worked-hours correction: Administrator role only |
 | Entry points | Task Details → **Activity history** → **Open full history →**; Time tracking → "View hours in activity history" |
 
-> ⚠️ To be confirmed: the exact layout and controls of the full activity page; its page file is not in the reviewed code snapshot.
+The full page (`ActivityComponent`, `activity/pages/activity.component.*`) has **Back to task #N**, the title
+"Activity history", an event count, the filters and the entries, newest first and grouped by day.
 
 **Screen elements**
 
 | Element | Type | Description | Mandatory | Visible to |
 |---|---|---|:---:|---|
-| Entries | List | Event type, acting user, old value, new value, time | – | `tasks.activity.view` |
-| Filters | Inputs | Event type, person, from date, to date, text search | No | `tasks.activity.view` |
-| Correct / remove entry | Actions | Change the hours of, or delete, a "Worked hours logged" entry | – | Administrator role |
+| Entries | List | Newest first, grouped by day; each entry has an event-type chip, time, message, old → new value and the acting user. Empty state "No activity found" | – | `tasks.activity.view` |
+| Filters | Inputs | Event-type pills (**All**, Status changed, Comment added, Hours logged, Reassigned, Deadline changed) and an **Other events** select; **Search activity…**; **From** / **To** dates; **Clear** / **Apply**. The page has no person filter; the API accepts one (`actorUserId`) | No | `tasks.activity.view` |
+| Edit hours / Delete | Actions | On "Worked hours logged" entries: **Edit hours** (min 0.25, step 0.25) or **Delete** (after confirmation). The page checks the role name Administrator, not a permission key | – | Administrator role |
 
 **Functional requirements**
 
@@ -909,87 +914,86 @@ Notification FRD.
 | Open issue | Clearing Worked hours in the edit form records a change to 0 (R-TASK-06) | Jojo George |
 | Open issue | For a Manager, picking a Project in the normal list filter also drops the Manager's own non-team tasks, because the project filter is handled like a drill-down | Jojo George |
 | Open issue | The Task List **Board view** button is shown without `board.view`; the Board then sends the user back | Jojo George |
-| Open issue | ⚠️ To be confirmed: layout and labels of the full Task Discussion and Activity History pages (page files not in the reviewed snapshot) | Jojo George |
 
 ---
 
 ## 11. Requirements Traceability Matrix
 
-Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests`) whose names match the
-behaviour; coverage is inferred from the file names. "Manual UI" = checked by hand on the screen.
+Test cases name the automated test files (`TaskFlow.UnitTests` / `TaskFlow.IntegrationTests` and the frontend
+`*.spec.ts` files under `frontend/src/app/`) that test the behaviour; the mapping was checked against the test sources.
 
 | BRD item | FRD requirement(s) | Screen | Use case | Test case |
 |---|---|---|---|---|
-| REQ-TASK-01 | FR-TASK-01 | Task List | UC-TASK-01 | `TasksEndpointsTests.cs`, `TaskServiceTests.cs` |
-| REQ-TASK-02 | FR-TASK-03, FR-TASK-13 | Task List | UC-TASK-01 | `TasksEndpointsTests.cs` |
-| REQ-TASK-03 | FR-TASK-04 | Task List | UC-TASK-01 | Manual UI |
-| REQ-TASK-04 | FR-TASK-05, FR-TASK-13 | Task List | UC-TASK-01 | `TaskServiceTests.cs` |
-| REQ-TASK-05 | FR-TASK-06 | Task List | UC-TASK-01 | Manual UI |
-| REQ-TASK-06 | FR-TASK-07 | Task List | UC-TASK-01 | `TaskTrackingDomainTests.cs` |
-| REQ-TASK-07 | FR-TASK-08 | Task List | UC-TASK-02 | `TaskServiceTests.cs` |
-| REQ-TASK-08 | FR-TASK-10 | Task List | UC-TASK-01 | Manual UI |
-| REQ-TASK-09 | FR-TASK-11, FR-TASK-72, FR-TASK-73 | Task List | UC-TASK-03, UC-TASK-08 | `CustomRolePermissionTests.cs` |
-| REQ-TASK-10 | FR-TASK-12 | Task List | UC-TASK-01 | Manual UI |
-| REQ-TASK-11 | FR-TASK-14, FR-TASK-28 | Create Task | UC-TASK-03 | `TaskServiceTests.cs` |
-| REQ-TASK-12 | FR-TASK-15 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs` |
-| REQ-TASK-13 | FR-TASK-16 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `TaskValidatorsTests.cs` |
-| REQ-TASK-14 | FR-TASK-17 | Create Task | UC-TASK-03 | Manual UI |
-| REQ-TASK-15 | FR-TASK-18 | Create Task | UC-TASK-03 | Manual UI |
-| REQ-TASK-16 | FR-TASK-19, FR-TASK-35 | Create Task, Task Details | UC-TASK-03, UC-TASK-05 | `CreateTaskRequestValidatorTests.cs`, `TaskValidatorsTests.cs` |
-| REQ-TASK-17 | FR-TASK-20 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs` |
-| REQ-TASK-18 | FR-TASK-21 | Create Task | UC-TASK-03 | `TaskServiceTests.cs` |
-| REQ-TASK-19 | FR-TASK-22 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs` |
-| REQ-TASK-20 | FR-TASK-23 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs` |
-| REQ-TASK-21 | FR-TASK-24 | Create Task | UC-TASK-03 | `ProjectTaskTests.cs`, `TaskServiceTests.cs` |
-| REQ-TASK-22 | FR-TASK-25 | Create Task | UC-TASK-03 | Manual UI |
+| REQ-TASK-01 | FR-TASK-01 | Task List | UC-TASK-01 | `TasksEndpointsTests.cs`, `TaskServiceTests.cs`, `TaskManagementServiceTests.cs` |
+| REQ-TASK-02 | FR-TASK-03, FR-TASK-13 | Task List | UC-TASK-01 | `TasksEndpointsTests.cs`, `task-list.component.spec.ts` |
+| REQ-TASK-03 | FR-TASK-04 | Task List | UC-TASK-01 | `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs`, `task-list.component.spec.ts` |
+| REQ-TASK-04 | FR-TASK-05, FR-TASK-13 | Task List | UC-TASK-01 | `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs`, `ProjectTaskTests.cs`, `task-list.component.spec.ts` |
+| REQ-TASK-05 | FR-TASK-06 | Task List | UC-TASK-01 | `task-list.component.spec.ts` |
+| REQ-TASK-06 | FR-TASK-07 | Task List | UC-TASK-01 | `TaskTrackingDomainTests.cs`, `TaskManagementServiceTests.cs`, `task-list.component.spec.ts` |
+| REQ-TASK-07 | FR-TASK-08 | Task List | UC-TASK-02 | `AnalyticsDrillDownTests.cs`, `TaskBucketRulesTests.cs`, `task-list.component.spec.ts` |
+| REQ-TASK-08 | FR-TASK-10 | Task List | UC-TASK-01 | `task-list.component.spec.ts` |
+| REQ-TASK-09 | FR-TASK-11, FR-TASK-72, FR-TASK-73 | Task List | UC-TASK-03, UC-TASK-08 | `CustomRolePermissionTests.cs`, `task-list.component.spec.ts`, `app.routes.spec.ts` |
+| REQ-TASK-10 | FR-TASK-12 | Task List | UC-TASK-01 | `task-list.component.spec.ts` |
+| REQ-TASK-11 | FR-TASK-14, FR-TASK-28 | Create Task | UC-TASK-03 | `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-12 | FR-TASK-15 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `ProjectTaskTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-13 | FR-TASK-16 | Create Task | UC-TASK-03 | `task-create.component.spec.ts` (title length only; no test for the 4000-character description) |
+| REQ-TASK-14 | FR-TASK-17 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-15 | FR-TASK-18 | Create Task | UC-TASK-03 | `task-create.component.spec.ts` |
+| REQ-TASK-16 | FR-TASK-19, FR-TASK-35 | Create Task, Task Details | UC-TASK-03, UC-TASK-05 | `CreateTaskRequestValidatorTests.cs`, `TaskValidatorsTests.cs`, `task-create.component.spec.ts`, `task-details.component.spec.ts` |
+| REQ-TASK-17 | FR-TASK-20 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-18 | FR-TASK-21 | Create Task | UC-TASK-03 | `TaskManagementServiceTests.cs` |
+| REQ-TASK-19 | FR-TASK-22 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `TaskManagementServiceTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-20 | FR-TASK-23 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs`, `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-21 | FR-TASK-24 | Create Task | UC-TASK-03 | `ProjectTaskTests.cs`, `TaskManagementServiceTests.cs` |
+| REQ-TASK-22 | FR-TASK-25 | Create Task | UC-TASK-03 | `task-create.component.spec.ts` |
 | REQ-TASK-23 | FR-TASK-26 | Create Task | UC-TASK-03 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-24 | FR-TASK-27, FR-TASK-28 | Create Task | UC-TASK-03 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-25 | FR-TASK-29, FR-TASK-30 | Create Task | UC-TASK-04 | Manual UI |
-| REQ-TASK-26 | FR-TASK-31, FR-TASK-32 | Task Details | UC-TASK-05 | `TasksEndpointsTests.cs` |
+| REQ-TASK-24 | FR-TASK-27, FR-TASK-28 | Create Task | UC-TASK-03 | `TaskManagementServiceTests.cs`, `task-create.component.spec.ts` |
+| REQ-TASK-25 | FR-TASK-29, FR-TASK-30 | Create Task | UC-TASK-04 | `task-create.component.spec.ts` |
+| REQ-TASK-26 | FR-TASK-31, FR-TASK-32 | Task Details | UC-TASK-05 | `TasksEndpointsTests.cs`, `TaskServiceTests.cs`, `task-details.component.spec.ts` |
 | REQ-TASK-27 | FR-TASK-33 | Task Details | UC-TASK-06 | `TaskTrackingDomainTests.cs` |
-| REQ-TASK-28 | FR-TASK-34, FR-TASK-35 | Task Details | UC-TASK-05 | `TaskValidatorsTests.cs` |
-| REQ-TASK-29 | FR-TASK-36 | Task Details | UC-TASK-05 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-30 | FR-TASK-37, FR-TASK-38, FR-TASK-39 | Task Details | UC-TASK-06 | `TaskTrackingDomainTests.cs` |
-| REQ-TASK-31 | FR-TASK-40 | Task Details | UC-TASK-06 | `TaskTrackingDomainTests.cs` |
-| REQ-TASK-32 | FR-TASK-41 | Task Details | UC-TASK-07 | `TaskLogHoursTests.cs` |
-| REQ-TASK-33 | FR-TASK-42 | Task Details | UC-TASK-07 | Manual UI |
-| REQ-TASK-34 | FR-TASK-43, FR-TASK-71 | Task Details | UC-TASK-07 | `TaskWorkedHoursNotificationTests.cs` |
+| REQ-TASK-28 | FR-TASK-34, FR-TASK-35 | Task Details | UC-TASK-05 | `TaskValidatorsTests.cs`, `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `task-details.component.spec.ts` |
+| REQ-TASK-29 | FR-TASK-36 | Task Details | UC-TASK-05 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| REQ-TASK-30 | FR-TASK-37, FR-TASK-38, FR-TASK-39 | Task Details | UC-TASK-06 | `TaskTrackingDomainTests.cs`, `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `task-details.component.spec.ts` |
+| REQ-TASK-31 | FR-TASK-40 | Task Details | UC-TASK-06 | `TaskServiceTests.cs` (completion time only; no test for the cancel time) |
+| REQ-TASK-32 | FR-TASK-41 | Task Details | UC-TASK-07 | `TaskLogHoursTests.cs`, `task-details.component.spec.ts` |
+| REQ-TASK-33 | FR-TASK-42 | Task Details | UC-TASK-07 | `task-details.component.spec.ts` |
+| REQ-TASK-34 | FR-TASK-43, FR-TASK-71 | Task Details | UC-TASK-07 | `TaskWorkedHoursNotificationTests.cs`, `TaskLogHoursTests.cs` |
 | REQ-TASK-35 | FR-TASK-44 | Task Details | UC-TASK-07 | `TaskLogHoursTests.cs` |
-| REQ-TASK-36 | FR-TASK-45 | Task Details | UC-TASK-12 | Manual UI |
-| REQ-TASK-37 | FR-TASK-46 | Task Details, Task List | UC-TASK-08 | `TaskDeletionTests.cs` |
+| REQ-TASK-36 | FR-TASK-45 | Task Details | UC-TASK-12 | `task-details.component.spec.ts` |
+| REQ-TASK-37 | FR-TASK-46 | Task Details, Task List | UC-TASK-08 | `TaskDeletionTests.cs`, `task-details.component.spec.ts`, `task-list.component.spec.ts` |
 | REQ-TASK-38 | FR-TASK-47 | Task Details | UC-TASK-06 | `ReminderServiceTests.cs` |
-| REQ-TASK-39 | FR-TASK-48, FR-TASK-49, FR-TASK-51 | Reassign Task | UC-TASK-09 | `TaskServiceTests.cs` |
-| REQ-TASK-40 | FR-TASK-50 | Reassign Task | UC-TASK-09 | `TaskValidatorsTests.cs` |
-| REQ-TASK-41 | FR-TASK-52 | Reassign Task | UC-TASK-09 | Manual UI |
-| REQ-TASK-42 | FR-TASK-53 | Reassign Task | UC-TASK-09 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-43 | FR-TASK-54 | Reassign Task | UC-TASK-09 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-44 | FR-TASK-55, FR-TASK-71 | Reassign Task | UC-TASK-09 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-45 | FR-TASK-56 | Reassign Task | UC-TASK-09 | Manual UI |
-| REQ-TASK-46 | FR-TASK-57 | Task Discussion | UC-TASK-10 | `TaskCommentActivityNotificationTests.cs` |
-| REQ-TASK-47 | FR-TASK-58 | Task Discussion | UC-TASK-10 | `TaskCommentActivityNotificationTests.cs` |
-| REQ-TASK-48 | FR-TASK-59 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs` |
-| REQ-TASK-49 | FR-TASK-60 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs` |
-| REQ-TASK-50 | FR-TASK-61 | Task Discussion | UC-TASK-10, UC-TASK-11 | `TaskCommentActivityNotificationTests.cs` |
+| REQ-TASK-39 | FR-TASK-48, FR-TASK-49, FR-TASK-51 | Reassign Task | UC-TASK-09 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `reassign.component.spec.ts` |
+| REQ-TASK-40 | FR-TASK-50 | Reassign Task | UC-TASK-09 | `TaskValidatorsTests.cs`, `reassign.component.spec.ts` |
+| REQ-TASK-41 | FR-TASK-52 | Reassign Task | UC-TASK-09 | `reassign.component.spec.ts` |
+| REQ-TASK-42 | FR-TASK-53 | Reassign Task | UC-TASK-09 | `TaskServiceTests.cs` |
+| REQ-TASK-43 | FR-TASK-54 | Reassign Task | UC-TASK-09 | `TaskServiceTests.cs` |
+| REQ-TASK-44 | FR-TASK-55, FR-TASK-71 | Reassign Task | UC-TASK-09 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `reassign.component.spec.ts` |
+| REQ-TASK-45 | FR-TASK-56 | Reassign Task | UC-TASK-09 | `reassign.component.spec.ts` |
+| REQ-TASK-46 | FR-TASK-57 | Task Discussion | UC-TASK-10 | `TaskCommentActivityNotificationTests.cs`, `TasksEndpointsTests.cs`, `task-discussion.component.spec.ts` |
+| REQ-TASK-47 | FR-TASK-58 | Task Discussion | UC-TASK-10 | `TaskCommentActivityNotificationTests.cs`, `TasksEndpointsTests.cs`, `task-discussion.component.spec.ts` |
+| REQ-TASK-48 | FR-TASK-59 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs`, `task-discussion.component.spec.ts` |
+| REQ-TASK-49 | FR-TASK-60 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs`, `task-discussion.component.spec.ts` |
+| REQ-TASK-50 | FR-TASK-61 | Task Discussion | UC-TASK-10, UC-TASK-11 | `TaskCommentActivityNotificationTests.cs`, `TasksEndpointsTests.cs` |
 | REQ-TASK-51 | FR-TASK-62, FR-TASK-71 | Task Discussion | UC-TASK-10 | `TaskCommentActivityNotificationTests.cs` |
-| REQ-TASK-52 | FR-TASK-39, FR-TASK-63 | Activity History | UC-TASK-12 | `TaskManagementServiceTests.cs` |
-| REQ-TASK-53 | FR-TASK-64 | Activity History | UC-TASK-12 | `TasksEndpointsTests.cs` |
-| REQ-TASK-54 | FR-TASK-65 | Activity History | UC-TASK-12 | `TasksEndpointsTests.cs` |
-| REQ-TASK-55 | FR-TASK-66, FR-TASK-73 | Activity History | UC-TASK-12 | `CustomRolePermissionTests.cs` |
-| REQ-TASK-56 | FR-TASK-67 | Activity History | UC-TASK-12 | `TasksEndpointsTests.cs` |
-| REQ-TASK-57 | FR-TASK-68 | Activity History | UC-TASK-13 | `TaskLogHoursTests.cs` |
-| REQ-TASK-58 | FR-TASK-69 | Activity History | UC-TASK-12 | Manual UI |
-| BR-TASK-01 | FR-TASK-01, FR-TASK-02, FR-TASK-32, FR-TASK-49 | Task List, Task Details, Reassign Task | UC-TASK-01, UC-TASK-09 | `TaskServiceTests.cs` |
-| BR-TASK-02 | FR-TASK-09 | Task List | UC-TASK-02 | `TaskServiceTests.cs` |
+| REQ-TASK-52 | FR-TASK-39, FR-TASK-63 | Activity History | UC-TASK-12 | `TaskManagementServiceTests.cs`, `TaskServiceTests.cs`, `TaskCommentActivityNotificationTests.cs` |
+| REQ-TASK-53 | FR-TASK-64 | Activity History | UC-TASK-12 | `TasksEndpointsTests.cs`, `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| REQ-TASK-54 | FR-TASK-65 | Activity History | UC-TASK-12 | `TasksEndpointsTests.cs`, `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| REQ-TASK-55 | FR-TASK-66, FR-TASK-73 | Activity History | UC-TASK-12 | `app.routes.spec.ts` |
+| REQ-TASK-56 | FR-TASK-67 | Activity History | UC-TASK-12 | No automated test (no endpoint changes history apart from FR-TASK-68) |
+| REQ-TASK-57 | FR-TASK-68 | Activity History | UC-TASK-13 | `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| REQ-TASK-58 | FR-TASK-69 | Activity History | UC-TASK-12 | `activity.component.spec.ts` |
+| BR-TASK-01 | FR-TASK-01, FR-TASK-02, FR-TASK-32, FR-TASK-49 | Task List, Task Details, Reassign Task | UC-TASK-01, UC-TASK-09 | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| BR-TASK-02 | FR-TASK-09 | Task List | UC-TASK-02 | `ManagerDrillDownScopeTests.cs` |
 | BR-TASK-03 | FR-TASK-37, FR-TASK-38 | Task Details | UC-TASK-06 | `TaskTrackingDomainTests.cs` |
 | BR-TASK-04 | FR-TASK-33 | Task List, Task Details | UC-TASK-01 | `TaskTrackingDomainTests.cs` |
-| BR-TASK-05 | FR-TASK-22, FR-TASK-54 | Create Task, Reassign Task | UC-TASK-03, UC-TASK-09 | `CreateTaskRequestValidatorTests.cs` |
+| BR-TASK-05 | FR-TASK-22, FR-TASK-54 | Create Task, Reassign Task | UC-TASK-03, UC-TASK-09 | `CreateTaskRequestValidatorTests.cs`, `TaskServiceTests.cs` |
 | BR-TASK-06 | FR-TASK-23 | Create Task | UC-TASK-03 | `CreateTaskRequestValidatorTests.cs` |
 | BR-TASK-07 | FR-TASK-41 | Task Details | UC-TASK-07 | `TaskLogHoursTests.cs` |
 | BR-TASK-08 | FR-TASK-46 | Task List, Task Details | UC-TASK-08 | `TaskDeletionTests.cs` |
-| BR-TASK-09 | FR-TASK-50, FR-TASK-51 | Reassign Task | UC-TASK-09 | `TaskValidatorsTests.cs` |
-| BR-TASK-10 | FR-TASK-59 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs` |
-| BR-TASK-11 | FR-TASK-67, FR-TASK-68 | Activity History | UC-TASK-13 | `TaskLogHoursTests.cs` |
-| BR-TASK-12 | FR-TASK-27, FR-TASK-62, FR-TASK-70 | Create Task, Task Discussion | UC-TASK-03, UC-TASK-10 | `TaskCommentActivityNotificationTests.cs` |
+| BR-TASK-09 | FR-TASK-50, FR-TASK-51 | Reassign Task | UC-TASK-09 | `TaskValidatorsTests.cs`, `TaskServiceTests.cs` |
+| BR-TASK-10 | FR-TASK-59 | Task Discussion | UC-TASK-11 | `TaskCommentActivityNotificationTests.cs`, `task-discussion.component.spec.ts` |
+| BR-TASK-11 | FR-TASK-67, FR-TASK-68 | Activity History | UC-TASK-13 | `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| BR-TASK-12 | FR-TASK-27, FR-TASK-62, FR-TASK-70 | Create Task, Task Discussion | UC-TASK-03, UC-TASK-10 | `TaskManagementServiceTests.cs`, `TaskCommentActivityNotificationTests.cs` |
 
 ---
 

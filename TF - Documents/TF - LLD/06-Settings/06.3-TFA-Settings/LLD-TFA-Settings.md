@@ -549,22 +549,24 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
 
 ## 9. Testing Design
 
-Test file names from `tests-filelist.json`; contents were not available, coverage inferred from names.
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/settings/tfa-settings`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Service | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderConfigServiceTests.cs` | Unit | Save, keys, models, remove |
-| Seeder | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderSeederTests.cs` | Unit | First-run defaults |
-| Key protection | `TaskFlow.UnitTests/Integrations/Ai/KeyProtection/AiKeyProtectorTests.cs`, `KeyRingProtectionCheckTests.cs` | Unit | Encryption, key-ring check |
-| Provider clients | `TaskFlow.UnitTests/Integrations/Ai/Providers/ChatProviderTests.cs` | Unit | Requests and failure mapping |
-| Gateway | `TaskFlow.UnitTests/Assistant/ModelGateway/ProviderFailureHandlingTests.cs` | Unit | Failure classification and messages |
-| Endpoints | `TaskFlow.IntegrationTests/Settings/TfaSettings/AssistantProviderEndpointsTests.cs` | Integration | Config, test, remove endpoints and permissions |
-| First run | `TaskFlow.IntegrationTests/Settings/TfaSettings/AiDefaultsOnFirstRunTests.cs` | Integration | Seeded defaults |
+| Service | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderConfigServiceTests.cs` | Unit | Not-configured states, model lists and custom models, model name rules, concurrent model add, key last four / encrypted / kept / replaced / cleared, unreadable key reported and logged without key material, validator |
+| Seeder | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderSeederTests.cs` | Unit | Built-in models, Ollama on and cloud providers off on a fresh database, all off on an upgrade, idempotent, saved values never overwritten |
+| Key protection | `TaskFlow.UnitTests/Integrations/Ai/KeyProtection/AiKeyProtectorTests.cs`, `KeyRingProtectionCheckTests.cs` | Unit | Protect / unprotect round trip, purpose isolation, replaced key ring gives null; counting of unprotected key-ring files |
+| Provider clients | `TaskFlow.UnitTests/Integrations/Ai/Providers/ChatProviderTests.cs` | Unit | Ollama, Gemini and OpenAI requests, tool calls and failure classification; messages never contain the key |
+| Gateway | `TaskFlow.UnitTests/Assistant/ModelGateway/ProviderFailureHandlingTests.cs` | Unit | Failure messages and retry time, no cross-provider fallback, per-user rate limit |
+| Endpoints | `TaskFlow.IntegrationTests/Settings/TfaSettings/AssistantProviderEndpointsTests.cs` | Integration | Non-administrators 403, 401, save without the key in any response or log, DPAPI key ring on Windows, invalid input 400, test-connection results, remove an added model only |
+| First run | `TaskFlow.IntegrationTests/Settings/TfaSettings/AiDefaultsOnFirstRunTests.cs` | Integration | Fresh database has the model list and Ollama ready; every signed-in user can use TFA on the first run |
 | SSRF | `TaskFlow.IntegrationTests/Integrations/Ai/ProviderRedirectTests.cs` | Integration | Redirects not followed |
 | Start-up warning | `TaskFlow.IntegrationTests/Common/KeyRingStartupWarningTests.cs` | Integration | Key-ring warning at start-up |
 | Support | `TaskFlow.IntegrationTests/TestSupport/ScriptedChatProvider.cs`, `CapturingLoggerProvider.cs` | Support | Fake provider, captured logs |
 
-Frontend spec files: 0.
+| Frontend panel | `components/ai-provider-settings.component.spec.ts` | Frontend unit | Hidden from non-administrators, server dropdown and model lists, add a model, one server in use, key never shown / kept / replaced / removed, invalid input, save error, test connection (saves first, failure messages), removing an added model, load retry |
+| Frontend page | `pages/tfa-settings.component.spec.ts` | Frontend unit | Own screen and title; nothing shown or requested without `settings.ai.manage` |
 
 ---
 
@@ -589,7 +591,7 @@ Frontend spec files: 0.
 | FR-TFAS-01 | `AiProviderKind`, `AiProviderCatalog` (`RequiresKey`, `Locality`) | `AiProviderConfigServiceTests` |
 | FR-TFAS-02 | `AiProviderConfigDto` · `statusText()` · `activeKind` | `AssistantProviderEndpointsTests` |
 | FR-TFAS-03 | `AiProviderCatalog.BuiltInModels` · `AiProviderSeeder` · `AiModelRepository.GetAllAsync` | `AiProviderSeederTests`, `AiDefaultsOnFirstRunTests` |
-| FR-TFAS-04 | `chooseModel()`, `selectKind()` | – (no frontend specs) |
+| FR-TFAS-04 | `chooseModel()`, `selectKind()` | `ai-provider-settings.component.spec.ts` |
 | FR-TFAS-05 | `ADD_MODEL`, `newModelRequired` · `RememberModelAsync` | `AiProviderConfigServiceTests` |
 | FR-TFAS-06 | `PUT /api/v1/assistant/providers/config` · `NormalizeBaseUrl` | `AiProviderConfigServiceTests` |
 | FR-TFAS-07 | `UpdateAiProviderRequestValidator.BeHttpUrl` / `IsMetadataHost` · `AllowAutoRedirect = false` | `AssistantProviderEndpointsTests`, `ProviderRedirectTests` |
@@ -599,21 +601,21 @@ Frontend spec files: 0.
 | FR-TFAS-11 | `KeySet`, `KeyLast4` · `keyStatus()` | `AiProviderConfigServiceTests` |
 | FR-TFAS-12 | `SaveAsync` (empty key keeps stored key) | `AiProviderConfigServiceTests` |
 | FR-TFAS-13 | `ClearKey` · validator "Provide a new key or clear the key, not both." · `clearKey()`/`keepKey()` | `AiProviderConfigServiceTests` |
-| FR-TFAS-14 | `save()` sends `isEnabled` only for the selected kind · toast | – (no frontend specs) |
+| FR-TFAS-14 | `save()` sends `isEnabled` only for the selected kind · toast | `ai-provider-settings.component.spec.ts` |
 | FR-TFAS-15 | Validator "Each provider can only appear once." | `AssistantProviderEndpointsTests` |
 | FR-TFAS-16 | `IsConfigured` · `GetAvailableAsync` (Assistant `GET /api/v1/assistant/providers`) | `AiProviderConfigServiceTests` |
 | FR-TFAS-17 | `POST /api/v1/assistant/providers/{kind}/test` · `AiProviderConnectionTester.TestAsync` · `ProviderFailureMessages` | `AssistantProviderEndpointsTests`, `ProviderFailureHandlingTests` |
 | FR-TFAS-18 | Tester catches `ProviderNotConfiguredException` / `ProviderFailureException` → 200 | `AssistantProviderEndpointsTests` |
-| FR-TFAS-19 | `test()` → `save(() => runTest(kind))` when `needsSave()` | – (no frontend specs) |
+| FR-TFAS-19 | `test()` → `save(() => runTest(kind))` when `needsSave()` | `ai-provider-settings.component.spec.ts` |
 | FR-TFAS-20 | `DELETE /api/v1/assistant/providers/{kind}/models` · `RemoveModelAsync` · `removeModel()` | `AssistantProviderEndpointsTests` |
 | FR-TFAS-21 | `RemoveModelAsync` (404, built-in, in use) | `AiProviderConfigServiceTests` |
 | FR-TFAS-22 | `KeyReadable` · `IsConfigured` · `GetRuntimeAsync` warning | `AiProviderConfigServiceTests`, `AiKeyProtectorTests` |
-| FR-TFAS-23 | Cloud notice in `ai-provider-settings.component.html` | – (no frontend specs) |
+| FR-TFAS-23 | Cloud notice in `ai-provider-settings.component.html` | `ai-provider-settings.component.spec.ts` |
 | FR-TFAS-24 | `AiProviderSeeder.SeedProvidersAsync` (`freshInstall`) | `AiProviderSeederTests`, `AiDefaultsOnFirstRunTests` |
 | FR-TFAS-25 | `[RequirePermission]` per action · `canEdit`/`canTest`/`mayRemoveModel` | `AssistantProviderEndpointsTests`, `PermissionAuthorizationTests` |
 | FR-TFAS-26 | `PermissionCatalog` `Requires: settings.ai.view` · `RoleService.ResolvePermissionsAsync` | `PermissionCatalogTests` |
 | FR-TFAS-27 | `GET /api/v1/assistant/providers/config` · `permissionGuard` (`settings/tfa`) · `buildNavigation()` | `AssistantProviderEndpointsTests` |
-| FR-TFAS-28 | Toasts and error texts in `AiProviderSettingsComponent` | – (no frontend specs) |
+| FR-TFAS-28 | Toasts and error texts in `AiProviderSettingsComponent` | `ai-provider-settings.component.spec.ts` |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

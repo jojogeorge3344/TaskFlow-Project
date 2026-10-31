@@ -538,26 +538,28 @@ Legacy keys expanded by `EffectivePermissions.LegacyChildren`: `dashboard.admin`
 
 _Not applicable for this sub-module._ The catalogue is code (`PermissionCatalog.cs`); no `appsettings.json` key is read.
 Session behaviour depends on the Auth configuration (`Jwt:AccessTokenMinutes`, `Jwt:RefreshTokenDays`, values
-`<secret>`), described in the overall LLD.
+30 and 7), described in the overall LLD.
 
 ---
 
 ## 9. Testing Design
 
-Test file names from `tests-filelist.json`; contents were not available, coverage inferred from names.
+"Covers" was checked against the test sources. Backend paths are relative to `backend/tests`; frontend paths to
+`frontend/src/app/modules/settings/role-configuration`.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| Catalogue | `TaskFlow.UnitTests/Settings/RoleConfiguration/PermissionCatalogTests.cs` | Unit | Catalogue integrity |
-| Migration | `TaskFlow.UnitTests/Persistence/RolesMigrationTests.cs` | Unit | Tables, system roles, triggers |
-| Endpoints | `TaskFlow.IntegrationTests/Settings/RoleConfiguration/RolesEndpointsTests.cs` | Integration | Roles and permissions endpoints |
-| Safeguards | `TaskFlow.IntegrationTests/Settings/RoleConfiguration/RoleAssignmentSafeguardTests.cs` | Integration | Administrator-role safeguards |
+| Catalogue | `TaskFlow.UnitTests/Settings/RoleConfiguration/PermissionCatalogTests.cs` | Unit | Unique keys and hierarchy, module layout, Administrator-only key, always-on entries never stored, frontend mirrors the keys, old broad keys map to finer keys, existing access kept |
+| Migration | `TaskFlow.UnitTests/Persistence/RolesMigrationTests.cs` | Unit | Old roles moved to system roles, triggers block changes to system roles / grants / catalogue, unique names ignoring case, seeder grants and idempotence |
+| Endpoints | `TaskFlow.IntegrationTests/Settings/RoleConfiguration/RolesEndpointsTests.cs` | Integration | System roles and catalogue, custom role CRUD, 403 / 401, system roles and catalogue unchanged, delegated role managers, `roles.modify.access`, Administrator-only key, duplicate / blank names, unknown permission, role in use not deleted, permission change ends sessions (rename does not), assign custom role |
+| Safeguards | `TaskFlow.IntegrationTests/Settings/RoleConfiguration/RoleAssignmentSafeguardTests.cs` | Integration | Administrator role needs `roles.administrator.assign`; role list for the employee form needs `employees.role.assign` |
 | Custom roles elsewhere | `TaskFlow.UnitTests/Monitoring/TaskManagement/Tasks/CustomRolePermissionTests.cs`, `TaskFlow.UnitTests/Monitoring/EmployeeWorkload/CustomRoleWorkloadTests.cs` | Unit | Custom role grants applied in other modules |
 | Policies | `TaskFlow.IntegrationTests/Common/PermissionAuthorizationTests.cs`, `ModuleBasedPermissionEndpointsTests.cs` | Integration | Policy per key |
-| Sessions | `TaskFlow.UnitTests/Auth/Login/AuthServiceRefreshAndLogoutTests.cs`, `TaskFlow.IntegrationTests/Common/AuthenticationWiringTests.cs` | Unit / Integration | Refresh refusal and session validation (by name) |
+| Sessions | `TaskFlow.UnitTests/Auth/Login/AuthServiceRefreshAndLogoutTests.cs`, `TaskFlow.IntegrationTests/Common/AuthenticationWiringTests.cs` | Unit / Integration | General refresh and token checks only; the role-change sign-out is tested in `RolesEndpointsTests` |
 | Structure | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 
-Frontend spec files: 0.
+| Frontend page | `pages/permissions-management.component.spec.ts` | Frontend unit | Role list and system roles, search, ticks and counts, system roles read-only, custom role from a system role, Save enabled on change, save and rejection, View prerequisites, dashboard scopes, module / screen toggles, select all, permission search and filters, compare and copy roles, create, discard and unsaved-edit guard, delete and in-use refusal |
+| Permission tree | `utils/permission-tree.spec.ts` | Frontend unit | Modules once in catalogue order, scope levels, View prerequisites, Administrator-only key never ticked, search, change count, `restrictForCaller` |
 
 ---
 
@@ -587,12 +589,12 @@ Frontend spec files: 0.
 | FR-ROLE-01 | `GET /api/v1/roles` · `GetSummariesAsync` (order, `UserCount`) · `filteredRoles` | `RolesEndpointsTests` |
 | FR-ROLE-02 | `RolesController.GetRoles` claim check `roles.view.all` · `filteredRoles` | `RolesEndpointsTests` |
 | FR-ROLE-03 | `GET /api/v1/permissions` · `buildTree` · `toggleModule`/`toggleScreen`/`setAll` | `RolesEndpointsTests` |
-| FR-ROLE-04 | `view = 'matrix'` (Compare roles) | – (no frontend specs) |
-| FR-ROLE-05 | `search`, `filter`, `matches` | – (no frontend specs) |
+| FR-ROLE-04 | `view = 'matrix'` (Compare roles) | `permissions-management.component.spec.ts` |
+| FR-ROLE-05 | `search`, `filter`, `matches` | `permissions-management.component.spec.ts`, `permission-tree.spec.ts` |
 | FR-ROLE-06 | `LoadCustomRoleAsync` (`ReadOnly`) · triggers `TR_Roles_*`, `TR_RolePermissions_*` | `RolesEndpointsTests`, `RolesMigrationTests` |
 | FR-ROLE-07 | `POST /api/v1/roles` · `CreateAsync` · `startNew` | `RolesEndpointsTests` |
-| FR-ROLE-08 | `duplicate()` → `copyFrom` | – (no frontend specs) |
-| FR-ROLE-09 | `copyFrom(roleId)` | – (no frontend specs) |
+| FR-ROLE-08 | `duplicate()` → `copyFrom` | `permissions-management.component.spec.ts` |
+| FR-ROLE-09 | `copyFrom(roleId)` | `permissions-management.component.spec.ts` |
 | FR-ROLE-10 | `ValidateName` · `EnsureNameFreeAsync` · `IX_Roles_Name` (`NOCASE`) | `RolesEndpointsTests` |
 | FR-ROLE-11 | `ResolvePermissionsAsync` (`Requires`) · `toggleKey` | `RolesEndpointsTests`, `PermissionCatalogTests` |
 | FR-ROLE-12 | `ResolvePermissionsAsync` ("Unknown permission") | `RolesEndpointsTests` |
@@ -600,14 +602,14 @@ Frontend spec files: 0.
 | FR-ROLE-14 | `AlwaysGranted` entries dropped · `PermissionCatalog.Stored` · `PermissionDto.Id = 0` | `PermissionCatalogTests` |
 | FR-ROLE-15 | `ScopeGroup`/`ScopeRank` · `EffectivePermissions.Expand` · `setScope` | `PermissionCatalogTests` |
 | FR-ROLE-16 | `PUT /api/v1/roles/{id}` · `UpdateAsync` | `RolesEndpointsTests` |
-| FR-ROLE-17 | `dirty`, `changes`, `discard`, `confirmDiscard`, `beforeunload` | – (no frontend specs) |
+| FR-ROLE-17 | `dirty`, `changes`, `discard`, `confirmDiscard`, `beforeunload` | `permissions-management.component.spec.ts` |
 | FR-ROLE-18 | `EndSessionsOfRoleHoldersAsync` · `SessionValidation` | `RolesEndpointsTests`, `AuthServiceRefreshAndLogoutTests` |
 | FR-ROLE-19 | `DELETE /api/v1/roles/{id}` · `DeleteAsync` · cascade · `remove()` confirm | `RolesEndpointsTests` |
 | FR-ROLE-20 | `CountHoldingRoleAsync` · `RoleFailure.InUse` | `RolesEndpointsTests` |
 | FR-ROLE-21 | `POST /api/v1/permissions`, `PUT /api/v1/permissions/{id}`, `DELETE /api/v1/permissions/{id}` · `CatalogIsFixed` · `TR_Permissions_*` | `RolesEndpointsTests`, `RolesMigrationTests` |
 | FR-ROLE-22 | `AccessControlSeeder` (Administrator grants on every start) | `PermissionCatalogTests` |
 | FR-ROLE-23 | Claim check `roles.modify.access` (`Forbid()`) · `editable` | `RolesEndpointsTests` |
-| FR-ROLE-24 | `heldCount`, `totalCount`, `heldPercent` | – (no frontend specs) |
+| FR-ROLE-24 | `heldCount`, `totalCount`, `heldPercent` | `permissions-management.component.spec.ts` |
 | FR-ROLE-25 | `[RequirePermission(PermissionKeys.RolesManage)]` · `permissionGuard` (`settings/permissions`) · `buildNavigation()` | `RolesEndpointsTests`, `PermissionAuthorizationTests` |
 | FR-ROLE-26 | Toasts and `formError` / `loadError` texts · `RoleFailure.NotFound` | `RolesEndpointsTests` |
 

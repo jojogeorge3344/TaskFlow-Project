@@ -793,7 +793,7 @@ No background job belongs to this sub-module.
 | Second factor | Step-up code for password change (no current password); TOTP key encrypted (`MfaSecretProtector`, Data Protection); backup codes SHA-256 hashed, shown once |
 | Brute force | 5 password attempts / 5 minutes / account (`AttemptLimiter`); 5 wrong codes → 5-minute lock shared with sign-in (`MfaOptions`) |
 | Privilege escalation | `UpdateOwnProfileRequest` has no role, project, username, code or status field |
-| Secrets | `ConnectionStrings:Default`, Data Protection key ring – never logged; values `<secret>` in §8 |
+| Secrets | Data Protection key ring – never logged; the JWT signing key is kept in user-secrets or environment variables, not `appsettings.json` |
 
 ---
 
@@ -806,8 +806,8 @@ No background job belongs to this sub-module.
 | `Mfa:MaxFailedAttempts` | `5` (code default, not in JSON) | Wrong codes before lockout |
 | `Mfa:LockoutMinutes` | `5` (code default) | Lockout length |
 | `Mfa:BackupCodeCount` | `10` (code default) | Codes per set |
-| `Jwt:AccessTokenMinutes` / `Jwt:RefreshTokenDays` | `<secret>` (omitted from the fact sheet) | Lifetimes of the sessions a password change ends |
-| `ConnectionStrings:Default` | `<secret>` | SQLite database |
+| `Jwt:AccessTokenMinutes` / `Jwt:RefreshTokenDays` | `30` / `7` (`appsettings.json`) | Lifetimes of the sessions a password change ends |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
 | `AttemptLimiter.AttemptsPerAccount` / window | `5` / 5 minutes (constants) | Current-password budget |
 | Frontend `PROFILE_ROUTES` | `profile`, `profile/change-password` | Lazy routes under the shell (`authGuard`, `mfaSetupGuard`) |
 
@@ -817,11 +817,12 @@ No background job belongs to this sub-module.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
-| User Profile | `TaskFlow.UnitTests/Profile/UpdateOwnProfileRequestValidatorTests.cs` | Unit | Validator rules (name, email, mobile) |
-| User Profile | `TaskFlow.IntegrationTests/Profile/UserProfileEndpointsTests.cs` | Integration | `GET`/`PUT /api/v1/users/me` |
-| Change Password | `TaskFlow.IntegrationTests/Auth/Mfa/MfaStepUpEndpointsTests.cs` | Integration | Step-up code on password change |
-| Two-step | `TaskFlow.IntegrationTests/Auth/Mfa/MfaEnrolmentEndpointsTests.cs` | Integration | `mfa/setup`, `mfa/enable` |
-| Gate | `TaskFlow.IntegrationTests/Auth/Mfa/MfaSetupGateEndpointsTests.cs` | Integration | Allow-list (`/users/me`, `/users/me/mfa/*`), password change blocked |
+| User Profile | `TaskFlow.UnitTests/Profile/UpdateOwnProfileRequestValidatorTests.cs` | Unit | Validator rules (name, email); `ChangePasswordRequestValidatorTests` in the same file: new password 6–128 characters |
+| User Profile | `TaskFlow.IntegrationTests/Profile/UserProfileEndpointsTests.cs` | Integration | `GET`/`PUT /api/v1/users/me` (own profile only, duplicate and malformed email, no role change), password length, password change refused without two-step verification |
+| Email policy | `TaskFlow.UnitTests/Common/EmailDomainTests.cs` | Unit | Fixed domain, trim and lower case, own-profile domain rule, unchanged email not a duplicate |
+| Change Password | `TaskFlow.IntegrationTests/Auth/Mfa/MfaStepUpEndpointsTests.cs` | Integration | Step-up code on password change, code not reused, sessions end; `mfa/backup-codes` password throttling; `mfa/check` (code not spent, 429 lockout) |
+| Two-step | `TaskFlow.IntegrationTests/Auth/Mfa/MfaEnrolmentEndpointsTests.cs` | Integration | `mfa/setup`, `mfa/enable`, `mfa/backup-codes` regeneration, no way to turn MFA off |
+| Gate | `TaskFlow.IntegrationTests/Auth/Mfa/MfaSetupGateEndpointsTests.cs` | Integration | Allow-list (`/users/me`, `/users/me/mfa/*`), password change blocked; `ProfileMobileNumberEndpointsTests` in the same file: mobile number cleanup, keep or clear, email-and-mobile uniqueness |
 | MFA logic | `TaskFlow.UnitTests/Auth/Mfa/MfaServiceTests.cs` | Unit | Verification, replay, lockout, backup codes |
 | Sign-in counter | `TaskFlow.IntegrationTests/Auth/Mfa/MfaSignInEndpointsTests.cs` | Integration | Lockout shared with sign-in |
 | Limiter | `TaskFlow.UnitTests/Auth/AttemptLimits/AttemptLimiterTests.cs` | Unit | Password attempt budget |
@@ -829,9 +830,14 @@ No background job belongs to this sub-module.
 | TFA path | `TaskFlow.UnitTests/Assistant/Actions/AssistantActionServiceTests.cs`, `Assistant/Tools/AssistantActionToolsTests.cs` | Unit | Confirmed `UpdateOwnProfile`, `ProposeProfileUpdateTool` |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 | Support | `TaskFlow.IntegrationTests/TestSupport/MfaTestSupport.cs`, `TaskFlow.UnitTests/TestSupport/AcceptingMfaService.cs` | Helper | MFA test helpers |
+| My Profile | `frontend/src/app/modules/profile/pages/profile.component.spec.ts` | Frontend unit | Own profile with read-only account fields, projects with percentages, departments and managers, manager's projects and team, save and session-user refresh ("Profile updated"), server duplicate-email error, malformed email blocked, email kept to the part before `@`, retryable load error |
+| My Profile layout | `frontend/src/app/modules/profile/pages/profile.component.layout.spec.ts` | Frontend unit | Header with initials and chips, column order, Change password button (no inline form), no two-step card or admin reset request, mobile number edit and malformed mobile refused |
+| Change Password | `frontend/src/app/modules/profile/pages/change-password.component.spec.ts` | Frontend unit | `passwordStrength`, show / hide, strength meter, form errors, mismatch, code popup before sending, save signs out to Login, wrong code keeps the popup, empty code, Cancel keeps the input, server rejection returns to the form |
+| Profile API client | `frontend/src/app/modules/profile/services/profile.service.spec.ts` | Frontend unit | `GET /users/me`, `PUT /users/me`, `POST /users/me/password` |
+| MFA API client | `frontend/src/app/modules/profile/services/mfa-services.spec.ts` | Frontend unit | Setup, enable with backup codes, `mfa/check` without spending the code, no call that turns MFA off, administrator reset |
 
-> ⚠️ To be confirmed: coverage is inferred from file names only. No Angular `*.spec.ts` exists for `modules/profile`, and no
-> test file name refers to `mfa/check` or `mfa/backup-codes`.
+> Coverage was checked against the test sources. `mfa/backup-codes` is tested by `MfaEnrolmentEndpointsTests` and
+> `MfaStepUpEndpointsTests`; `mfa/check` by `MfaStepUpEndpointsTests` and `mfa-services.spec.ts`.
 
 ---
 
@@ -848,8 +854,6 @@ No background job belongs to this sub-module.
 - Help topic `edit-profile.md` and `AssistantTexts.PasswordGuidance` describe an older flow (Account details editing, current
   password, "other sessions"); the TFA pre-check `EmailUsedByOtherAsync` differs from the local-part rule of `UpdateAsync`.
 - `PUT /api/v1/users/{id}` (Employee Management) accepts a new password with `employees.edit`, outside the step-up flow.
-- `profile-shared.css`, `profile.component.css`, `change-password.component.css` are referenced in `styleUrls` but not in
-  the source snapshot. ⚠️ To be confirmed.
 
 ---
 
@@ -858,34 +862,34 @@ No background job belongs to this sub-module.
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-PROF-01 | `GET /api/v1/users/me` · `ProfileController.TryGetCallerId` · `ProfileService.GetAsync` | `UserProfileEndpointsTests` |
-| FR-PROF-02 | `GET /api/v1/users/me` · `UserDto` (`MfaEnabled`, `LastLoginAt`, `ProjectAllocations`) · `ProfileComponent` | `UserProfileEndpointsTests` |
-| FR-PROF-03 | `UserDto` (`TotalAllocatedPercent`, `Departments`, `Managers`) · `ProfileComponent` read-only card | `UserProfileEndpointsTests` |
-| FR-PROF-04 | `UserDto.ManagerProjects`, `Reports` · `EmployeeRepository.GetDtoAsync` · `ProfileComponent` | `UserProfileEndpointsTests` |
-| FR-PROF-05 | `PUT /api/v1/users/me` · `UpdateOwnProfileRequest` (3 fields) | `UpdateOwnProfileRequestValidatorTests` |
-| FR-PROF-06 | `ProfileComponent` validators · `email-domain.ts`, `mobile-number.ts` | ⚠️ To be confirmed (no frontend spec) |
+| FR-PROF-02 | `GET /api/v1/users/me` · `UserDto` (`MfaEnabled`, `LastLoginAt`, `ProjectAllocations`) · `ProfileComponent` | `UserProfileEndpointsTests`; `profile.component.spec.ts`, `profile.component.layout.spec.ts` |
+| FR-PROF-03 | `UserDto` (`TotalAllocatedPercent`, `Departments`, `Managers`) · `ProfileComponent` read-only card | `UserProfileEndpointsTests`; `profile.component.spec.ts` |
+| FR-PROF-04 | `UserDto.ManagerProjects`, `Reports` · `EmployeeRepository.GetDtoAsync` · `ProfileComponent` | `UserProfileEndpointsTests`; `profile.component.spec.ts` |
+| FR-PROF-05 | `PUT /api/v1/users/me` · `UpdateOwnProfileRequest` (3 fields) | `UpdateOwnProfileRequestValidatorTests`, `UserProfileEndpointsTests` (`PutMe_CannotEscalateRole`) |
+| FR-PROF-06 | `ProfileComponent` validators · `email-domain.ts`, `mobile-number.ts` | `profile.component.spec.ts`, `profile.component.layout.spec.ts` |
 | FR-PROF-07 | `ValidationFilter` · `UpdateOwnProfileRequestValidator` · `ProfileService.UpdateAsync` | `UpdateOwnProfileRequestValidatorTests`, `UserProfileEndpointsTests` |
-| FR-PROF-08 | `EmailPolicy.Normalize`, `IsValid` | `UpdateOwnProfileRequestValidatorTests` |
-| FR-PROF-09 | `EmployeeRepository.EmailPrefixTakenAsync` | `UserProfileEndpointsTests` |
-| FR-PROF-10 | `EmployeeRepository.EmailAndMobileTakenAsync` | `UserProfileEndpointsTests` |
-| FR-PROF-11 | `MobileNumberPolicy.Normalize` · null/empty handling in `UpdateAsync` | `UpdateOwnProfileRequestValidatorTests` |
-| FR-PROF-12 | `ProfileComponent` · `AuthService.applyProfile` | ⚠️ To be confirmed (no frontend spec) |
+| FR-PROF-08 | `EmailPolicy.Normalize`, `IsValid` | `EmailDomainTests`, `UpdateOwnProfileRequestValidatorTests`; `profile.component.spec.ts` |
+| FR-PROF-09 | `EmployeeRepository.EmailPrefixTakenAsync` | `UserProfileEndpointsTests`, `EmailDomainTests`; `profile.component.spec.ts` |
+| FR-PROF-10 | `EmployeeRepository.EmailAndMobileTakenAsync` | `ProfileMobileNumberEndpointsTests` (in `MfaSetupGateEndpointsTests.cs`) |
+| FR-PROF-11 | `MobileNumberPolicy.Normalize` · null/empty handling in `UpdateAsync` | `ProfileMobileNumberEndpointsTests`; `profile.component.layout.spec.ts` |
+| FR-PROF-12 | `ProfileComponent` · `AuthService.applyProfile` | `profile.component.spec.ts` |
 | FR-PROF-13 | `IUnitOfWork.SaveChangesAsync` → `ConcurrencyConflictException` → 409 | ⚠️ To be confirmed (see 4.1.1 note) |
-| FR-PROF-14 | `ProfileComponent` error state and Retry | ⚠️ To be confirmed (no frontend spec) |
+| FR-PROF-14 | `ProfileComponent` error state and Retry | `profile.component.spec.ts` |
 | FR-PROF-15 | `MfaSetupGateMiddleware` (exact `/api/v1/users/me`) · `SecuritySetupComponent` step 1 | `MfaSetupGateEndpointsTests` |
 | FR-PROF-16 | `AssistantActionService` (`UpdateOwnProfile`) → `IProfileService.UpdateAsync` (mobile `null`) | `AssistantActionServiceTests` |
-| FR-PROF-17 | `ProfileService.UpdateAsync` (no publisher) | ⚠️ To be confirmed |
-| FR-PROF-18 | `profile.component.html` link → `/profile/change-password` · `PROFILE_ROUTES` | ⚠️ To be confirmed (no frontend spec) |
-| FR-PROF-19 | `ChangePasswordRequestValidator` (`MinPasswordLength`, `MaxPasswordLength`) | `MfaStepUpEndpointsTests` |
-| FR-PROF-20 | `ChangePasswordComponent` form | ⚠️ To be confirmed (no frontend spec) |
-| FR-PROF-21 | `ChangePasswordComponent.passwordStrength()` | ⚠️ To be confirmed (no frontend spec) |
-| FR-PROF-22 | `POST /api/v1/users/me/password` · `ChangePasswordRequest.MfaCode` · `MfaService.RequireCodeAsync` | `MfaStepUpEndpointsTests` |
-| FR-PROF-23 | `ProfileService.MfaRequiredForPasswordMessage` · `MfaSetupGateMiddleware` | `MfaStepUpEndpointsTests`, `MfaSetupGateEndpointsTests` |
-| FR-PROF-24 | `MfaService.VerifyAsync` (`MfaLastUsedStep`, `MfaBackupCode.UsedAt`) | `MfaServiceTests` |
-| FR-PROF-25 | `MfaOptions.MaxFailedAttempts`, `LockoutMinutes` · `MfaService.LockedMessage` | `MfaServiceTests`, `MfaSignInEndpointsTests` |
-| FR-PROF-26 | `SecurityStamp` rotation · `IRefreshTokenRepository.GetActiveForUsersForUpdateAsync` · `SessionValidation` · `AuthService.clearSession` | `MfaStepUpEndpointsTests` |
-| FR-PROF-27 | `ChangePasswordComponent` error mapping (popup vs form) | ⚠️ To be confirmed (no frontend spec) |
-| FR-PROF-28 | `ChangePasswordComponent` Cancel / Back to profile | ⚠️ To be confirmed (no frontend spec) |
-| FR-PROF-29 | `ProfileService.ChangePasswordAsync` (no publisher) | ⚠️ To be confirmed |
+| FR-PROF-17 | `ProfileService.UpdateAsync` (no publisher) | No automated test found |
+| FR-PROF-18 | `profile.component.html` link → `/profile/change-password` · `PROFILE_ROUTES` | `profile.component.layout.spec.ts` |
+| FR-PROF-19 | `ChangePasswordRequestValidator` (`MinPasswordLength`, `MaxPasswordLength`) | `ChangePasswordRequestValidatorTests`, `UserProfileEndpointsTests` |
+| FR-PROF-20 | `ChangePasswordComponent` form | `change-password.component.spec.ts` |
+| FR-PROF-21 | `ChangePasswordComponent.passwordStrength()` | `change-password.component.spec.ts` |
+| FR-PROF-22 | `POST /api/v1/users/me/password` · `ChangePasswordRequest.MfaCode` · `MfaService.RequireCodeAsync` | `MfaStepUpEndpointsTests`; `change-password.component.spec.ts` |
+| FR-PROF-23 | `ProfileService.MfaRequiredForPasswordMessage` · `MfaSetupGateMiddleware` | `UserProfileEndpointsTests` (`Password_WithoutTwoStepVerification_Returns400_AndChangesNothing`), `MfaSetupGateEndpointsTests` |
+| FR-PROF-24 | `MfaService.VerifyAsync` (`MfaLastUsedStep`, `MfaBackupCode.UsedAt`) | `MfaServiceTests`, `MfaStepUpEndpointsTests` |
+| FR-PROF-25 | `MfaOptions.MaxFailedAttempts`, `LockoutMinutes` · `MfaService.LockedMessage` | `MfaServiceTests`, `MfaSignInEndpointsTests`, `MfaStepUpEndpointsTests` |
+| FR-PROF-26 | `SecurityStamp` rotation · `IRefreshTokenRepository.GetActiveForUsersForUpdateAsync` · `SessionValidation` · `AuthService.clearSession` | `MfaStepUpEndpointsTests`; `change-password.component.spec.ts` |
+| FR-PROF-27 | `ChangePasswordComponent` error mapping (popup vs form) | `change-password.component.spec.ts` |
+| FR-PROF-28 | `ChangePasswordComponent` Cancel / Back to profile | `change-password.component.spec.ts` |
+| FR-PROF-29 | `ProfileService.ChangePasswordAsync` (no publisher) | No automated test found |
 | FR-PROF-30 | `POST /api/v1/users/me/mfa/setup` · `ProfileService.BeginMfaSetupAsync` · `AttemptLimiter` | `MfaEnrolmentEndpointsTests`, `AttemptLimiterTests` |
 | FR-PROF-31 | `MfaService.BeginSetupAsync` · `Totp.NewSecret`, `ProvisioningUri` · `MfaSetupResponse` | `MfaEnrolmentEndpointsTests` |
 | FR-PROF-32 | `MfaService.BeginSetupAsync` (already on) | `MfaEnrolmentEndpointsTests` |
@@ -894,8 +898,8 @@ No background job belongs to this sub-module.
 | FR-PROF-35 | `MfaSecretProtector` · `MfaBackupCodes.CodeHash` (SHA-256) | `MfaServiceTests`, `TotpTests` |
 | FR-PROF-36 | `MfaSetupGateMiddleware` · `mfaSetupGuard` | `MfaSetupGateEndpointsTests` |
 | FR-PROF-37 | `UserDto.MfaEnabled` · `ProfileComponent` chip | `UserProfileEndpointsTests` |
-| FR-PROF-38 | `POST /api/v1/users/me/mfa/backup-codes` · `ProfileService.RegenerateBackupCodesAsync` | `MfaServiceTests` (⚠️ no endpoint test file name) |
-| FR-PROF-39 | `POST /api/v1/users/me/mfa/check` · `ProfileService.CheckMfaCodeAsync` · `MfaService.CheckCodeAsync` | `MfaServiceTests` (⚠️ no endpoint test file name) |
+| FR-PROF-38 | `POST /api/v1/users/me/mfa/backup-codes` · `ProfileService.RegenerateBackupCodesAsync` | `MfaServiceTests`, `MfaEnrolmentEndpointsTests` (`Regenerating_backup_codes_replaces_the_set`), `MfaStepUpEndpointsTests` (password throttling) |
+| FR-PROF-39 | `POST /api/v1/users/me/mfa/check` · `ProfileService.CheckMfaCodeAsync` · `MfaService.CheckCodeAsync` | `MfaServiceTests`, `MfaStepUpEndpointsTests`; `mfa-services.spec.ts` |
 
 **Coverage:** 39 of 39 `FR-PROF-nn` traced; 7 of 7 `ProfileController` actions documented.
 

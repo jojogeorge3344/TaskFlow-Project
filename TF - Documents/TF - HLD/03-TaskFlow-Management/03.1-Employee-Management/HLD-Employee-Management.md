@@ -432,7 +432,6 @@ data lives in `taskflow.db` in the TaskFlow data folder. See the overall HLD (`.
 | Risk | No audit trail of employee changes (who changed a role or deactivated someone) | Request logging only; ⚠️ To be confirmed whether an audit log is needed |
 | Open issue | Reading another person's single record needs `employees.edit`, while the list returns the same data with `employees.view` | Jojo George |
 | Open issue | ⚠️ To be confirmed: the role-permission matrix lists `roles.administrator.assign` as configurable, the permission catalogue marks it not assignable; this design follows the catalogue | Jojo George |
-| Open issue | ⚠️ To be confirmed: the frontend positions service file imported by the form panel is missing from the source snapshot | Jojo George |
 | Assumption | One organisation, one email domain; list sizes allow an unpaged list | – |
 
 ---

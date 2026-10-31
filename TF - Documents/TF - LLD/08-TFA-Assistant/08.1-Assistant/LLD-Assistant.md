@@ -1025,11 +1025,11 @@ Pending-action expiry is lazy (on read or confirm); no background job belongs to
 
 | Key | Default | Purpose |
 |---|---|---|
-| `AiProviders:KeyRingPath` | `<secret>` (omitted from the fact sheet; `dp-keys` per module doc) | Data Protection key ring folder (relative to `Storage:Root`) |
+| `AiProviders:KeyRingPath` | `dp-keys` (`appsettings.json`) | Data Protection key ring folder (relative to `Storage:Root`) |
 | `AiProviders:TimeoutSeconds` | `60` | `HttpClient.Timeout` of every provider call |
 | `Storage:Root` | `""` | Base folder for the key ring |
 | `Application:Timezone` | `Asia/Kolkata` | Fallback time zone for "today" / overdue (`IAppClock`) |
-| `ConnectionStrings:Default` | `<secret>` | SQLite database |
+| `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
 | `AssistantRules.*` (constants) | 2000 / 12 / 6000 / 4 / 100 | Message length, history messages, history characters, tool rounds, loaded messages |
 | `AssistantActionRules.Lifetime` (constant) | 10 minutes | Pending-action lifetime |
 | `AssistantRateLimiter.RequestsPerMinute` (constant) | 20 | Messages per user per minute |
@@ -1059,9 +1059,14 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | Key protection | `TaskFlow.UnitTests/Integrations/Ai/KeyProtection/AiKeyProtectorTests.cs`, `KeyRingProtectionCheckTests.cs` | Unit | Encryption, key-ring check |
 | Provider config | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderConfigServiceTests.cs`, `AiProviderSeederTests.cs` | Unit | Config used by TFA |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
+| TFA panel | `frontend/src/app/modules/assistant/components/tfa-panel.component.spec.ts` | Frontend unit | Open / close and Escape, greeting and starter suggestions, single and missing provider, model selector, cloud notice, refusal and ranked-task messages, waiting indicator, Enter / Shift+Enter, action cards (confirm, edit, cancel, expired, labels), provider failures and retry, voice (wake phrase, mic button, answers aloud, turn off / on, unsupported or denied microphone), new chat |
+| Assistant client | `frontend/src/app/modules/assistant/services/assistant.service.spec.ts` | Frontend unit | Load on sign-in, keep on token refresh, clear on user change, send with the selected provider, model switch and remembered choice, provider list refresh, cloud hold, failure retry, blocked message, 429 / 400 shown in the chat, new chat, confirm / cancel / edit actions |
+| Speech output | `frontend/src/app/modules/assistant/services/speak.service.spec.ts` | Frontend unit | Read aloud and done callback, safety limit, no speech engine, cancel, `toSpeech` (markdown, links, `MAX_SPOKEN_CHARS`) |
+| Wake phrase | `frontend/src/app/modules/assistant/services/wake-phrase.service.spec.ts` | Frontend unit | On by default, deliberate turn off remembered, pause / unpause, "Hey TF assistant" variants, question after `COMMAND_SILENCE_MS`, mic-button command and `DICTATION_TIMEOUT_MS`, hands-free, greeting request, restart and back-off, browser errors (unsupported, denied, missing microphone, network), silence |
 
-> ⚠️ To be confirmed: coverage is inferred from file names only. No dedicated test file exists for `AssistantRateLimiter`
-> or `AssistantAuditLog`, and no Angular `*.spec.ts` exists for `modules/assistant`.
+> Coverage was checked against the test sources. `AssistantRateLimiter` is tested by `ProviderFailureHandlingTests`,
+> `AssistantServiceTests` and `AssistantEndpointsTests`; `AssistantAuditLog` by `AssistantActionServiceTests` and
+> `AssistantToolGateTests`.
 
 ---
 
@@ -1083,7 +1088,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 - **No retention:** conversations and messages are kept indefinitely; no "delete my history". ⚠️ To be confirmed.
 - **`ProviderNotConfiguredException`** is not an `AppException`; a provider disabled between the availability check and
   the call surfaces as 500.
-- **Rate limiter and audit** are not covered by a dedicated test file; the limiter is per process.
+- **Rate limiter** is per process: each running instance counts messages on its own.
 - ⚠️ To be confirmed: whether `IMailService.SendAsync` raises a mail notification for recipients (Mail module).
 
 ---
@@ -1093,42 +1098,42 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | FRD requirement | Endpoint / class | Test |
 |---|---|---|
 | FR-TFA-01 | `shell.component.html` `canUseAssistant()` · `perm:assistant.chat` on 4 endpoints | `AssistantEndpointsTests` |
-| FR-TFA-02 | `TfaPanelComponent`, `AssistantService.open`/`close`/`toggle` (Angular) | ⚠️ To be confirmed (no frontend spec) |
+| FR-TFA-02 | `TfaPanelComponent`, `AssistantService.open`/`close`/`toggle` (Angular) | `tfa-panel.component.spec.ts` |
 | FR-TFA-03 | `GET /api/v1/assistant/conversation` (`ConversationMessages` 100) · `GET /api/v1/assistant/providers` | `AssistantEndpointsTests` |
-| FR-TFA-04 | `TfaComposerComponent` `TFA_SUGGESTIONS` | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-05 | `TfaComposerComponent` (Enter / Shift+Enter) | ⚠️ To be confirmed (no frontend spec) |
+| FR-TFA-04 | `TfaComposerComponent` `TFA_SUGGESTIONS` | `tfa-panel.component.spec.ts` |
+| FR-TFA-05 | `TfaComposerComponent` (Enter / Shift+Enter) | `tfa-panel.component.spec.ts` |
 | FR-TFA-06 | `FindLatestForUpdateAsync(userId)` · `FindForUserAsync(id, userId)` · `RunActionAsync` 404 | `AssistantEndpointsTests` |
 | FR-TFA-07 | `POST /api/v1/assistant/conversation/messages` · `AssistantRules.MaxMessageLength` · `AssistantRequestException` | `AssistantServiceTests` |
 | FR-TFA-08 | `SecretScreen.ContainsSecret` · `AssistantTexts.SecretBlocked` | `SecretScreenTests` |
 | FR-TFA-09 | `GetMyTasksTool` · `AssistantTaskReader` · `ITaskService.ListAsync` | `AssistantReadToolsTests` |
 | FR-TFA-10 | `TaskPrioritiser.Rank` | `TaskPrioritiserTests` |
-| FR-TFA-11 | `PrioritiseTasksTool` · `PrioritisedTask` · `TfaMessageComponent` | `TaskPrioritiserTests`, `AssistantReadToolsTests` |
-| FR-TFA-12 | `GET /api/v1/assistant/providers` · `IAiProviderConfigService.GetAvailableAsync` · `TfaHeaderComponent` · `tfa.provider` | `ChatModelGatewayTests`, `AssistantProviderEndpointsTests` |
-| FR-TFA-13 | `AssistantService.SendAsync` (no provider) · `ProviderFailureMessages.NotConfigured` · panel empty state | `AssistantServiceTests` |
+| FR-TFA-11 | `PrioritiseTasksTool` · `PrioritisedTask` · `TfaMessageComponent` | `TaskPrioritiserTests`, `AssistantReadToolsTests`; `tfa-panel.component.spec.ts` |
+| FR-TFA-12 | `GET /api/v1/assistant/providers` · `IAiProviderConfigService.GetAvailableAsync` · `TfaHeaderComponent` · `tfa.provider` | `ChatModelGatewayTests`, `AssistantProviderEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-13 | `AssistantService.SendAsync` (no provider) · `ProviderFailureMessages.NotConfigured` · panel empty state | `AssistantServiceTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-14 | `AssistantMessage.ProviderKind` · `AssistantMessageDto.Provider` | `AssistantServiceTests` |
-| FR-TFA-15 | `AssistantService.acknowledgeCloud` (Angular) · `tfa.cloudAck` | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-16 | `ChatModelGateway` · `ProviderFailureKind` · `AssistantFailureDto` · `ProviderFailureMessages.For` · `AssistantService.retry` | `ProviderFailureHandlingTests`, `ChatModelGatewayTests` |
-| FR-TFA-17 | `POST /api/v1/assistant/conversation/new` · `NewConversationAsync` | `AssistantEndpointsTests` |
+| FR-TFA-15 | `AssistantService.acknowledgeCloud` (Angular) · `tfa.cloudAck` | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-16 | `ChatModelGateway` · `ProviderFailureKind` · `AssistantFailureDto` · `ProviderFailureMessages.For` · `AssistantService.retry` | `ProviderFailureHandlingTests`, `ChatModelGatewayTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-17 | `POST /api/v1/assistant/conversation/new` · `NewConversationAsync` | `AssistantEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-18 | `LoadHistoryAsync` · `HistoryMessages`, `HistoryCharacters` | `AssistantServiceTests` |
 | FR-TFA-19 | `RunTurnAsync` · `MaxToolRounds` | `AssistantServiceTests` |
 | FR-TFA-20 | `SecretScreen.Redact` on tool output · `AssistantPrompt` | `AssistantServiceTests` |
-| FR-TFA-21 | `AssistantService.loadConversation` on user change (Angular) | ⚠️ To be confirmed (no frontend spec) |
+| FR-TFA-21 | `AssistantService.loadConversation` on user change (Angular) | `assistant.service.spec.ts` |
 | FR-TFA-22 | `AssistantPrompt.Build` · `IAppClock.TodayLocalAsync` · `TaskPrioritiser` | `AssistantReadToolsTests` |
-| FR-TFA-23 | `AssistantTexts.PermissionDenied` · `AssistantMessageKind.Refusal` | `AssistantToolGateTests` |
-| FR-TFA-24 | `tfa-panel.component.html` footer | ⚠️ To be confirmed (no frontend spec) |
+| FR-TFA-23 | `AssistantTexts.PermissionDenied` · `AssistantMessageKind.Refusal` | `AssistantToolGateTests`; `tfa-panel.component.spec.ts` |
+| FR-TFA-24 | `tfa-panel.component.html` footer | No automated test found |
 | FR-TFA-25 | `HelpKnowledgeBase.Search` (`MinimumScore` 3, `maxResults` 3) · 19 embedded topics | `HelpKnowledgeBaseTests` |
 | FR-TFA-26 | Topic `link` → `AssistantLinkDto` · `TfaMessageComponent` | `HelpKnowledgeBaseTests` |
 | FR-TFA-27 | `HelpKnowledgeBase.ToDto` (`IsRestricted`, `others`) | `HelpKnowledgeBaseTests` |
 | FR-TFA-28 | Empty `search_help` result · `AssistantPrompt` rules | `HelpKnowledgeBaseTests` |
 | FR-TFA-29 | `AssistantActionService.CreateAsync` · `AssistantTexts.ActionPrepared` · `ToolOutcome.FixedReply` | `AssistantActionServiceTests` |
 | FR-TFA-30 | `AssistantToolGate` · `AssistantActionRules.Requirement` · `IAssistantAuthorizer.IsAllowedAsync` in `ConfirmAsync` | `AssistantToolGateTests`, `AssistantActionServiceTests` |
-| FR-TFA-31 | `AssistantActionRules.Lifetime` · `ConfirmAsync` expiry · `SetStatusAsync(Expired)` | `AssistantActionServiceTests` |
-| FR-TFA-32 | `POST /api/v1/assistant/actions/{id}/confirm` · `TryClaimAsync` | `AssistantActionConcurrencyTests` |
-| FR-TFA-33 | `POST /api/v1/assistant/actions/{id}/cancel` · `CancelAsync` | `AssistantActionServiceTests` |
+| FR-TFA-31 | `AssistantActionRules.Lifetime` · `ConfirmAsync` expiry · `SetStatusAsync(Expired)` | `AssistantActionServiceTests`; `tfa-panel.component.spec.ts` |
+| FR-TFA-32 | `POST /api/v1/assistant/actions/{id}/confirm` · `TryClaimAsync` | `AssistantActionConcurrencyTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-33 | `POST /api/v1/assistant/actions/{id}/cancel` · `CancelAsync` | `AssistantActionServiceTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-34 | `DraftMailTool` · `SendMailRequestValidator` · `IMailService.SendAsync` | `AssistantActionToolsTests` |
 | FR-TFA-35 | `AssistantManagerResolver.ResolveAsync` · `GetActiveManagersOfDepartmentsAsync` | `AssistantActionToolsTests` |
 | FR-TFA-36 | `AssistantManagerResolver` (`ITaskService.GetDetailsAsync` null) | `AssistantActionToolsTests` |
-| FR-TFA-37 | `PUT /api/v1/assistant/actions/{id}` · `EditMailAsync` · `ResolveRecipientsAsync` | `AssistantActionServiceTests` |
+| FR-TFA-37 | `PUT /api/v1/assistant/actions/{id}` · `EditMailAsync` · `ResolveRecipientsAsync` | `AssistantActionServiceTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-38 | `EnsurePending` | `AssistantActionServiceTests` |
 | FR-TFA-39 | `ProposeProfileUpdateTool` · `ExecuteAsync(UpdateOwnProfile)` → `IProfileService.UpdateAsync` | `AssistantActionToolsTests` |
 | FR-TFA-40 | `ProposeRoleChangeTool` (`Policy` `perm:roles.manage`, self refusal, exact role) | `AssistantActionToolsTests`, `AssistantToolGateTests` |
@@ -1137,17 +1142,17 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | FR-TFA-43 | `ExplainPasswordChangeTool` · `AssistantTexts.PasswordGuidance` | `AssistantReadToolsTests` |
 | FR-TFA-44 | `ContactAdminGuidanceTool` · `AssistantTexts.AdminGuidance` | `AssistantReadToolsTests` |
 | FR-TFA-45 | `ConfirmAsync` failure branch (`Failed`, "I could not do that: …") | `AssistantActionServiceTests` |
-| FR-TFA-46 | `AssistantService.confirm`/`cancel`/`edit` fallbacks (Angular) | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-47 | `WakePhraseService` (`greet`) · `TfaPanelComponent` · `SpeakService` | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-48 | `WakePhraseService` (`interim`, `question`, `COMMAND_SILENCE_MS`) | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-49 | `TfaComposerComponent` mic · `DICTATION_TIMEOUT_MS` | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-50 | `TfaPanelComponent.answerAloud` · `MAX_SPOKEN_CHARS` | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-51 | `TFA_VOICE_KEY` (`tfa.handsfree`) · `WakePhraseService` retry/back-off | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-52 | `SPEECH_RECOGNITION_FACTORY` · error messages | ⚠️ To be confirmed (no frontend spec) |
-| FR-TFA-53 | `AssistantRateLimiter.TryAcquire` · `AssistantRateLimitedException` | ⚠️ To be confirmed (`AssistantServiceTests` by name only) |
-| FR-TFA-54 | `AssistantAuditLog.RecordAsync` · `AssistantAudits` | ⚠️ To be confirmed (`AssistantActionServiceTests` by name only) |
-| FR-TFA-55 | `AssistantAudit` columns (`UserId`, `Kind`, `Outcome`, `At` only) | ⚠️ To be confirmed |
-| FR-TFA-56 | `AssistantToolbox.ExecuteAsync` refusal audit · `ConfirmAsync` refusal audit | ⚠️ To be confirmed (`AssistantToolGateTests` by name only) |
+| FR-TFA-46 | `AssistantService.confirm`/`cancel`/`edit` fallbacks (Angular) | No automated test found for the network-failure texts (`assistant.service.spec.ts` covers server errors only) |
+| FR-TFA-47 | `WakePhraseService` (`greet`) · `TfaPanelComponent` · `SpeakService` | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts`, `speak.service.spec.ts` |
+| FR-TFA-48 | `WakePhraseService` (`interim`, `question`, `COMMAND_SILENCE_MS`) | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| FR-TFA-49 | `TfaComposerComponent` mic · `DICTATION_TIMEOUT_MS` | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| FR-TFA-50 | `TfaPanelComponent.answerAloud` · `MAX_SPOKEN_CHARS` | `tfa-panel.component.spec.ts`, `speak.service.spec.ts` |
+| FR-TFA-51 | `TFA_VOICE_KEY` (`tfa.handsfree`) · `WakePhraseService` retry/back-off | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| FR-TFA-52 | `SPEECH_RECOGNITION_FACTORY` · error messages | `wake-phrase.service.spec.ts`, `tfa-panel.component.spec.ts` |
+| FR-TFA-53 | `AssistantRateLimiter.TryAcquire` · `AssistantRateLimitedException` | `ProviderFailureHandlingTests` (`TheTwentyFirstRequestInAMinuteIsRefusedWithARetryTime`, `TheLimitIsPerUserAndRecoversAfterAMinute`), `AssistantServiceTests`, `AssistantEndpointsTests` (`TooManyMessagesInAMinuteGetA429WithARetryTime`) |
+| FR-TFA-54 | `AssistantAuditLog.RecordAsync` · `AssistantAudits` | `AssistantActionServiceTests` (prepared, confirmed, cancelled, expired, refused, failed outcomes) |
+| FR-TFA-55 | `AssistantAudit` columns (`UserId`, `Kind`, `Outcome`, `At` only) | `AssistantActionServiceTests` (`AuditRecordsHoldNoMailBodyPasswordOrKey`) |
+| FR-TFA-56 | `AssistantToolbox.ExecuteAsync` refusal audit · `ConfirmAsync` refusal audit | `AssistantToolGateTests` (`ARefusedActionToolIsRecordedInTheAuditLogButAReadToolIsNot`), `AssistantActionServiceTests` (`ThePermissionIsCheckedAgainAtConfirmation`) |
 
 **Coverage:** 56 of 56 `FR-TFA-nn` traced; 7 of 7 `AssistantController` actions documented.
 

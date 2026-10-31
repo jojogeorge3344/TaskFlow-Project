@@ -5,7 +5,7 @@
 > **Document:** Low-Level Design (sub-module 02.1 Task Management, code `TASK`)  ·  **Version:** 1.0  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** FRD-Task-Management v1.0, BRD-Task-Management v1.0, TDD-TaskFlow v2.0, code snapshot of 31-Oct-2026
+> **Based on:** FRD-Task-Management v1.0, BRD-Task-Management v1.0, TDD-TaskFlow v2.0, the TaskFlow source code (backend, frontend and tests) of 31-Oct-2026
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -39,7 +39,7 @@ its route, authorization, request, response and status codes; service logic step
 trace from each `FR-TASK-nn` to endpoint, class and test.
 
 ### 1.2 Scope & Conventions
-- **Controllers covered (3) and actions (19)** – counted from the code fact sheet §3:
+- **Controllers covered (3) and actions (19)** – counted from the code:
 
   | Controller | File | Actions |
   |---|---|:---:|
@@ -107,9 +107,9 @@ src/app/modules/monitoring/
     models/     task.model.ts                TaskCard, TaskDetails, TaskListItem, TaskComment, ActivityEntry, PagedResult,
                                              TaskListFilter, request types, TASK_STATUSES, TASK_PRIORITIES, BOARD_STATUSES
     utils/      return-url.ts                safeReturnUrl, backTarget, DEFAULT_RETURN_URL
-    discussion/pages/task-discussion.component   TaskDiscussionComponent – referenced by the route, not in the snapshot
-    activity/pages/activity.component            ActivityComponent – referenced by the route, not in the snapshot
-    activity/utils/activity-meta                 ActivityEventMeta, eventMeta – imported, not in the snapshot
+    discussion/pages/task-discussion.component.* TaskDiscussionComponent (full Discussion page)
+    activity/pages/activity.component.*          ActivityComponent      (full Activity history page)
+    activity/utils/activity-meta.ts              ActivityEventMeta, eventMeta (event label, tone and icon)
 ```
 
 ### 2.3 Layer Rules
@@ -621,7 +621,7 @@ stateDiagram-v2
 | DTOs | `TaskCommentDto`, `AddCommentRequest` | `Dtos/Monitoring/TaskManagement/Discussion/TaskCommentDtos.cs` | Contracts |
 | Validator | `AddCommentRequestValidator` | `Dtos/Monitoring/TaskManagement/Discussion/Validators/` | `Body` not empty, ≤ 4000 |
 | Entity | `TaskComment` | `Models/Entities/TaskComment.cs` | Persistence |
-| Frontend | Discussion tab in `TaskDetailsComponent`; `TaskDiscussionComponent` (route only) | `pages/task-details.component.*`; `discussion/pages/task-discussion.component` | Summary and full page |
+| Frontend | Discussion tab in `TaskDetailsComponent`; `TaskDiscussionComponent` | `pages/task-details.component.*`; `discussion/pages/task-discussion.component.*` | Summary and full page (thread by day, own-comment Edit / Delete, Add a comment up to 1000 characters, Who is notified and Task panels) |
 | Frontend service | `TaskService` (Angular) | `services/task.service.ts` | `getComments`, `addComment`, `updateComment`, `deleteComment` |
 
 **Class diagram**
@@ -789,7 +789,7 @@ sequenceDiagram
 | DTOs | `ActivityEntryDto`, `UpdateHoursEntryRequest`, `ActivityFilter` | `Dtos/Monitoring/TaskManagement/Activity/` | Contracts and filter |
 | Entity / enum | `TaskActivityLog`, `TaskActivityEventType` | `Models/Entities/`, `Models/Enums/` | Persistence |
 | Security | `SystemRoles.Administrator` | `Common/Security/SystemRoles.cs` | Role name compared with the JWT role claim |
-| Frontend | Activity history tab in `TaskDetailsComponent`; `ActivityComponent` (route only, guard `tasks.activity.view`) | `pages/task-details.component.*`; `activity/pages/activity.component` | Summary and full page |
+| Frontend | Activity history tab in `TaskDetailsComponent`; `ActivityComponent` (guard `tasks.activity.view`); `eventMeta` | `pages/task-details.component.*`; `activity/pages/activity.component.*`; `activity/utils/activity-meta.ts` | Summary and full page (newest first by day, event-type pills and Other events, search, From / To; Edit hours / Delete for the Administrator role name) |
 | Frontend service | `TaskService` (Angular), `ActivityFilter` | `services/task.service.ts`, `services/task.model.ts` | `getActivity(id, filter)`, `updateHoursEntry`, `deleteHoursEntry` |
 
 **Class diagram**
@@ -1128,7 +1128,8 @@ Manager lacks `tasks.delete`; Employee holds `tasks.view.own`, `tasks.status.cha
 
 ## 9. Testing Design
 
-Only test file names are available in the snapshot; coverage is inferred from the names.
+Backend test paths are relative to `backend/tests/`, frontend spec paths to `frontend/src/app/`. "Covers" was checked
+against the test sources.
 
 | Area | Test class / file | Type | Covers |
 |---|---|---|---|
@@ -1142,15 +1143,23 @@ Only test file names are available in the snapshot; coverage is inferred from th
 | Soft delete | `.../Tasks/TaskDeletionTests.cs` | Unit | Delete keeps comments and history |
 | Worked hours | `.../Tasks/TaskLogHoursTests.cs`, `.../Tasks/TaskWorkedHoursNotificationTests.cs` | Unit | Log hours, conflicts, corrections, notifications |
 | Domain rules | `TaskFlow.UnitTests/Monitoring/TaskManagement/Rules/TaskTrackingDomainTests.cs` | Unit | Transitions, access scope, stage |
-| Discussion | `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs` | Unit | Comment history entries and notifications |
+| Discussion and history | `TaskFlow.UnitTests/Monitoring/TaskManagement/Discussion/TaskCommentActivityNotificationTests.cs` (`TaskCommentServiceTests`, `TaskActivityServiceTests`, `NotificationPublisherTests`) | Unit | Comment add, author-only edit and delete, history entries, notifications and mail switches; history filters and order; Administrator hours-entry change and delete with total rebuild |
 | Drill-down rules | `TaskFlow.UnitTests/Common/TaskBucketRulesTests.cs` | Unit | Bucket predicates |
 | Reminders stop | `TaskFlow.UnitTests/Communication/Notification/Reminders/ReminderServiceTests.cs` | Unit | No reminders for closed tasks |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 | Harness | `TaskFlow.UnitTests/TestSupport/TaskTrackingServiceHarness.cs`, `TaskFlow.IntegrationTests/TestSupport/TaskFlowApiFactory.cs` | Support | Service and API test setup |
-| Frontend | – | – | No spec files in the snapshot; UI behaviour is checked manually |
+| Task List page | `modules/monitoring/task-management/pages/task-list.component.spec.ts` | Frontend unit | Columns and deadline badges, project column and filter, copy and delete per role, Create task and Employee filter per role, debounced search, filters from page 1, paging, empty and error states, dashboard drill-down banner and Show all |
+| Create / Copy page | `modules/monitoring/task-management/pages/task-create.component.spec.ts` | Frontend unit | Copy prefill and warnings, Employee-only assignees, default priority and reminders, required fields, deadline after start, hours > 0, title ≤ 200, recipients exclude the assignee, submit, toast and navigation, server error |
+| Task Details page | `modules/monitoring/task-management/pages/task-details.component.spec.ts` | Frontend unit | Back target, project, copy, edit form and validation, Move to transitions, tabs per role, latest 3 comments and newest activity, delete per role, remaining hours, Log hours, error state |
+| Reassign page | `modules/monitoring/task-management/pages/reassign.component.spec.ts` | Frontend unit | Eligible people, search, who will be notified, reason required, confirmation, failure toast, cancel |
+| Discussion page | `modules/monitoring/task-management/discussion/pages/task-discussion.component.spec.ts` | Frontend unit | Thread by day, who is notified, post a trimmed comment, empty input ignored, failure toast, error and empty states, own-comment Edit and Delete gated by permissions, confirmation |
+| Activity page | `modules/monitoring/task-management/activity/pages/activity.component.spec.ts` | Frontend unit | `eventType` query parameter, newest first, grouping by day and event count, filters, Clear, pills, empty and error states, Administrator-only Edit hours and Delete, hours validation, confirmation |
+| Angular task service | `modules/monitoring/task-management/services/task.service.spec.ts` | Frontend unit | URLs, methods and query parameters of the task, comment and activity calls; 403 / 404 errors |
+| Return URL | `modules/monitoring/task-management/utils/return-url.spec.ts` | Frontend unit | Accepts in-app paths only, labels and fallback |
+| Task routes | `routes/app.routes.spec.ts` | Frontend unit | `permissionGuard` on `/tasks/new`, `/tasks/:id/reassign`, `/tasks/:id/activity`; route order |
 
-> ⚠️ To be confirmed: whether `TasksEndpointsTests.cs` also covers the comment and activity endpoints and the
-> Administrator hours correction; no dedicated `TaskActivityService` test file is in the list.
+`TasksEndpointsTests.cs` also covers the comment endpoints (add and list, empty body) and the activity endpoint with
+filters. The Administrator hours correction is tested at service level in `TaskActivityServiceTests`, not over HTTP.
 
 ---
 
@@ -1177,7 +1186,6 @@ Only test file names are available in the snapshot; coverage is inferred from th
 - **`TimeLogged`** event type is never written.
 - **Unreachable service messages** – `ValidateCreate` / `ValidateUpdate` and "Comment must not be empty." are normally
   pre-empted by the `ValidationFilter`, so clients see FluentValidation's default messages.
-- **Frontend files missing from the snapshot:** `TaskDiscussionComponent`, `ActivityComponent`, `activity-meta`.
 - > ⚠️ To be confirmed: reassign and worked-hours notifications are published to every recipient id without a live-user
   filter (mail uses `GetActiveEmailsAsync`, comments use `GetLiveIdsAsync`), so a soft-deleted recipient may still
   receive an in-app notification row, contrary to FR-TASK-70.
@@ -1191,76 +1199,76 @@ Only test file names are available in the snapshot; coverage is inferred from th
 | FR-TASK-01 | `GET /api/v1/tasks` · `TaskService.ListAsync`, `VisibilityForCallerAsync`, `TaskRepository.Visible` | `TasksEndpointsTests.cs`, `TaskServiceTests.cs` |
 | FR-TASK-02 | `IEmployeeRepository.GetTeamMemberIdsAsync`, `TaskRepository.TeamTasks` | `TaskServiceTests.cs` |
 | FR-TASK-03 | `TaskService.ListAsync` (page clamp) · `TaskRepository.ListAsync` (order Deadline, Id) | `TasksEndpointsTests.cs` |
-| FR-TASK-04 | `TaskRepository.ListAsync` (escaped LIKE) · `TaskListComponent` (`debounceTime` 300 ms) | Manual UI |
-| FR-TASK-05 | `TaskListFilter` · `TaskRepository.ListAsync` | `TaskServiceTests.cs` |
-| FR-TASK-06 | `GET /api/v1/tasks/assignees` · `TaskService.GetAssigneesAsync` · `TaskListComponent.canManage` | Manual UI |
+| FR-TASK-04 | `TaskRepository.ListAsync` (escaped LIKE) · `TaskListComponent` (`debounceTime` 300 ms) | `TaskManagementServiceTests.cs`, `task-list.component.spec.ts` |
+| FR-TASK-05 | `TaskListFilter` · `TaskRepository.ListAsync` | `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs`, `task-list.component.spec.ts` |
+| FR-TASK-06 | `GET /api/v1/tasks/assignees` · `TaskService.GetAssigneesAsync` · `TaskListComponent.canManage` | `TaskManagementServiceTests.cs`, `task-list.component.spec.ts` |
 | FR-TASK-07 | `TaskStageCalculator.Calculate` · `TaskListItemDto.Stage`, `IsOverdue` | `TaskTrackingDomainTests.cs` |
-| FR-TASK-08 | `TaskService.DrillDownCriteriaAsync`, `TaskBucketRules`, `DeadlineBucketRules` | `TaskServiceTests.cs`, `TaskBucketRulesTests.cs` |
-| FR-TASK-09 | `TaskService.ListAsync` (`IsDrillDown` → `OrOwn = false`) | `TaskServiceTests.cs` |
-| FR-TASK-10 | `TaskListComponent` (title link → `/tasks/:id`) | Manual UI |
-| FR-TASK-11 | `TaskListComponent.canCreate`, `canDelete` · policies `perm:tasks.create`, `perm:tasks.delete` | `CustomRolePermissionTests.cs` |
-| FR-TASK-12 | `TaskListComponent.canManage` | Manual UI |
-| FR-TASK-13 | `TaskListComponent` empty and error states | Manual UI |
-| FR-TASK-14 | `POST /api/v1/tasks` · `TaskService.CreateAsync` (`TSK-{Id:D6}`) · `IX_Tasks_TaskCode` | `TaskServiceTests.cs` |
+| FR-TASK-08 | `TaskService.DrillDownCriteriaAsync`, `TaskBucketRules`, `DeadlineBucketRules` | `AnalyticsDrillDownTests.cs`, `TaskBucketRulesTests.cs`, `task-list.component.spec.ts` |
+| FR-TASK-09 | `TaskService.ListAsync` (`IsDrillDown` → `OrOwn = false`) | `ManagerDrillDownScopeTests.cs` |
+| FR-TASK-10 | `TaskListComponent` (title link → `/tasks/:id`) | `task-list.component.spec.ts` |
+| FR-TASK-11 | `TaskListComponent.canCreate`, `canDelete` · policies `perm:tasks.create`, `perm:tasks.delete` | `CustomRolePermissionTests.cs`, `task-list.component.spec.ts` |
+| FR-TASK-12 | `TaskListComponent.canManage` | `task-list.component.spec.ts` |
+| FR-TASK-13 | `TaskListComponent` empty and error states | `task-list.component.spec.ts` |
+| FR-TASK-14 | `POST /api/v1/tasks` · `TaskService.CreateAsync` (`TSK-{Id:D6}`) · `IX_Tasks_TaskCode` | `TaskManagementServiceTests.cs`, `TasksEndpointsTests.cs` |
 | FR-TASK-15 | `CreateTaskRequestValidator`, `TaskService.ValidateCreate` | `CreateTaskRequestValidatorTests.cs` |
-| FR-TASK-16 | `CreateTaskRequestValidator` (`MaximumLength` 200 / 4000) | `CreateTaskRequestValidatorTests.cs`, `TaskValidatorsTests.cs` |
-| FR-TASK-17 | `TaskPriority` · `TaskCreateComponent` (default priority setting) | Manual UI |
-| FR-TASK-18 | `TaskCreateComponent` (start now, deadline + 3 days) | Manual UI |
+| FR-TASK-16 | `CreateTaskRequestValidator` (`MaximumLength` 200 / 4000) | `task-create.component.spec.ts` (title length only) |
+| FR-TASK-17 | `TaskPriority` · `TaskCreateComponent` (default priority setting) | `CreateTaskRequestValidatorTests.cs`, `task-create.component.spec.ts` |
+| FR-TASK-18 | `TaskCreateComponent` (start now, deadline + 3 days) | `task-create.component.spec.ts` |
 | FR-TASK-19 | `CreateTaskRequestValidator` (`Deadline > StartDate`) | `CreateTaskRequestValidatorTests.cs` |
 | FR-TASK-20 | `CreateTaskRequestValidator` (`EstimatedHours > 0`) | `CreateTaskRequestValidatorTests.cs` |
-| FR-TASK-21 | `TaskService.CreateAsync` (`Status = ToDo`) | `TaskServiceTests.cs` |
+| FR-TASK-21 | `TaskService.CreateAsync` (`Status = ToDo`) | `TaskManagementServiceTests.cs` |
 | FR-TASK-22 | `TaskService.CreateAsync` (recipients, `CountLiveAsync`) · `CreateTaskRequestValidator` (≤ 50) · `IX_TaskRecipients_TaskId_UserId` | `CreateTaskRequestValidatorTests.cs` |
 | FR-TASK-23 | `CreateTaskRequestValidator` (0–30, order) · `IReminderSettingsService.GetAsync` · `ReminderIntervals.AreOrdered` | `CreateTaskRequestValidatorTests.cs` |
-| FR-TASK-24 | `TaskService.CreateAsync` (`GetLiveAsync`, `ExistsActiveAsync`) | `ProjectTaskTests.cs`, `TaskServiceTests.cs` |
-| FR-TASK-25 | `TaskCreateComponent.assigneeOptions` | Manual UI |
+| FR-TASK-24 | `TaskService.CreateAsync` (`GetLiveAsync`, `ExistsActiveAsync`) | `ProjectTaskTests.cs`, `TaskManagementServiceTests.cs` |
+| FR-TASK-25 | `TaskCreateComponent.assigneeOptions` | `task-create.component.spec.ts` |
 | FR-TASK-26 | `TaskService.CreateAsync` · `TaskActivityService.AppendAsync` (`Created`, `Assigned`) | `TaskManagementServiceTests.cs` |
 | FR-TASK-27 | `TaskService.CreateAsync` · `INotificationPublisher.PublishAsync` (`TaskAssigned`) | `TaskManagementServiceTests.cs` |
-| FR-TASK-28 | `TaskCreateComponent` (toast, navigate) · 201 `CreatedAtAction` | Manual UI |
-| FR-TASK-29 | `TaskCreateComponent` (`copyFrom`, `getById`) | Manual UI |
-| FR-TASK-30 | `TaskCreateComponent` (copy warnings) | Manual UI |
+| FR-TASK-28 | `TaskCreateComponent` (toast, navigate) · 201 `CreatedAtAction` | `task-create.component.spec.ts`, `TasksEndpointsTests.cs` |
+| FR-TASK-29 | `TaskCreateComponent` (`copyFrom`, `getById`) | `task-create.component.spec.ts` |
+| FR-TASK-30 | `TaskCreateComponent` (copy warnings) | `task-create.component.spec.ts` |
 | FR-TASK-31 | `GET /api/v1/tasks/{id}` · `TaskService.GetDetailsAsync` · `TaskDetailsDto` | `TasksEndpointsTests.cs` |
 | FR-TASK-32 | `TaskAccessHandler`, `TaskService.CanAccessTaskAsync` | `TasksEndpointsTests.cs` |
 | FR-TASK-33 | `TaskStageCalculator.Calculate`, `IAppClock.GetTimeZoneAsync` | `TaskTrackingDomainTests.cs` |
-| FR-TASK-34 | `PUT /api/v1/tasks/{id}` · `TaskService.UpdateAsync` | `TaskValidatorsTests.cs` |
+| FR-TASK-34 | `PUT /api/v1/tasks/{id}` · `TaskService.UpdateAsync` | `TaskServiceTests.cs`, `TasksEndpointsTests.cs`, `task-details.component.spec.ts` |
 | FR-TASK-35 | `UpdateTaskRequestValidator`, `TaskService.ValidateUpdate` · `TaskDetailsComponent` (≥ 0.5) | `TaskValidatorsTests.cs` |
-| FR-TASK-36 | `TaskService.UpdateAsync` (`DeadlineChanged`, `PriorityChanged`, `HoursLogged`) | `TaskManagementServiceTests.cs` |
-| FR-TASK-37 | `TaskStatusTransitions.Can` · `TaskDetailsComponent` Move to | `TaskTrackingDomainTests.cs` |
-| FR-TASK-38 | `PATCH /api/v1/tasks/{id}/status` · `perm:tasks.status.change` · `TaskService.ChangeStatusAsync` | `TaskTrackingDomainTests.cs` |
-| FR-TASK-39 | `TaskService.ChangeStatusAsync` (`StatusChanged`, `Completed`) | `TaskTrackingDomainTests.cs` |
-| FR-TASK-40 | `TaskService.ChangeStatusAsync` (`CompletedAt`, `CancelledAt`) | `TaskTrackingDomainTests.cs` |
+| FR-TASK-36 | `TaskService.UpdateAsync` (`DeadlineChanged`, `PriorityChanged`, `HoursLogged`) | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-TASK-37 | `TaskStatusTransitions.Can` · `TaskDetailsComponent` Move to | `TaskTrackingDomainTests.cs`, `task-details.component.spec.ts` |
+| FR-TASK-38 | `PATCH /api/v1/tasks/{id}/status` · `perm:tasks.status.change` · `TaskService.ChangeStatusAsync` | `TaskTrackingDomainTests.cs`, `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-TASK-39 | `TaskService.ChangeStatusAsync` (`StatusChanged`, `Completed`) | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-TASK-40 | `TaskService.ChangeStatusAsync` (`CompletedAt`, `CancelledAt`) | `TaskServiceTests.cs` (completion time only) |
 | FR-TASK-41 | `POST /api/v1/tasks/{id}/hours` · `TaskService.LogHoursAsync` | `TaskLogHoursTests.cs` |
-| FR-TASK-42 | `TaskDetailsComponent.remainingHours` · `TaskDetailsDto.ActualHours` | Manual UI |
+| FR-TASK-42 | `TaskDetailsComponent.remainingHours` · `TaskDetailsDto.ActualHours` | `task-details.component.spec.ts` |
 | FR-TASK-43 | `TaskService.NotifyHoursChangedAsync` (`System` notification, "Worked hours changed" mail) | `TaskWorkedHoursNotificationTests.cs` |
 | FR-TASK-44 | `Tasks.ActualHours` concurrency token · `ConflictException` (409) | `TaskLogHoursTests.cs` |
-| FR-TASK-45 | `GET /api/v1/tasks/{id}/comments`, `GET /api/v1/tasks/{id}/activity` · `TaskDetailsComponent.latestComments`, `latestActivity` | Manual UI |
+| FR-TASK-45 | `GET /api/v1/tasks/{id}/comments`, `GET /api/v1/tasks/{id}/activity` · `TaskDetailsComponent.latestComments`, `latestActivity` | `task-details.component.spec.ts` |
 | FR-TASK-46 | `DELETE /api/v1/tasks/{id}` · `TaskService.DeleteAsync` (`IsDeleted`, `Deleted` entry) | `TaskDeletionTests.cs` |
 | FR-TASK-47 | `ReminderRepository` (excludes Completed / Cancelled) | `ReminderServiceTests.cs` |
-| FR-TASK-48 | `TaskReassignComponent.eligibleEmployees`, `visibleEmployees` | `TaskServiceTests.cs` |
+| FR-TASK-48 | `TaskReassignComponent.eligibleEmployees`, `visibleEmployees` | `reassign.component.spec.ts` |
 | FR-TASK-49 | `POST /api/v1/tasks/{id}/reassign` · `perm:tasks.reassign` · `TaskService.ReassignAsync` (re-check, scope) | `TaskServiceTests.cs` |
 | FR-TASK-50 | `ReassignTaskRequestValidator` (`Reason` ≤ 500) · `TaskService.ReassignAsync` | `TaskValidatorsTests.cs` |
 | FR-TASK-51 | `TaskService.ReassignAsync` (`GetLiveAsync`, `IsActive`) | `TaskServiceTests.cs` |
-| FR-TASK-52 | `TaskReassignComponent` (confirm dialog) | Manual UI |
-| FR-TASK-53 | `TaskService.ReassignAsync` (`Reassigned` entry with reason) | `TaskManagementServiceTests.cs` |
-| FR-TASK-54 | `TaskService.ReassignAsync` (`AddRecipient`; previous assignee kept) | `TaskManagementServiceTests.cs` |
-| FR-TASK-55 | `TaskService.NotifyReassignedAsync` (`Reassigned`, "Task reassigned" mail) | `TaskManagementServiceTests.cs` |
-| FR-TASK-56 | `TaskReassignComponent.notifyList` | Manual UI |
-| FR-TASK-57 | `GET /api/v1/tasks/{id}/comments` · `TaskCommentService.GetForTaskAsync` · `TaskCommentRepository.GetForTaskAsync` | `TaskCommentActivityNotificationTests.cs` |
-| FR-TASK-58 | `POST /api/v1/tasks/{id}/comments` · `AddCommentRequestValidator` · `TaskCommentService.AddAsync` | `TaskCommentActivityNotificationTests.cs` |
-| FR-TASK-59 | `PUT` / `DELETE /api/v1/tasks/{id}/comments/{commentId}` · author check in `TaskCommentService` | `TaskCommentActivityNotificationTests.cs` |
+| FR-TASK-52 | `TaskReassignComponent` (confirm dialog) | `reassign.component.spec.ts` |
+| FR-TASK-53 | `TaskService.ReassignAsync` (`Reassigned` entry with reason) | `TaskServiceTests.cs` |
+| FR-TASK-54 | `TaskService.ReassignAsync` (`AddRecipient`; previous assignee kept) | `TaskServiceTests.cs` |
+| FR-TASK-55 | `TaskService.NotifyReassignedAsync` (`Reassigned`, "Task reassigned" mail) | `TaskServiceTests.cs`, `TasksEndpointsTests.cs` |
+| FR-TASK-56 | `TaskReassignComponent.notifyList` | `reassign.component.spec.ts` |
+| FR-TASK-57 | `GET /api/v1/tasks/{id}/comments` · `TaskCommentService.GetForTaskAsync` · `TaskCommentRepository.GetForTaskAsync` | `TaskCommentActivityNotificationTests.cs`, `task-discussion.component.spec.ts` |
+| FR-TASK-58 | `POST /api/v1/tasks/{id}/comments` · `AddCommentRequestValidator` · `TaskCommentService.AddAsync` | `TaskCommentActivityNotificationTests.cs`, `TasksEndpointsTests.cs`, `task-discussion.component.spec.ts` |
+| FR-TASK-59 | `PUT` / `DELETE /api/v1/tasks/{id}/comments/{commentId}` · author check in `TaskCommentService` | `TaskCommentActivityNotificationTests.cs`, `task-discussion.component.spec.ts` |
 | FR-TASK-60 | `TaskCommentService.DeleteAsync` (`IsDeleted`, excerpt ≤ 200) | `TaskCommentActivityNotificationTests.cs` |
 | FR-TASK-61 | `TaskCommentService` → `AppendAsync` (`CommentAdded`, `CommentEdited`, `CommentDeleted`) | `TaskCommentActivityNotificationTests.cs` |
 | FR-TASK-62 | `TaskCommentService.NotifyMembersAsync`, `AddInboxMail`, `MailEnabledAsync` | `TaskCommentActivityNotificationTests.cs` |
 | FR-TASK-63 | `TaskActivityService.AppendAsync` (all writers, §4.1.3) | `TaskManagementServiceTests.cs` |
-| FR-TASK-64 | `GET /api/v1/tasks/{id}/activity` · `TaskActivityService.GetForTaskAsync` | `TasksEndpointsTests.cs` |
-| FR-TASK-65 | `TaskActivityController.GetActivity` (UTC, whole-day `to`) · `TaskActivityRepository.GetForTaskAsync` | `TasksEndpointsTests.cs` |
-| FR-TASK-66 | `perm:tasks.activity.view` + `TaskAccess` · `permissionGuard` on `/tasks/:id/activity` · `canViewActivity` | `CustomRolePermissionTests.cs` |
-| FR-TASK-67 | No update/delete endpoint for history except #18–#19 | `TasksEndpointsTests.cs` |
-| FR-TASK-68 | `PUT` / `DELETE /api/v1/tasks/{id}/activity/{entryId}/hours` · `TaskActivityService.ChangeHoursEntryAsync` | `TaskLogHoursTests.cs` |
-| FR-TASK-69 | `TaskDetailsComponent` link → activity filtered `eventType=HoursLogged` | Manual UI |
+| FR-TASK-64 | `GET /api/v1/tasks/{id}/activity` · `TaskActivityService.GetForTaskAsync` | `TasksEndpointsTests.cs`, `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| FR-TASK-65 | `TaskActivityController.GetActivity` (UTC, whole-day `to`) · `TaskActivityRepository.GetForTaskAsync` | `TasksEndpointsTests.cs`, `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| FR-TASK-66 | `perm:tasks.activity.view` + `TaskAccess` · `permissionGuard` on `/tasks/:id/activity` · `canViewActivity` | `app.routes.spec.ts` |
+| FR-TASK-67 | No update/delete endpoint for history except #18–#19 | No automated test (no endpoint changes history apart from #18–#19) |
+| FR-TASK-68 | `PUT` / `DELETE /api/v1/tasks/{id}/activity/{entryId}/hours` · `TaskActivityService.ChangeHoursEntryAsync` | `TaskCommentActivityNotificationTests.cs`, `activity.component.spec.ts` |
+| FR-TASK-69 | `TaskDetailsComponent` link → activity filtered `eventType=HoursLogged` | `activity.component.spec.ts` |
 | FR-TASK-70 | `NotificationPublisher` (`Notification.InAppEnabled`), `TaskCommentService.MailEnabledAsync`, `GetLiveIdsAsync` (see §10 item) | `TaskCommentActivityNotificationTests.cs` |
 | FR-TASK-71 | Best-effort `try/catch` in `NotifyHoursChangedAsync`, `NotifyReassignedAsync`, `NotifyMembersAsync` | `TaskWorkedHoursNotificationTests.cs`, `TaskCommentActivityNotificationTests.cs` |
 | FR-TASK-72 | `perm:<key>` policies, `TaskAccessHandler`, `TaskService` re-checks (gaps in §10) | `PermissionAuthorizationTests.cs`, `CustomRolePermissionTests.cs` |
-| FR-TASK-73 | `permissionGuard` on `/tasks/new`, `/tasks/:id/reassign`, `/tasks/:id/activity` | Manual UI |
+| FR-TASK-73 | `permissionGuard` on `/tasks/new`, `/tasks/:id/reassign`, `/tasks/:id/activity` | `app.routes.spec.ts` |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>
