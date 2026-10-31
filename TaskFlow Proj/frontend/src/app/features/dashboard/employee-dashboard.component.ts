@@ -8,10 +8,13 @@ import { EMPLOYEE_PERIODS, EmployeeDeadline, EmployeePeriod, TaskBucket, TaskPri
 import { EmployeeAnalyticsService } from '../../core/services/employee-analytics.service';
 import { BUCKET_SERIES, PRIORITY_COLORS } from '../../shared/charts/chart-colors';
 import { provideDashboardCharts } from '../../shared/charts/chart-providers';
-import { DonutChartComponent, DonutSlice } from '../../shared/charts/donut-chart.component';
+import { DonutChartComponent } from '../../shared/charts/donut-chart.component';
+import { DonutSlice } from '../../shared/charts/donut-chart.model';
 import { KpiCardComponent } from '../../shared/charts/kpi-card.component';
-import { LineChartComponent, LineSeries, PointClick } from '../../shared/charts/line-chart.component';
-import { ProgressItem, ProgressListComponent } from '../../shared/charts/progress-list.component';
+import { LineChartComponent } from '../../shared/charts/line-chart.component';
+import { LineSeries, PointClick } from '../../shared/charts/line-chart.model';
+import { ProgressListComponent } from '../../shared/charts/progress-list.component';
+import { ProgressItem } from '../../shared/charts/progress-list.model';
 
 const PRIORITY_ORDER: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 

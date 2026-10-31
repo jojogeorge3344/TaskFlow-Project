@@ -1,11 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BUCKET_SERIES } from './chart-colors';
 import { provideDashboardCharts } from './chart-providers';
-import { DonutChartComponent, DonutSlice } from './donut-chart.component';
+import { DonutChartComponent } from './donut-chart.component';
+import { DonutSlice } from './donut-chart.model';
 import { KpiCardComponent } from './kpi-card.component';
-import { LineChartComponent, LineSeries, PointClick } from './line-chart.component';
-import { ProgressItem, ProgressListComponent } from './progress-list.component';
-import { SegmentClick, StackedBarChartComponent, StackedRow } from './stacked-bar-chart.component';
+import { LineChartComponent } from './line-chart.component';
+import { LineSeries, PointClick } from './line-chart.model';
+import { ProgressListComponent } from './progress-list.component';
+import { ProgressItem } from './progress-list.model';
+import { StackedBarChartComponent } from './stacked-bar-chart.component';
+import { SegmentClick, StackedRow } from './stacked-bar-chart.model';
 
 function render<T>(type: new () => T, inputs: Record<string, unknown>): ComponentFixture<T> {
   const fixture = TestBed.createComponent(type);

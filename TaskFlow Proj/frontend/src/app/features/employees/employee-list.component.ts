@@ -18,12 +18,9 @@ import { ToastService } from '../../shared/ui/toast.service';
 import { EmployeeDetailsPanelComponent } from './employee-details-panel.component';
 import { EmployeeFormPanelComponent } from './employee-form-panel.component';
 import { roleBadgeClass } from './role-badge';
+import { StatusFilter, Panel } from './employee-list.model';
 
 export const SEARCH_DEBOUNCE_MS = 300;
-
-type StatusFilter = '' | 'active' | 'inactive';
-
-type Panel = { mode: 'create' } | { mode: 'edit'; employee: User } | { mode: 'details'; employee: User };
 
 @Component({
   selector: 'app-employee-list',

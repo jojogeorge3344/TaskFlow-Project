@@ -13,6 +13,7 @@ import {
 } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { Filters } from './project-detail.model';
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   ToDo: 'To Do',
@@ -22,16 +23,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   Completed: 'Completed',
   Cancelled: 'Cancelled'
 };
-
-/** The filters as the user typed them: empty string means "any". */
-interface Filters {
-  status: TaskStatus | '';
-  priority: TaskPriority | '';
-  userId: number | null;
-  positionId: number | null;
-  from: string;
-  to: string;
-}
 
 const NO_FILTERS: Filters = { status: '', priority: '', userId: null, positionId: null, from: '', to: '' };
 

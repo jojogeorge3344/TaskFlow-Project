@@ -1,4 +1,4 @@
-import { IconName } from '../../core/layout/icon.component';
+import { IconName } from '../../core/layout/icon.model';
 import { MailAddress, MailView } from '../../core/models';
 
 export { saveBlob } from '../../shared/ui/save-blob';

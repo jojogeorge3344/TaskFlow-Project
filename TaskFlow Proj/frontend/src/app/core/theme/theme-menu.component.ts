@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
-import { THEMES, ThemeName, ThemeService } from './theme.service';
+import { THEMES, ThemeService } from './theme.service';
+import { ThemeName } from './theme.model';
 
 /** Header dropdown for choosing the colour theme. A listbox (not a native select) so each option can show a swatch. */
 @Component({

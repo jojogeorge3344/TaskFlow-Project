@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-
-export type ThemeName = 'default' | 'professional' | 'dark';
+import { ThemeName } from './theme.model';
 
 export const THEME_STORAGE_KEY = 'tf.theme';
 export const THEMES: readonly { name: ThemeName; label: string }[] = [

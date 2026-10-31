@@ -8,14 +8,10 @@ import { AuthUser } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { AiProviderOption, AssistantMessage, AssistantPendingAction } from '../models';
 import { TFA_CLOUD_ACK_KEY, TFA_PROVIDER_KEY } from '../services/assistant.service';
-import {
-  SPEECH_RECOGNITION_FACTORY,
-  SpeechRecognitionEventLike,
-  SpeechRecognitionLike,
-  TFA_VOICE_KEY,
-  COMMAND_SILENCE_MS
-} from '../speech/wake-phrase.service';
-import { SPEECH_SYNTHESIS_FACTORY, SpeechSynthesisLike, UTTERANCE_FACTORY } from '../speech/speak.service';
+import { SPEECH_RECOGNITION_FACTORY, TFA_VOICE_KEY, COMMAND_SILENCE_MS } from '../speech/wake-phrase.service';
+import { SpeechRecognitionEventLike, SpeechRecognitionLike } from '../speech/wake-phrase.model';
+import { SPEECH_SYNTHESIS_FACTORY, UTTERANCE_FACTORY } from '../speech/speak.service';
+import { SpeechSynthesisLike } from '../speech/speak.model';
 import { TfaPanelComponent } from './tfa-panel.component';
 
 class FakeRecognition implements SpeechRecognitionLike {

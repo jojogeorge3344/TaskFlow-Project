@@ -1,14 +1,6 @@
 import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing';
-import {
-  SPEECH_RECOGNITION_FACTORY,
-  SpeechRecognitionEventLike,
-  SpeechRecognitionLike,
-  COMMAND_SILENCE_MS,
-  DICTATION_TIMEOUT_MS,
-  TFA_VOICE_KEY,
-  WAKE_CAPTURE_TIMEOUT_MS,
-  WakePhraseService
-} from './wake-phrase.service';
+import { SPEECH_RECOGNITION_FACTORY, COMMAND_SILENCE_MS, DICTATION_TIMEOUT_MS, TFA_VOICE_KEY, WAKE_CAPTURE_TIMEOUT_MS, WakePhraseService } from './wake-phrase.service';
+import { SpeechRecognitionEventLike, SpeechRecognitionLike } from './wake-phrase.model';
 
 class FakeRecognition implements SpeechRecognitionLike {
   continuous = false;

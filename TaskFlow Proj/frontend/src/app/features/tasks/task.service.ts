@@ -17,14 +17,7 @@ import {
   UpdateTaskRequest,
   UpdateTaskStatusRequest
 } from '../../core/models';
-
-export interface ActivityFilter {
-  eventType?: string;
-  actorUserId?: number;
-  from?: string;
-  to?: string;
-  search?: string;
-}
+import { ActivityFilter } from './task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {

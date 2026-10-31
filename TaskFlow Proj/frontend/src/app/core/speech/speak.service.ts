@@ -1,13 +1,5 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
-
-/** The few parts of the browser's speech synthesis that are used. */
-export interface SpeechSynthesisLike {
-  speak(utterance: SpeechSynthesisUtterance): void;
-  cancel(): void;
-}
-
-export type SpeechSynthesisFactory = () => SpeechSynthesisLike | null;
-export type UtteranceFactory = (text: string) => SpeechSynthesisUtterance;
+import { SpeechSynthesisFactory, UtteranceFactory } from './speak.model';
 
 /** The browser's speech synthesis, or null where there is none. Replaced in tests. */
 export const SPEECH_SYNTHESIS_FACTORY = new InjectionToken<SpeechSynthesisFactory>('SPEECH_SYNTHESIS_FACTORY', {

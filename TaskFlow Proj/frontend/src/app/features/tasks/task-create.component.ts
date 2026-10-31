@@ -18,6 +18,7 @@ import {
   withReminderDay
 } from './reminder-options';
 import { TaskService } from './task.service';
+import { FieldName } from './task-create.model';
 
 export const TITLE_MAX_LENGTH = 200;
 export const DESCRIPTION_MAX_LENGTH = 4000;
@@ -41,8 +42,6 @@ export function toLocalInput(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
-
-type FieldName = 'title' | 'projectId' | 'description' | 'assignedToUserId' | 'startDate' | 'deadline' | 'estimatedHours';
 
 /** Create Task (Screen 8). Manager/Administrator only; validation mirrors CreateTaskRequestValidator. */
 @Component({

@@ -2,7 +2,8 @@ import { Component, computed, input, output } from '@angular/core';
 import { DrillTarget } from '../../../core/analytics/drill-down';
 import { DrillBucket, EmployeeAnalyticsSection } from '../../../core/models';
 import { BUCKET_SERIES, bucketValues } from '../../../shared/charts/chart-colors';
-import { SegmentClick, StackedBarChartComponent, StackedRow } from '../../../shared/charts/stacked-bar-chart.component';
+import { StackedBarChartComponent } from '../../../shared/charts/stacked-bar-chart.component';
+import { SegmentClick, StackedRow } from '../../../shared/charts/stacked-bar-chart.model';
 
 @Component({
   selector: 'tf-employee-analytics',

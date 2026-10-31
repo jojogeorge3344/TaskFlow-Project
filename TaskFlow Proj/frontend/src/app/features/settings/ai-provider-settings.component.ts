@@ -8,16 +8,10 @@ import { AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvide
 import { AiProviderAdminService } from '../../core/services/ai-provider-admin.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
+import { ProviderForm } from './ai-provider-settings.model';
 
 /** The dropdown entry that lets the administrator type a model that is not in the list yet. */
 export const ADD_MODEL = '__add__';
-
-type ProviderForm = FormGroup<{
-  modelName: FormControl<string>;
-  newModel: FormControl<string>;
-  baseUrl: FormControl<string>;
-  apiKey: FormControl<string>;
-}>;
 
 /** Where each cloud provider's server is. Ollama's address is the one saved in Settings. */
 export const CLOUD_SERVERS: Partial<Record<AiProviderKind, string>> = {

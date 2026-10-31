@@ -5,18 +5,7 @@ import { UserService } from '../../core/services/user.service';
 import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
-
-export type MemberSort = 'name-asc' | 'name-desc' | 'selected' | 'role';
-
-interface MemberOption {
-  id: number;
-  fullName: string;
-  username: string;
-  /** Whether the person is saved as a manager or as an employee of the department. */
-  kind: 'manager' | 'employee';
-  /** A current member who is no longer an active manager/employee; still listed so they are not silently dropped. */
-  inactive: boolean;
-}
+import { MemberSort, MemberOption } from './department-members-dialog.model';
 
 /**
  * Choose a department's members from one searchable, sortable, multi-select list on the native <dialog>. Each person is

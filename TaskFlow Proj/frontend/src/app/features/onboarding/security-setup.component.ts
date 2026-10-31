@@ -14,14 +14,7 @@ import { apiErrorMessage } from '../../shared/ui/api-error';
 import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.directive';
 import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
-
-export type SetupStep = 'details' | 'authenticator' | 'codes';
-
-interface StepInfo {
-  id: SetupStep;
-  title: string;
-  hint: string;
-}
+import { SetupStep, StepInfo } from './security-setup.model';
 
 const STEPS: StepInfo[] = [
   { id: 'details', title: 'Your details', hint: 'Confirm who you are' },

@@ -4,8 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject, catchError, map, of, switchMap } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { EmployeeOwnAnalytics, EmployeePeriod } from '../models';
-
-type FetchResult = { data: EmployeeOwnAnalytics } | { failed: true };
+import { FetchResult } from './employee-analytics.model';
 
 /** State for the Employee analytics page. The only input is the period: the server always answers for the signed-in
  * user, so there is no employee, department or project to choose. */

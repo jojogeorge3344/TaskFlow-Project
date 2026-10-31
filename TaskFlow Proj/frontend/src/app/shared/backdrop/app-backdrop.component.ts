@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { BackdropAnimation, BackdropColors } from './backdrop-animation';
+import { BackdropAnimation } from './backdrop-animation';
+import { BackdropColors } from './backdrop-animation.model';
 
 /** App-wide animated backdrop. Colours come from the active theme's --tf-backdrop-* tokens and follow theme changes. */
 @Component({

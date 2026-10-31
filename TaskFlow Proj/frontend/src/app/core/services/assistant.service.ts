@@ -13,18 +13,13 @@ import {
   AssistantReply,
   EditMailAction
 } from '../models';
+import { FailedSend } from './assistant.model';
 
 export const TFA_PROVIDER_KEY = 'tfa.provider';
 export const TFA_CLOUD_ACK_KEY = 'tfa.cloudAck';
 
 /** How long the list of available providers is trusted before opening the panel asks the server again. */
 export const PROVIDER_REFRESH_MS = 60_000;
-
-/** A provider problem together with the text that was being sent, so it can be retried. */
-export interface FailedSend {
-  failure: AssistantFailure;
-  text: string;
-}
 
 /** TFA, the in-app assistant: the open panel, the chosen model, the conversation and the actions the user confirms.
  * The conversation and the pending actions live on the server; this service only shows them and sends the user's

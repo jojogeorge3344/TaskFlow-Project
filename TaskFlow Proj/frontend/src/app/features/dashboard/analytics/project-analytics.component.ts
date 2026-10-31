@@ -1,7 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import { DrillTarget } from '../../../core/analytics/drill-down';
 import { ProjectAnalytics } from '../../../core/models';
-import { ProgressItem, ProgressListComponent } from '../../../shared/charts/progress-list.component';
+import { ProgressListComponent } from '../../../shared/charts/progress-list.component';
+import { ProgressItem } from '../../../shared/charts/progress-list.model';
 
 @Component({
   selector: 'tf-project-analytics',
