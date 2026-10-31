@@ -48,7 +48,9 @@ calendar integration, email-token password reset.
 | Web framework | ASP.NET Core Web API | REST/JSON endpoints |
 | ORM | Entity Framework Core (Code-First) | Data access, migrations |
 | Database | SQLite | Single-file persistent store |
-| Scheduler | `BackgroundService` | Deadline reminders (~1 min tick) |
+| Scheduler | `BackgroundService` | Deadline reminders (~1 min tick); TFA document indexing (startup + every 5 min) |
+| TFA embeddings | Ollama `nomic-embed-text` via `/api/embed` (local, free) | Embeds the `TF - Documents` Markdown files and each TFA question |
+| TFA document index | SQLite tables `DocumentSources` / `DocumentChunks` + in-memory brute-force cosine search | Retrieval for document answers; no vector database or extension |
 | Validation | FluentValidation | Server-side input validation |
 | Auth | JWT bearer + `PasswordHasher<T>` (PBKDF2) | Tokens, RBAC |
 | Logging | Serilog | Structured logs |

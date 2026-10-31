@@ -73,6 +73,7 @@ function message(id: number, role: 'User' | 'Assistant', content: string, extra:
     links: [],
     rankedTasks: [],
     action: null,
+    sources: [],
     ...extra
   };
 }
@@ -307,6 +308,7 @@ describe('TfaPanelComponent', () => {
 
       expect(q('[data-notice="cloud"]')!.textContent).toContain('Google Gemini is a cloud provider');
       expect(q('[data-notice="cloud"]')!.textContent).toContain('sent to it');
+      expect(q('[data-notice="cloud"]')!.textContent).toContain('Your message, related task details and matching TaskFlow document text');
 
       type('summarise my tasks');
       click('[data-action="send"]');

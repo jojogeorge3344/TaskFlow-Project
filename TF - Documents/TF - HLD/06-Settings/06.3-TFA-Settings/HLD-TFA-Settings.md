@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** High-Level Design  ·  **Version:** 1.0  ·  **Status:** Draft
+> **Document:** High-Level Design  ·  **Version:** 1.1  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** BRD-TFA-Settings v1.0, FRD-TFA-Settings v1.0
+> **Based on:** BRD-TFA-Settings v1.1, FRD-TFA-Settings v1.1
 > **Module:** Settings  ·  **Sub-module:** 06.3 TFA Settings  ·  **Code:** TFAS
 > © 2026 Jojo George. All rights reserved.
 
@@ -16,6 +16,7 @@
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
+| 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`): Document search card, `DocumentIndexController` (`/api/v1/assistant/documents/status`, `/reindex`), `DocumentIndexService` over the Assistant's `DocumentIndexStatus` and `DocumentIndexerService`; the saved Ollama address also serves embeddings. Updated §1, §2, §3, §4, §5, §6, §7, §8 (new §8.4), §9, §11, §12, §13 (D-TFAS-10, D-TFAS-11), §14 and §15. |
 
 **Related documents:**
 
@@ -27,7 +28,7 @@
 | LLD – TFA Settings | `../../../LLD/06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md` |
 | HLD – TFA Assistant (runtime consumer) | `../../08-TFA-Assistant/08.1-Assistant/HLD-Assistant.md` |
 | HLD – Role Configuration (permission prerequisites) | `../06.4-Role-Configuration/HLD-Role-Configuration.md` |
-| TDD | `TF - Documents/TF - TDD/TDD-TaskFlow.md` §3.2 (key ring, AI providers), §6.5 (Integrations), §8.9 (Settings) |
+| TDD | `TF - Documents/TF - TDD/TDD-TaskFlow.md` §3.2 (key ring, AI providers, document indexer), §6.5 (Integrations), §8.9 (Settings), §16.8 (document knowledge) |
 
 ---
 
@@ -36,15 +37,17 @@
 ### 1.1 Purpose
 This HLD describes the architecture of TFA Settings, the screen and services that decide which AI provider and model
 the TFA Assistant uses: provider configuration, protected storage of API keys, the model list, the connection test and
-the provider clients reached through the Assistant's model gateway. Class- and column-level detail is in the LLD.
+the provider clients reached through the Assistant's model gateway, and (v1.1) the administrator's view of TFA's
+document index with the re-index control. Class- and column-level detail is in the LLD.
 
 ### 1.2 Scope
 In scope: the TFA Settings screen (`/settings/tfa`); its API under `/api/v1/assistant/providers` (read and save
 configuration, remove an added model, test a provider); the configuration service, connection tester, key protector,
-model and configuration storage, first-run seeding; the provider clients for Ollama, Google Gemini and OpenAI.
+model and configuration storage, first-run seeding; the provider clients for Ollama, Google Gemini and OpenAI; the
+Document search card and its API under `/api/v1/assistant/documents` (status, re-index).
 
-Out of scope: the TFA chat itself, tools, confirm-before-act and the assistant's provider selector (TFA Assistant HLD);
-editing permissions (Role Configuration HLD).
+Out of scope: the TFA chat itself, tools, confirm-before-act and the assistant's provider selector, and the document
+indexing, embedding and retrieval themselves (TFA Assistant HLD); editing permissions (Role Configuration HLD).
 
 ### 1.3 Audience
 Developer, reviewer and tester of TaskFlow; the product owner for the design decisions.
@@ -60,6 +63,8 @@ Developer, reviewer and tester of TaskFlow; the product owner for the design dec
 | Key ring | Folder `dp-keys` (`AiProviders:KeyRingPath`) under the data folder; DPAPI-protected on Windows |
 | Model gateway | `ChatModelGateway` (`IChatModelGateway`): the single path from TaskFlow to any provider |
 | SSRF | Server-side request forgery – making the server call an address it should not |
+| Document index | TFA's searchable copy of the Markdown documents in the documents folder (`DocumentSources`, `DocumentChunks`, in-memory vectors) |
+| Indexer | `DocumentIndexerService` (hosted background service) running `DocumentIndexer` |
 
 ---
 
@@ -76,6 +81,8 @@ flowchart LR
   TFAS -->|"test via gateway"| GE["Google Gemini (HTTPS)"]
   TFAS -->|"test via gateway"| OA["OpenAI (HTTPS)"]
   TFA["TFA Assistant"] -->|"configured providers, runtime"| TFAS
+  TFAS -->|"status, re-index request"| IDX["TFA document indexer (Assistant)"]
+  IDX -->|"embeddings at saved Ollama address"| OL
 ```
 
 ### 2.2 Actors & External Systems
@@ -88,6 +95,7 @@ flowchart LR
 | Google Gemini | Cloud model API, key in a request header | HTTPS / REST |
 | OpenAI | Cloud model API, bearer key | HTTPS / REST |
 | Data Protection key ring | Encrypts and decrypts API keys | Local files |
+| TFA document indexer (in process) | Status read by the card; woken by Re-index now; embeds through the saved Ollama address unless `DocumentKnowledge:OllamaBaseUrl` is set | In-process singleton calls |
 
 ---
 
@@ -103,13 +111,16 @@ flowchart LR
 | Robust test | The connection test always returns a result message, never an error status (NFR-TFAS-04) |
 | Detect lost keys | Each read checks whether the stored key can still be decrypted (NFR-TFAS-05) |
 | Plain language | Provider failures are classified (not configured, invalid key, rate limited, timeout, unreachable, model unavailable) and mapped to fixed messages (NFR-TFAS-06) |
-| Privacy | Cloud providers are tagged; Ollama (local) is the default on a new installation (NFR-TFAS-07) |
+| Privacy | Cloud providers are tagged; Ollama (local) is the default on a new installation; the screen says matching document text also goes to cloud providers (NFR-TFAS-07) |
+| Visible document search | The card shows folder, model, counts, last run and the last error with its file; re-index without a restart; status polled every 3 s while running (NFR-TFAS-09, NFR-TFAS-10) |
 
 ### 3.2 Constraints
 - Exactly three providers, fixed in code (`AiProviderCatalog`).
 - One API process; provider calls are synchronous HTTP with a timeout of `AiProviders:TimeoutSeconds` (60).
 - Key protection depends on the key ring folder staying with the data folder; losing it makes saved keys unreadable.
 - Only the screen enforces "one active server"; the API accepts several enabled providers.
+- The documents folder, embedding model and search settings are server configuration (`DocumentKnowledge`), not editable
+  on the screen; the card only shows them.
 
 ### 3.3 Architecture Principles
 - Controller → Service → Repository; integrations (key protection, provider clients) behind interfaces (overall HLD).
@@ -126,9 +137,10 @@ An Angular screen calls a REST controller with one permission per action. Behind
 provider rows, the model list and key protection; a connection tester sends one short request through the Assistant's
 model gateway, which picks the provider client from a registry.
 
-API surface (4 actions; full list in the LLD): `/api/v1/assistant/providers/config` (read, save),
+API surface (6 actions; full list in the LLD): `/api/v1/assistant/providers/config` (read, save),
 `/api/v1/assistant/providers/{kind}/models` (remove an added model), `/api/v1/assistant/providers/{kind}/test`
-(connection test). The assistant's own provider selector reads `/api/v1/assistant/providers`, owned by the TFA
+(connection test) on `AiProvidersController`; `/api/v1/assistant/documents/status` and
+`/api/v1/assistant/documents/reindex` on `DocumentIndexController` (v1.1). The assistant's own provider selector reads `/api/v1/assistant/providers`, owned by the TFA
 Assistant.
 
 ### 4.2 Logical Architecture
@@ -137,6 +149,7 @@ Assistant.
 flowchart TB
   subgraph Client["Presentation (Angular SPA)"]
     PAGE["TfaSettingsComponent / AiProviderSettingsComponent"]
+    CARD["DocumentIndexCardComponent"]
     FSVC["AiProviderAdminService"]
   end
   subgraph Server["TaskFlow.Api"]
@@ -147,7 +160,12 @@ flowchart TB
     REPO["Config and model repositories"]
     GW["ChatModelGateway"]
     REG["Provider registry and clients"]
+    DCTRL["DocumentIndexController"]
+    DSVC["DocumentIndexService"]
+    DIX["DocumentIndexStatus, DocumentIndexerService (Assistant)"]
   end
+  CARD --> FSVC
+  FSVC -->|"HTTPS JSON"| DCTRL --> DSVC --> DIX
   PAGE --> FSVC -->|"HTTPS JSON"| CTRL
   CTRL --> CFG
   CTRL --> TST --> GW --> REG
@@ -161,10 +179,10 @@ flowchart TB
 
 | Layer | Responsibility in this sub-module | May call |
 |---|---|---|
-| Presentation | Provider card and status, model selector with built-in and added models, server address, API key box with keep/remove, Save, Test, Remove model; buttons shown per permission | API |
-| API / Controllers | `AiProvidersController`: one policy per action; routes `{kind}` to the provider | Services |
+| Presentation | Provider card and status, model selector with built-in and added models, server address, API key box with keep/remove, Save, Test, Remove model; Document search card with Re-index now; buttons shown per permission | API |
+| API / Controllers | `AiProvidersController`: one policy per action; routes `{kind}` to the provider. `DocumentIndexController`: status (`settings.ai.view`), re-index (`settings.ai.edit`) | Services |
 | Validation | Request validators: providers present and unique, model name, server address (http/https, no link-local or metadata host), key without spaces, not new key and clear together | – |
-| Services | `AiProviderConfigService`: read config with status, save, remember added models, remove model, runtime for the gateway; `AiProviderConnectionTester`: one test request and result mapping | Repositories, integrations |
+| Services | `AiProviderConfigService`: read config with status, save, remember added models, remove model, runtime for the gateway; `AiProviderConnectionTester`: one test request and result mapping; `DocumentIndexService`: status snapshot and re-index request | Repositories, integrations, Assistant document singletons |
 | Repositories | `AiProviderConfigRepository`, `AiModelRepository` | Database |
 | Integrations | `AiKeyProtector` (Data Protection), `KeyRingProtectionCheck`, provider registry and the Ollama, Gemini and OpenAI clients | Key ring, external providers |
 | Start-up | `AiProviderSeeder`: built-in models and one row per provider | Database |
@@ -183,6 +201,7 @@ flowchart TB
 | Provider clients | Call each provider; classify failures; no redirects | `ChatModelProviderRegistry`, `OllamaProvider`, `GeminiProvider`, `OpenAiProvider` | External providers |
 | Model gateway (Assistant module) | Single path to a provider for test and chat | `ChatModelGateway` | Config service (runtime), registry |
 | Seeding | First-run defaults | `AiProviderSeeder` | SQLite |
+| Document search (v1.1) | Show the document index status; start a re-index; poll while running | `DocumentIndexCardComponent`, `AiProviderAdminService.getDocumentStatus()` / `reindexDocuments()`, `DocumentIndexController`, `DocumentIndexService` | `DocumentIndexStatus`, `DocumentIndexerService` (TFA Assistant) |
 
 ### 5.1 Module Interaction
 
@@ -201,6 +220,7 @@ flowchart LR
 | TFA → TFAS | The connection test uses the Assistant's model gateway, so a passing test means chat will reach the provider |
 | ROLE → TFAS | Grants of `settings.ai.view`, `settings.ai.edit`, `settings.ai.test`, `settings.ai.model.remove`; edit, test and remove each require view |
 | TFAS → providers | One short chat request for a test; chat requests from the assistant use the same clients |
+| TFAS ↔ TFA document index | The card reads `DocumentIndexStatus`; Re-index now calls `DocumentIndexerService.RequestReindex()`; the indexer reads the saved Ollama address (`DocumentEmbeddingEndpoint`) for embeddings |
 
 ---
 
@@ -213,6 +233,7 @@ flowchart LR
 | Main database | SQLite (`taskflow.db`, EF Core) | One configuration row per provider (on/off, model, address, encrypted key, last four characters, editor and time); the list of models per provider (built-in and added) | Encrypted key never returned |
 | Key ring | Data Protection key files in `dp-keys` | Keys that encrypt the API keys (purpose `TaskFlow.AiProviderKeys`) | DPAPI-protected on Windows; checked at start-up; must be backed up with the database |
 | Code catalogue | `AiProviderCatalog` | Providers, display names, built-in models, defaults | Fixed in code |
+| In-memory status (v1.1) | `DocumentIndexStatus` singleton (Assistant) | Enabled, folder, folder found, model, files, chunks, last indexed, running, last error and file | Rebuilt at start-up; the index tables are owned by the TFA Assistant |
 
 ### 6.2 Main Data Domains
 
@@ -235,6 +256,8 @@ erDiagram
    key box keeps the stored key; a new model name is remembered in the list.
 4. The test and the assistant ask the configuration service for the runtime settings; the key is decrypted only in
    memory for the outgoing request.
+5. The Document search card reads the indexer's status; **Re-index now** wakes the indexer, which checks the documents
+   folder and updates the status the card polls every 3 seconds.
 
 ---
 
@@ -247,6 +270,7 @@ erDiagram
 | OpenAI | Outbound HTTPS, bearer key | Test and chat | As for Gemini |
 | Data Protection key ring | Local | Encrypt/decrypt keys | Unreadable key → status "The saved key can no longer be read. Enter it again."; provider treated as not configured; a warning is logged |
 | TFA Assistant | Inbound (in process) | Configured providers and runtime | Not-configured provider is not offered |
+| TFA document indexer | Outbound (in process) | Status and re-index | Indexing errors are shown on the card with the file; a re-index while running starts nothing; switched off → 400 "Document search is switched off in the server configuration (DocumentKnowledge:Enabled)." |
 
 All provider calls share a timeout (`AiProviders:TimeoutSeconds`), do not follow redirects, and log only provider,
 failure kind and HTTP status – no headers, bodies or keys. No automatic switch to another provider on failure.
@@ -319,6 +343,31 @@ sequenceDiagram
   end
 ```
 
+### 8.4 Check document search and re-index (v1.1)
+
+```mermaid
+sequenceDiagram
+  actor A as Administrator
+  participant CARD as DocumentIndexCardComponent
+  participant API as DocumentIndexController
+  participant S as DocumentIndexService
+  participant I as DocumentIndexerService
+  participant ST as DocumentIndexStatus
+  A->>CARD: Open TFA Settings
+  CARD->>API: GET status (settings.ai.view)
+  API->>S: GetStatus
+  S->>ST: Current
+  API-->>CARD: Status
+  A->>CARD: Re-index now
+  CARD->>API: POST reindex (settings.ai.edit)
+  API->>S: RequestReindex
+  S->>I: RequestReindex (ignored if running)
+  API-->>CARD: 202 with isRunning true
+  loop Every 3 s while running
+    CARD->>API: GET status
+  end
+```
+
 ---
 
 ## 9. Security Architecture
@@ -331,7 +380,8 @@ sequenceDiagram
 | Secret handling | Keys encrypted with Data Protection (purpose `TaskFlow.AiProviderKeys`); write-only API; only "key set" and last four characters returned; key ring DPAPI-protected on Windows and checked at start-up (`KeyRingProtectionCheck`) |
 | SSRF | Server address must be http/https and not link-local or a cloud metadata host; `localhost` and private addresses allowed for Ollama; redirects not followed |
 | Transport | HTTPS from the browser; HTTPS to cloud providers; Ollama over the configured address |
-| Privacy | Screen explains that cloud providers receive the user's question and related task details (FR-TFAS-23) |
+| Privacy | Screen explains that cloud providers receive the user's question, related task details and matching TaskFlow document text (FR-TFAS-23) |
+| Document search | Status needs `settings.ai.view`, re-index `settings.ai.edit` (FR-TFAS-29, FR-TFAS-33); the status shows paths and error text only, never document content; the card's button is hidden without `settings.ai.edit` (`canReindex`) |
 | Auditing | Last editor and time per provider row; denied requests logged by the denied-action audit handler; provider logs carry no secrets |
 
 ---
@@ -351,7 +401,8 @@ TFA Settings runs inside the single `TaskFlow.Api` process. Deployment-relevant 
 `AiProviders:KeyRingPath` (default `dp-keys`) under `Storage:Root` must stay with the database (and be backed up with it)
 or saved keys become unreadable; `AiProviders:TimeoutSeconds` (60) bounds each provider call; Ollama, when used, runs as a
 separate local service reachable at the saved address (default `http://localhost:11434`); cloud providers need outbound
-HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`, §11).
+HTTPS. Document search (v1.1) also needs the embedding model on that Ollama server (`ollama pull nomic-embed-text`) and
+the documents folder readable by the API (`DocumentKnowledge:SourcePath`). Environments, hosting and backup are in the overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`, §11).
 
 ---
 
@@ -359,7 +410,7 @@ HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overal
 
 | Area | Design decision |
 |---|---|
-| Performance | Configuration read and save are small database operations; a test is one short provider request bounded by the timeout |
+| Performance | Configuration read and save are small database operations; a test is one short provider request bounded by the timeout; the document status is an in-memory read; a re-index returns at once (202) and runs in the background |
 | Scalability | Three provider rows and a short model list; single instance |
 | Reliability | Test never throws to the screen (always a result); unreadable key detected and reported; duplicate-model race on save handled by retrying without the duplicate |
 | Availability | A provider outage affects only TFA; the rest of TaskFlow is independent |
@@ -383,6 +434,8 @@ HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overal
 | D-TFAS-7 | "One active server" applied by the screen; the API stores each provider's own on/off | Enforce a single enabled provider in the API | Switched-off providers keep their keys, models and addresses for a quick switch back |
 | D-TFAS-8 | Ollama on by default only on a brand-new installation | Always on; always off | Works out of the box locally without sending data to the cloud; upgrades are not changed silently |
 | D-TFAS-9 | Models are data (`AiModel`), built-in ones seeded and protected, added ones removable when not in use | Free-text model only | Keeps the selector tidy and prevents removing the model in use (BR-TFAS-04) |
+| D-TFAS-10 | Document search status and re-index on TFA Settings, guarded by the existing `settings.ai.view` / `settings.ai.edit` keys | New permission keys; no UI (log only) | The administrators who set up Ollama also own the index; no catalogue change |
+| D-TFAS-11 | Re-index is a request to the background indexer (202, no second run), and the card polls while running | Synchronous re-index in the request | A full first index takes minutes; the request must not time out or run twice |
 
 ---
 
@@ -395,6 +448,7 @@ HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overal
 | Risk | Cloud rate limit reached (R-TFAS-03) | Rate-limit message with retry time; switch model – Jojo George |
 | Risk | Key ring lost or unprotected, keys unreadable (R-TFAS-04) | Start-up warning; "enter it again" status; back up the key ring with the database – Jojo George |
 | Risk | Server address abused for SSRF (R-TFAS-05) | Address validator; no redirects – Jojo George |
+| Risk | TFA cannot answer from the documents and nobody notices (R-TFAS-06) | Document search card with state and last error – Jojo George |
 | Open issue | ⚠️ To be confirmed: without `settings.ai.edit` the inputs stay editable and only **Save** is hidden; whether the screen should be fully read-only. | Jojo George |
 | Open issue | ⚠️ To be confirmed: a user with `settings.ai.test` but without `settings.ai.edit` cannot test while there are unsaved changes (the automatic save is refused). | Jojo George |
 | Open issue | ⚠️ To be confirmed: only the screen ensures one active server; whether the API should refuse several enabled providers. | Jojo George |
@@ -434,6 +488,10 @@ HTTPS. Environments, hosting and backup are in the overall HLD (`../../00-Overal
 | FR-TFAS-26 | Permission catalogue prerequisites enforced by Role Configuration | §5.1, D-TFAS-5 |
 | FR-TFAS-27 | Navigation builder and `permissionGuard` | §9 |
 | FR-TFAS-28 | `AiProviderSettingsComponent` (toasts and error messages) | §8 |
+| FR-TFAS-29 – FR-TFAS-32 | `DocumentIndexCardComponent`; `DocumentIndexController` status; `DocumentIndexService.GetStatus` | §5, §8.4 |
+| FR-TFAS-33 – FR-TFAS-34 | `DocumentIndexController` re-index; `DocumentIndexService.RequestReindex` → `DocumentIndexerService.RequestReindex` | §8.4, D-TFAS-11 |
+| FR-TFAS-35 | `DocumentIndexCardComponent` polling (`DOCUMENT_STATUS_POLL_MS` 3000) | §8.4 |
+| FR-TFAS-36 | `DocumentIndexService` (`BusinessRuleException` when switched off); card **Switched off** | §7 |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

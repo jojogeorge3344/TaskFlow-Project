@@ -401,7 +401,7 @@ public class AssistantActionService : IAssistantActionService
         _messages.Add(message);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new AssistantMessageDto(message.Id, "Assistant", text, kind, DateTime.SpecifyKind(now, DateTimeKind.Utc), null, [], [], null);
+        return new AssistantMessageDto(message.Id, "Assistant", text, kind, DateTime.SpecifyKind(now, DateTimeKind.Utc), null, [], [], null, []);
     }
 
     // ------------------------------------------------------------------------------------------- helpers

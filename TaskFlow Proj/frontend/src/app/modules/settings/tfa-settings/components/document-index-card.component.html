@@ -1,0 +1,108 @@
+@if (visible()) {
+  <section class="doc-index" data-section="document-search" aria-labelledby="doc-index-title">
+    <header class="doc-index__head">
+      <h2 id="doc-index-title">Document search</h2>
+      <p>
+        TFA answers questions about TaskFlow's features, screens, rules and design only from the Markdown documents in this folder.
+        They are embedded with a free local Ollama model and checked for changes every few minutes.
+      </p>
+    </header>
+
+    @if (loadError()) {
+      <div class="tf-alert" role="alert" data-error="document-status">
+        <tf-icon name="alert" />
+        <span>{{ loadError() }}</span>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry-document-status" (click)="load()">Retry</button>
+      </div>
+    } @else {
+      @if (status(); as s) {
+        <div class="tf-card doc-index__card">
+          <div class="doc-index__title">
+            <h3>Index</h3>
+            @if (!s.enabled) {
+              <span class="doc-index__pill doc-index__pill--off" data-state="disabled">Switched off</span>
+            } @else if (s.isRunning) {
+              <span class="doc-index__pill doc-index__pill--running" data-state="running" role="status">
+                <tf-icon name="clock" /> Indexing…
+              </span>
+            } @else {
+              <span class="doc-index__pill doc-index__pill--idle" data-state="idle">Up to date</span>
+            }
+          </div>
+
+          @if (!s.enabled) {
+            <p class="doc-index__note" data-field="disabled-note">
+              Document search is switched off in the server configuration (DocumentKnowledge:Enabled). TFA cannot answer questions about
+              TaskFlow's documents until it is switched on.
+            </p>
+          }
+
+          <dl class="doc-index__facts">
+            <div>
+              <dt>Documents folder</dt>
+              <dd data-field="source-path">
+                <code>{{ s.sourcePath }}</code>
+                @if (!s.folderFound) {
+                  <span class="doc-index__missing" data-field="folder-missing">Not found</span>
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Embedding model</dt>
+              <dd data-field="embedding-model"><code>{{ s.embeddingModel }}</code></dd>
+            </div>
+            <div>
+              <dt>Files</dt>
+              <dd data-field="file-count">{{ s.fileCount }}</dd>
+            </div>
+            <div>
+              <dt>Chunks</dt>
+              <dd data-field="chunk-count">{{ s.chunkCount }}</dd>
+            </div>
+            <div>
+              <dt>Last indexed</dt>
+              <dd data-field="last-indexed">{{ s.lastIndexedAt ? (s.lastIndexedAt | date: 'd MMM y, HH:mm') : 'Not yet' }}</dd>
+            </div>
+          </dl>
+
+          @if (s.lastError) {
+            <div class="tf-alert" role="alert" data-error="document-index">
+              <tf-icon name="alert" />
+              <span>
+                {{ s.lastError }}
+                @if (s.lastErrorFile) {
+                  <small class="doc-index__file" data-field="error-file">File: {{ s.lastErrorFile }}</small>
+                }
+              </span>
+            </div>
+          }
+
+          @if (requestError()) {
+            <div class="tf-alert" role="alert" data-error="document-reindex">
+              <tf-icon name="alert" />
+              <span>{{ requestError() }}</span>
+            </div>
+          }
+
+          @if (canReindex() && s.enabled) {
+            <div class="doc-index__actions">
+              <button
+                type="button"
+                class="tf-btn tf-btn--primary"
+                data-action="reindex-documents"
+                [disabled]="s.isRunning || requesting()"
+                (click)="reindex()"
+              >
+                <tf-icon name="reset" /> Re-index now
+              </button>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="tf-card doc-index__card" aria-busy="true">
+          <span class="tf-skeleton doc-index__skeleton"></span>
+        </div>
+      }
+    }
+  </section>
+}

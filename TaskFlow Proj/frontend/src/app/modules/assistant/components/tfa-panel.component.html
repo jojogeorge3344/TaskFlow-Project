@@ -37,7 +37,7 @@
       <tf-icon name="alert" />
       <span>
         <b>{{ assistant.selected()?.displayName }} is a cloud provider.</b>
-        Your message and related task details are sent to it.
+        Your message, related task details and matching TaskFlow document text are sent to it.
       </span>
       <button type="button" class="tfa__notice-btn" data-action="acknowledge-cloud" (click)="acknowledge()">I understand</button>
       @if (assistant.heldMessage()) {

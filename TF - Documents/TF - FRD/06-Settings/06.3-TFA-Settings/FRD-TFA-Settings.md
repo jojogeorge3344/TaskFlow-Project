@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Functional Requirements Document  ·  **Version:** 1.0  ·  **Status:** Draft
+> **Document:** Functional Requirements Document  ·  **Version:** 1.1  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** BRD-TFA-Settings.md v1.0
+> **Based on:** BRD-TFA-Settings.md v1.1
 > **Module:** Settings  ·  **Sub-module:** 06.3 TFA Settings  ·  **Code:** TFAS
 > © 2026 Jojo George. All rights reserved.
 
@@ -18,6 +18,7 @@
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
+| 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`), traced to BRD-TFA-Settings v1.1: Document search card (screen elements, FR-TFAS-29 – FR-TFAS-36, UC-TFAS-04, messages N-TFAS-12 – N-TFAS-16, data, NFR-TFAS-09 – NFR-TFAS-10, traceability); cloud explanation (FR-TFAS-23) mentions matching document text. |
 
 ### Related Documents
 
@@ -25,7 +26,7 @@
 |---|---|---|
 | BRD – TFA Settings | Business needs this FRD details (REQ-TFAS-nn, BR-TFAS-nn, AC-TFAS-nn) | `../../../BRD/06-Settings/06.3-TFA-Settings/BRD-TFA-Settings.md` |
 | Overall FRD | Roles, global rules, Authentication, cross-cutting behaviour | `../../00-Overall/FRD-TaskFlow-Overall.md` |
-| FRD – TFA Assistant | Chat window that uses this configuration | `../../08-TFA-Assistant/08.1-Assistant/FRD-Assistant.md` |
+| FRD – TFA Assistant | Chat window that uses this configuration; answers from the TaskFlow documents (4.1.2) | `../../08-TFA-Assistant/08.1-Assistant/FRD-Assistant.md` |
 | FRD – Role Configuration | Grants the four `settings.ai.*` permissions | `../06.4-Role-Configuration/FRD-Role-Configuration.md` |
 | Development Plan | Screen-wise build plan | _Not applicable – not in the original 20-screen plan._ |
 | HLD / LLD | Technical design | `../../../HLD/06-Settings/06.3-TFA-Settings/HLD-TFA-Settings.md`, `../../../LLD/06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md` |
@@ -37,15 +38,18 @@
 ### 1.1 Purpose
 This FRD specifies the detailed, testable behaviour of the TFA Settings screen, where an authorized user chooses the AI
 provider and model behind TFA (the TaskFlow Assistant), adds and removes models, sets the Ollama server address, manages
-cloud API keys and tests the connection.
+cloud API keys and tests the connection, and (v1.1) where they see the state of TFA's document search and start a
+re-index.
 
 ### 1.2 Scope
 In scope: viewing the three providers with tag, status and key status; the linked Model and Server lists; adding and
 removing models; the Ollama server address; entering, keeping and removing Gemini and OpenAI keys; saving (one active
-server); the connection test; initial configuration; permission control of each action.
+server); the connection test; initial configuration; permission control of each action; the Document search card
+(status and **Re-index now**).
 
 Out of scope (BRD §3.2): the TFA chat window (TFA Assistant FRD); providers other than Ollama, Google Gemini and OpenAI
-GPT; usage or cost tracking; installing models on the Ollama server.
+GPT; usage or cost tracking; installing models on the Ollama server; choosing the documents folder, embedding model or
+search settings on the screen (server configuration `DocumentKnowledge`); uploading documents; PDF and Excel documents.
 
 ### 1.3 Audience
 Developer, tester, reviewer and product owner of TaskFlow.
@@ -68,6 +72,10 @@ Developer, tester, reviewer and product owner of TaskFlow.
 | Saved model | The model stored for a provider at the last save |
 | Configured provider | Switched on, has a model, and has an address (Ollama) or a readable key (cloud) |
 | Connection test | One short request ("Reply with OK.") to check that the provider answers |
+| Document search | TFA's index of the Markdown documents in the documents folder, used to answer questions about TaskFlow |
+| Embedding model | Ollama model (`nomic-embed-text` by default) that turns document text into vectors |
+| Chunk | One section of a document as stored in the index |
+| Indexing run | One check of the documents folder: changed files are re-embedded, deleted ones removed |
 
 ---
 
@@ -91,6 +99,8 @@ flowchart LR
   S -- "test request" --> O["Ollama (local)"]
   S -- "test request" --> G["Google Gemini (cloud)"]
   S -- "test request" --> P["OpenAI GPT (cloud)"]
+  S -- "status / re-index" --> D["TFA document index"]
+  D -- "embeddings" --> O
   T --> O
   T --> G
   T --> P
@@ -117,6 +127,8 @@ flowchart LR
 | Settings › TFA Settings › Choose model/server, add model, address, key, save | `settings.ai.edit` (needs `settings.ai.view`) | Granted | Denied | Denied | Configurable |
 | Settings › TFA Settings › Test connection | `settings.ai.test` (needs `settings.ai.view`) | Granted | Denied | Denied | Configurable |
 | Settings › TFA Settings › Remove a model from the list | `settings.ai.model.remove` (needs `settings.ai.view`) | Granted | Denied | Denied | Configurable |
+| Settings › TFA Settings › Document search status (v1.1) | `settings.ai.view` | Granted | Denied | Denied | Configurable |
+| Settings › TFA Settings › Re-index now (v1.1) | `settings.ai.edit` (needs `settings.ai.view`) | Granted | Denied | Denied | Configurable |
 
 > Manager and Employee values are the defaults given when the permission is first created. The Administrator role is
 > given every permission again each time the application starts.
@@ -127,8 +139,8 @@ flowchart LR
 
 ### 4.1 Module: TFA Settings (TFAS)
 
-**Purpose:** Choose the AI model and server behind TFA, manage models and API keys, and test the connection.  ·
-**BRD reference:** BRD-TFA-Settings SCREEN 1, BR-TFAS-01…BR-TFAS-07
+**Purpose:** Choose the AI model and server behind TFA, manage models and API keys, test the connection, and see and
+refresh TFA's document search.  ·  **BRD reference:** BRD-TFA-Settings SCREEN 1, BR-TFAS-01…BR-TFAS-10
 
 #### 4.1.1 Screen: TFA Settings
 
@@ -143,7 +155,7 @@ flowchart LR
 | Element | Type | Description | Mandatory | Visible to |
 |---|---|---|:---:|---|
 | **TFA settings** | Page title | – | – | `settings.ai.view` |
-| **Model and server** | Explanation | Ollama runs on your own server and is free; Google Gemini has a free tier with limits; OpenAI GPT has no free tier; Gemini and OpenAI are cloud services, so a user's question and related task details are sent to them | – | `settings.ai.view` |
+| **Model and server** | Explanation | Ollama runs on your own server and is free; Google Gemini has a free tier with limits; OpenAI GPT has no free tier; Gemini and OpenAI are cloud services, so a user's question, related task details and matching TaskFlow document text are sent to them | – | `settings.ai.view` |
 | **Model** | Drop-down grouped by provider | Built-in and added models; **Add new model…** in each group | Yes | `settings.ai.view` |
 | **New model name** | Text input | Shown after **Add new model…**; placeholder "For example phi3:mini" | Yes, when adding | `settings.ai.view` |
 | **Server** | Drop-down | "Ollama · http://localhost:11434", "Google Gemini · generativelanguage.googleapis.com", "OpenAI GPT · api.openai.com" | Yes | `settings.ai.view` |
@@ -155,6 +167,13 @@ flowchart LR
 | **Remove the key** / **Keep the key** | Buttons (cloud cards) | Mark the saved key for removal / undo that mark | – | `settings.ai.view` |
 | **Test connection** | Button + result text | Runs the connection test | – | `settings.ai.test` |
 | **Save TFA settings** | Button | Saves the configuration | – | `settings.ai.edit` |
+| **Document search** (v1.1) | Card | Title and explanation: "TFA answers questions about TaskFlow's features, screens, rules and design only from the Markdown documents in this folder. They are embedded with a free local Ollama model and checked for changes every few minutes." | – | `settings.ai.view` |
+| State | Pill | **Up to date**, **Indexing…** or **Switched off** | – | `settings.ai.view` |
+| **Documents folder** | Text | Full path of the folder; **Not found** when it does not exist | – | `settings.ai.view` |
+| **Embedding model**, **Files**, **Chunks** | Text | Model name; indexed files and chunks | – | `settings.ai.view` |
+| **Last indexed** | Date-time | When the last run finished (`d MMM y, HH:mm`), or "Not yet" | – | `settings.ai.view` |
+| Last error | Alert | Error text and "File: `path`" when it concerns one document | – | `settings.ai.view` |
+| **Re-index now** | Button | Starts an indexing run; disabled while one is running | – | `settings.ai.edit` (and document search switched on) |
 
 **Functional requirements**
 
@@ -182,12 +201,20 @@ flowchart LR
 | FR-TFAS-20 | The system shall let the user remove a model an administrator added, reload the screen from the saved state (dropping other unsaved edits) and show "Removed `model` from the list". | Should | `settings.ai.model.remove` | REQ-TFAS-18 |
 | FR-TFAS-21 | The system shall refuse to remove a built-in model ("A built-in model cannot be removed."), the model saved for its server ("That model is the one saved for its server. Choose another model and save before removing it.") or an unknown model ("That model is not in the list."). | Must | `settings.ai.model.remove` | REQ-TFAS-19, BR-TFAS-04 |
 | FR-TFAS-22 | The system shall show "The saved key can no longer be read. Enter it again." and treat the cloud provider as not configured when a saved key can no longer be read. | Should | `settings.ai.view` | REQ-TFAS-20 |
-| FR-TFAS-23 | The system shall explain on the screen that Gemini and OpenAI are cloud services that receive the user's question and related task details. | Should | `settings.ai.view` | REQ-TFAS-21 |
+| FR-TFAS-23 | The system shall explain on the screen that Gemini and OpenAI are cloud services that receive the user's question, related task details and matching TaskFlow document text. | Should | `settings.ai.view` | REQ-TFAS-21 |
 | FR-TFAS-24 | The system shall, on a brand-new installation, switch Ollama on at `http://localhost:11434` and leave both cloud providers off without a key; on an upgraded installation it shall leave TFA off until an administrator turns a provider on. | Should | – (system) | REQ-TFAS-22 |
 | FR-TFAS-25 | The system shall control viewing, editing/saving, testing and model removal by `settings.ai.view`, `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove`, refuse each action on the server without its permission, and hide **Save TFA settings**, **Test connection** and **Remove this model from the list** from users without the matching permission. | Must | `settings.ai.*` | REQ-TFAS-23, BR-TFAS-07 |
 | FR-TFAS-26 | The system shall allow `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove` to be held only together with `settings.ai.view`. | Must | – (Role Configuration) | BR-TFAS-07 |
 | FR-TFAS-27 | The system shall hide the **TFA Settings** menu item from users without `settings.ai.view` and return them to their dashboard when they open `/settings/tfa`. | Must | `settings.ai.view` | REQ-TFAS-24 |
 | FR-TFAS-28 | The system shall confirm a save with the toast "TFA settings saved" and a removal with "Removed `model` from the list", and show "Could not load the TFA settings.", "Could not save the TFA settings." or "Could not remove the model." when these fail. | Should | `settings.ai.*` | REQ-TFAS-25 |
+| FR-TFAS-29 | The system shall show users with `settings.ai.view` a **Document search** card with the documents folder (full path), the embedding model, the number of indexed files and chunks, and when indexing last finished ("Not yet" before the first run), and refuse the status to other users (403). | Must | `settings.ai.view` | REQ-TFAS-26, BR-TFAS-08 |
+| FR-TFAS-30 | The system shall mark the folder **Not found** when the documents folder does not exist. | Should | `settings.ai.view` | REQ-TFAS-27 |
+| FR-TFAS-31 | The system shall show the state **Indexing…** while a run is going and **Up to date** otherwise. | Must | `settings.ai.view` | REQ-TFAS-26 |
+| FR-TFAS-32 | The system shall show the last indexing error and, when it concerns one document, "File: `path`" (for example the Ollama server not reachable, the embedding model not installed, the folder not found, or a document that could not be indexed). | Must | `settings.ai.view` | REQ-TFAS-28 |
+| FR-TFAS-33 | The system shall show **Re-index now** only to users with `settings.ai.edit` while document search is switched on; a click asks the server to check the folder at once and answers 202 Accepted with the status shown as running. Users without `settings.ai.edit` are refused (403). | Must | `settings.ai.edit` | REQ-TFAS-29, BR-TFAS-08 |
+| FR-TFAS-34 | The system shall accept a re-index request while a run is going or already requested without starting a second run, and disable the button while a run is going. | Must | `settings.ai.edit` | REQ-TFAS-30, BR-TFAS-09 |
+| FR-TFAS-35 | The system shall ask for the status again every 3 seconds while a run is going, and stop when it has finished. | Should | `settings.ai.view` | REQ-TFAS-31 |
+| FR-TFAS-36 | The system shall, when document search is switched off in the server configuration (`DocumentKnowledge:Enabled` = false), show **Switched off** with "Document search is switched off in the server configuration (DocumentKnowledge:Enabled). TFA cannot answer questions about TaskFlow's documents until it is switched on.", hide **Re-index now**, and refuse a re-index request (400) with "Document search is switched off in the server configuration (DocumentKnowledge:Enabled)." | Should | `settings.ai.edit` | REQ-TFAS-32 |
 
 **Use case: UC-TFAS-01 – Choose the model and save**
 
@@ -235,6 +262,18 @@ flowchart TD
   E -- No --> G["Show failure message"]
 ```
 
+**Use case: UC-TFAS-04 – Check document search and re-index (v1.1)**
+
+| Item | Detail |
+|---|---|
+| Actor | Administrator or Custom role user |
+| Preconditions | Signed in; holds `settings.ai.view` (and `settings.ai.edit` to re-index) |
+| Trigger | Opens TFA Settings; clicks **Re-index now** |
+| Main flow | 1. Card loads the status (FR-TFAS-29). 2. User clicks **Re-index now** (FR-TFAS-33). 3. Server accepts (202); card shows **Indexing…** and refreshes every 3 s (FR-TFAS-35). 4. Run ends; card shows **Up to date**, the new counts and last indexed time. |
+| Alternate flows | A1: a run is already going → request accepted, no second run (FR-TFAS-34). |
+| Exceptions | E1: status cannot be loaded → "Could not load the document search status." with **Retry**. E2: request fails → "Could not start indexing." E3: run ends with an error → error and its file shown (FR-TFAS-32). E4: document search switched off → **Switched off**, no button (FR-TFAS-36). |
+| Postconditions | Index matches the folder: changed documents re-embedded, deleted ones removed; TFA answers from the new text. |
+
 **Use case: UC-TFAS-03 – Remove an added model**
 
 | Item | Detail |
@@ -258,7 +297,7 @@ flowchart TD
 | New key + Remove the key | Not both in one save | "Provide a new key or clear the key, not both." |
 | Providers in one save | Each provider at most once | Save refused |
 
-**Business rules applied:** BR-TFAS-01 … BR-TFAS-07; global security NFRs of the overall BRD (role-based access
+**Business rules applied:** BR-TFAS-01 … BR-TFAS-10; global security NFRs of the overall BRD (role-based access
 control, server-side validation, secure handling of credentials – original BRD NFR 5.2).
 
 **Notifications / side effects**
@@ -269,6 +308,7 @@ control, server-side validation, secure handling of credentials – original BRD
 | Model removed | Removing user | Toast "Removed `model` from the list" |
 | Test run | Testing user | Result text next to **Test connection** |
 | Provider switched | TFA users | TFA window offers only the configured provider |
+| Re-index finished | TFA users | TFA answers from the updated documents (no message) |
 
 **Messages**
 
@@ -281,6 +321,7 @@ control, server-side validation, secure handling of credentials – original BRD
 | Saved key unreadable | "The saved key can no longer be read. Enter it again." |
 | Load / save / remove failed | "Could not load the TFA settings." / "Could not save the TFA settings." / "Could not remove the model." |
 | No permission | Menu item hidden; opening `/settings/tfa` returns the user to their dashboard; buttons for forbidden actions hidden |
+| Document search | See N-TFAS-12 – N-TFAS-16 in §7 |
 
 ---
 
@@ -320,6 +361,17 @@ sequenceDiagram
 | 1 | ROLE | Administrator | Ticks `settings.ai.test` on a custom role; `settings.ai.view` is ticked automatically | FR-TFAS-26, Role Configuration FRD |
 | 2 | TFAS | Custom role user | Opens TFA Settings; sees **Test connection**, no **Save TFA settings** | FR-TFAS-25 |
 
+### 5.3 Re-index after a document change (TFAS → TFA, v1.1)
+
+| Step | Module | Actor / System | Action | FR reference |
+|---|---|---|---|---|
+| 1 | – | Project owner | Edits a document in the documents folder | – |
+| 2 | TFAS | Administrator | Clicks **Re-index now**; card shows **Indexing…** | FR-TFAS-33, FR-TFAS-35 |
+| 3 | TFA | System | Re-embeds only the changed document and swaps its sections | FRD-Assistant FR-TFA-66 |
+| 4 | TFA | Employee | Asks about the changed rule; the answer uses the new text and lists it under Sources | FRD-Assistant FR-TFA-57, FR-TFA-61 |
+
+Without the click the change is picked up at the next automatic check (every 5 minutes by default).
+
 ---
 
 ## 6. Reports & Exports
@@ -343,6 +395,11 @@ _Not applicable for this sub-module._
 | N-TFAS-09 | Test – model missing on Ollama | Testing user | Inline | "The configured model is not available on Ollama. Ask an administrator to install it, or choose another model." |
 | N-TFAS-10 | Saved key unreadable | Current user | Card | "The saved key can no longer be read. Enter it again." |
 | N-TFAS-11 | Load / save / remove failed | Current user | Toast / card | "Could not load the TFA settings." / "Could not save the TFA settings." / "Could not remove the model." |
+| N-TFAS-12 | Document search status not loaded | Current user | Card | "Could not load the document search status." with **Retry** |
+| N-TFAS-13 | Re-index request failed | Current user | Card | "Could not start indexing." |
+| N-TFAS-14 | Documents folder missing | Current user | Card | "The documents folder was not found: `folder`" |
+| N-TFAS-15 | Ollama or embedding model unavailable | Current user | Card | "The Ollama server at `address` cannot be reached. Start Ollama and try again." / "The Ollama server at `address` did not answer in time." / "The embedding model '`model`' is not installed in Ollama. Run: ollama pull `model`" |
+| N-TFAS-16 | Document could not be indexed / run failed | Current user | Card | "`path` could not be indexed: `reason`" with "File: `path`" / "Indexing failed. See the API log for details." |
 
 ---
 
@@ -352,6 +409,7 @@ _Not applicable for this sub-module._
 |---|---|---|---|
 | Provider configuration | One record per provider: switched on, model, server address (Ollama), protected key, last four characters, last changed by and at | System at start-up; changed by user | One record per provider; key replaced or removed, never shown |
 | Model list | Models offered per provider, with built-in flag | System (built-in) and user (added) | Provider + name unique; built-in models cannot be removed |
+| Document search status (v1.1) | Switched on, folder, folder found, embedding model, files, chunks, last indexed, running, last error, error file | System (indexer) | Held in memory; the stored index is described in FRD-Assistant §8 |
 
 ---
 
@@ -367,6 +425,8 @@ _Not applicable for this sub-module._
 | NFR-TFAS-06 | Failure messages are plain and say what to do next | §7 |
 | NFR-TFAS-07 | Users are told which providers are cloud services | FR-TFAS-02, FR-TFAS-23 |
 | NFR-TFAS-08 | Works in current desktop browsers, responsive layout | TFA Settings |
+| NFR-TFAS-09 | Re-indexing processes only changed documents | FR-TFAS-33 |
+| NFR-TFAS-10 | Status refreshes itself while indexing runs | FR-TFAS-35 |
 
 ---
 
@@ -375,7 +435,7 @@ _Not applicable for this sub-module._
 | Type | Description | Owner |
 |---|---|---|
 | Assumption | The organization obtains its own Gemini or OpenAI key, or runs Ollama on its own server. | Jojo George |
-| Assumption | Models used with Ollama are installed on the Ollama server outside TaskFlow. | Jojo George |
+| Assumption | Models used with Ollama are installed on the Ollama server outside TaskFlow, including the embedding model `nomic-embed-text` for document search (the AI setup scripts pull it). | Jojo George |
 | Open issue | ⚠️ To be confirmed: without `settings.ai.edit` the inputs stay editable and only **Save** is hidden; whether the screen should be fully read-only for view-only users. | Jojo George |
 | Open issue | ⚠️ To be confirmed: a user with `settings.ai.test` but without `settings.ai.edit` cannot test while there are unsaved changes (the automatic save is refused); whether such users should test the saved configuration instead. | Jojo George |
 | Open issue | ⚠️ To be confirmed: only the screen ensures that one server is active; whether more than one active provider should also be refused when saving. | Jojo George |
@@ -426,6 +486,16 @@ _Not applicable for this sub-module._
 | BR-TFAS-05 | FR-TFAS-15 | TFA Settings | UC-TFAS-01 | – |
 | BR-TFAS-06 | FR-TFAS-07 | TFA Settings | UC-TFAS-01 | AC-TFAS-04 |
 | BR-TFAS-07 | FR-TFAS-25, FR-TFAS-26 | TFA Settings, Role Configuration | – | AC-TFAS-15 |
+| REQ-TFAS-26 | FR-TFAS-29, FR-TFAS-31 | TFA Settings | UC-TFAS-04 | AC-TFAS-17, AC-TFAS-20 |
+| REQ-TFAS-27 | FR-TFAS-30 | TFA Settings | UC-TFAS-04 | AC-TFAS-17 |
+| REQ-TFAS-28 | FR-TFAS-32 | TFA Settings | UC-TFAS-04 | AC-TFAS-18 |
+| REQ-TFAS-29 | FR-TFAS-33 | TFA Settings | UC-TFAS-04 | AC-TFAS-19, AC-TFAS-20 |
+| REQ-TFAS-30 | FR-TFAS-34 | TFA Settings | UC-TFAS-04 | AC-TFAS-19 |
+| REQ-TFAS-31 | FR-TFAS-35 | TFA Settings | UC-TFAS-04 | AC-TFAS-19 |
+| REQ-TFAS-32 | FR-TFAS-36 | TFA Settings | UC-TFAS-04 | AC-TFAS-21 |
+| BR-TFAS-08 | FR-TFAS-29, FR-TFAS-33 | TFA Settings | UC-TFAS-04 | AC-TFAS-20 |
+| BR-TFAS-09 | FR-TFAS-34 | TFA Settings | UC-TFAS-04 | AC-TFAS-19 |
+| BR-TFAS-10 | FRD-Assistant FR-TFA-58, FR-TFA-66 (embeddings always on Ollama) | TFA window | – | – |
 
 Untraced BRD items: **0**.
 

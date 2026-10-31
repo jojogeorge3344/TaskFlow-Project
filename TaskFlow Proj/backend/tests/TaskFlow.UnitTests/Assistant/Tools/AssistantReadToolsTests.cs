@@ -5,7 +5,6 @@ using TaskFlow.Api.Models.Enums;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 using User = TaskFlow.Api.Models.Entities.User;
 using TaskFlow.Api.Services.Assistant.Chat;
-using TaskFlow.Api.Services.Assistant.HelpKnowledge;
 using TaskFlow.Api.Services.Assistant.Toolbox;
 using TaskFlow.Api.Services.Assistant.Tools;
 using TaskFlow.Api.Services.Communication.Mail.Messages;
@@ -223,38 +222,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
         Assert.Equal(10, outcome.RankedTasks!.Count);
     }
 
-    // ------------------------------------------------------------------ search_help / find_user / guidance
-
-    [Fact]
-    public async Task SearchHelpAnswersFromTheKnowledgeBaseAndLinks()
-    {
-        var outcome = await RunAsync(new SearchHelpTool(new HelpKnowledgeBase()), _h.Asha, """{"topic":"how do I change a task status"}""");
-
-        using var result = Parse(outcome);
-        Assert.True(result.RootElement.GetProperty("found").GetBoolean());
-        Assert.Contains(outcome.Links!, link => link.Route == "/tasks");
-    }
-
-    [Fact]
-    public async Task SearchHelpForARoleThatCannotDoItReturnsOnlyTheRestrictionNote()
-    {
-        var outcome = await RunAsync(new SearchHelpTool(new HelpKnowledgeBase()), _h.Asha, """{"topic":"how do I create a department"}""");
-
-        using var result = Parse(outcome);
-        var topic = result.RootElement.GetProperty("topics")[0];
-        Assert.True(topic.GetProperty("notAvailableForThisUsersRole").GetBoolean());
-        Assert.Contains("Administrator", topic.GetProperty("content").GetString());
-        Assert.DoesNotContain("Add", topic.GetProperty("content").GetString());
-    }
-
-    [Fact]
-    public async Task SearchHelpForAnUnknownTopicSaysNothingWasFound()
-    {
-        var outcome = await RunAsync(new SearchHelpTool(new HelpKnowledgeBase()), _h.Asha, """{"topic":"quantum physics"}""");
-
-        using var result = Parse(outcome);
-        Assert.False(result.RootElement.GetProperty("found").GetBoolean());
-    }
+    // ------------------------------------------------------------------ find_user / guidance
 
     [Fact]
     public async Task FindUserReturnsActiveMatchesOnly()
@@ -295,7 +263,7 @@ public class AssistantReadToolsTests : IAsyncLifetime
     {
         IAssistantTool[] tools =
         [
-            new GetMyTasksTool(_reader), new PrioritiseTasksTool(_reader), new SearchHelpTool(new HelpKnowledgeBase()),
+            new GetMyTasksTool(_reader), new PrioritiseTasksTool(_reader),
             new FindUserTool(Mail()), new ExplainPasswordChangeTool(), new ContactAdminGuidanceTool()
         ];
 

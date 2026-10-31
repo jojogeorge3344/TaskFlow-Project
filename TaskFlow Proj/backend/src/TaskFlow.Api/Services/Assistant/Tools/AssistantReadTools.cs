@@ -8,7 +8,6 @@ using TaskFlow.Api.Common.Rules;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Chat;
-using TaskFlow.Api.Services.Assistant.HelpKnowledge;
 using TaskFlow.Api.Services.Assistant.Toolbox;
 using TaskFlow.Api.Services.Communication.Mail.Messages;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Tasks;
@@ -223,56 +222,6 @@ public class PrioritiseTasksTool : IAssistantTool
             ToolJson.Serialize(result),
             Links: shown.Select(task => ToolJson.TaskLink(task.TaskId, task.TaskCode)).ToList(),
             RankedTasks: shown);
-    }
-}
-
-public class SearchHelpTool : IAssistantTool
-{
-    private readonly IHelpKnowledgeBase _help;
-
-    public SearchHelpTool(IHelpKnowledgeBase help)
-    {
-        _help = help;
-    }
-
-    public string Name => "search_help";
-
-    public string Description =>
-        "Looks up how to do something in TaskFlow (change a task status, send mail, edit the profile, and so on). Answer how-to questions only from what this returns.";
-
-    public string ParametersSchema => """
-        {"type":"object","properties":{"topic":{"type":"string","description":"What the user wants to know how to do."}},"required":["topic"]}
-        """;
-
-    public string? Policy => null;
-    public string ActionDescription => "Reading help";
-    public string WhoCanDoIt => "a signed-in user";
-
-    public Task<ToolOutcome> ExecuteAsync(AssistantCaller caller, int conversationId, JsonElement arguments, CancellationToken cancellationToken)
-    {
-        var topic = ToolJson.String(arguments, "topic") ?? string.Empty;
-        var topics = _help.Search(topic, caller.Role);
-
-        if (topics.Count == 0)
-        {
-            return Task.FromResult(new ToolOutcome(
-                ToolJson.Serialize(new { found = false, instruction = "There is no help for this. Tell the user you do not have that information." })));
-        }
-
-        var result = new
-        {
-            found = true,
-            topics = topics.Select(item => new
-            {
-                title = item.Title,
-                content = item.Content,
-                notAvailableForThisUsersRole = item.IsRestricted
-            })
-        };
-
-        return Task.FromResult(new ToolOutcome(
-            ToolJson.Serialize(result),
-            Links: topics.Where(item => item.Link is not null).Select(item => new AssistantLinkDto(item.Title, item.Link!)).ToList()));
     }
 }
 

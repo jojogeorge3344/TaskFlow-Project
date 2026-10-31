@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Sets up the free, local AI model for TFA (the TaskFlow assistant) through Ollama.
 #
-# Checks for Ollama, makes sure its server is running, downloads the model if it is not already there, and checks that
-# the model answers. Safe to run again: it skips whatever is already done.
+# Checks for Ollama, makes sure its server is running, downloads the chat model and the embedding model TFA uses to
+# search the TaskFlow documents if they are not already there, and checks that both answer. Safe to run again: it skips
+# whatever is already done.
 #
-# Usage:  ./scripts/setup-ai.sh [model] [base-url]
+# Usage:  ./scripts/setup-ai.sh [model] [base-url] [embedding-model]
 #         ./scripts/setup-ai.sh llama3.1:8b
+# The embedding model (default nomic-embed-text) must match DocumentKnowledge:EmbeddingModel in the API settings.
 set -euo pipefail
 
 MODEL="${1:-llama3.2:3b}"
 BASE_URL="${2:-http://localhost:11434}"
 BASE_URL="${BASE_URL%/}"
+EMBEDDING_MODEL="${3:-nomic-embed-text}"
 
 step() { printf '==> %s\n' "$1"; }
 ok() { printf '    %s\n' "$1"; }
@@ -40,14 +43,22 @@ if ! server_up; then
 fi
 ok "Server is running"
 
-step "Checking for the model $MODEL"
-if curl -fsS "$BASE_URL/api/tags" | grep -q "\"name\":\"$MODEL\""; then
-  ok "Already installed"
-else
-  echo "    Downloading $MODEL (this can take several minutes the first time)..."
-  ollama pull "$MODEL" || die "Downloading $MODEL failed. Check the model name and your internet connection."
-  ok "Downloaded"
-fi
+ensure_model() {
+  local name="$1" tags
+  step "Checking for the model $name"
+  tags="$(curl -fsS "$BASE_URL/api/tags")"
+  # A name without a tag is listed by Ollama as name:latest.
+  if grep -q "\"name\":\"$name\"" <<<"$tags" || { [[ "$name" != *:* ]] && grep -q "\"name\":\"$name:latest\"" <<<"$tags"; }; then
+    ok "Already installed"
+  else
+    echo "    Downloading $name (this can take several minutes the first time)..."
+    ollama pull "$name" || die "Downloading $name failed. Check the model name and your internet connection."
+    ok "Downloaded"
+  fi
+}
+
+ensure_model "$MODEL"
+ensure_model "$EMBEDDING_MODEL"
 
 step "Testing the model"
 reply="$(curl -fsS --max-time 180 "$BASE_URL/api/chat" -H 'Content-Type: application/json' \
@@ -55,7 +66,15 @@ reply="$(curl -fsS --max-time 180 "$BASE_URL/api/chat" -H 'Content-Type: applica
   || die "The model is installed but did not answer."
 ok "The model answered."
 
+step "Testing the embedding model"
+embedding="$(curl -fsS --max-time 120 "$BASE_URL/api/embed" -H 'Content-Type: application/json' \
+  -d "{\"model\":\"$EMBEDDING_MODEL\",\"input\":[\"search_query: how do I create a task?\"]}")" \
+  || die "The embedding model is installed but /api/embed did not answer."
+grep -q '"embeddings":\[\[' <<<"$embedding" || die "The embedding model answered without an embedding."
+ok "The embedding model answered."
+
 echo
 echo "Done. Last step, in TaskFlow as an Administrator:"
 echo "  Settings > TFA Settings > Ollama"
 echo "  turn it on, set the model to '$MODEL', keep the address $BASE_URL, then click Test connection."
+echo "TFA indexes the TaskFlow documents with '$EMBEDDING_MODEL' when the API starts; see Settings > TFA Settings > Document search."
