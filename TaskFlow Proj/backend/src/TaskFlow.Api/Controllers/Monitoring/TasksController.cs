@@ -3,10 +3,9 @@ using TaskFlow.Api.Common.Models;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Tasks;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Monitoring;
 

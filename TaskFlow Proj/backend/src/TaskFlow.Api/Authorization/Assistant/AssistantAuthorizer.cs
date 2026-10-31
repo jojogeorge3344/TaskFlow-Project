@@ -1,8 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using TaskFlow.Api.Services.Assistant.Access;
 
-namespace TaskFlow.Api.Authorization;
+namespace TaskFlow.Api.Authorization.Assistant;
 
 /// <summary>Answers TFA's "may this user do that?" with the application's own authorization policies, registered in
 /// <c>Program.cs</c> and used by the REST controllers. TFA and the API therefore cannot disagree, and a policy change

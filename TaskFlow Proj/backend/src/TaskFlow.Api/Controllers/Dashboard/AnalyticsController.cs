@@ -1,12 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Services.Dashboard.Analytics.Admin;
 using TaskFlow.Api.Services.Dashboard.Analytics.Employee;
 using TaskFlow.Api.Services.Dashboard.Analytics.Manager;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Dashboard;
 

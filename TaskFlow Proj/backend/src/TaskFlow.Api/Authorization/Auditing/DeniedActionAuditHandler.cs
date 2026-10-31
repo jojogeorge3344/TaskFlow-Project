@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 
-namespace TaskFlow.Api.Authorization;
+namespace TaskFlow.Api.Authorization.Auditing;
 
 /// <summary>Records every refused authorization as a denied action in the audit trail: a caller who
 /// holds some other permission attempts a protected action and the policy says no (Requirement 18,

@@ -1,47 +1,10 @@
-using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Common.Models;
-using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Models.Entities;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
-using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
-using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks;
-
-/// <summary>Which live tasks a caller may see, as decided by the task service. With <see cref="ViewAll"/> every live task
-/// is a candidate, otherwise only the caller's own (assigned, created or receiving notifications). When
-/// <see cref="TeamUserIds"/> is given the candidates are further limited to the team's tasks (assigned to, or notifying,
-/// a team member), plus, with <see cref="OrOwn"/>, the caller's own.</summary>
-public record TaskVisibility(int UserId, bool ViewAll, IReadOnlyList<int>? TeamUserIds = null, bool OrOwn = false);
-
-/// <summary>A dashboard bucket to filter by: every counted task, or one bucket as of <see cref="Now"/>.</summary>
-public record TaskBucketSelection(TaskBucket? Bucket, DateTime Now)
-{
-    public bool All => Bucket is null;
-}
-
-/// <summary>A dashboard date range on one of the task dates, end exclusive.</summary>
-public record TaskDateRange(AnalyticsDateBasis Basis, DateTime FromUtc, DateTime ToUtcExclusive);
-
-/// <summary>Everything a task list query can filter on. All given filters apply together.</summary>
-public record TaskListCriteria(
-    TaskVisibility Visibility,
-    int? AssignedToUserId = null,
-    TaskStatus? Status = null,
-    TaskPriority? Priority = null,
-    DateTime? DeadlineFrom = null,
-    DateTime? DeadlineTo = null,
-    string? Search = null,
-    TaskBucketSelection? Bucket = null,
-    DeadlineBucket? DeadlineBucket = null,
-    DeadlineBounds? DeadlineBounds = null,
-    TaskDateRange? DateRange = null,
-    int? DepartmentId = null,
-    int? ProjectId = null,
-    int? EmployeeId = null,
-    int? ManagerId = null);
 
 /// <summary>Tasks and their notification recipients. People on a task are loaded even when their account is deleted, so
 /// history keeps showing their names.</summary>

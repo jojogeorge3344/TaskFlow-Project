@@ -1,4 +1,4 @@
-namespace TaskFlow.Api.Authorization;
+namespace TaskFlow.Api.Authorization.Policies;
 
 public static class AuthPolicies
 {

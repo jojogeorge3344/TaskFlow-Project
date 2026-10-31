@@ -3,14 +3,6 @@ using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Auth.Accounts;
 
-/// <summary>What validating a session needs to know about its user right now.</summary>
-public record SessionUser(
-    string SecurityStamp,
-    bool IsActive,
-    DateTime? MfaEnabledAt,
-    string RoleName,
-    IReadOnlyList<string> PermissionKeys);
-
 /// <summary>The accounts people sign in with. Deleted accounts are never found.</summary>
 public interface IAccountRepository : IBaseRepository<User>
 {

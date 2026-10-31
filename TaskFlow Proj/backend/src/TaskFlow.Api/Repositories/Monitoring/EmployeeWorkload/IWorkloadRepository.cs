@@ -1,14 +1,7 @@
-using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
-
-/// <summary>An employee on the workload screen with the projects they are allocated to.</summary>
-public record WorkloadEmployee(int Id, string FullName, IReadOnlyList<ProjectAllocationDto> Projects);
-
-/// <summary>One employee's live tasks by kind: open, open and high or critical priority, open past the deadline, completed.</summary>
-public record WorkloadCounts(int UserId, int Active, int HighPriority, int Overdue, int Completed);
 
 /// <summary>What the Employee Workload screen reads.</summary>
 public interface IWorkloadRepository : IBaseRepository<User>

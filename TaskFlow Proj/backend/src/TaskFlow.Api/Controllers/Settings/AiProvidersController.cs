@@ -1,12 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest;
 using TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Settings;
 

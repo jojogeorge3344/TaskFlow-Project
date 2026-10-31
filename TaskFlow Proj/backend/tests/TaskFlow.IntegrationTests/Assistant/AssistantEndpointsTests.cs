@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
@@ -21,6 +20,7 @@ using TaskFlow.Api.Integrations.Ai.Providers;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Chat;
 using TaskFlow.Api.Services.Assistant.RateLimits;
+using TaskFlow.Api.Authorization.Assistant;
 
 namespace TaskFlow.IntegrationTests.Assistant;
 

@@ -1,13 +1,11 @@
-using TaskFlow.Api.Services.Assistant.Rules;
-using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Dtos.Assistant;
 using System.Text.Json;
-using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Integrations.Ai.Providers;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.AuditLog;
 using TaskFlow.Api.Services.Assistant.Chat;
 using TaskFlow.Api.Services.Assistant.Tools;
+using TaskFlow.Api.Authorization.Assistant;
 
 namespace TaskFlow.Api.Services.Assistant.Toolbox;
 

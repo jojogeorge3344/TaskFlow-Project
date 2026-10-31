@@ -1,8 +1,8 @@
 using TaskFlow.Api.Services.Auth.PasswordRecovery;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Services.Auth.AttemptLimits;
 using TaskFlow.Api.Services.Auth.Login;
 using TaskFlow.Api.Services.Auth.Sessions;
+using TaskFlow.Api.Authorization.Assistant;
 
 namespace TaskFlow.Api.Config;
 
@@ -72,7 +72,7 @@ public static class ServiceRegistration
         // Assistant
         services.AddSingleton<TaskFlow.Api.Services.Assistant.RateLimits.IAssistantRateLimiter, TaskFlow.Api.Services.Assistant.RateLimits.AssistantRateLimiter>();
         services.AddSingleton<TaskFlow.Api.Services.Assistant.HelpKnowledge.IHelpKnowledgeBase, TaskFlow.Api.Services.Assistant.HelpKnowledge.HelpKnowledgeBase>();
-        services.AddScoped<TaskFlow.Api.Services.Assistant.Access.IAssistantAuthorizer, AssistantAuthorizer>();
+        services.AddScoped<TaskFlow.Api.Authorization.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.AssistantTaskReader>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.AssistantUserResolver>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.AssistantManagerResolver>();

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace TaskFlow.Api.Services.Assistant.Access;
+namespace TaskFlow.Api.Authorization.Assistant;
 
 /// <summary>Asks the application's authorization system whether the user may do something. TFA must go through this
 /// for every action; it never decides on its own.</summary>

@@ -10,7 +10,3 @@ public interface ITokenService
 
     string HashRefreshToken(string refreshToken);
 }
-
-public record AccessToken(string Token, DateTime ExpiresAt);
-
-public record RefreshTokenValue(string Token, string TokenHash, DateTime ExpiresAt);

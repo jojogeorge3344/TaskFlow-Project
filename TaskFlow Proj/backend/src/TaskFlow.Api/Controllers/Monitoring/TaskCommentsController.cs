@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Monitoring;
 

@@ -1,40 +1,9 @@
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Models.Entities;
-using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Dashboard.Analytics;
-
-/// <summary>A dashboard date range on one of the task dates, end exclusive.</summary>
-public record AnalyticsDateRange(AnalyticsDateBasis Basis, DateTime FromUtc, DateTime ToUtcExclusive);
-
-/// <summary>Which counted tasks (live and not cancelled) a dashboard reads, as decided by the scope service. Every given
-/// part narrows the set: <see cref="TeamUserIds"/> to tasks assigned to or notifying a team member, <see cref="OwnUserId"/>
-/// to tasks assigned to or notifying one person, <see cref="ActiveMembersOfDepartmentId"/> to tasks assigned to an active
-/// member of a department, the entity filters as the admin dashboard defines them, and <see cref="Dates"/> to a range.</summary>
-public record AnalyticsTaskSet(
-    IReadOnlyList<int>? TeamUserIds = null,
-    int? OwnUserId = null,
-    int? ActiveMembersOfDepartmentId = null,
-    int? DepartmentId = null,
-    int? ProjectId = null,
-    int? EmployeeId = null,
-    int? ManagerId = null,
-    AnalyticsDateRange? Dates = null)
-{
-    public AnalyticsTaskSet WithoutDates() => this with { Dates = null };
-}
-
-/// <summary>How many instants fell in the quarter hour starting at <see cref="Start"/> (UTC), so a caller can group them
-/// into local days in any timezone.</summary>
-public record QuarterHourCount(DateTime Start, int Count);
-
-public record OverdueTaskRow(int Id, string TaskCode, string Title, DateTime Deadline, int AssignedToUserId, int? ProjectId);
-
-public record DeadlineTaskRow(int Id, string TaskCode, string Title, TaskPriority Priority, DateTime Deadline);
-
-public record ProjectProgressRow(int ProjectId, int Total, int Completed, DateTime? LatestOpenDeadline);
 
 /// <summary>The queries behind the analytics dashboards. Counts over a task set use one definition of every bucket, so the
 /// admin, manager and employee dashboards and the drill-down lists always agree.</summary>

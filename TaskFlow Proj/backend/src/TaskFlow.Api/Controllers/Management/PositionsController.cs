@@ -1,8 +1,8 @@
 using TaskFlow.Api.Services.Management.ProjectManagement.Positions;
 using TaskFlow.Api.Dtos.Management.ProjectManagement.Positions;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Management;
 

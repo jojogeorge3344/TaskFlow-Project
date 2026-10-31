@@ -1,18 +1,8 @@
-using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Notification.Reminders;
-
-/// <summary>An open task that may need a deadline reminder.</summary>
-public record ReminderCandidate(int Id, string Title, int CreatedByUserId, ReminderTaskSnapshot Snapshot);
-
-/// <summary>A reminder already recorded in the history.</summary>
-public record DeliveredReminder(int TaskId, int RecipientUserId, ReminderType Type, DateTime ScheduledFor);
-
-/// <summary>A task's notification recipient.</summary>
-public record TaskRecipientLink(int TaskId, int UserId);
 
 /// <summary>The reminder history and what a reminder pass reads about tasks. The history's unique
 /// (TaskId, RecipientUserId, ReminderType, ScheduledFor) index is what prevents duplicates.</summary>

@@ -2,8 +2,8 @@ using TaskFlow.Api.Services.Monitoring.EmployeeWorkload;
 using TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Monitoring;
 

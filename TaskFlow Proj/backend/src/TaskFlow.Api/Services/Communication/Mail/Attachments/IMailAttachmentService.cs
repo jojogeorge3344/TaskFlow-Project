@@ -3,9 +3,6 @@ using TaskFlow.Api.Common.Exceptions;
 
 namespace TaskFlow.Api.Services.Communication.Mail.Attachments;
 
-/// <summary>An attachment ready to stream to the caller.</summary>
-public sealed record MailAttachmentDownload(Stream Content, string FileName, string ContentType);
-
 /// <summary>Uploading, downloading and removing mail attachments. Downloads are allowed only to the uploader or
 /// to someone whose mailbox holds the mail; anything else is not found.</summary>
 public interface IMailAttachmentService
@@ -19,4 +16,3 @@ public interface IMailAttachmentService
     /// <summary>Removes the caller's upload that is not yet on a sent mail or draft.</summary>
     Task<bool> DeleteAsync(int callerId, int attachmentId, CancellationToken cancellationToken = default);
 }
-

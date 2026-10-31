@@ -3,11 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Access;
 
-namespace TaskFlow.Api.Authorization;
-
-public class TaskAccessRequirement : IAuthorizationRequirement
-{
-}
+namespace TaskFlow.Api.Authorization.TaskAccess;
 
 /// <summary>Resource-level access rule for task-scoped endpoints. The assignee, the task
 /// creator, any additional recipient, or a user whose role holds tasks.view.all may access a task.</summary>

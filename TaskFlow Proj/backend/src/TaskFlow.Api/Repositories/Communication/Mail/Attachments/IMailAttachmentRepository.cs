@@ -3,12 +3,6 @@ using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail.Attachments;
 
-/// <summary>How many uploads a user has waiting to be attached, and their total size.</summary>
-public record PendingUploads(int Count, long Bytes);
-
-/// <summary>What a download needs from an attachment record.</summary>
-public record AttachmentFile(string FileName, string ContentType, Guid StorageKey);
-
 /// <summary>Attachment records. The bytes live in the mail file store under <see cref="MailAttachment.StorageKey"/>.</summary>
 public interface IMailAttachmentRepository : IBaseRepository<MailAttachment>
 {

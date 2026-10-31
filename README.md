@@ -321,7 +321,9 @@ Layer rules, checked by `tests/TaskFlow.UnitTests/ArchitectureTests.cs` on every
   layer (`*Controller`, `*Service`, `*Repository`) and there are no empty folders.
 - Controllers sit directly in their top-level module folder (`Controllers/Auth/PasswordRecoveryController.cs`).
 - Every interface has a file of its own named after it, in the same folder as the class that implements it
-  (`Services/Profile/IProfileService.cs` next to `Services/Profile/ProfileService.cs`). There is no `Interfaces` folder.
+  (`Services/Profile/IProfileService.cs` next to `Services/Profile/ProfileService.cs`). There is no `Interfaces` folder,
+  and an interface file declares nothing but its interface: the records it uses each have a file of their own beside it.
+  `Authorization/` follows the same rule (`Authorization/Assistant/`, `TaskAccess/`, `Policies/`, `Auditing/`).
 - Every service and repository has a folder of its own. When a module has more than one, or also has sub-modules, each
   pair gets a named folder: `Services/Auth/Login/` (`IAuthService`, `AuthService`), `Services/Auth/Sessions/`,
   `Services/Auth/Mfa/`. A folder holds either code or sub-folders, never both; a module's shared `Rules/` folder and the

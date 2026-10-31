@@ -20,6 +20,7 @@ using TaskFlow.Api.Services.Assistant.AuditLog;
 using TaskFlow.Api.Services.Assistant.Chat;
 using TaskFlow.Api.Services.Communication.Mail.Messages;
 using TaskFlow.Api.Services.Management.EmployeeManagement.Employees;
+using TaskFlow.Api.Authorization.Assistant;
 
 namespace TaskFlow.Api.Services.Assistant.Actions;
 

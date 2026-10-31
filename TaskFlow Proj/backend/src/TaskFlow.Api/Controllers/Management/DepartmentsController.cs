@@ -2,8 +2,8 @@ using TaskFlow.Api.Services.Management.DepartmentManagement;
 using TaskFlow.Api.Dtos.Management.DepartmentManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Authorization.Policies;
 
 namespace TaskFlow.Api.Controllers.Management;
 

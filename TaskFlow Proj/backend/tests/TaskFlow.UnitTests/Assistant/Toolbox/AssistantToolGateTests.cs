@@ -8,6 +8,7 @@ using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Toolbox;
 using TaskFlow.Api.Services.Assistant.Tools;
 using TaskFlow.UnitTests.Assistant.Actions;
+using TaskFlow.Api.Authorization.Assistant;
 
 namespace TaskFlow.UnitTests.Assistant.Toolbox;
 

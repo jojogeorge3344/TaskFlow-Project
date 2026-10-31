@@ -1,23 +1,9 @@
 using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail.Messages;
-
-/// <summary>One mailbox item as its owner sees it, with what its message's conversation needs.</summary>
-public record MailItemHeader(
-    int Id,
-    int MessageId,
-    MailFolder Folder,
-    bool IsRead,
-    bool IsStarred,
-    bool IsImportant,
-    bool IsTrashed,
-    Guid ConversationId,
-    string? DraftTo,
-    string? DraftCc);
 
 /// <summary>Mail messages, their recipients and every user's mailbox items. Every mailbox query starts from the owner's
 /// own items that have not been deleted forever, so a mail outside the owner's mailbox is simply not found.</summary>

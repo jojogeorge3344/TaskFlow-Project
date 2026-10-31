@@ -231,7 +231,7 @@ public class ArchitectureTests
     [Fact]
     public void FoldersHoldEitherCodeOrSubFolders()
     {
-        var roots = new[] { "Services", "Repositories", "Integrations" }.Select(layer => Path.Combine(SourceRoot, layer))
+        var roots = new[] { "Services", "Repositories", "Integrations", "Authorization" }.Select(layer => Path.Combine(SourceRoot, layer))
             .Concat(TestProjectRoots.SelectMany(Directory.EnumerateDirectories).Where(directory => !IsTestBuildOutput(directory)));
         var offenders = roots
             .SelectMany(root => Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories).Prepend(root))
@@ -295,9 +295,11 @@ public class ArchitectureTests
             var interfaces = Regex.Matches(StripComments(File.ReadAllText(file)), @"^(?:public|internal)\s+(?:partial\s+)?interface\s+(\w+)", RegexOptions.Multiline)
                 .Select(match => match.Groups[1].Value)
                 .ToList();
-            if (interfaces.Count > 1 || (interfaces.Count == 1 && Path.GetFileNameWithoutExtension(file) != interfaces[0]))
+            var others = DeclaredTypes(file).Except(interfaces).ToList();
+            if (interfaces.Count > 1
+                || (interfaces.Count == 1 && (Path.GetFileNameWithoutExtension(file) != interfaces[0] || others.Count > 0)))
             {
-                offenders.Add($"{Path.GetRelativePath(SourceRoot, file)} ({string.Join(", ", interfaces)})");
+                offenders.Add($"{Path.GetRelativePath(SourceRoot, file)} ({string.Join(", ", interfaces.Concat(others))})");
             }
         }
 
@@ -312,7 +314,7 @@ public class ArchitectureTests
             .Where(type => type.IsInterface && type.Namespace?.StartsWith($"{Root}.", StringComparison.Ordinal) == true)
             .SelectMany(contract => types
                 .Where(type => type is { IsClass: true, IsAbstract: false } && type.GetInterfaces().Contains(contract)
-                               && TopFolderOf(type) == TopFolderOf(contract) && type.Namespace != contract.Namespace)
+                               && type.Namespace != contract.Namespace)
                 .Select(type => $"{contract.FullName} / {type.FullName}"))
             .ToList();
 
@@ -402,6 +404,12 @@ public class ArchitectureTests
     private static string? TopFolderOf(Type type) => type.Namespace?.Split('.') is [_, "Api", var folder, ..] ? folder : null;
 
     private static bool IsAllowedModulePath(string path) => path.Length == 0 || ModulePaths.Contains(path);
+
+    private static IEnumerable<string> DeclaredTypes(string file) =>
+        Regex.Matches(StripComments(File.ReadAllText(file)),
+                @"^(?:public|internal)\s+(?:(?:sealed|static|abstract|partial|readonly)\s+)*(?:record\s+struct|record\s+class|class|interface|record|enum|struct)\s+(\w+)",
+                RegexOptions.Multiline)
+            .Select(match => match.Groups[1].Value);
 
     private static string ParentPath(string path) => path.Contains('.') ? path[..path.LastIndexOf('.')] : string.Empty;
 

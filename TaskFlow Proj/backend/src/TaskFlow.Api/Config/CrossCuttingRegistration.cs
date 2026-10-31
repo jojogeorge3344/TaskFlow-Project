@@ -8,10 +8,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Filters;
 using TaskFlow.Api.Middleware;
+using TaskFlow.Api.Authorization.Auditing;
+using TaskFlow.Api.Authorization.Policies;
+using TaskFlow.Api.Authorization.TaskAccess;
 
 namespace TaskFlow.Api.Config;
 
