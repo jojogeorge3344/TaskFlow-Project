@@ -34,8 +34,8 @@ If the code shows a module or child module not in this table, add it and mention
 
 ## Sources (read in this order)
 
-1. **Screens & functional rules**: `Requirements/screens wise feature/NN-*.md` (20 screen files from the BRD).
-2. **Permissions & roles**: `Artifacts/permission-audit/role-permission-matrix.csv` and `permission-inventory.csv`. The `PermissionCatalog.cs` file in the backend is the source of truth when they disagree.
+1. **Screens & functional rules**: `TF - Documents/Screens Wise Feature Development Plan/NN-*.md` (20 screen files) and the approved BRD set `TF - Documents/TF - BRD/`.
+2. **Permissions & roles**: the permission documents in `TF - Documents/Permission Requirement/` (Excel and PDF, all roles and per role). The `PermissionCatalog.cs` file in the backend is the source of truth when they disagree.
 3. **Backend** (`TaskFlow Proj/backend/src/TaskFlow.Api/`):
    - `Controllers/<Module>/*Controller.cs`: routes, HTTP verbs, `[Authorize]` policies
    - `Services/<Module>/<Child>/`: business logic and rules
@@ -43,7 +43,7 @@ If the code shows a module or child module not in this table, add it and mention
    - `Dtos/<Module>/<Child>/` and `Dtos/<Module>/Validators/`: request/response and validation
    - `Models/Entities`, `Models/Enums`, `Authorization/`, `Common/`, `Integrations/`
 4. **Frontend** (`TaskFlow Proj/frontend/src/`): module folders, routes, guards, API services, permission directives.
-5. **Overall design**: `Artifacts/TDD-TaskFlow.md`, `TaskFlow Proj/project.md`.
+5. **Overall design**: `TF - Documents/TF - TDD/TDD-TaskFlow.md`, `TaskFlow Proj/project.md`.
 
 ## Workflow
 

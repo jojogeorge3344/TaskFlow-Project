@@ -22,7 +22,7 @@
 
 | Document | Purpose | Location |
 |---|---|---|
-| BRD – Overall | Business needs, global rules `BR-nn`, global acceptance criteria `AC-nn`, `REQ-AUTH-nn`, `REQ-LEGAL-nn` | [BRD-TaskFlow-Overall](../../BRD/00-Overall/BRD-TaskFlow-Overall.md) |
+| BRD – Overall | Business needs, global rules `BR-nn`, global acceptance criteria `AC-nn`, `REQ-AUTH-nn`, `REQ-LEGAL-nn` | [BRD-TaskFlow-Overall](<../../TF - BRD/00-Overall/BRD-TaskFlow-Overall.md>) |
 | BRDs – sub-modules (16) | `REQ-<CODE>-nn` baseline of every other screen | `../../BRD/<Folder>/BRD-<File stem>.md` (see section 2.3) |
 | FRDs – sub-modules (16) | Detailed functional behaviour of every other screen | Section 2.3 (links relative to this file) |
 | Development Plan | Screen-wise build plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` |
@@ -145,7 +145,7 @@ only outbound connections are to a cloud AI provider when an administrator choos
 
 | # | Code | Module | Sub-module | Sub-module FRD | BRD baseline |
 |---|---|---|---|---|---|
-| 0 | ALL | (all) | Overall, incl. Authentication and Legal | This document | [BRD-TaskFlow-Overall](../../BRD/00-Overall/BRD-TaskFlow-Overall.md) – REQ-AUTH-01 – 41, REQ-LEGAL-01 – 15 |
+| 0 | ALL | (all) | Overall, incl. Authentication and Legal | This document | [BRD-TaskFlow-Overall](<../../TF - BRD/00-Overall/BRD-TaskFlow-Overall.md>) – REQ-AUTH-01 – 41, REQ-LEGAL-01 – 15 |
 | 1 | DASH | Dashboard | Dashboard | [FRD-Dashboard](../01-Dashboard/01.1-Dashboard/FRD-Dashboard.md) | REQ-DASH-01 – 58 |
 | 2 | TASK | TaskFlow Monitoring | Task Management (incl. comments and activity history) | [FRD-Task-Management](../02-TaskFlow-Monitoring/02.1-Task-Management/FRD-Task-Management.md) | REQ-TASK-01 – 58 |
 | 3 | WORK | TaskFlow Monitoring | Employee Workload | [FRD-Employee-Workload](../02-TaskFlow-Monitoring/02.2-Employee-Workload/FRD-Employee-Workload.md) | REQ-WORK-01 – 17 |

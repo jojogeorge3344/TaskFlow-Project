@@ -15,7 +15,7 @@ where it all runs. It does **not** list classes, methods, columns or every endpo
 |---|---|
 | BRD / FRD | Scope, actors, quality goals, traceability (§15) |
 | Code facts – run `python "<tdd-sync-skill-dir>/scripts/extract_facts.py" "<workspace>/TaskFlow Proj" "<scratch>/facts.md"` (the `tdd-sync` skill) | Real packages and versions, modules, hosted services, integrations, data stores, routes |
-| `Artifacts/TDD-TaskFlow.md` §1–§5, §14–§19 | Architecture, decisions, security, configuration, deployment, backup |
+| `TF - Documents/TF - TDD/TDD-TaskFlow.md` §1–§5, §14–§19 | Architecture, decisions, security, configuration, deployment, backup |
 | Module overview docs (`TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/NN.0-*-Overview.md`) | Module responsibilities and dependencies |
 | `README.md` | Data folder, setup, technologies |
 
@@ -36,7 +36,8 @@ For a new system with no code yet, design from the BRD/FRD and mark choices as p
 7. Traceability (§15): main BRD/FRD items → module/component.
 8. Header/footer: version, date `DD-MMM-YYYY`, author **Jojo George (jojogeorge3344@gmail.com)**, project type
    **Personal Project (Skill Development)**, copyright. Never call the project academic/college/MCA.
-9. Save to `Artifacts/HLD-<Project>.md`. Optional PDF (rendered Mermaid, copyright footer) and DOCX.
+9. Save to `TF - Documents/TF - HLD/00-Overall/HLD-<Project>-Overall.md`, and per sub-module to
+   `TF - Documents/TF - HLD/<NN-Module>/<NN.N-Sub-Module>/HLD-<Sub-Module>.md`. Optional PDF (rendered Mermaid, copyright footer) and DOCX.
 10. **Check**:
     - No `{{` left; every module in the code appears in §5; versions match the fact sheet.
     - No low-level detail leaked (no column lists, method names, full endpoint tables).

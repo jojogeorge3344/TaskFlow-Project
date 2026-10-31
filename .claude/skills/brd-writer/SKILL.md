@@ -46,7 +46,8 @@ Ask only for what you cannot find. If the user is not present, use the most reas
    (`DD-MMM-YYYY`), author **Jojo George (jojogeorge3344@gmail.com)**, project type **Personal Project (Skill
    Development)**, copyright line at the top and the `<sub>` footer at the bottom. Never describe the project as an
    academic, college or MCA project.
-9. **Save** as `Requirements/BRD-<ProjectName>.md` (or where the user says). If the user also wants Word or PDF, convert
+9. **Save** as `TF - Documents/TF - BRD/00-Overall/BRD-<ProjectName>-Overall.md`, or for a sub-module
+   `TF - Documents/TF - BRD/<NN-Module>/<NN.N-Sub-Module>/BRD-<Sub-Module>.md` (or where the user says). If the user also wants Word or PDF, convert
    the finished Markdown (DOCX via the `docx` skill or pandoc; PDF with rendered Mermaid diagrams and the copyright
    footer).
 10. **Check before finishing**:

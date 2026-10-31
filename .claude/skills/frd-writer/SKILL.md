@@ -14,10 +14,10 @@ API design.
 
 | Source | Use for |
 |---|---|
-| BRD (`Requirements/BRD-*.md` or the BRD `.docx`, converted with `requirements-to-markdown`) | Objectives, roles, screens, business rules, acceptance criteria – every BRD item must be traced |
-| Development plan (`Requirements/Screens Wise Feature Development Plan/`) | Screen elements and functional points |
+| BRD (`TF - Documents/TF - BRD/**/BRD-*.md`, or a BRD `.docx` converted with `requirements-to-markdown`) | Objectives, roles, screens, business rules, acceptance criteria – every BRD item must be traced |
+| Development plan (`TF - Documents/Screens Wise Feature Development Plan/`) | Screen elements and functional points |
 | For an existing system – Application workflow docs (`TaskFlow Proj/TFWorkflow/App WF in MD/<NN-Module>/`) | Verified screens, functionalities, who can see/use them, permission keys, step-by-step flows, messages |
-| For an existing system – permission catalogue (`.../Common/Security/PermissionCatalog.cs`) and `Artifacts/permission-audit/Excel/*.xlsx` | Role × permission matrix (§3.2) |
+| For an existing system – permission catalogue (`.../Common/Security/PermissionCatalog.cs`) and the permission documents `TF - Documents/Permission Requirement/Permissions in Excel/*.xlsx` | Role × permission matrix (§3.2) |
 | For an existing system – frontend routes and validators (`frontend/src/app/modules/*/*.routes.ts`, `Dtos/**/Validators`) | Routes, field rules and real error messages |
 
 Never invent behaviour. If the BRD and the implemented system differ, describe the intended behaviour the user
@@ -36,9 +36,10 @@ confirms; otherwise describe the implemented one and add the difference to §10 
 7. Fill the traceability matrix (§11): every BRD screen requirement and business rule maps to ≥ 1 FRD requirement.
 8. Header/footer: version, date `DD-MMM-YYYY`, author **Jojo George (jojogeorge3344@gmail.com)**, project type
    **Personal Project (Skill Development)**, copyright. Never call the project academic/college/MCA.
-9. Save to `Requirements/FRD-<Project>.md` (or where the user says). Optional DOCX (docx skill/pandoc) and PDF (rendered
+9. Save to `TF - Documents/TF - FRD/00-Overall/FRD-<Project>-Overall.md` (or where the user says). Optional DOCX (docx skill/pandoc) and PDF (rendered
    Mermaid, copyright footer). For very large systems the user may prefer one file per module:
-   `Requirements/FRD/<NN-Module>.md` with an index file – ask once if unclear.
+   `TF - Documents/TF - FRD/<NN-Module>/<NN.N-Sub-Module>/FRD-<Sub-Module>.md`, with the overall file as the index –
+   ask once if unclear.
 10. **Check**:
     - No `{{` left (`grep -n "{{" <file>`).
     - IDs unique; every FR has priority, permission and trace; every BRD item appears in §11.

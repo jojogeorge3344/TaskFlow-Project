@@ -16,12 +16,18 @@ def norm(route):
 code_routes = {}
 for verb, route in re.findall(r"\| \w+ \| (GET|POST|PUT|PATCH|DELETE) \| `([^`]+)` \|", facts):
     code_routes[(verb, norm(route))] = route
-tdd_norm = {norm(m) for m in re.findall(r"`(/api/v1/[^`\s]+)`", tdd)}
-tdd_norm |= {norm("/api/v1" + m) for m in re.findall(r"`(/(?!api/)[a-z][^`\s]*)`", tdd)}   # short form /tasks/{id}
+tdd_api = {norm(m) for m in re.findall(r"`(/api/v1/[^`\s]+)`", tdd)}          # literal API routes
+tdd_short = {norm("/api/v1" + m) for m in re.findall(r"`(/(?!api/)[a-z][^`\s]*)`", tdd)
+             if ":" not in m and "?" not in m}                                   # short form /tasks/{id} (SPA routes use :id)
+tdd_norm = tdd_api | tdd_short
 
 missing_routes = sorted({r for (_, r) in code_routes if r not in tdd_norm})
 code_norm = {r for (_, r) in code_routes}
-stale_routes = sorted(r for r in tdd_norm if r.startswith("/api/v1/") and r not in code_norm)
+def is_prefix(r):            # base paths like /api/v1/auth are fine
+    return any(c.startswith(r + "/") for c in code_norm)
+DEV_ONLY = {"/api/v1/diagnostics/throw"}   # mapped in Program.cs in Development only, not a controller action
+stale_routes = sorted(r for r in tdd_api
+                      if r not in code_norm and not is_prefix(r) and "*" not in r and r not in DEV_ONLY)
 
 keys = re.findall(r"^- `([a-z]+(?:\.[a-z]+)+)` \(", facts, re.M)
 missing_keys = [k for k in keys if f"`{k}`" not in tdd and k not in tdd]

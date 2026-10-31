@@ -22,9 +22,9 @@
 
 | Document | Purpose | Location |
 |---|---|---|
-| BRD | Business needs this FRD details | {{Requirements/BRD-….md}} |
-| Development Plan | Screen-wise build plan | {{Requirements/Screens Wise Feature Development Plan/}} |
-| HLD / LLD / TDD | Technical design | {{Artifacts/…}} |
+| BRD | Business needs this FRD details | {{TF - Documents/TF - BRD/…/BRD-….md}} |
+| Development Plan | Screen-wise build plan | {{TF - Documents/Screens Wise Feature Development Plan/}} |
+| HLD / LLD / TDD | Technical design | {{TF - Documents/TF - HLD/ · TF - LLD/ · TF - TDD/}} |
 
 ---
 

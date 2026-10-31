@@ -28,9 +28,9 @@
 
 | Document | Location |
 |---|---|
-| Development Plan (screen-wise) | {{Requirements/Screens Wise Feature Development Plan/}} |
+| Development Plan (screen-wise) | {{TF - Documents/Screens Wise Feature Development Plan/}} |
 | FRD / Functional workflows | {{path}} |
-| TDD / HLD / LLD | {{Artifacts/…}} |
+| TDD / HLD / LLD | {{TF - Documents/TF - TDD/ · TF - HLD/ · TF - LLD/}} |
 
 ---
 

@@ -17,15 +17,16 @@ exist in the code (for an existing system) – never invent.
 | Backend source `TaskFlow Proj/backend/src/TaskFlow.Api/` | Service logic, validators, exceptions, `AppDbContext` configuration (keys, indexes, FKs, triggers), background jobs |
 | Frontend source `TaskFlow Proj/frontend/src/app/` | Pages, components, services, routes, guards |
 | Technical module docs `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` | Already-verified endpoint tables, sequences, rules and gaps per child module – reuse them |
-| `Artifacts/TDD-TaskFlow.md` §6–§16 and Appendices | Data model, API, auth, business logic, reminder engine |
+| `TF - Documents/TF - TDD/TDD-TaskFlow.md` §6–§16 and Appendices | Data model, API, auth, business logic, reminder engine |
 | FRD | Traceability (§11) |
 
 ## Workflow
 
 1. Read `templates/lld-template.md`; keep section order and headings.
 2. Run the fact extraction (above) and read the whole fact sheet.
-3. Decide the layout: one file `Artifacts/LLD-<Project>.md`, or – for a large system – an index plus one file per
-   module `Artifacts/LLD/<NN-Module>.md` (same template, §4 holding that module). Ask once if unclear; default to one
+3. Decide the layout: one file `TF - Documents/TF - LLD/00-Overall/LLD-<Project>-Overall.md`, or – for a large system –
+   that file as the index plus one file per sub-module
+   `TF - Documents/TF - LLD/<NN-Module>/<NN.N-Sub-Module>/LLD-<Sub-Module>.md` (same template, §4 holding that module). Ask once if unclear; default to one
    file per module when there are more than ~6 modules.
 4. For **each module → child module** fill §4: class/file inventory (real paths), class diagram, API contracts (every
    controller action of that module: method, full route, permission/policy, request, response, status codes), one

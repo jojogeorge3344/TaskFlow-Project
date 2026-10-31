@@ -74,7 +74,7 @@ Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custo
 | Drag and drop | Angular CDK | 19.2 |
 | QR codes (MFA setup) | qrcode | 1.5 |
 | Styling | Custom CSS design tokens and `.tf-*` primitives (no CSS framework) | – |
-| Backend tests | xUnit (UnitTests, IntegrationTests, ArchitectureTests) | – |
+| Backend tests | xUnit (`TaskFlow.UnitTests` – including the `Architecture/` rules – and `TaskFlow.IntegrationTests`) | – |
 | Frontend tests | Jasmine 5.6 · Karma 6.4 · folder-structure check (`npm run check:structure`) | – |
 | Runtime tools | Node.js (22 LTS recommended) · .NET 10 SDK | – |
 
@@ -91,7 +91,7 @@ Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custo
 | Tool | Version | Used for |
 |---|---|---|
 | **Claude** (Anthropic) | Claude Opus 5.5 (documentation and TDD sync) | Requirements analysis, design, code generation and review, documentation |
-| **Claude Code** | _version to be added_ | AI coding agent in the repository; runs the project skills and `/opsx` commands |
+| **Claude Code** | 2.1.292 | AI coding agent in the repository; runs the project skills and `/opsx` commands |
 | **OpenCode** (with `@opencode-ai/plugin`) | plugin 1.19.0 | Second AI coding agent; reads the same `.claude/skills` |
 | **OpenSpec** (spec-driven development CLI) | 1.14.1 | Every feature is planned as a change with proposal → design → specs → tasks before it is built (`openspec/changes/`, 38 changes) |
 | Git · GitHub · GitHub CLI (`gh`) | – | Version control, branches, pull requests and PR reviews |
@@ -130,7 +130,7 @@ folder per module with one sub-folder per sub-module (16 in total), each holding
 | **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
 | **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TaskFlow Proj/TFWorkflow/` and `TaskFlow Proj/TFTechnicalWorkflow/` | Markdown, PDF | Available |
 | **Specs** | Spec-driven change records: proposal, design, delta specs and tasks per feature | `openspec/changes/` (38 changes) | Markdown, HTML mockups | Available |
-| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | `BRD for Task management.docx` | DOCX | Superseded |
+| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository; its content lives on in the BRD set and the Development Plan | DOCX | Superseded |
 | README / project.md / agent.md | Setup, operations, structure rules, contributor rules | repository root and `TaskFlow Proj/` | Markdown | Available |
 
 ### Documentation formats and tooling
@@ -138,7 +138,7 @@ folder per module with one sub-folder per sub-module (16 in total), each holding
 | Format | Used for |
 |---|---|
 | **Markdown (`.md`)** | Source of truth for the BRD, FRD, HLD, LLD, TDD, workflow documents, specs and READMEs; diagrams written in Mermaid |
-| **DOCX (`.docx`)** | Original BRD (v1.0, superseded by the Markdown BRD set) |
+| **DOCX (`.docx`)** | Original BRD (v1.0, superseded by the Markdown BRD set and retired from the repository) |
 | **PDF (`.pdf`)** | Print/share copy next to every Markdown document (BRD, FRD, HLD, LLD, TDD, workflow docs, permission documents), with rendered diagrams and the copyright footer |
 | **Excel (`.xlsx`)** | Permission documents (all permissions; Administrator, Manager, Employee) |
 | HTML | UI mockups inside OpenSpec changes |
