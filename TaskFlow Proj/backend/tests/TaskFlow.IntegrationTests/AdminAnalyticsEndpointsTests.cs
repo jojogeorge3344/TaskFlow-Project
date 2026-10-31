@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
@@ -165,7 +166,8 @@ public class AdminAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var token = await LoginAsync(client, "ana-admin", SystemRoles.Administrator);
         await SeedTasksAsync("ana-admin");
-        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        // The API buckets dates in the application timezone, so "today" must come from the same clock, not the UTC date.
+        var today = await TodayLocalAsync();
         var query = $"from={today}&to={today}&basis=Created";
 
         var analytics = await GetAsync(client, $"{AnalyticsUrl}?{query}", token);
@@ -189,6 +191,13 @@ public class AdminAnalyticsEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var response = await GetAsync(client, "/api/v1/tasks?from=2026-02-01&to=2026-01-01", token);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task<string> TodayLocalAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var clock = scope.ServiceProvider.GetRequiredService<IAppClock>();
+        return (await clock.TodayLocalAsync()).ToString("yyyy-MM-dd");
     }
 
     private async Task SeedTasksAsync(string username)
