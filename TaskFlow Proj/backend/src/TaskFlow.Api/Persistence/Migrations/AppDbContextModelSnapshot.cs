@@ -296,6 +296,81 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.ToTable("DepartmentManagers");
                 });
 
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.DocumentChunk", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Dimensions")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("DocumentSourceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("HeadingPath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentSourceId");
+
+                    b.ToTable("DocumentChunks");
+                });
+
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.DocumentSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChunkCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EmbeddingModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("IndexedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RelativePath")
+                        .IsUnique();
+
+                    b.ToTable("DocumentSources");
+                });
+
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailAttachment", b =>
                 {
                     b.Property<int>("Id")
@@ -1188,6 +1263,17 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.Navigation("Manager");
                 });
 
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.DocumentChunk", b =>
+                {
+                    b.HasOne("TaskFlow.Api.Models.Entities.DocumentSource", "DocumentSource")
+                        .WithMany("Chunks")
+                        .HasForeignKey("DocumentSourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DocumentSource");
+                });
+
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailAttachment", b =>
                 {
                     b.HasOne("TaskFlow.Api.Models.Entities.MailMessage", "Message")
@@ -1533,6 +1619,11 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.Navigation("ManagerLinks");
 
                     b.Navigation("Memberships");
+                });
+
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.DocumentSource", b =>
+                {
+                    b.Navigation("Chunks");
                 });
 
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.MailMessage", b =>

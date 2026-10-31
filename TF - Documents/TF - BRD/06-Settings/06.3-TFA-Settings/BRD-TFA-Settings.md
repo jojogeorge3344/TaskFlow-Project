@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Business Requirements Document  ·  **Version:** 1.0  ·  **Status:** Approved
+> **Document:** Business Requirements Document  ·  **Version:** 1.1  ·  **Status:** Approved (v1.0 baseline); v1.1 change recorded
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > **Module:** Settings  ·  **Sub-module:** 06.3 TFA Settings  ·  **Code:** TFAS
@@ -18,6 +18,7 @@
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
 | 1.0 | 31-Oct-2026 | Jojo George | Approved and signed off; baselined as the agreed business requirements. |
+| 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Added the **Document search** card to SCREEN 1 (index status and **Re-index now**): OBJ-TFAS-04, workflow 4.4, REQ-TFAS-26 – REQ-TFAS-32, BR-TFAS-08 – BR-TFAS-10, NFR-TFAS-09 – NFR-TFAS-10, R-TFAS-06, AC-TFAS-17 – AC-TFAS-21; REQ-TFAS-21 / AC-TFAS-13 wording now includes matching document text; scope, data, integrations, assumptions, deliverables and glossary updated. |
 
 ### Approvals / Sign-off
 
@@ -31,7 +32,8 @@
 | Document | Location |
 |---|---|
 | Overall BRD (roles, global rules, global NFRs) | `../../00-Overall/BRD-TaskFlow-Overall.md` |
-| TFA Assistant BRD (uses this configuration) | `../../08-TFA-Assistant/08.1-Assistant/BRD-Assistant.md` |
+| TFA Assistant BRD (uses this configuration; answers from the TaskFlow documents) | `../../08-TFA-Assistant/08.1-Assistant/BRD-Assistant.md` |
+| OpenSpec change (document search) | `openspec/changes/tfa-document-rag/` |
 | Development Plan (screen-wise) | _Not applicable – not in the original 20-screen plan._ |
 | FRD | `../../../FRD/06-Settings/06.3-TFA-Settings/FRD-TFA-Settings.md` |
 | HLD / LLD | `../../../HLD/06-Settings/06.3-TFA-Settings/HLD-TFA-Settings.md`, `../../../LLD/06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md` |
@@ -66,7 +68,9 @@
 ### 1.1 Introduction
 TFA Settings is the screen where an authorized user chooses the AI model and server behind TFA, the TaskFlow Assistant.
 It supports a free local server (Ollama) and two cloud services (Google Gemini and OpenAI GPT), lets the user add and
-remove models, stores API keys protected, and runs a connection test before users rely on the assistant.
+remove models, stores API keys protected, and runs a connection test before users rely on the assistant. Since v1.1 it
+also shows the state of **Document search** – the index of TaskFlow's own documents that TFA answers TaskFlow questions
+from – and lets an administrator start a re-index.
 
 ### 1.2 Business Problem / Current Situation
 An AI assistant is only useful when it is connected to a working model. Without a settings screen the provider, model and
@@ -80,12 +84,15 @@ and nobody could check whether the connection works until a user's question fail
 | OBJ-TFAS-01 | Let the organization choose which AI provider and model TFA uses | Provider and model are chosen and saved from the screen; TFA offers only that configuration |
 | OBJ-TFAS-02 | Keep API keys safe | Keys are stored protected and never shown again; only "key set" and the last four characters are visible |
 | OBJ-TFAS-03 | Confirm the connection works before users depend on it | One click runs a test and shows a plain-language result |
+| OBJ-TFAS-04 | Let administrators see whether TFA's document answers are ready and current (v1.1) | The screen shows the documents folder, model, file and chunk counts, last indexing time and any error; one click starts a re-index |
 
 ### 1.4 Expected Benefits
 - The organization can run TFA free on its own server, or use a cloud service when it prefers.
 - API keys cannot be read back by anyone, including Administrators.
 - Problems (wrong key, server not running, rate limit) are found and explained before users meet them.
 - Everyone uses the one model the Administrator chose.
+- Administrators can see at a glance why TFA cannot answer from the documents (folder missing, Ollama not running,
+  embedding model not installed) and refresh the index without restarting TaskFlow.
 
 ---
 
@@ -104,7 +111,7 @@ and nobody could check whether the connection works until a user's question fail
 
 | Role | Description | Main responsibilities | Access level |
 |---|---|---|---|
-| Administrator | Manages the whole system | View, edit, test and remove models | Organization (full screen) |
+| Administrator | Manages the whole system | View, edit, test and remove models; view the document search status and start a re-index | Organization (full screen) |
 | Manager | Assigns and monitors tasks | None on this screen | None by default |
 | Employee | Works on assigned tasks | None on this screen | None by default |
 | Custom role | Role defined on Role Configuration | As granted | `settings.ai.view` opens the screen; `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove` allow the actions |
@@ -120,12 +127,18 @@ and nobody could check whether the connection works until a user's question fail
 - Setting the Ollama server address.
 - Entering, keeping or removing a Gemini or OpenAI API key.
 - Testing the connection to a provider.
+- Seeing the document search status (documents folder, embedding model, files, chunks, last indexed, running state, last
+  error) and starting a re-index (v1.1).
 
 ### 3.2 Out of Scope (this release)
 - The TFA chat window itself – TFA Assistant BRD.
 - AI providers other than Ollama, Google Gemini and OpenAI GPT.
 - Usage or cost tracking of cloud providers.
-- Installing models on the Ollama server (done outside TaskFlow).
+- Installing models on the Ollama server (done outside TaskFlow), including the embedding model `nomic-embed-text` (the
+  AI setup scripts pull it).
+- Choosing the documents folder, the embedding model or the search settings on the screen – they are server
+  configuration (`DocumentKnowledge`) (v1.1).
+- Uploading documents through TaskFlow, PDF or Excel documents, and per-role document filtering (v1.1).
 
 ### 3.3 Modules Overview
 
@@ -229,6 +242,41 @@ succeeds; removing `llama3.2:3b` is refused because it is built-in.
 **Exceptions / alternate flows:**
 - Unsaved edits on the screen are dropped when the screen reloads after removal.
 
+### 4.4 Check Document Search and Re-index (v1.1)
+
+**Trigger:** The Administrator wants to know whether TFA can answer from the TaskFlow documents, or has just changed
+documents  ·  **Actors:** Administrator, Custom role, System
+
+| Step | Actor / System | Action | Result |
+|---|---|---|---|
+| 1 | Administrator | Opens **Settings → TFA Settings** | **Document search** card shows folder, embedding model, files, chunks, last indexed and state |
+| 2 | Administrator | Clicks **Re-index now** | Request sent |
+| 3 | System | Checks the documents folder at once (unless a run is already going, which is not started twice) | Card shows **Indexing…** |
+| 4 | System | Re-processes only changed documents, removes deleted ones, and the card refreshes every 3 seconds | Card shows **Up to date** with the new counts and time, or the error with its file |
+
+```mermaid
+flowchart LR
+  A["Open TFA Settings"] --> B["Document search card"]
+  B --> C["Click Re-index now"]
+  C --> D{"Already running?"}
+  D -- Yes --> E["Accepted, no second run"]
+  D -- No --> F["Check folder now"]
+  E --> G["Indexing… (refresh every 3 s)"]
+  F --> G
+  G --> H{"Error?"}
+  H -- No --> I["Up to date, new counts"]
+  H -- Yes --> J["Error shown with its file"]
+```
+
+**Example:** The project owner edits the Task Management FRD. The Administrator clicks **Re-index now**; the card shows
+**Indexing…**, then **Up to date** with a new last-indexed time. Only that one document was processed again.
+
+**Exceptions / alternate flows:**
+- Ollama is not running → the card shows "The Ollama server at `{address}` cannot be reached. Start Ollama and try again."
+- The embedding model is not installed → "The embedding model '`{model}`' is not installed in Ollama. Run: ollama pull `{model}`"
+- The documents folder does not exist → "The documents folder was not found: `{folder}`" and the folder is marked **Not found**.
+- Document search is switched off in the server configuration → state **Switched off**, no **Re-index now** button.
+
 ---
 
 ## 5. Screen-by-Screen Requirements
@@ -243,12 +291,13 @@ succeeds; removing `llama3.2:3b` is refused because it is built-in.
 | **Priority** | Must |
 
 **Purpose**
-Choose the AI model and server behind TFA, manage models and API keys, and test the connection.
+Choose the AI model and server behind TFA, manage models and API keys, test the connection, and (v1.1) see and refresh
+the document search that TFA answers TaskFlow questions from.
 
 **Screen Elements**
 - Page title **TFA settings** and a **Model and server** section explaining the choices: Ollama runs on your own server
   and is free; Google Gemini has a free tier with limits; OpenAI GPT has no free tier; with the cloud services a user's
-  question and related task details are sent to the provider.
+  question, related task details and matching TaskFlow document text are sent to the provider (v1.1 wording).
 - **Model** list grouped by provider, with **Add new model…** in each group; **New model name** box.
 - **Server** list: "Ollama · http://localhost:11434", "Google Gemini · generativelanguage.googleapis.com", "OpenAI GPT ·
   api.openai.com".
@@ -257,6 +306,10 @@ Choose the AI model and server behind TFA, manage models and API keys, and test 
 - Provider card: name, **Local** / **Cloud** tag, status (**In use**, **Ready to use**, **Needs an API key**, **Not
   configured**); **Server address** (Ollama) or **API key** with key status and **Remove the key** / **Keep the key**.
 - **Test connection** button and result; **Save TFA settings** button.
+- **Document search** card (v1.1): explanation that TFA answers questions about TaskFlow's features, screens, rules and
+  design only from the Markdown documents in the folder; **Documents folder** (with **Not found** when missing),
+  **Embedding model**, **Files**, **Chunks**, **Last indexed** ("Not yet" before the first run); state **Up to date**,
+  **Indexing…** or **Switched off**; last error with its file; **Re-index now** button.
 
 **Functional Requirements**
 
@@ -282,11 +335,18 @@ Choose the AI model and server behind TFA, manage models and API keys, and test 
 | REQ-TFAS-18 | The system shall let the user remove a model that an administrator added. | Should |
 | REQ-TFAS-19 | The system shall refuse to remove a built-in model or the model saved for its server. | Must |
 | REQ-TFAS-20 | The system shall tell the user "The saved key can no longer be read. Enter it again." when a saved key cannot be read. | Should |
-| REQ-TFAS-21 | The system shall explain on the screen that cloud providers receive the user's question and related task details. | Should |
+| REQ-TFAS-21 | The system shall explain on the screen that cloud providers receive the user's question, related task details and (v1.1) matching TaskFlow document text. | Should |
 | REQ-TFAS-22 | The system shall switch Ollama on at `http://localhost:11434` with the cloud providers off on a brand-new installation, and leave TFA off on an upgraded installation until an administrator turns it on. | Should |
 | REQ-TFAS-23 | The system shall control viewing, editing, testing and model removal by four separate permissions and hide the buttons for actions the user may not do. | Must |
 | REQ-TFAS-24 | The system shall hide the menu item from, and redirect to their dashboard, users without `settings.ai.view`. | Must |
 | REQ-TFAS-25 | The system shall confirm actions with "TFA settings saved" and "Removed `model` from the list". | Should |
+| REQ-TFAS-26 | The system shall show users with `settings.ai.view` a Document search card with the documents folder, the embedding model, the number of indexed files and chunks, when indexing last finished, and whether indexing is running. | Must |
+| REQ-TFAS-27 | The system shall mark the documents folder **Not found** when it does not exist. | Should |
+| REQ-TFAS-28 | The system shall show the last indexing error and the document it concerns. | Must |
+| REQ-TFAS-29 | The system shall let users with `settings.ai.edit` start a re-index with **Re-index now**, and hide the button from other users. | Must |
+| REQ-TFAS-30 | The system shall accept a re-index request while indexing is already running without starting a second run. | Must |
+| REQ-TFAS-31 | The system shall refresh the card every 3 seconds while indexing is running. | Should |
+| REQ-TFAS-32 | The system shall show **Switched off** and no **Re-index now** button when document search is switched off in the server configuration, and refuse a re-index request then. | Should |
 
 **Validations & Messages**
 
@@ -309,6 +369,12 @@ Choose the AI model and server behind TFA, manage models and API keys, and test 
 | Test – model missing on Ollama | "The configured model is not available on Ollama. Ask an administrator to install it, or choose another model." |
 | Load / save / remove failed | "Could not load the TFA settings." / "Could not save the TFA settings." / "Could not remove the model." |
 | No permission | Menu item hidden; address returns to dashboard; buttons for forbidden actions hidden |
+| Document search status failed (v1.1) | "Could not load the document search status." with **Retry** |
+| Re-index failed (v1.1) | "Could not start indexing." |
+| Document search switched off (v1.1) | "Document search is switched off in the server configuration (DocumentKnowledge:Enabled). TFA cannot answer questions about TaskFlow's documents until it is switched on." |
+| Documents folder missing (v1.1) | "The documents folder was not found: `{folder}`" |
+| Ollama not reachable for document search (v1.1) | "The Ollama server at `{address}` cannot be reached. Start Ollama and try again." |
+| Embedding model missing (v1.1) | "The embedding model '`{model}`' is not installed in Ollama. Run: ollama pull `{model}`" |
 
 > ⚠️ To be confirmed: without `settings.ai.edit` the inputs on the screen stay editable and only **Save** is hidden;
 > whether the screen should be fully read-only for view-only users.
@@ -334,6 +400,9 @@ TFA users are offered only the configured model.
 | BR-TFAS-05 | Each provider appears only once in a save. | SCREEN 1 |
 | BR-TFAS-06 | Server addresses pointing at link-local or cloud metadata addresses are refused. | SCREEN 1 |
 | BR-TFAS-07 | `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove` each need `settings.ai.view`. | SCREEN 1, Role Configuration |
+| BR-TFAS-08 | Viewing the document search status needs `settings.ai.view`; starting a re-index needs `settings.ai.edit` (v1.1). | SCREEN 1 |
+| BR-TFAS-09 | Only one indexing run happens at a time; a re-index request while one runs starts nothing new (v1.1). | SCREEN 1 |
+| BR-TFAS-10 | Document embeddings are always made on Ollama, whichever chat provider is selected, at the address configured for document search or else the saved Ollama server address (v1.1). | SCREEN 1, TFA |
 
 Global rules and requirements that apply (see [overall BRD section 6](../../00-Overall/BRD-TaskFlow-Overall.md) and section 7): the global security NFRs – role-based access control, server-side input
 validation and secure handling of credentials (original BRD NFR 5.2). No original BRD business rule is specific to this
@@ -353,6 +422,8 @@ screen.
 | NFR-TFAS-06 | Usability | Failure messages are plain language and say what to do next | Every failure kind has its own message |
 | NFR-TFAS-07 | Privacy | Users are told which providers are cloud services | Cloud tag and explanation on the screen |
 | NFR-TFAS-08 | Compatibility | Works in current desktop browsers, responsive layout | As the global compatibility NFR |
+| NFR-TFAS-09 | Performance | Re-indexing processes only documents that changed | Unchanged documents are skipped; the first full indexing of 89 documents took about 28 minutes on a laptop CPU, later runs seconds (v1.1) |
+| NFR-TFAS-10 | Usability | The status card shows indexing progress without a manual refresh | Refreshed every 3 seconds while indexing runs (v1.1) |
 
 ---
 
@@ -362,6 +433,7 @@ screen.
 |---|---|---|---|
 | AI provider configuration | One record per provider | Provider, switched on, model, server address (Ollama only), protected key, last four characters, last changed by and at | One record per provider; a key is replaced or removed, never shown |
 | AI model list | Models offered per provider | Provider, model name, built-in flag | Provider + name unique; built-in models cannot be removed |
+| Document search status (v1.1) | What the card shows | Switched on, folder, folder found, embedding model, files, chunks, last indexed, running, last error and its file | Kept in memory by the server; the index itself is described in the TFA Assistant BRD |
 
 ---
 
@@ -373,6 +445,8 @@ screen.
 | Google Gemini | Cloud AI model, free tier with limits | Optional | Needs an API key; question and task details are sent to Google |
 | OpenAI GPT | Cloud AI model, no free tier | Optional | Needs an API key; question and task details are sent to OpenAI |
 | TFA Assistant | Uses the saved configuration | Required | Offers only configured providers |
+| Ollama embedding model `nomic-embed-text` (v1.1) | Makes the document index searchable | Required for document search | Uses the saved Ollama server address unless the server configuration sets another one |
+| TaskFlow documents folder (v1.1) | Documents TFA answers from | Required for document search | Set in the server configuration (`DocumentKnowledge:SourcePath`) |
 | Server key protection | Protects stored API keys | Required | When it is lost, saved keys must be entered again |
 
 ---
@@ -398,6 +472,7 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | Constraint | Only Ollama, Google Gemini and OpenAI GPT are supported. |
 | Dependency | TFA Assistant reads this configuration. |
 | Dependency | Role Configuration grants the four `settings.ai.*` permissions. |
+| Assumption | Ollama runs with `nomic-embed-text` installed when document search is used (v1.1). |
 
 ---
 
@@ -410,6 +485,7 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | R-TFAS-03 | Cloud free limit reached, TFA unavailable | Medium | Medium | Rate-limit message; switch to another model |
 | R-TFAS-04 | Server key protection lost, keys unreadable | Medium | Low | Detected and reported; enter key again |
 | R-TFAS-05 | Server address abused to reach internal metadata services | High | Low | Link-local and metadata addresses refused |
+| R-TFAS-06 | TFA cannot answer from the documents and nobody notices (v1.1) | Medium | Medium | Document search card shows the state, counts and the last error with its file |
 
 ---
 
@@ -429,10 +505,15 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | AC-TFAS-10 | Test with unsaved changes saves them first. | REQ-TFAS-17 |
 | AC-TFAS-11 | An added model is removed; a built-in or saved model is refused with its message. | REQ-TFAS-18, REQ-TFAS-19, REQ-TFAS-25 |
 | AC-TFAS-12 | When a saved key can no longer be read, the screen asks to enter it again. | REQ-TFAS-20 |
-| AC-TFAS-13 | The screen explains that cloud providers receive the question and task details. | REQ-TFAS-21 |
+| AC-TFAS-13 | The screen explains that cloud providers receive the question, task details and matching TaskFlow document text. | REQ-TFAS-21 |
 | AC-TFAS-14 | A brand-new installation has Ollama on at `http://localhost:11434` and both cloud providers off. | REQ-TFAS-22 |
 | AC-TFAS-15 | A custom role with only `settings.ai.view` sees the screen without Save, Test or Remove; a Manager has no menu item and is redirected. | REQ-TFAS-23, REQ-TFAS-24 |
 | AC-TFAS-16 | A successful save shows "TFA settings saved". | REQ-TFAS-25 |
+| AC-TFAS-17 | An Administrator sees the Document search card with folder, model, file and chunk counts and the last indexed time; a missing folder shows **Not found**. | REQ-TFAS-26, REQ-TFAS-27 |
+| AC-TFAS-18 | With Ollama stopped, the card shows the Ollama error and the file it concerns. | REQ-TFAS-28 |
+| AC-TFAS-19 | **Re-index now** shows **Indexing…** until the run ends and the card refreshes itself; clicking while a run is going starts no second run. | REQ-TFAS-29, REQ-TFAS-30, REQ-TFAS-31 |
+| AC-TFAS-20 | A custom role with only `settings.ai.view` sees the card without **Re-index now**; a Manager without `settings.ai.view` is refused the status (403), and without `settings.ai.edit` the re-index (403). | REQ-TFAS-26, REQ-TFAS-29 |
+| AC-TFAS-21 | With document search switched off, the card shows **Switched off** and no button, and a re-index request is refused. | REQ-TFAS-32 |
 
 ---
 
@@ -443,6 +524,7 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | OBJ-TFAS-01 | BR-TFAS-02, BR-TFAS-03, BR-TFAS-04, BR-TFAS-05 | SCREEN 1 | REQ-TFAS-01, REQ-TFAS-02, REQ-TFAS-03, REQ-TFAS-04, REQ-TFAS-05, REQ-TFAS-06, REQ-TFAS-14, REQ-TFAS-15, REQ-TFAS-18, REQ-TFAS-19, REQ-TFAS-22, REQ-TFAS-25 | AC-TFAS-01, AC-TFAS-02, AC-TFAS-03, AC-TFAS-08, AC-TFAS-11, AC-TFAS-14, AC-TFAS-16 |
 | OBJ-TFAS-02 | BR-TFAS-01, BR-TFAS-06, BR-TFAS-07 | SCREEN 1 | REQ-TFAS-07, REQ-TFAS-08, REQ-TFAS-09, REQ-TFAS-10, REQ-TFAS-11, REQ-TFAS-12, REQ-TFAS-13, REQ-TFAS-20, REQ-TFAS-21, REQ-TFAS-23, REQ-TFAS-24 | AC-TFAS-04, AC-TFAS-05, AC-TFAS-06, AC-TFAS-07, AC-TFAS-12, AC-TFAS-13, AC-TFAS-15 |
 | OBJ-TFAS-03 | BR-TFAS-03 | SCREEN 1 | REQ-TFAS-16, REQ-TFAS-17 | AC-TFAS-09, AC-TFAS-10 |
+| OBJ-TFAS-04 | BR-TFAS-08, BR-TFAS-09, BR-TFAS-10 | SCREEN 1 | REQ-TFAS-26, REQ-TFAS-27, REQ-TFAS-28, REQ-TFAS-29, REQ-TFAS-30, REQ-TFAS-31, REQ-TFAS-32 | AC-TFAS-17, AC-TFAS-18, AC-TFAS-19, AC-TFAS-20, AC-TFAS-21 |
 
 ---
 
@@ -453,7 +535,8 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | 1 | TFA Settings screen, saving, model removal and connection test | Source code in the repository |
 | 2 | Initial provider records and built-in model list | Initialization at application start |
 | 3 | BRD, FRD, HLD and LLD for TFA Settings | Markdown |
-| 4 | Tests for provider configuration, key protection and connection test | Automated tests |
+| 4 | Tests for provider configuration, key protection, connection test and (v1.1) the document search status and re-index | Automated tests |
+| 5 | Document search card on TFA Settings (v1.1) | Source code in the repository |
 
 ---
 
@@ -469,6 +552,10 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 | Ollama | Free AI model server that runs on the organization's own machine |
 | Configured provider | A provider that is switched on, has a model and an address or a readable key |
 | Connection test | One short request that checks whether the provider answers |
+| Document search | TFA's index of the TaskFlow documents, used to answer questions about TaskFlow (v1.1) |
+| Embedding model | The Ollama model (`nomic-embed-text`) that turns document text into searchable vectors |
+| Chunk | One section of a document as stored in the index |
+| Re-index | Checking the documents folder now instead of waiting for the next automatic check |
 
 ---
 
@@ -476,6 +563,8 @@ _Not applicable for this sub-module._ The technology stack is given in the overa
 TFA Settings lets the Administrator choose the AI provider and model behind the TaskFlow Assistant – a free local Ollama
 server or a cloud service – add and remove models, store API keys that can never be read back, and test the connection
 with one click. Only the configured model is offered to TFA users, and every action is controlled by its own permission.
+Since v1.1 the screen also shows whether TFA's document search is ready and current, and lets the administrator re-index
+the TaskFlow documents with one click.
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

@@ -85,6 +85,7 @@ Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custo
 | Ollama (local, free) | `llama3.2:3b` at `http://localhost:11434` | Installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; on by default for new installations |
 | Google Gemini | Built-in model list in `AiProviderCatalog.cs` | Cloud; free tier with rate limits; API key entered in TFA Settings |
 | OpenAI GPT | Built-in model list in `AiProviderCatalog.cs` | Cloud; paid API key |
+| Ollama embeddings (local, free) | `nomic-embed-text` (768 dimensions) | Embeds the `TF - Documents` Markdown files so TFA can answer from them; always local, whichever chat model is used; installed by the same setup scripts |
 
 ### AI-assisted and spec-driven development
 
@@ -128,7 +129,7 @@ folder per module with one sub-folder per sub-module (16 in total), each holding
 | **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.1) |
 | **Development Plan** | Screen-by-screen feature plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` | Markdown | Available |
 | **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
-| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TaskFlow Proj/TFWorkflow/` and `TaskFlow Proj/TFTechnicalWorkflow/` | Markdown, PDF | Available |
+| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TF - Documents/TFWorkflow/` and `TF - Documents/TFTechnicalWorkflow/` | Markdown, PDF | Available |
 | **Specs** | Spec-driven change records: proposal, design, delta specs and tasks per feature | `openspec/changes/` (38 changes) | Markdown, HTML mockups | Available |
 | Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository; its content lives on in the BRD set and the Development Plan | DOCX | Superseded |
 | README / project.md / agent.md | Setup, operations, structure rules, contributor rules | repository root and `TaskFlow Proj/` | Markdown | Available |
@@ -260,8 +261,8 @@ data folder and the database and applies all migrations. In Development it also 
 | Technical Design Document | `TF - Documents/TF - TDD/TDD-TaskFlow.md` |
 | Screen-wise requirements (01–20) | `TF - Documents/Screens Wise Feature Development Plan/` |
 | Permission documents (all permissions; Administrator, Manager, Employee) | `TF - Documents/Permission Requirement/` |
-| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TaskFlow Proj/TFWorkflow/App WF in MD` and `App WF in PDF` |
-| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
+| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TF - Documents/TFWorkflow/App WF in MD` and `App WF in PDF` |
+| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TF - Documents/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
 | Developer overview / contributor rules | `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md` |
 
 Each BRD, FRD, HLD and LLD sub-module uses the same folder and file stem, for example
@@ -420,14 +421,15 @@ only as hashes. Nothing secret is logged.
 ## TFA, the AI assistant
 
 TFA is a chat assistant in a small panel on the right of every signed-in screen. Open it with the **TFA** button, by
-typing, or by saying **"Hey TF assistant"**. It answers how-to questions about TaskFlow, tells you what is upcoming or overdue,
+typing, or by saying **"Hey TF assistant"**. It answers questions about TaskFlow from the project documents, tells you what is upcoming or overdue,
 suggests what to work on first, and drafts mail for you to review. Replies are written, in the same window.
 
 ### What TFA can do
 
 | Ask | What happens |
 |---|---|
-| "How do I change a task's status?" | Answered from the written help for your role, with a link to the screen |
+| "What validations apply when creating a task?" | Answered only from the TaskFlow documents (`TF - Documents`), with the document sections it used shown as **Sources** under the answer |
+| "How do I change a task's status?" | The same: how-to questions are answered from the BRD, FRD and screen documents |
 | "What are my upcoming tasks?" | Your open tasks, from the same data and access rules as the Task List |
 | "What should I prioritise?" | The system ranks your tasks (overdue first, then due today, then by deadline and priority). The model only explains the order, so every model gives the same one |
 | "Send a mail to my manager about TF-102" | A draft appears with **Send mail / Edit / Cancel**. Nothing is sent until you click **Send mail** |
@@ -440,6 +442,58 @@ role, and that also needs a confirmation. TFA does not change your own role even
 
 **Passwords never go through chat.** TFA explains the steps and links to **My Profile**. A message that looks like it
 contains a password or an API key is not sent to any model and is not stored.
+
+### Answers from the TaskFlow documents
+
+Questions about TaskFlow's features, screens, rules and design are answered **only** from the Markdown files in
+`TF - Documents` (the BRD, FRD, HLD and LLD sets, the TDD and the screen specs). When the documents do not cover a
+question, TFA says so instead of guessing, and it does not answer general-knowledge questions. Questions about your own
+tasks, priorities, mail and profile still use your live data.
+
+- **How it works.** The files are split into sections by heading, embedded with the free local Ollama model
+  `nomic-embed-text` and stored in the database (tables `DocumentSources` and `DocumentChunks`). For each message TFA
+  finds the most similar sections and gives them to the chat model as reference text. This happens before the model is
+  called, so it works with every model, including small local ones that cannot call tools.
+- **Sources.** An answer that used the documents shows the sections under it as chips (document and heading; hover for
+  the full heading path and file). They are shown again when the conversation is reloaded.
+- **Keeping up to date.** The API indexes the folder when it starts and checks it every 5 minutes. Only files whose
+  content changed are embedded again, and deleted files are removed, so editing a document updates TFA's answers
+  without a restart. The first index of the whole folder takes a while on a laptop CPU (about 30 minutes for 89 files
+  and 3,300 sections); TFA answers from what is already indexed meanwhile, and later checks take seconds.
+- **Document search card.** **Settings → TFA Settings → Document search** shows the folder, the embedding model, the
+  number of files and sections, when indexing last finished and the last error. **Re-index now** (needs the
+  `settings.ai.edit` permission) checks the folder immediately.
+- **Without Ollama** TFA still answers questions about your own work, and says the documents cannot be searched right
+  now. Embeddings always run on Ollama, even when the chat model is Gemini or OpenAI; with a cloud chat model, the
+  matching document text is sent to that provider with your message (the Cloud notice says so).
+- **Every role** can get answers from every document. PDF and Excel files are not read (the PDFs are copies of the
+  Markdown files or of the permission spreadsheets).
+
+Settings, in the `DocumentKnowledge` section of `appsettings.json` (or environment variables such as
+`DocumentKnowledge__SourcePath`):
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Enabled` | `true` | `false` switches indexing and document answers off |
+| `SourcePath` | `../../../../TF - Documents` | The documents folder. A relative path resolves against the API project folder (`TaskFlow Proj/backend/src/TaskFlow.Api`), so the default is the workspace's `TF - Documents` |
+| `EmbeddingModel` | `nomic-embed-text` | Changing it re-embeds every document |
+| `OllamaBaseUrl` | empty | The Ollama server for embeddings; empty uses the Ollama address saved in TFA Settings, then `http://localhost:11434` |
+| `TopK` / `MinScore` | `4` / `0.6` | At most this many sections, each at least this similar, are given to the model |
+| `MaxChunkCharacters` / `MaxContextCharacters` | `1500` / `4000` | Section size before splitting, and the most document text per message |
+| `RescanMinutes` | `5` | How often the folder is checked |
+
+Calls to Ollama (chat and embeddings) may take up to `AiProviders:OllamaTimeoutSeconds` (default `180`): a small model on
+a laptop CPU can need over a minute to read a prompt with reference documents. Gemini and OpenAI keep
+`AiProviders:TimeoutSeconds` (default `60`).
+
+**Known limitation of small local models.** With `llama3.2:3b` the right document sections reach the model, but it
+sometimes picks a wrong tool for a documentation question (for example offering a profile update when asked what TFA
+can do), or sends the user to an administrator for something the documents simply do not cover. `llama3.1:8b` or Gemini
+answer better. The measured results are in `openspec/changes/tfa-document-rag/verification.md`.
+
+The chat model's context window for Ollama is set by `AiProviders:OllamaContextTokens` (default `8192`), so the
+reference text is not cut off. In a container, mount the documents folder and point `DocumentKnowledge__SourcePath` at
+it, for example `-v "/path/to/TF - Documents:/docs:ro" -e DocumentKnowledge__SourcePath=/docs`.
 
 **"My manager"** is the creator of the task, when that is someone else. Otherwise it is the single Manager in your
 department. If there is none, or more than one, TFA asks you to choose.
@@ -496,8 +550,8 @@ cloning, run it once from the repository root:
 ```
 
 The script installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on Linux after
-you confirm), starts the Ollama server, downloads `llama3.2:3b` if it is not already there, and checks that the model
-answers. It is safe to run again. To use a different model, pass its name: `.\scripts\setup-ai.ps1 -Model llama3.1:8b`
+you confirm), starts the Ollama server, downloads `llama3.2:3b` and the document embedding model `nomic-embed-text`
+(about 275 MB) if they are not already there, and checks that both answer. It is safe to run again. To use a different model, pass its name: `.\scripts\setup-ai.ps1 -Model llama3.1:8b`
 or `./scripts/setup-ai.sh llama3.1:8b`. A larger model answers better but needs more memory (`llama3.1:8b` wants about
 8 GB free).
 
@@ -508,7 +562,7 @@ the model is not available, the name in Settings is not one of the models Ollama
 The TFA window offers the model the administrator chose in TFA Settings. If more than one model is available (for example
 an older installation that has several switched on), users switch from the selector in the TFA header without closing the
 chat. Cloud models are marked
-**Cloud**, and a user is told once that their message and related task details are sent to that provider. TFA never
+**Cloud**, and a user is told once that their message, related task details and matching TaskFlow document text are sent to that provider. TFA never
 switches model by itself: if a model fails (rate limit, wrong key, Ollama not running, model not installed), the chat
 explains what happened and the user chooses another one.
 

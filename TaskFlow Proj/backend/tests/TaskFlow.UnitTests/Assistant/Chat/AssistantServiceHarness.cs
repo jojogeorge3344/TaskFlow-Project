@@ -20,6 +20,7 @@ using TaskFlow.Api.Repositories.Settings.TfaSettings.ProviderConfig;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Actions;
 using TaskFlow.Api.Services.Assistant.Chat;
+using TaskFlow.Api.Services.Assistant.Documents;
 using TaskFlow.Api.Services.Assistant.ModelGateway;
 using TaskFlow.Api.Services.Assistant.RateLimits;
 using TaskFlow.Api.Services.Assistant.Toolbox;
@@ -62,6 +63,24 @@ internal sealed class ScriptedToolbox : IAssistantToolbox
     }
 }
 
+/// <summary>A document search that returns a scripted context and records what it was asked.</summary>
+internal sealed class ScriptedDocumentSearch : IDocumentSearch
+{
+    public DocumentContext Result { get; set; } = DocumentContext.NoMatch;
+
+    public List<(string Message, string? Previous)> Searches { get; } = [];
+
+    public Task<DocumentContext> SearchAsync(string message, string? previousUserMessage, CancellationToken cancellationToken = default)
+    {
+        Searches.Add((message, previousUserMessage));
+        return Task.FromResult(Result);
+    }
+
+    public static DocumentContext Found(params (string Title, string Heading, string Text)[] chunks) =>
+        DocumentContext.Found(chunks.Select((chunk, index) => new ScoredChunk(
+            new IndexedChunk(index + 1, $"{chunk.Title}.md", chunk.Title, chunk.Heading, chunk.Text, [1f]), 0.9)).ToList());
+}
+
 internal sealed class NoCards : IAssistantActionCards
 {
     public Task<IReadOnlyDictionary<Guid, AssistantPendingActionDto>> GetCardsAsync(
@@ -87,6 +106,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
     public AssistantRateLimiter RateLimiter { get; set; }
     public ScriptedGateway Gateway { get; } = new();
     public ScriptedToolbox Toolbox { get; } = new();
+    public ScriptedDocumentSearch Documents { get; } = new();
 
     public static async Task<AssistantServiceHarness> CreateAsync()
     {
@@ -111,6 +131,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
             RateLimiter,
             Toolbox,
             new NoCards(),
+            Documents,
             new ApplicationSettingsService(new ApplicationSettingsRepository(Tracking.Db), new UnitOfWork(Tracking.Db), TimeProvider.System, Options.Create(new ApplicationOptions())),
             Tracking.Clock,
             TimeProvider.System);

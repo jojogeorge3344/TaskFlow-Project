@@ -26,7 +26,7 @@
 | BRDs – sub-modules (16) | `REQ-<CODE>-nn` baseline of every other screen | `../../BRD/<Folder>/BRD-<File stem>.md` (see section 2.3) |
 | FRDs – sub-modules (16) | Detailed functional behaviour of every other screen | Section 2.3 (links relative to this file) |
 | Development Plan | Screen-wise build plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` |
-| Module workflow docs | Verified functional and technical behaviour, written from the code | `TaskFlow Proj/TFWorkflow/App WF in MD/`, `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/` (Authentication: `01-Auth`, Legal: `10-Legal`) |
+| Module workflow docs | Verified functional and technical behaviour, written from the code | `TF - Documents/TFWorkflow/App WF in MD/`, `TF - Documents/TFTechnicalWorkflow/Tech WF in MD/` (Authentication: `01-Auth`, Legal: `10-Legal`) |
 | HLD / LLD / TDD | Technical design | `../../HLD/00-Overall/HLD-TaskFlow-Overall.md`, `../../LLD/00-Overall/LLD-TaskFlow-Overall.md`, `TF - Documents/TF - TDD/TDD-TaskFlow.md` |
 
 ### How this document is organised

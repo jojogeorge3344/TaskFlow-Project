@@ -172,6 +172,43 @@
   color: var(--tf-violet);
 }
 
+.tfa-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3125rem;
+  margin-top: 0.4375rem;
+}
+
+.tfa-sources__label {
+  font-size: 0.65625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--tf-subtle);
+}
+
+.tfa-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--tf-border);
+  border-radius: 999px;
+  background: var(--tf-surface-alt);
+  color: var(--tf-muted);
+  font-size: 0.6875rem;
+  cursor: default;
+}
+
+.tfa-source__text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .tfa-links {
   display: flex;
   flex-wrap: wrap;

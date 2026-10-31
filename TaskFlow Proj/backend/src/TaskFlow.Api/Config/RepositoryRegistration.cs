@@ -61,6 +61,7 @@ public static class RepositoryRegistration
         services.AddScoped<TaskFlow.Api.Repositories.Assistant.PendingActions.IAssistantPendingActionRepository, TaskFlow.Api.Repositories.Assistant.PendingActions.AssistantPendingActionRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Assistant.Audits.IAssistantAuditRepository, TaskFlow.Api.Repositories.Assistant.Audits.AssistantAuditRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Assistant.People.IAssistantDirectoryRepository, TaskFlow.Api.Repositories.Assistant.People.AssistantDirectoryRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.Documents.IDocumentIndexRepository, TaskFlow.Api.Repositories.Assistant.Documents.DocumentIndexRepository>();
 
         // Auth
         services.AddScoped<TaskFlow.Api.Repositories.Auth.RefreshTokens.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokens.RefreshTokenRepository>();

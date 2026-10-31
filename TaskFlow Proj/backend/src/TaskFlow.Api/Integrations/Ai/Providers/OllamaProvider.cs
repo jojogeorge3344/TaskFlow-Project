@@ -1,5 +1,7 @@
 using TaskFlow.Api.Common.Constants;
 using System.Net;
+using Microsoft.Extensions.Options;
+using TaskFlow.Api.Config;
 using System.Text.Json.Nodes;
 using TaskFlow.Api.Models.Enums;
 
@@ -7,13 +9,15 @@ namespace TaskFlow.Api.Integrations.Ai.Providers;
 
 /// <summary>Talks to a local Ollama server (<c>/api/chat</c>). No key is needed. A model that does not support tools
 /// is retried once without them, on the same provider, so small local models still answer in plain text.</summary>
-public class OllamaProvider : IChatModelProvider
+public partial class OllamaProvider : IChatModelProvider
 {
     private readonly HttpClient _client;
+    private readonly int _contextTokens;
 
-    public OllamaProvider(HttpClient client)
+    public OllamaProvider(HttpClient client, IOptions<AiProviderOptions>? options = null)
     {
         _client = client;
+        _contextTokens = (options?.Value ?? new AiProviderOptions()).OllamaContextTokens;
     }
 
     public AiProviderKind Kind => AiProviderKind.Ollama;
@@ -36,10 +40,67 @@ public class OllamaProvider : IChatModelProvider
             throw Classify(response, body);
         }
 
+        var result = Parse(body);
+        if (result.ToolCalls.Count > 0 || request.Tools.Count == 0 || ToolCallWrittenAsText(result.Text) is not { } written)
+        {
+            return result;
+        }
+
+        // Small models such as llama3.2 sometimes write a tool call as plain JSON text instead of calling the tool.
+        // A call to a real tool is run as one; anything else (a made-up "tool", often named after a reference heading) is
+        // asked again once without tools, so the model answers in words.
+        if (request.Tools.Any(tool => tool.Name == written.Name))
+        {
+            return new ChatModelResult(null, [written]);
+        }
+
+        (response, body) = await ProviderHttp.SendAsync(
+            _client, Kind, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: false)), cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw Classify(response, body);
+        }
+
         return Parse(body);
     }
 
-    private static JsonObject BuildBody(ChatModelRequest request, bool includeTools)
+    /// <summary>The tool call when the whole answer is a JSON object such as <c>{"name": "...", "parameters": {...}}</c>.</summary>
+    private static ChatToolCall? ToolCallWrittenAsText(string? text)
+    {
+        var trimmed = text?.Trim();
+        if (trimmed is null || !trimmed.StartsWith('{') || !trimmed.EndsWith('}'))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (JsonNode.Parse(trimmed) is JsonObject obj
+                && obj["name"] is JsonValue nameValue && nameValue.TryGetValue<string>(out var name) && !string.IsNullOrWhiteSpace(name)
+                && (obj.ContainsKey("parameters") || obj.ContainsKey("arguments")))
+            {
+                return new ChatToolCall(
+                    $"call_text_{Guid.NewGuid():N}"[..20],
+                    name,
+                    ProviderHttp.ArgumentsToJson(obj["parameters"] ?? obj["arguments"]));
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Broken JSON that still starts like a tool call cannot be run; it is asked again without tools.
+            if (BrokenToolCall().IsMatch(trimmed))
+            {
+                return new ChatToolCall($"call_text_{Guid.NewGuid():N}"[..20], string.Empty, "{}");
+            }
+        }
+
+        return null;
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^\{\s*""name""\s*:\s*""")]
+    private static partial System.Text.RegularExpressions.Regex BrokenToolCall();
+
+    private JsonObject BuildBody(ChatModelRequest request, bool includeTools)
     {
         var messages = new JsonArray { new JsonObject { ["role"] = "system", ["content"] = request.SystemPrompt } };
         foreach (var message in request.Messages)
@@ -73,7 +134,13 @@ public class OllamaProvider : IChatModelProvider
             }
         }
 
-        var body = new JsonObject { ["model"] = request.ModelName, ["messages"] = messages, ["stream"] = false };
+        var body = new JsonObject
+        {
+            ["model"] = request.ModelName,
+            ["messages"] = messages,
+            ["stream"] = false,
+            ["options"] = new JsonObject { ["num_ctx"] = _contextTokens }
+        };
         if (includeTools && request.Tools.Count > 0)
         {
             body["tools"] = new JsonArray(request.Tools.Select(tool => (JsonNode)new JsonObject

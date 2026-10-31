@@ -68,10 +68,22 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Settings.RoleConfiguration.IRoleService, TaskFlow.Api.Services.Settings.RoleConfiguration.RoleService>();
         services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig.IAiProviderConfigService, TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig.AiProviderConfigService>();
         services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest.AiProviderConnectionTester>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.DocumentIndex.IDocumentIndexService, TaskFlow.Api.Services.Settings.TfaSettings.DocumentIndex.DocumentIndexService>();
 
         // Assistant
+        services
+            .AddOptions<DocumentKnowledgeOptions>()
+            .Bind(configuration.GetSection(DocumentKnowledgeOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<DocumentKnowledgeOptions>, DocumentKnowledgeOptionsValidation>();
+        services.AddSingleton<TaskFlow.Api.Services.Assistant.Documents.DocumentVectorIndex>();
+        services.AddSingleton<TaskFlow.Api.Services.Assistant.Documents.DocumentIndexStatus>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.Documents.DocumentEmbeddingEndpoint>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.Documents.DocumentIndexer>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.Documents.IDocumentSearch, TaskFlow.Api.Services.Assistant.Documents.DocumentSearch>();
+        services.AddSingleton<TaskFlow.Api.Services.Assistant.Documents.DocumentIndexerService>();
+        services.AddHostedService(provider => provider.GetRequiredService<TaskFlow.Api.Services.Assistant.Documents.DocumentIndexerService>());
         services.AddSingleton<TaskFlow.Api.Services.Assistant.RateLimits.IAssistantRateLimiter, TaskFlow.Api.Services.Assistant.RateLimits.AssistantRateLimiter>();
-        services.AddSingleton<TaskFlow.Api.Services.Assistant.HelpKnowledge.IHelpKnowledgeBase, TaskFlow.Api.Services.Assistant.HelpKnowledge.HelpKnowledgeBase>();
         services.AddScoped<TaskFlow.Api.Authorization.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.AssistantTaskReader>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.AssistantUserResolver>();
@@ -79,7 +91,6 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Assistant.Toolbox.AssistantToolGate>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.GetMyTasksTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.PrioritiseTasksTool>();
-        services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.SearchHelpTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.FindUserTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.ExplainPasswordChangeTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.Tools.IAssistantTool, TaskFlow.Api.Services.Assistant.Tools.ContactAdminGuidanceTool>();

@@ -22,6 +22,7 @@ function message(id: number, role: 'User' | 'Assistant', content: string, extra:
     links: [],
     rankedTasks: [],
     action: null,
+    sources: [],
     ...extra
   };
 }

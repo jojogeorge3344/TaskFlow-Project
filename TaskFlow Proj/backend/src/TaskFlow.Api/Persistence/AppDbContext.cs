@@ -45,6 +45,8 @@ public class AppDbContext : DbContext
     public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
     public DbSet<AssistantPendingAction> AssistantPendingActions => Set<AssistantPendingAction>();
     public DbSet<AssistantAudit> AssistantAudits => Set<AssistantAudit>();
+    public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
+    public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -610,6 +612,31 @@ public class AppDbContext : DbContext
             entity.Property(audit => audit.Kind).HasConversion<string>().HasMaxLength(32);
             entity.Property(audit => audit.Outcome).IsRequired().HasMaxLength(32);
             entity.HasIndex(audit => new { audit.UserId, audit.At });
+        });
+
+        modelBuilder.Entity<DocumentSource>(entity =>
+        {
+            entity.HasKey(source => source.Id);
+            entity.Property(source => source.RelativePath).IsRequired().HasMaxLength(400);
+            entity.Property(source => source.Title).IsRequired().HasMaxLength(300);
+            entity.Property(source => source.ContentHash).IsRequired().HasMaxLength(64);
+            entity.Property(source => source.EmbeddingModel).IsRequired().HasMaxLength(100);
+            entity.HasIndex(source => source.RelativePath).IsUnique();
+        });
+
+        modelBuilder.Entity<DocumentChunk>(entity =>
+        {
+            entity.HasKey(chunk => chunk.Id);
+            entity.Property(chunk => chunk.HeadingPath).IsRequired().HasMaxLength(1000);
+            entity.Property(chunk => chunk.Text).IsRequired();
+            entity.Property(chunk => chunk.Embedding).IsRequired();
+            entity.HasIndex(chunk => chunk.DocumentSourceId);
+
+            entity
+                .HasOne(chunk => chunk.DocumentSource)
+                .WithMany(source => source.Chunks)
+                .HasForeignKey(chunk => chunk.DocumentSourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

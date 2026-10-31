@@ -14,6 +14,10 @@ public enum AssistantMessageKind
 
 public record AssistantLinkDto(string Label, string Route);
 
+/// <summary>A document section that was given to the model for an answer: the document's title, the section's heading path
+/// and the file's path under the documents folder.</summary>
+public record AssistantSourceDto(string Document, string Section, string Path);
+
 /// <summary>A pending action as shown in the panel, built from the stored payload and never from model text.</summary>
 public record AssistantActionFieldDto(string Label, string Value);
 
@@ -36,7 +40,8 @@ public record AssistantMessageDto(
     AiProviderKind? Provider,
     IReadOnlyList<AssistantLinkDto> Links,
     IReadOnlyList<PrioritisedTask> RankedTasks,
-    AssistantPendingActionDto? Action);
+    AssistantPendingActionDto? Action,
+    IReadOnlyList<AssistantSourceDto> Sources);
 
 public record AssistantConversationDto(int? ConversationId, IReadOnlyList<AssistantMessageDto> Messages);
 
@@ -50,7 +55,8 @@ public record AssistantMessageMeta(
     AssistantMessageKind Kind,
     IReadOnlyList<AssistantLinkDto>? Links,
     IReadOnlyList<PrioritisedTask>? RankedTasks,
-    Guid? ActionId);
+    Guid? ActionId,
+    IReadOnlyList<AssistantSourceDto>? Sources = null);
 
 /// <summary>One open task in the order TFA recommends.</summary>
 public record PrioritisedTask(

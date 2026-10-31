@@ -9,8 +9,8 @@ Goal: for every TaskFlow module, produce **two** Markdown files with the same na
 
 | Doc | Audience | Template | Output folder |
 |-----|----------|----------|---------------|
-| Functional workflow | Guide, examiner, end users (non-technical) | `templates/workflow-template.md` | `TaskFlow Proj/TFWorkflow/` |
-| Technical | Developers | `templates/technical-template.md` | `TaskFlow Proj/TFTechnicalWorkflow/` |
+| Functional workflow | Guide, examiner, end users (non-technical) | `templates/workflow-template.md` | `TF - Documents/TFWorkflow/` |
+| Technical | Developers | `templates/technical-template.md` | `TF - Documents/TFTechnicalWorkflow/` |
 
 Everything written must come from the real project (code, requirements, permission catalog). **Never invent** endpoints, permission keys, screens, fields or rules. If something cannot be confirmed, write `> ⚠️ To be confirmed:` with what is missing.
 

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvider } from '../../../assistant/models/assistant.model';
+import { DocumentIndexStatus } from './ai-provider-admin.model';
 
 /** Administrator-only configuration of the AI providers TFA can use. The API key is sent to the server when it is
  * saved and is never returned: the server only says whether a key is set and its last four characters. */
@@ -9,6 +10,7 @@ import { AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvide
 export class AiProviderAdminService {
   private readonly http = inject(HttpClient);
   private readonly url = '/api/v1/assistant/providers';
+  private readonly documentsUrl = '/api/v1/assistant/documents';
 
   getConfig(): Observable<AiProviderConfig[]> {
     return this.http.get<AiProviderConfig[]>(`${this.url}/config`);
@@ -26,5 +28,15 @@ export class AiProviderAdminService {
   /** Sends one tiny request to the saved provider settings. */
   test(kind: AiProviderKind): Observable<AiProviderTestResult> {
     return this.http.post<AiProviderTestResult>(`${this.url}/${kind}/test`, {});
+  }
+
+  /** The document index TFA answers from: folder, model, counts, last run and last error. */
+  getDocumentStatus(): Observable<DocumentIndexStatus> {
+    return this.http.get<DocumentIndexStatus>(`${this.documentsUrl}/status`);
+  }
+
+  /** Asks the server to check the documents folder now. A request while a run is going starts nothing new. */
+  reindexDocuments(): Observable<DocumentIndexStatus> {
+    return this.http.post<DocumentIndexStatus>(`${this.documentsUrl}/reindex`, {});
   }
 }

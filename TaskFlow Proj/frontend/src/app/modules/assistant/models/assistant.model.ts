@@ -67,6 +67,13 @@ export interface AssistantLink {
   route: string;
 }
 
+/** A document section TFA was given for an answer: the document title, the section heading path and the file path. */
+export interface AssistantSource {
+  document: string;
+  section: string;
+  path: string;
+}
+
 export interface AssistantRankedTask {
   rank: number;
   taskId: number;
@@ -108,6 +115,8 @@ export interface AssistantMessage {
   links: AssistantLink[];
   rankedTasks: AssistantRankedTask[];
   action: AssistantPendingAction | null;
+  /** The document sections given to TFA for this answer; empty when it did not use the documents. */
+  sources: AssistantSource[];
   /** Client only: a message shown before the server has answered. */
   local?: boolean;
   /** Client only: a problem shown in the chat that did not come from the model. */

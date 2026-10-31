@@ -41,6 +41,96 @@ public class ChatProviderTests
     }
 
     [Fact]
+    public async Task OllamaIsSentTheDefaultContextWindow()
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":"Hi"}}""");
+        var provider = new OllamaProvider(new HttpClient(handler));
+
+        await provider.CompleteAsync(OllamaRuntime, Request(User("hi")));
+
+        Assert.Equal(8192, JsonNode.Parse(handler.Sent[0].Body)!["options"]!["num_ctx"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task OllamaIsSentTheConfiguredContextWindowAlsoOnTheRetryWithoutTools()
+    {
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.BadRequest, """{"error":"registry.ollama.ai/library/gemma:2b does not support tools"}""")
+            .Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":"Hi"}}""");
+        var options = Microsoft.Extensions.Options.Options.Create(new TaskFlow.Api.Config.AiProviderOptions { OllamaContextTokens = 16384 });
+        var provider = new OllamaProvider(new HttpClient(handler), options);
+
+        await provider.CompleteAsync(OllamaRuntime, Request(User("hi")));
+
+        Assert.Equal([16384, 16384], handler.Sent.Select(sent => JsonNode.Parse(sent.Body)!["options"]!["num_ctx"]!.GetValue<int>()));
+        Assert.Null(JsonNode.Parse(handler.Sent[1].Body)!["tools"]);
+    }
+
+    [Fact]
+    public async Task OllamaJsonTextNamingAMadeUpToolIsAskedAgainWithoutTools()
+    {
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":"{\"name\":\"SCREEN 1: Login Screen › Purpose\",\"parameters\":{}}"}}""")
+            .Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":"The login screen has an email or username field and a password field."}}""");
+        var provider = new OllamaProvider(new HttpClient(handler));
+
+        var result = await provider.CompleteAsync(OllamaRuntime, Request(User("What fields are on the login screen?")));
+
+        Assert.Equal("The login screen has an email or username field and a password field.", result.Text);
+        Assert.Empty(result.ToolCalls);
+        Assert.Equal(2, handler.Sent.Count);
+        Assert.NotNull(JsonNode.Parse(handler.Sent[0].Body)!["tools"]);
+        Assert.Null(JsonNode.Parse(handler.Sent[1].Body)!["tools"]);
+    }
+
+    [Fact]
+    public async Task OllamaBrokenToolCallTextIsAskedAgainWithoutTools()
+    {
+        var first = new JsonObject { ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = """{"name":"contact_admin_guidance","parameters":{"}}""" } };
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.OK, first.ToJsonString())
+            .Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":"The TaskFlow documents do not cover a Jira connection."}}""");
+        var provider = new OllamaProvider(new HttpClient(handler));
+
+        var result = await provider.CompleteAsync(OllamaRuntime, Request(User("How do I connect TaskFlow to Jira?")));
+
+        Assert.Equal("The TaskFlow documents do not cover a Jira connection.", result.Text);
+        Assert.Empty(result.ToolCalls);
+        Assert.Null(JsonNode.Parse(handler.Sent[1].Body)!["tools"]);
+    }
+
+    [Fact]
+    public async Task OllamaJsonTextNamingARealToolIsRunAsThatTool()
+    {
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.OK, """{"message":{"role":"assistant","content":" {\"name\": \"prioritise_tasks\", \"parameters\": {\"limit\": 3}} "}}""");
+        var provider = new OllamaProvider(new HttpClient(handler));
+
+        var result = await provider.CompleteAsync(OllamaRuntime, Request(User("what first?")));
+
+        var call = Assert.Single(result.ToolCalls);
+        Assert.Equal("prioritise_tasks", call.Name);
+        Assert.Equal(3, JsonNode.Parse(call.ArgumentsJson)!["limit"]!.GetValue<int>());
+        Assert.Null(result.Text);
+        Assert.Single(handler.Sent);
+    }
+
+    [Theory]
+    [InlineData("""{"answer":"a JSON object without a name"}""")]
+    [InlineData("""The rule is {"name":"x","parameters":{}} in the docs.""")]
+    public async Task OllamaOtherTextIsKeptAsTheAnswer(string content)
+    {
+        var body = new JsonObject { ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = content } };
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, body.ToJsonString());
+        var provider = new OllamaProvider(new HttpClient(handler));
+
+        var result = await provider.CompleteAsync(OllamaRuntime, Request(User("hi")));
+
+        Assert.Equal(content, result.Text);
+        Assert.Single(handler.Sent);
+    }
+
+    [Fact]
     public async Task OllamaToolCallAndToolResultRoundTrip()
     {
         var handler = new FakeHttpHandler()

@@ -67,6 +67,8 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
+                // The document indexer would read the real documents folder and call Ollama; tests that need it switch it on.
+                ["DocumentKnowledge:Enabled"] = "false",
                 ["Mail:AttachmentsPath"] = AttachmentsPath,
                 ["AiProviders:KeyRingPath"] = KeyRingPath,
                 // Most tests sign in without an authenticator app; the gate has its own tests that switch this on.

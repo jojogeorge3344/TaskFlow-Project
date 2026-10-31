@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Low-Level Design  ·  **Version:** 1.0  ·  **Status:** Draft
+> **Document:** Low-Level Design  ·  **Version:** 1.1  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** HLD-TFA-Settings v1.0, FRD-TFA-Settings v1.0
+> **Based on:** HLD-TFA-Settings v1.1, FRD-TFA-Settings v1.1
 > **Module:** Settings  ·  **Sub-module:** 06.3 TFA Settings  ·  **Code:** TFAS
 > © 2026 Jojo George. All rights reserved.
 
@@ -16,18 +16,19 @@
 | Version | Date | Author | Summary of changes |
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
+| 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`): `DocumentIndexController` (2 actions, `/api/v1/assistant/documents`), `IDocumentIndexService` / `DocumentIndexService`, `DocumentIndexStatusDto`, `DocumentIndexCardComponent`, `AiProviderAdminService.getDocumentStatus()` / `reindexDocuments()`; `AiProviders:OllamaContextTokens`; cloud text; tests and FR-TFAS-29 – FR-TFAS-36 traceability. |
 
 **Related documents:** BRD · FRD · HLD · TDD · Specs
 
 | Document | Location |
 |---|---|
 | BRD – TFA Settings | `../../../BRD/06-Settings/06.3-TFA-Settings/BRD-TFA-Settings.md` |
-| FRD – TFA Settings (FR-TFAS-01…28, UC-TFAS-01…03) | `../../../FRD/06-Settings/06.3-TFA-Settings/FRD-TFA-Settings.md` |
+| FRD – TFA Settings (FR-TFAS-01…36, UC-TFAS-01…04) | `../../../FRD/06-Settings/06.3-TFA-Settings/FRD-TFA-Settings.md` |
 | HLD – TFA Settings | `../../../HLD/06-Settings/06.3-TFA-Settings/HLD-TFA-Settings.md` |
 | Overall LLD (stack, cross-cutting design, Auth) | `../../00-Overall/LLD-TaskFlow-Overall.md` |
-| LLD – Assistant (chat, `ChatModelGateway` callers, provider selector) | `../../08-TFA-Assistant/08.1-Assistant/LLD-Assistant.md` |
+| LLD – Assistant (chat, `ChatModelGateway` callers, provider selector; document index, indexer and search in 4.1.3) | `../../08-TFA-Assistant/08.1-Assistant/LLD-Assistant.md` |
 | LLD – Role Configuration (the four `settings.ai.*` keys and their prerequisite) | `../06.4-Role-Configuration/LLD-Role-Configuration.md` |
-| TDD v2.0 | `TDD-TaskFlow.md` §6.5 (integrations), §7.2.6 (`AiProviderConfig`, `AiModel`) |
+| TDD v2.2 | `TDD-TaskFlow.md` §6.5 (integrations), §7.2.6 (`AiProviderConfig`, `AiModel`, `DocumentSource`, `DocumentChunk`), §8.9 (Settings endpoints), §16.8 (document knowledge) |
 
 ---
 
@@ -36,13 +37,17 @@
 ### 1.1 Purpose
 Detailed design of TFA Settings – the organization-wide configuration of the AI providers behind TFA, the TaskFlow
 assistant: controller actions, configuration and connection-test services, repositories, key protection, provider
-clients, the `AiProviderConfigs` and `AiModels` tables, seeding, the Angular screen, tests and FR-TFAS-nn traceability.
+clients, the `AiProviderConfigs` and `AiModels` tables, seeding, the Angular screen, the Document search card and its
+endpoints (v1.1), tests and FR-TFAS-nn traceability.
 Everything is taken from the code as built.
 
 ### 1.2 Scope & Conventions
 - Covered: `AiProvidersController` (4 actions), `AiProviderConfigService`, `AiProviderConnectionTester`,
   `AiProviderConfigRepository`, `AiModelRepository`, `AiKeyProtector`, `KeyRingProtectionCheck`, `AiProviderSeeder`,
-  `AiProviderCatalog`, the provider clients used by the test, and `AiProviderSettingsComponent`.
+  `AiProviderCatalog`, the provider clients used by the test, and `AiProviderSettingsComponent`; `DocumentIndexController`
+  (2 actions), `DocumentIndexService` and `DocumentIndexCardComponent` (v1.1).
+- Referenced only (v1.1): the document indexer, search and tables (`DocumentIndexerService`, `DocumentIndexStatus`,
+  `DocumentIndexer`, `DocumentSources`, `DocumentChunks`), designed in the Assistant LLD 4.1.3.
 - Referenced only: `GET /api/v1/assistant/providers` (Assistant sub-module, `assistant.chat`), which returns the
   configured providers through `AiProviderConfigService.GetAvailableAsync`; chat calls through `IChatModelGateway`.
 - Naming: `*Controller`, `I*Service`/`*Service`, `I*Repository`/`*Repository`, DTOs `*Dto` / `*Request`.
@@ -57,6 +62,9 @@ Everything is taken from the code as built.
 ```
 TaskFlow.Api/
   Controllers/Settings/AiProvidersController.cs
+  Controllers/Settings/DocumentIndexController.cs                                (v1.1)
+  Services/Settings/TfaSettings/DocumentIndex/IDocumentIndexService.cs, DocumentIndexService.cs   (v1.1)
+  Dtos/Settings/TfaSettings/DocumentIndexDtos.cs                                 (DocumentIndexStatusDto, v1.1)
   Services/Settings/TfaSettings/ProviderConfig/IAiProviderConfigService.cs, AiProviderConfigService.cs
   Services/Settings/TfaSettings/ConnectionTest/IAiProviderConnectionTester.cs, AiProviderConnectionTester.cs
   Repositories/Settings/TfaSettings/ProviderConfig/IAiProviderConfigRepository.cs, AiProviderConfigRepository.cs
@@ -85,6 +93,8 @@ src/app/modules/settings/
   tfa-settings/components/ai-provider-settings.component.{ts,html,css}
   tfa-settings/components/ai-provider-settings.model.ts            (ProviderForm)
   tfa-settings/services/ai-provider-admin.service.ts               (AiProviderAdminService)
+  tfa-settings/services/ai-provider-admin.model.ts                 (DocumentIndexStatus, v1.1)
+  tfa-settings/components/document-index-card.component.{ts,html,css}   (DocumentIndexCardComponent, v1.1)
 src/app/modules/assistant/models/assistant.model.ts                (AiProviderConfig, UpdateAiProvider, AiProviderTestResult)
 ```
 
@@ -108,7 +118,7 @@ Shared mechanisms are in the overall LLD. Applied here:
 | Validation | `UpdateAiProvidersRequestValidator` (+ per-item `UpdateAiProviderRequestValidator`) in `ValidationFilter`; extra rules in the service throw `RequestValidationException` (400 with `errors`) |
 | Error handling | `GlobalExceptionHandler`; the connection test never fails with an error status |
 | Transactions | One `SaveChangesAsync` per save; on `UniqueConstraintException` duplicate models are detached and saved again |
-| Authorization | Class `[Authorize]` + one `[RequirePermission]` per action (`settings.ai.view`, `settings.ai.edit`, `settings.ai.model.remove`, `settings.ai.test`) |
+| Authorization | Class `[Authorize]` + one `[RequirePermission]` per action (`settings.ai.view`, `settings.ai.edit`, `settings.ai.model.remove`, `settings.ai.test`); `DocumentIndexController`: status `settings.ai.view`, re-index `settings.ai.edit` |
 | Logging | `ChatModelGateway` logs provider, failure kind and HTTP status only; `GetRuntimeAsync` warns when an enabled key cannot be decrypted; provider HTTP clients have all loggers removed |
 | Secrets | API keys encrypted with ASP.NET Core Data Protection (`AiKeyProtector`), never returned or logged |
 
@@ -118,6 +128,7 @@ Shared mechanisms are in the overall LLD. Applied here:
 |---|---|---|
 | Validation failure (`ValidationFilter`) | 400 | Request rules (3 below) |
 | `RequestValidationException` | 400 | Missing provider field, model length, key for Ollama, remove built-in / in-use model |
+| `BusinessRuleException` | 400 | `POST /api/v1/assistant/documents/reindex` while `DocumentKnowledge:Enabled` is false |
 | `ValidationProblem` in the action | 400 | `DELETE …/models` without `name` |
 | Model binding (`[ApiController]`) | 400 | `{kind}` not an `AiProviderKind` value |
 | `NotFoundException` | 404 | Model to remove not in the list |
@@ -138,6 +149,9 @@ Shared mechanisms are in the overall LLD. Applied here:
 | Layer | Type | File | Responsibility |
 |---|---|---|---|
 | Controller | `AiProvidersController` | `Controllers/Settings/AiProvidersController.cs` | 4 actions under `/api/v1/assistant/providers` |
+| Controller (v1.1) | `DocumentIndexController` (`GetStatus`, `Reindex`) | `Controllers/Settings/DocumentIndexController.cs` | 2 actions under `/api/v1/assistant/documents` |
+| Service (v1.1) | `IDocumentIndexService` / `DocumentIndexService` (`GetStatus`, `RequestReindex`) | `Services/Settings/TfaSettings/DocumentIndex/` | Maps `DocumentIndexStatus.Current` to the DTO; asks `DocumentIndexerService.RequestReindex()` |
+| DTO (v1.1) | `DocumentIndexStatusDto` | `Dtos/Settings/TfaSettings/DocumentIndexDtos.cs` | Status contract |
 | Service | `IAiProviderConfigService` / `AiProviderConfigService` | `Services/Settings/TfaSettings/ProviderConfig/` | Admin view, save, remove model, runtime for calls, available providers |
 | Service | `IAiProviderConnectionTester` / `AiProviderConnectionTester` | `Services/Settings/TfaSettings/ConnectionTest/` | One "Reply with OK." call, result DTO |
 | Repository | `IAiProviderConfigRepository` / `AiProviderConfigRepository` | `Repositories/Settings/TfaSettings/ProviderConfig/` | Provider rows |
@@ -151,11 +165,12 @@ Shared mechanisms are in the overall LLD. Applied here:
 | Gateway | `IChatModelGateway` / `ChatModelGateway` | `Services/Assistant/ModelGateway/` | Runtime lookup, provider call, failure logging |
 | Registry / clients | `ChatModelProviderRegistry`, `OllamaProvider`, `GeminiProvider`, `OpenAiProvider`, `ProviderHttp` | `Integrations/Ai/Registry/`, `Integrations/Ai/Providers/` | HTTP calls and failure classification |
 | Messages | `ProviderFailureMessages` | `Services/Assistant/Chat/ProviderFailureMessages.cs` | Fixed user messages per failure kind |
-| Options | `AiProviderOptions` | `Config/AiProviderOptions.cs` | `KeyRingPath`, `TimeoutSeconds` |
+| Options | `AiProviderOptions` | `Config/AiProviderOptions.cs` | `KeyRingPath`, `TimeoutSeconds`, `OllamaContextTokens` (v1.1) |
 | Seeder | `AiProviderSeeder` | `Persistence/Seeders/AiProviderSeeder.cs` | Built-in models and one row per provider |
 | Frontend page | `TfaSettingsComponent` | `tfa-settings/pages/tfa-settings.component.ts` | Page header + child component |
 | Frontend component | `AiProviderSettingsComponent` | `tfa-settings/components/ai-provider-settings.component.ts` | Forms per provider, linked Model/Server selects, save, test, remove, key status |
-| Frontend service | `AiProviderAdminService` | `tfa-settings/services/ai-provider-admin.service.ts` | `getConfig()`, `save()`, `removeModel()`, `test()` |
+| Frontend service | `AiProviderAdminService` | `tfa-settings/services/ai-provider-admin.service.ts` | `getConfig()`, `save()`, `removeModel()`, `test()`; `getDocumentStatus()`, `reindexDocuments()` (v1.1) |
+| Frontend component (v1.1) | `DocumentIndexCardComponent` (`app-document-index-card`) | `tfa-settings/components/document-index-card.component.ts` | Document search card; `DOCUMENT_STATUS_POLL_MS` 3000 |
 
 **Class diagram**
 
@@ -200,6 +215,24 @@ classDiagram
     <<interface>>
     +Get(kind)
   }
+  class DocumentIndexController {
+    +GetStatus()
+    +Reindex()
+  }
+  class IDocumentIndexService {
+    <<interface>>
+    +GetStatus()
+    +RequestReindex()
+  }
+  class DocumentIndexService
+  class DocumentIndexStatus
+  class DocumentIndexerService {
+    +RequestReindex()
+  }
+  DocumentIndexController --> IDocumentIndexService
+  DocumentIndexService ..|> IDocumentIndexService
+  DocumentIndexService --> DocumentIndexStatus
+  DocumentIndexService --> DocumentIndexerService
   AiProvidersController --> IAiProviderConfigService
   AiProvidersController --> IAiProviderConnectionTester
   AiProviderConfigService ..|> IAiProviderConfigService
@@ -226,6 +259,13 @@ Endpoints of this sub-module (facts.md §3, `AiProvidersController`): **4**.
 
 `{kind}` binds to `AiProviderKind` (`Ollama`, `Gemini`, `OpenAI`).
 
+Controller `DocumentIndexController`, `[Route("api/v1/assistant/documents")]`, class `[Authorize]` (v1.1): **2**.
+
+| # | Method | Route | Permission / policy | Request | Response | Status codes |
+|---|---|---|---|---|---|---|
+| 5 | GET | `/api/v1/assistant/documents/status` | `settings.ai.view` | – | `DocumentIndexStatusDto` | 200, 401, 403 |
+| 6 | POST | `/api/v1/assistant/documents/reindex` | `settings.ai.edit` | empty body | `DocumentIndexStatusDto` (`isRunning` true when the request was accepted or a run is going) | 202, 400 (switched off), 401, 403 |
+
 **DTOs**
 
 | DTO | Fields |
@@ -235,6 +275,7 @@ Endpoints of this sub-module (facts.md §3, `AiProvidersController`): **4**.
 | `UpdateAiProviderRequest` | `Kind` (`AiProviderKind?`), `IsEnabled` (`bool?`), `ModelName` (`string?`), `BaseUrl` (`string?`), `ApiKey` (`string?`, empty keeps the stored key), `ClearKey` (`bool?`) |
 | `AiProviderTestResultDto` | `Ok`, `Message` (fixed text, never the provider's own error), `FailureKind` (`ProviderFailureKind?`) |
 | `AiProviderOptionDto` (Assistant selector) | `Kind`, `DisplayName`, `ModelName`, `Locality` |
+| `DocumentIndexStatusDto` (v1.1) | `Enabled`, `SourcePath` (full path), `FolderFound`, `EmbeddingModel`, `FileCount`, `ChunkCount`, `LastIndexedAt` (UTC, nullable), `IsRunning`, `LastError` (fixed or exception text, never document text), `LastErrorFile` (relative path) |
 
 **Request / response example**
 
@@ -258,6 +299,21 @@ Endpoints of this sub-module (facts.md §3, `AiProvidersController`): **4**.
 // POST /api/v1/assistant/providers/Ollama/test  ->  200 OK
 { "ok": false, "message": "Ollama is not running or cannot be reached. Ask an administrator to start it, or choose another model.", "failureKind": "Unreachable" }
 ```
+
+```json
+// POST /api/v1/assistant/documents/reindex  ->  202 Accepted   (v1.1; values illustrative)
+{ "enabled": true, "sourcePath": "C:\\…\\TF - Documents", "folderFound": true, "embeddingModel": "nomic-embed-text",
+  "fileCount": 89, "chunkCount": 3327, "lastIndexedAt": "2026-10-31T14:05:00Z", "isRunning": true,
+  "lastError": null, "lastErrorFile": null }
+```
+
+**Service logic – `DocumentIndexService` (v1.1)**
+- `GetStatus()`: `DocumentIndexStatus.Current` → `DocumentIndexStatusDto` (`LastIndexedAt` marked UTC).
+- `RequestReindex()`: status `Enabled` false → `BusinessRuleException("Document search is switched off in the server
+  configuration (DocumentKnowledge:Enabled).")` (400). Otherwise `DocumentIndexerService.RequestReindex()` (false when a
+  run is going or already requested – nothing new starts) and returns the status with `IsRunning` = current running
+  flag OR request accepted. The controller answers `202 Accepted`. The run itself (hash skip, embedding, swap, removals,
+  errors) is in the Assistant LLD 4.1.3.
 
 ```json
 // DELETE /api/v1/assistant/providers/Ollama/models?name=llama3.2:3b  ->  400
@@ -428,6 +484,16 @@ group validator `newModelRequired` (1–100 characters when **Add new model…**
 | `test()` | If `needsSave()`, saves first then runs the test; result per kind shown next to the button; HTTP error → "The test could not be run." |
 | `removeModel()` | Only for a custom, not-saved model; reloads from the response; toast "Removed `name` from the list"; error "Could not remove the model." |
 
+**Frontend design – `DocumentIndexCardComponent` (v1.1)**
+
+| Member | Behaviour |
+|---|---|
+| `visible`, `canReindex` | `AuthService.hasPermission` for `SettingsAiView`, `SettingsAiEdit`; without view the card renders nothing and requests nothing |
+| `ngOnInit()` / `load()` | `getDocumentStatus()`; error → "Could not load the document search status." with **Retry** |
+| `reindex()` | Ignored while requesting or running; `reindexDocuments()`; error → "Could not start indexing." |
+| `show(status)` | Sets the status; when `isRunning`, calls `load()` again after `DOCUMENT_STATUS_POLL_MS` (3000); polling stops when the run ends or the card is destroyed |
+| Template | State pill **Switched off** / **Indexing…** / **Up to date**; switched-off note; folder with **Not found**; embedding model, files, chunks, last indexed (`d MMM y, HH:mm`, "Not yet"); last error with "File: …"; **Re-index now** only when `canReindex()` and enabled, disabled while running or requesting |
+
 **State machine:** _Not applicable for this sub-module._ (A provider is only enabled or disabled; the screen status is
 computed, not stored.)
 
@@ -532,7 +598,8 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
 | SSRF | Validator refuses link-local and cloud-metadata hosts; HTTP clients do not follow redirects; cloud addresses are fixed in code |
 | Logging | Provider clients log nothing; gateway logs provider, failure kind and HTTP status only |
 | Frontend | `permissionGuard` with `SettingsAiView` on `settings/tfa`; menu item "TFA Settings"; in-component `canEdit`, `canTest`, `mayRemoveModel` (FR-TFAS-27) |
-| Cloud notice | Screen text explains that Gemini and OpenAI are cloud services (FR-TFAS-23) |
+| Cloud notice | Screen text explains that Gemini and OpenAI are cloud services that receive a user's question, related task details and matching TaskFlow document text (FR-TFAS-23) |
+| Document search (v1.1) | Status `settings.ai.view`, re-index `settings.ai.edit`; the status carries folder paths and error text, never document content; the card hides **Re-index now** without `settings.ai.edit` |
 
 ---
 
@@ -542,6 +609,8 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
 |---|---|---|
 | `AiProviders:KeyRingPath` | `dp-keys` | Data Protection key-ring folder, relative to `Storage:Root` |
 | `AiProviders:TimeoutSeconds` | `60` | Timeout of one provider HTTP call |
+| `AiProviders:OllamaContextTokens` | `8192` | `options.num_ctx` sent with Ollama chat requests (v1.1) |
+| `DocumentKnowledge:*` | see Assistant LLD §8 | Documents folder, embedding model, `OllamaBaseUrl` (empty → the saved Ollama `BaseUrl` of this screen), search and rescan settings; shown read-only on the Document search card |
 | `Storage:Root` | `""` | Root folder for the key ring and database |
 | API keys | `<secret>` | Entered on the screen, stored encrypted in `AiProviderConfigs.EncryptedApiKey`; never in `appsettings.json` |
 
@@ -567,6 +636,8 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
 
 | Frontend panel | `components/ai-provider-settings.component.spec.ts` | Frontend unit | Hidden from non-administrators, server dropdown and model lists, add a model, one server in use, key never shown / kept / replaced / removed, invalid input, save error, test connection (saves first, failure messages), removing an added model, load retry |
 | Frontend page | `pages/tfa-settings.component.spec.ts` | Frontend unit | Own screen and title; nothing shown or requested without `settings.ai.manage` |
+| Document search endpoints (v1.1) | `TaskFlow.IntegrationTests/Settings/TfaSettings/DocumentIndexEndpointsTests.cs` | Integration | Administrator sees the status; a user without the TFA Settings permissions is refused both; re-index runs now and a second request while running starts nothing new |
+| Document search card (v1.1) | `components/document-index-card.component.spec.ts` | Frontend unit | Idle facts, "Not yet", running state with disabled button and 3 s polling, polling on open, last error with file and missing folder, load error with retry, button hidden without edit, nothing without view, switched off |
 
 ---
 
@@ -578,6 +649,10 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
   and the test does not run.
 - `GetAdminConfigAsync` calls `Unprotect` up to twice per provider per request (`KeyReadable`, `IsConfigured`).
 - A lost or replaced key ring makes saved keys unreadable; they must be entered again (shown on the screen).
+- Document search (v1.1): the documents folder, embedding model and search settings are server configuration only; the
+  card shows them but cannot change them. The status is in memory: after a restart the chunk count comes from the stored index,
+  while the file count and `LastIndexedAt` show 0 and "Not yet" until the first run of that process finishes (about
+  10 s after start, longer when files changed).
 - > ⚠️ To be confirmed (FRD open issues): whether view-only users should get a fully read-only screen, whether a
   > test-only user should test the saved configuration, whether the server should refuse more than one active provider,
   > and the exact rule for **Ready to use** versus **In use**.
@@ -616,6 +691,14 @@ Built-in models (seeded): Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `q
 | FR-TFAS-26 | `PermissionCatalog` `Requires: settings.ai.view` · `RoleService.ResolvePermissionsAsync` | `PermissionCatalogTests` |
 | FR-TFAS-27 | `GET /api/v1/assistant/providers/config` · `permissionGuard` (`settings/tfa`) · `buildNavigation()` | `AssistantProviderEndpointsTests` |
 | FR-TFAS-28 | Toasts and error texts in `AiProviderSettingsComponent` | `ai-provider-settings.component.spec.ts` |
+| FR-TFAS-29 | `GET /api/v1/assistant/documents/status` · `DocumentIndexService.GetStatus` · `DocumentIndexCardComponent` | `DocumentIndexEndpointsTests`, `document-index-card.component.spec.ts` |
+| FR-TFAS-30 | `DocumentIndexStatusDto.FolderFound` · **Not found** | `document-index-card.component.spec.ts` |
+| FR-TFAS-31 | `IsRunning` · state pill | `document-index-card.component.spec.ts` |
+| FR-TFAS-32 | `LastError`, `LastErrorFile` | `document-index-card.component.spec.ts` |
+| FR-TFAS-33 | `POST /api/v1/assistant/documents/reindex` (202) · `canReindex` | `DocumentIndexEndpointsTests`, `document-index-card.component.spec.ts` |
+| FR-TFAS-34 | `DocumentIndexerService.RequestReindex` (semaphore, pending flag) · button disabled while running | `DocumentIndexEndpointsTests`, `DocumentIndexerServiceTests` |
+| FR-TFAS-35 | `DOCUMENT_STATUS_POLL_MS` · `show()` | `document-index-card.component.spec.ts` |
+| FR-TFAS-36 | `DocumentIndexService.RequestReindex` (`BusinessRuleException`) · **Switched off** | `document-index-card.component.spec.ts` |
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

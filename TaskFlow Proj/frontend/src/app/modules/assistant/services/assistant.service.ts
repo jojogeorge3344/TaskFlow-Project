@@ -233,6 +233,7 @@ export class AssistantService {
       links: [],
       rankedTasks: [],
       action: null,
+      sources: [],
       local: true
     };
     this.messages.update((messages) => [...messages, local]);
@@ -272,6 +273,7 @@ export class AssistantService {
         links: [],
         rankedTasks: [],
         action: null,
+        sources: [],
         local: true,
         problem: true
       }
