@@ -34,7 +34,7 @@
 | Development Plan (screen-wise, 20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` |
 | Sub-module BRDs (16) | See section 3.4 (links relative to this file) |
 | FRD – Overall | `../../FRD/00-Overall/FRD-TaskFlow-Overall.md` |
-| Functional / technical module workflow docs | `TaskFlow Proj/TFWorkflow/App WF in MD/` and `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/` |
+| Functional / technical module workflow docs | `TF - Documents/TFWorkflow/App WF in MD/` and `TF - Documents/TFTechnicalWorkflow/Tech WF in MD/` |
 | TDD / HLD / LLD | `TF - Documents/TF - TDD/TDD-TaskFlow.md`; `../../HLD/00-Overall/HLD-TaskFlow-Overall.md`; `../../LLD/00-Overall/LLD-TaskFlow-Overall.md` |
 
 ### How this document is organised

@@ -277,5 +277,5 @@ variables/user-secrets (JWT signing key), and the `ApplicationSettings` table
 | Technical Design Document | `../TF - Documents/TF - TDD/TDD-TaskFlow.md` |
 | Screen specs 01–20 | `../TF - Documents/Screens Wise Feature Development Plan/` |
 | Permission documents | `../TF - Documents/Permission Requirement/` |
-| Workflow docs (application / technical) | `TFWorkflow/`, `TFTechnicalWorkflow/` |
+| Workflow docs (application / technical) | `../TF - Documents/TFWorkflow/`, `../TF - Documents/TFTechnicalWorkflow/` |
 | OpenSpec workspace | `../openspec/` |

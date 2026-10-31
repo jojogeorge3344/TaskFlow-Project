@@ -129,7 +129,7 @@ folder per module with one sub-folder per sub-module (16 in total), each holding
 | **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.1) |
 | **Development Plan** | Screen-by-screen feature plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` | Markdown | Available |
 | **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
-| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TaskFlow Proj/TFWorkflow/` and `TaskFlow Proj/TFTechnicalWorkflow/` | Markdown, PDF | Available |
+| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TF - Documents/TFWorkflow/` and `TF - Documents/TFTechnicalWorkflow/` | Markdown, PDF | Available |
 | **Specs** | Spec-driven change records: proposal, design, delta specs and tasks per feature | `openspec/changes/` (38 changes) | Markdown, HTML mockups | Available |
 | Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository; its content lives on in the BRD set and the Development Plan | DOCX | Superseded |
 | README / project.md / agent.md | Setup, operations, structure rules, contributor rules | repository root and `TaskFlow Proj/` | Markdown | Available |
@@ -261,8 +261,8 @@ data folder and the database and applies all migrations. In Development it also 
 | Technical Design Document | `TF - Documents/TF - TDD/TDD-TaskFlow.md` |
 | Screen-wise requirements (01–20) | `TF - Documents/Screens Wise Feature Development Plan/` |
 | Permission documents (all permissions; Administrator, Manager, Employee) | `TF - Documents/Permission Requirement/` |
-| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TaskFlow Proj/TFWorkflow/App WF in MD` and `App WF in PDF` |
-| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
+| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TF - Documents/TFWorkflow/App WF in MD` and `App WF in PDF` |
+| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TF - Documents/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
 | Developer overview / contributor rules | `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md` |
 
 Each BRD, FRD, HLD and LLD sub-module uses the same folder and file stem, for example

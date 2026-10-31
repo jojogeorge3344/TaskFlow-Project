@@ -16,7 +16,7 @@ exist in the code (for an existing system) – never invent.
 | Code facts – `python "<tdd-sync-skill-dir>/scripts/extract_facts.py" "<workspace>/TaskFlow Proj" "<scratch>/facts.md"` (the `tdd-sync` skill) | Every endpoint with its authorization, permission keys, entities and properties, enums, migrations, services, repositories, config keys, routes, tests |
 | Backend source `TaskFlow Proj/backend/src/TaskFlow.Api/` | Service logic, validators, exceptions, `AppDbContext` configuration (keys, indexes, FKs, triggers), background jobs |
 | Frontend source `TaskFlow Proj/frontend/src/app/` | Pages, components, services, routes, guards |
-| Technical module docs `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` | Already-verified endpoint tables, sequences, rules and gaps per child module – reuse them |
+| Technical module docs `TF - Documents/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` | Already-verified endpoint tables, sequences, rules and gaps per child module – reuse them |
 | `TF - Documents/TF - TDD/TDD-TaskFlow.md` §6–§16 and Appendices | Data model, API, auth, business logic, reminder engine |
 | FRD | Traceability (§11) |
 

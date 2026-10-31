@@ -108,8 +108,8 @@ in the same folder.
 | Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository | v1.0 · superseded |
 | Development Plan | Screen-by-screen feature plan, 20 screens (`01-login-screen.md` … `20-application-settings-screen.md`) | `TF - Documents/Screens Wise Feature Development Plan/` | Reference |
 | Permission documents | All permissions with purpose, and the Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/01-All-Permissions.xlsx` … `04-Employee-Permissions.xlsx` · PDF copies in `Permissions in PDF/` | Matches Appendix C |
-| Application workflow docs | Per module and child module: purpose, screens, who can see and use each feature, permissions, step-by-step flows | `TaskFlow Proj/TFWorkflow/App WF in MD/` (`01-Auth` … `10-Legal`) · PDF in `App WF in PDF/` | Verified from the code |
-| Technical workflow docs | Per module and child module: endpoints, services, data, permissions checks, known gaps | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/` · PDF in `Tech WF in PDF/` | Verified from the code (source of §22.4) |
+| Application workflow docs | Per module and child module: purpose, screens, who can see and use each feature, permissions, step-by-step flows | `TF - Documents/TFWorkflow/App WF in MD/` (`01-Auth` … `10-Legal`) · PDF in `App WF in PDF/` | Verified from the code |
+| Technical workflow docs | Per module and child module: endpoints, services, data, permissions checks, known gaps | `TF - Documents/TFTechnicalWorkflow/Tech WF in MD/` · PDF in `Tech WF in PDF/` | Verified from the code (source of §22.4) |
 | README | Project overview, technologies, setup, run, documentation index | `README.md` | – |
 | Developer overview / contributor rules | Developer orientation; layer and folder rules for AI and automation contributors | `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md` | – |
 | OpenSpec | Change proposals, designs, tasks and the main specs | `openspec/changes/`, `openspec/specs/` | – |
