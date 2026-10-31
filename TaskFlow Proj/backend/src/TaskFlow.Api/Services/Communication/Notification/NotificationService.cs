@@ -1,8 +1,7 @@
 using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Dtos.Communication.Notification;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Notification;
-using TaskFlow.Api.Services.Interfaces.Communication.Notification;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Communication.Notification;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Api.Services.Communication.Notification;

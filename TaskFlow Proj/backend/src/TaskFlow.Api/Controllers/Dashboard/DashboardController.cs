@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Dashboard;
-using TaskFlow.Api.Services.Interfaces.Dashboard;
+using TaskFlow.Api.Services.Dashboard;
 
 namespace TaskFlow.Api.Controllers.Dashboard;
 

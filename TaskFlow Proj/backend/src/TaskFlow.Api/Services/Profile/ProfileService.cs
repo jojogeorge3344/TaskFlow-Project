@@ -5,12 +5,11 @@ using TaskFlow.Api.Dtos.Auth.Mfa;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Auth;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Services.Interfaces.Auth;
-using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
-using TaskFlow.Api.Services.Interfaces.Profile;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Auth;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
+using TaskFlow.Api.Services.Auth;
+using TaskFlow.Api.Services.Auth.Mfa;
 
 namespace TaskFlow.Api.Services.Profile;
 

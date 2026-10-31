@@ -1,4 +1,3 @@
-using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Models.Enums;

@@ -1,5 +1,4 @@
 using TaskFlow.Api.Integrations.Security;
-using TaskFlow.Api.Integrations.Interfaces.Security;
 using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Integrations.Ai;
 using Microsoft.AspNetCore.DataProtection;
@@ -23,9 +22,9 @@ public static class IntegrationRegistration
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
         // Authenticator-app MFA (free TOTP). The key is encrypted with the Data Protection key ring.
-        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Security.IMfaSecretProtector, TaskFlow.Api.Integrations.Security.MfaSecretProtector>();
+        services.AddSingleton<TaskFlow.Api.Integrations.Security.IMfaSecretProtector, TaskFlow.Api.Integrations.Security.MfaSecretProtector>();
 
-        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Storage.IMailFileStore, TaskFlow.Api.Integrations.Storage.LocalMailFileStore>();
+        services.AddSingleton<TaskFlow.Api.Integrations.Storage.IMailFileStore, TaskFlow.Api.Integrations.Storage.LocalMailFileStore>();
         services.Configure<TaskFlow.Api.Config.MailOptions>(configuration.GetSection(TaskFlow.Api.Config.MailOptions.SectionName));
 
         services.Configure<AiProviderOptions>(configuration.GetSection(AiProviderOptions.SectionName));
@@ -47,7 +46,7 @@ public static class IntegrationRegistration
                     options.XmlRepository = new FileSystemXmlRepository(
                         new DirectoryInfo(StorageRoot.ResolveUnder(StorageRoot.Resolve(storage.Value.Root), aiOptions.Value.KeyRingPath)),
                         loggerFactory));
-        services.AddSingleton<TaskFlow.Api.Integrations.Interfaces.Ai.IAiKeyProtector, AiKeyProtector>();
+        services.AddSingleton<TaskFlow.Api.Integrations.Ai.IAiKeyProtector, AiKeyProtector>();
 
         // The timeout is read from the bound options when a client is created. Provider clients never log request or response
         // headers or bodies, so keys and prompts stay out of the logs. Redirects are not followed: the address an administrator
@@ -59,11 +58,11 @@ public static class IntegrationRegistration
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
         services.AddHttpClient<OpenAiProvider>(ConfigureAiClient)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
-        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OllamaProvider>());
-        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<GeminiProvider>());
-        services.AddTransient<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OpenAiProvider>());
-        services.AddScoped<TaskFlow.Api.Integrations.Interfaces.Ai.IChatModelProviderRegistry, ChatModelProviderRegistry>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IChatModelGateway, ChatModelGateway>();
+        services.AddTransient<TaskFlow.Api.Integrations.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OllamaProvider>());
+        services.AddTransient<TaskFlow.Api.Integrations.Ai.IChatModelProvider>(sp => sp.GetRequiredService<GeminiProvider>());
+        services.AddTransient<TaskFlow.Api.Integrations.Ai.IChatModelProvider>(sp => sp.GetRequiredService<OpenAiProvider>());
+        services.AddScoped<TaskFlow.Api.Integrations.Ai.IChatModelProviderRegistry, ChatModelProviderRegistry>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IChatModelGateway, ChatModelGateway>();
 
         return services;
     }

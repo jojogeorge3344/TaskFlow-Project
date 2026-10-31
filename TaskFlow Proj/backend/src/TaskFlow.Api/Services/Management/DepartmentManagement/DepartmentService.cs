@@ -2,10 +2,9 @@ using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.DepartmentManagement;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Management.DepartmentManagement;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Services.Interfaces.Management.DepartmentManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Management.DepartmentManagement;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
 
 namespace TaskFlow.Api.Services.Management.DepartmentManagement;
 

@@ -1,5 +1,4 @@
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement;
-using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Rules;
 
 namespace TaskFlow.Api.Services.Monitoring.TaskManagement;

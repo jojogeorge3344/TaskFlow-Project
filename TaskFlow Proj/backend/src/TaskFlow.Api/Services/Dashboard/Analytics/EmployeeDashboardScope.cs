@@ -1,5 +1,4 @@
-using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
-using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
+using TaskFlow.Api.Repositories.Dashboard.Analytics;
 
 namespace TaskFlow.Api.Services.Dashboard.Analytics;
 

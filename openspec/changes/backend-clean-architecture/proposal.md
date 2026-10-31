@@ -12,7 +12,7 @@ REQ-04 calls for Clean Architecture with the Repository Pattern (Controller → 
 
 ## What Changes
 
-- Merge `TaskFlow.Api`, `TaskFlow.Application`, `TaskFlow.Infrastructure` and `TaskFlow.Domain` into a **single `TaskFlow.Api` project**, laid out by layer: `Controllers/`, `Services/` (+ `Interfaces/`), `Repositories/` (+ `Interfaces/`), `Models/`, `Dtos/`, `Middleware/`, `Config/`, `Common/`, `Persistence/`, `Integrations/`.
+- Merge `TaskFlow.Api`, `TaskFlow.Application`, `TaskFlow.Infrastructure` and `TaskFlow.Domain` into a **single `TaskFlow.Api` project**, laid out by layer: `Controllers/`, `Services/` and `Repositories/` (each interface in its own file beside its class), `Models/`, `Dtos/`, `Middleware/`, `Config/`, `Common/`, `Persistence/`, `Integrations/`.
 - In every layer, organise code by the **module → sub-module hierarchy of `PermissionCatalog`**: Dashboard, Monitoring, Management, Communication, Reports, Settings, Profile, Assistant, plus `Auth` for pre-login flows. A catalog *section* gets a third-level folder only when it has its own controller or service.
 - Introduce **per-module repositories** behind interfaces, built on a shared `BaseRepository<T>`, plus an `IUnitOfWork` that owns commits and transactions. Services depend only on repository interfaces. No `IQueryable` crosses the repository boundary.
 - Move all business rules into services, including the dashboard visibility scopes. Repositories only run queries described by filter objects.

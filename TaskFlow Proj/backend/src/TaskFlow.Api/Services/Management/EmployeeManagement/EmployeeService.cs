@@ -4,13 +4,12 @@ using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Auth;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement;
-using TaskFlow.Api.Repositories.Interfaces.Settings.RoleConfiguration;
-using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Auth;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
+using TaskFlow.Api.Repositories.Settings.RoleConfiguration;
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
 
 namespace TaskFlow.Api.Services.Management.EmployeeManagement;
 

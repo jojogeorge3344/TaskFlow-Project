@@ -6,7 +6,6 @@ using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail;
 

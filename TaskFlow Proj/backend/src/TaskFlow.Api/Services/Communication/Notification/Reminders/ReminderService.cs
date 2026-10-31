@@ -1,19 +1,18 @@
 using NotificationEntity = TaskFlow.Api.Models.Entities.Notification;
-using TaskFlow.Api.Services.Interfaces.Communication.Notification.Reminders;
 using TaskFlow.Api.Config;
-using TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Services.Settings.ReminderSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Notification;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Notification.Reminders;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Communication.Mail;
+using TaskFlow.Api.Repositories.Communication.Notification;
+using TaskFlow.Api.Repositories.Communication.Notification.Reminders;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 
 namespace TaskFlow.Api.Services.Communication.Notification.Reminders;

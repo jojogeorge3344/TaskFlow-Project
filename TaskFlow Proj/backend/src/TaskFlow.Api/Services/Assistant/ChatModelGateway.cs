@@ -1,9 +1,8 @@
 using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
-using TaskFlow.Api.Services.Interfaces.Assistant;
-using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Integrations.Ai;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Api.Models.Enums;
 

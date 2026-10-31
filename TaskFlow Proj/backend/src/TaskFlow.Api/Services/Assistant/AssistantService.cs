@@ -1,16 +1,15 @@
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
-using TaskFlow.Api.Services.Interfaces.Assistant;
-using TaskFlow.Api.Integrations.Interfaces.Ai;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Integrations.Ai;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Assistant;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Assistant;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Api.Services.Assistant;

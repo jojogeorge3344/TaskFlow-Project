@@ -4,7 +4,6 @@ using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.ProjectManagement;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement;
 
 namespace TaskFlow.Api.Repositories.Management.ProjectManagement;
 

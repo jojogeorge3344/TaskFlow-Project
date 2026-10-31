@@ -3,13 +3,12 @@ using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Management.ProjectManagement;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Management.DepartmentManagement;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement.Allocations;
-using TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement;
-using TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement.Positions;
-using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Management.DepartmentManagement;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Repositories.Management.ProjectManagement;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
 
 namespace TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
 

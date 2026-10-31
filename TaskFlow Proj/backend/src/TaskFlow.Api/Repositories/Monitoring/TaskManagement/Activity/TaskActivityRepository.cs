@@ -4,7 +4,6 @@ using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.Activity;
 
 namespace TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
 

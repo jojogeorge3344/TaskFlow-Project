@@ -1,7 +1,6 @@
 using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Api.Services.Interfaces.Assistant;
 
 namespace TaskFlow.Api.Services.Assistant;
 

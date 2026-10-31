@@ -1,15 +1,14 @@
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Api.Services.Interfaces.Assistant;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Dtos.Profile;
 using System.Text.Json;
 using FluentValidation;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Api.Repositories.Interfaces.Assistant;
+using TaskFlow.Api.Repositories.Assistant;
 
 namespace TaskFlow.Api.Services.Assistant;
 

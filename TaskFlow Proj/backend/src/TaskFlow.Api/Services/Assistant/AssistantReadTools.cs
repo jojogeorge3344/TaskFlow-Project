@@ -1,11 +1,10 @@
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Api.Services.Interfaces.Assistant;
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement;
+using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
-using TaskFlow.Api.Services.Interfaces.Communication.Mail;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Services.Communication.Mail;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using System.Text.Json;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Common.Rules;

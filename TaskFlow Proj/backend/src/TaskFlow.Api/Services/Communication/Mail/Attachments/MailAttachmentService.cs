@@ -1,11 +1,10 @@
-using TaskFlow.Api.Services.Interfaces.Communication.Mail.Attachments;
-using TaskFlow.Api.Integrations.Interfaces.Storage;
+using TaskFlow.Api.Integrations.Storage;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail.Attachments;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Communication.Mail.Attachments;
 
 namespace TaskFlow.Api.Services.Communication.Mail.Attachments;
 

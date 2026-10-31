@@ -1,10 +1,9 @@
-using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.Allocations;
+using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Dtos.Management.ProjectManagement;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement;
-using TaskFlow.Api.Services.Interfaces.Management.ProjectManagement;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Management.ProjectManagement;
 
 namespace TaskFlow.Api.Services.Management.ProjectManagement;
 

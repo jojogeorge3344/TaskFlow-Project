@@ -1,9 +1,8 @@
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Dashboard;
-using TaskFlow.Api.Repositories.Interfaces.Dashboard;
-using TaskFlow.Api.Services.Interfaces.Dashboard;
-using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories.Dashboard;
+using TaskFlow.Api.Services.Dashboard.Analytics;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Dashboard;
 

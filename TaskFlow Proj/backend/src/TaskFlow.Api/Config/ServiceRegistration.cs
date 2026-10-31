@@ -1,5 +1,3 @@
-using TaskFlow.Api.Services.Interfaces.Auth.PasswordRecovery;
-using TaskFlow.Api.Services.Interfaces.Auth;
 using TaskFlow.Api.Services.Auth.PasswordRecovery;
 using TaskFlow.Api.Services.Auth;
 using TaskFlow.Api.Authorization;
@@ -18,61 +16,61 @@ public static class ServiceRegistration
         services.AddScoped<ISessionService, SessionService>();
 
         // Profile
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Profile.IProfileService, TaskFlow.Api.Services.Profile.ProfileService>();
+        services.AddScoped<TaskFlow.Api.Services.Profile.IProfileService, TaskFlow.Api.Services.Profile.ProfileService>();
         services.AddSingleton<IAttemptLimiter, TaskFlow.Api.Services.Auth.AttemptLimiter>();
         services.Configure<TaskFlow.Api.Config.MfaOptions>(configuration.GetSection(TaskFlow.Api.Config.MfaOptions.SectionName));
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Auth.Mfa.IMfaService, TaskFlow.Api.Services.Auth.Mfa.MfaService>();
+        services.AddScoped<TaskFlow.Api.Services.Auth.Mfa.IMfaService, TaskFlow.Api.Services.Auth.Mfa.MfaService>();
 
         // Dashboard
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.IDashboardService, TaskFlow.Api.Services.Dashboard.DashboardService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.AdminDashboardScope>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IManagerDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.ManagerDashboardScope>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IManagerAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.ManagerAnalyticsService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IAdminAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.AdminAnalyticsService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IEmployeeDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeDashboardScope>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Dashboard.Analytics.IEmployeeAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.IDashboardService, TaskFlow.Api.Services.Dashboard.DashboardService>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.AdminDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IManagerDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.ManagerDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IManagerAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.ManagerAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IAdminAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.AdminAnalyticsService>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IEmployeeDashboardScope, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeDashboardScope>();
+        services.AddScoped<TaskFlow.Api.Services.Dashboard.Analytics.IEmployeeAnalyticsService, TaskFlow.Api.Services.Dashboard.Analytics.EmployeeAnalyticsService>();
 
         // Monitoring
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.ITaskService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.ITaskAccessService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskAccessService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Discussion.ITaskCommentService, TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.TaskCommentService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Activity.ITaskActivityService, TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.TaskActivityService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Monitoring.EmployeeWorkload.IWorkloadService, TaskFlow.Api.Services.Monitoring.EmployeeWorkload.WorkloadService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.ITaskService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.ITaskAccessService, TaskFlow.Api.Services.Monitoring.TaskManagement.TaskAccessService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.ITaskCommentService, TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.TaskCommentService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.ITaskActivityService, TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.TaskActivityService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.EmployeeWorkload.IWorkloadService, TaskFlow.Api.Services.Monitoring.EmployeeWorkload.WorkloadService>();
 
         // Management
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.IEmployeeService, TaskFlow.Api.Services.Management.EmployeeManagement.EmployeeService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement.Allocations.IUserAllocationService, TaskFlow.Api.Services.Management.EmployeeManagement.Allocations.UserAllocationService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.ProjectManagement.IProjectService, TaskFlow.Api.Services.Management.ProjectManagement.ProjectService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.ProjectManagement.Positions.IPositionService, TaskFlow.Api.Services.Management.ProjectManagement.Positions.PositionService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Management.DepartmentManagement.IDepartmentService, TaskFlow.Api.Services.Management.DepartmentManagement.DepartmentService>();
+        services.AddScoped<TaskFlow.Api.Services.Management.EmployeeManagement.IEmployeeService, TaskFlow.Api.Services.Management.EmployeeManagement.EmployeeService>();
+        services.AddScoped<TaskFlow.Api.Services.Management.EmployeeManagement.Allocations.IUserAllocationService, TaskFlow.Api.Services.Management.EmployeeManagement.Allocations.UserAllocationService>();
+        services.AddScoped<TaskFlow.Api.Services.Management.ProjectManagement.IProjectService, TaskFlow.Api.Services.Management.ProjectManagement.ProjectService>();
+        services.AddScoped<TaskFlow.Api.Services.Management.ProjectManagement.Positions.IPositionService, TaskFlow.Api.Services.Management.ProjectManagement.Positions.PositionService>();
+        services.AddScoped<TaskFlow.Api.Services.Management.DepartmentManagement.IDepartmentService, TaskFlow.Api.Services.Management.DepartmentManagement.DepartmentService>();
 
         // Communication
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Mail.IMailService, TaskFlow.Api.Services.Communication.Mail.MailService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Mail.Attachments.IMailAttachmentService, TaskFlow.Api.Services.Communication.Mail.Attachments.MailAttachmentService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.INotificationPublisher, TaskFlow.Api.Services.Communication.Notification.NotificationPublisher>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.INotificationService, TaskFlow.Api.Services.Communication.Notification.NotificationService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Communication.Notification.Reminders.IReminderService, TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderService>();
+        services.AddScoped<TaskFlow.Api.Services.Communication.Mail.IMailService, TaskFlow.Api.Services.Communication.Mail.MailService>();
+        services.AddScoped<TaskFlow.Api.Services.Communication.Mail.Attachments.IMailAttachmentService, TaskFlow.Api.Services.Communication.Mail.Attachments.MailAttachmentService>();
+        services.AddScoped<TaskFlow.Api.Services.Communication.Notification.INotificationPublisher, TaskFlow.Api.Services.Communication.Notification.NotificationPublisher>();
+        services.AddScoped<TaskFlow.Api.Services.Communication.Notification.INotificationService, TaskFlow.Api.Services.Communication.Notification.NotificationService>();
+        services.AddScoped<TaskFlow.Api.Services.Communication.Notification.Reminders.IReminderService, TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderService>();
         services.Configure<TaskFlow.Api.Config.ReminderEngineOptions>(
             configuration.GetSection(TaskFlow.Api.Config.ReminderEngineOptions.SectionName));
         services.AddHostedService<TaskFlow.Api.Services.Communication.Notification.Reminders.ReminderSchedulerService>();
 
         // Reports
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Reports.IReportService, TaskFlow.Api.Services.Reports.ReportService>();
+        services.AddScoped<TaskFlow.Api.Services.Reports.IReportService, TaskFlow.Api.Services.Reports.ReportService>();
 
         // Settings
         services.Configure<TaskFlow.Api.Config.ApplicationOptions>(
             configuration.GetSection(TaskFlow.Api.Config.ApplicationOptions.SectionName));
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings.IAppClock, TaskFlow.Api.Services.Settings.ApplicationSettings.AppClock>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings.IReminderSettingsService, TaskFlow.Api.Services.Settings.ReminderSettings.ReminderSettingsService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings.IApplicationSettingsService, TaskFlow.Api.Services.Settings.ApplicationSettings.ApplicationSettingsService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.RoleConfiguration.IRoleService, TaskFlow.Api.Services.Settings.RoleConfiguration.RoleService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.TfaSettings.IAiProviderConfigService, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConfigService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Settings.TfaSettings.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConnectionTester>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.ApplicationSettings.IAppClock, TaskFlow.Api.Services.Settings.ApplicationSettings.AppClock>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.ReminderSettings.IReminderSettingsService, TaskFlow.Api.Services.Settings.ReminderSettings.ReminderSettingsService>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.ApplicationSettings.IApplicationSettingsService, TaskFlow.Api.Services.Settings.ApplicationSettings.ApplicationSettingsService>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.RoleConfiguration.IRoleService, TaskFlow.Api.Services.Settings.RoleConfiguration.RoleService>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.IAiProviderConfigService, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConfigService>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.AiProviderConnectionTester>();
 
         // Assistant
-        services.AddSingleton<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantRateLimiter, TaskFlow.Api.Services.Assistant.AssistantRateLimiter>();
-        services.AddSingleton<TaskFlow.Api.Services.Interfaces.Assistant.IHelpKnowledgeBase, TaskFlow.Api.Services.Assistant.HelpKnowledgeBase>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
+        services.AddSingleton<TaskFlow.Api.Services.Assistant.IAssistantRateLimiter, TaskFlow.Api.Services.Assistant.AssistantRateLimiter>();
+        services.AddSingleton<TaskFlow.Api.Services.Assistant.IHelpKnowledgeBase, TaskFlow.Api.Services.Assistant.HelpKnowledgeBase>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantAuthorizer, AssistantAuthorizer>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantTaskReader>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantUserResolver>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.AssistantManagerResolver>();
@@ -86,12 +84,12 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.DraftMailTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ProposeProfileUpdateTool>();
         services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantTool, TaskFlow.Api.Services.Assistant.ProposeRoleChangeTool>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantToolbox, TaskFlow.Api.Services.Assistant.AssistantToolbox>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantAuditLog, TaskFlow.Api.Services.Assistant.AssistantAuditLog>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionService, TaskFlow.Api.Services.Assistant.AssistantActionService>();
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionCards>(
-            provider => provider.GetRequiredService<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantActionService>());
-        services.AddScoped<TaskFlow.Api.Services.Interfaces.Assistant.IAssistantService, TaskFlow.Api.Services.Assistant.AssistantService>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantToolbox, TaskFlow.Api.Services.Assistant.AssistantToolbox>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantAuditLog, TaskFlow.Api.Services.Assistant.AssistantAuditLog>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantActionService, TaskFlow.Api.Services.Assistant.AssistantActionService>();
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantActionCards>(
+            provider => provider.GetRequiredService<TaskFlow.Api.Services.Assistant.IAssistantActionService>());
+        services.AddScoped<TaskFlow.Api.Services.Assistant.IAssistantService, TaskFlow.Api.Services.Assistant.AssistantService>();
 
         return services;
     }

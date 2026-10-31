@@ -1,9 +1,8 @@
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
-using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
-using TaskFlow.Api.Services.Interfaces.Dashboard.Analytics;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories.Dashboard.Analytics;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Dashboard.Analytics;
 

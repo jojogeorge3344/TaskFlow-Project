@@ -6,11 +6,10 @@ using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail.Attachments;
-using TaskFlow.Api.Services.Interfaces.Communication.Mail;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Communication.Mail;
+using TaskFlow.Api.Repositories.Communication.Mail.Attachments;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Communication.Mail;
 

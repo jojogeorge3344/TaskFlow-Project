@@ -1,9 +1,8 @@
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Dtos.Management.ProjectManagement.Positions;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Management.ProjectManagement.Positions;
-using TaskFlow.Api.Services.Interfaces.Management.ProjectManagement.Positions;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
 
 namespace TaskFlow.Api.Services.Management.ProjectManagement.Positions;
 

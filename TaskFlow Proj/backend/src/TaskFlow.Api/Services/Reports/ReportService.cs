@@ -1,7 +1,6 @@
 using TaskFlow.Api.Dtos.Reports;
-using TaskFlow.Api.Repositories.Interfaces.Reports;
-using TaskFlow.Api.Services.Interfaces.Reports;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories.Reports;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Reports;
 

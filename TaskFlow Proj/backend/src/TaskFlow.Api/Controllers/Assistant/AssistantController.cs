@@ -1,8 +1,8 @@
 using TaskFlow.Api.Services.Assistant.Rules;
 using TaskFlow.Api.Common.Exceptions;
-using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
+using TaskFlow.Api.Services.Settings.TfaSettings;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

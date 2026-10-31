@@ -6,9 +6,8 @@ using TaskFlow.Api.Config;
 using TaskFlow.Api.Dtos.Settings.ReminderSettings;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Settings.ApplicationSettings;
-using TaskFlow.Api.Services.Interfaces.Settings.ReminderSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Settings.ReminderSettings;
 

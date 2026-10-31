@@ -6,7 +6,6 @@ using TaskFlow.Api.Dtos.Monitoring.TaskManagement;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Repositories.Dashboard.Analytics;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 

@@ -1,10 +1,9 @@
 using TaskFlow.Api.Services.Assistant.Rules;
-using TaskFlow.Api.Services.Interfaces.Assistant;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Services.Interfaces.Communication.Mail;
+using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Rules;
-using TaskFlow.Api.Services.Interfaces.Management.EmployeeManagement;
+using TaskFlow.Api.Services.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Common.Exceptions;
@@ -13,37 +12,11 @@ using FluentValidation;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Assistant;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Assistant;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Api.Services.Assistant;
-
-public class AssistantAuditLog : IAssistantAuditLog
-{
-    private readonly IAssistantAuditRepository _audits;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly TimeProvider _timeProvider;
-
-    public AssistantAuditLog(IAssistantAuditRepository audits, IUnitOfWork unitOfWork, TimeProvider timeProvider)
-    {
-        _audits = audits;
-        _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider;
-    }
-
-    public async Task RecordAsync(int userId, AssistantActionKind kind, string outcome, CancellationToken cancellationToken = default)
-    {
-        _audits.Add(new AssistantAudit
-        {
-            UserId = userId,
-            Kind = kind,
-            Outcome = outcome,
-            At = _timeProvider.GetUtcNow().UtcDateTime
-        });
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-    }
-}
 
 /// <summary>Pending actions and their confirmation. Nothing here is reachable by the model: it can only ask for an
 /// action to be created, and an action only ever runs from <see cref="ConfirmAsync"/>, called by the user's own
@@ -58,7 +31,7 @@ public class AssistantActionService : IAssistantActionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMailService _mail;
     private readonly IEmployeeService _users;
-    private readonly TaskFlow.Api.Services.Interfaces.Profile.IProfileService _profile;
+    private readonly TaskFlow.Api.Services.Profile.IProfileService _profile;
     private readonly IAssistantAuthorizer _authorizer;
     private readonly IAssistantAuditLog _audit;
     private readonly IValidator<SendMailRequest> _sendMailValidator;
@@ -73,7 +46,7 @@ public class AssistantActionService : IAssistantActionService
         IUnitOfWork unitOfWork,
         IMailService mail,
         IEmployeeService users,
-        TaskFlow.Api.Services.Interfaces.Profile.IProfileService profile,
+        TaskFlow.Api.Services.Profile.IProfileService profile,
         IAssistantAuthorizer authorizer,
         IAssistantAuditLog audit,
         IValidator<SendMailRequest> sendMailValidator,

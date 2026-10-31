@@ -33,12 +33,10 @@ All code merges into `TaskFlow.Api`. The project-reference boundary is replaced 
 
 ```
 TaskFlow.Api/
-  Controllers/<Module>/<SubModule>[/<Section>]/   <Name>Controller.cs
-  Services/Interfaces/<Module>/...                I<Name>Service.cs
-  Services/<Module>/<SubModule>[/<Section>]/      <Name>Service.cs, pure business-rule classes
-  Repositories/Interfaces/<Module>/...            I<Name>Repository.cs, IUnitOfWork.cs (root)
-  Repositories/<Module>/<SubModule>[/<Section>]/  <Name>Repository.cs
-  Integrations/Interfaces/ + Integrations/<Area>/ AI providers, JWT, TOTP, key protectors, file store
+  Controllers/<Module>/                           <Name>Controller.cs (top-level module folder only)
+  Services/<Module>/<SubModule>[/<Section>]/      I<Name>Service.cs + <Name>Service.cs, pure business-rule classes
+  Repositories/<Module>/<SubModule>[/<Section>]/  I<Name>Repository.cs + <Name>Repository.cs; IUnitOfWork.cs (root)
+  Integrations/<Area>/                            AI providers, JWT, TOTP, key protectors, file store
   Models/Entities/  Models/Enums/                 former TaskFlow.Domain
   Dtos/<Module>/<SubModule>/                      *Request, *Response/*Dto, Validators/
   Middleware/                                     exception handling, request logging, MFA gate, session validation
@@ -89,7 +87,7 @@ Domain `Rules/` (TaskStatusTransitions, ReminderCalculator, …) are pure busine
 `AnalyticsScopeTests`, `ManagerScopeTests` and `ManagerDrillDownScopeTests` cover the rule. `AdminAnalyticsQueryShapeTests` moves to the analytics repository tests.
 
 ### D6. Integrations are a sibling of repositories
-External systems (Gemini/OpenAI/Ollama providers, `JwtTokenService`, `LocalMailFileStore`, `AiKeyProtector`, `MfaSecretProtector`, TOTP) live in `Integrations/` behind interfaces in `Integrations/Interfaces/`. Services may call integrations, but controllers may not. The architecture tests encode this. `ChatModelGateway` is not an adapter: it reads provider settings through `IAiProviderConfigService` and then calls the adapters, so it is a service (`Services/Assistant`). Integrations never call services. `ChatModelGateway` is the exception that proves the rule: it reads provider settings through `IAiProviderConfigService`, so it is a service (`Services/Assistant`) that calls the provider adapters, not an adapter itself. Integrations never call services.
+External systems (Gemini/OpenAI/Ollama providers, `JwtTokenService`, `LocalMailFileStore`, `AiKeyProtector`, `MfaSecretProtector`, TOTP) live in `Integrations/<Area>/`, each behind an interface in the same folder. Services may call integrations, but controllers may not. The architecture tests encode this. `ChatModelGateway` is not an adapter: it reads provider settings through `IAiProviderConfigService` and then calls the adapters, so it is a service (`Services/Assistant`). Integrations never call services. `ChatModelGateway` is the exception that proves the rule: it reads provider settings through `IAiProviderConfigService`, so it is a service (`Services/Assistant`) that calls the provider adapters, not an adapter itself. Integrations never call services.
 
 ### D7. Request pipeline components use services
 `TaskAccessHandler`, `SessionValidation` and `PasswordRecoveryController` currently read the DbContext. They will call `ITaskAccessService`, `ISessionService` and `IPasswordRecoveryService` instead.

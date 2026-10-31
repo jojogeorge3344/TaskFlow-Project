@@ -5,9 +5,8 @@ using TaskFlow.Api.Config;
 using TaskFlow.Api.Dtos.Settings.ApplicationSettings;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Settings.ApplicationSettings;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Settings.ApplicationSettings;
 

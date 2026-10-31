@@ -1,4 +1,3 @@
-using TaskFlow.Api.Services.Interfaces.Communication.Notification.Reminders;
 using TaskFlow.Api.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

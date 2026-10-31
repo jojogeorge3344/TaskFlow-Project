@@ -1,9 +1,8 @@
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Notification;
-using TaskFlow.Api.Repositories.Interfaces.Settings.ApplicationSettings;
-using TaskFlow.Api.Services.Interfaces.Communication.Notification;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Communication.Notification;
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using NotificationEntity = TaskFlow.Api.Models.Entities.Notification;
 using Task = System.Threading.Tasks.Task;
 

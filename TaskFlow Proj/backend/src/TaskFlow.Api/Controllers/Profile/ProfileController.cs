@@ -5,7 +5,7 @@ using TaskFlow.Api.Dtos.Auth.Mfa;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Services.Auth.Mfa;
-using TaskFlow.Api.Services.Interfaces.Profile;
+using TaskFlow.Api.Services.Profile;
 
 namespace TaskFlow.Api.Controllers.Profile;
 

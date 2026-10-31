@@ -1,8 +1,7 @@
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.EmployeeWorkload;
-using TaskFlow.Api.Services.Interfaces.Monitoring.EmployeeWorkload;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
+using TaskFlow.Api.Services.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Monitoring.EmployeeWorkload;
 

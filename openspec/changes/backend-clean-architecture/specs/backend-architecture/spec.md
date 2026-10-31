@@ -73,22 +73,30 @@ Request and response types SHALL be DTOs kept apart from database entities. No c
 - **THEN** no entry carries a password hash, security stamp, MFA secret or token
 
 ### Requirement: Layer-first folder structure
-The backend SHALL keep each layer in a dedicated top-level folder (controllers, services, repositories, models, DTOs, middleware, config, common), with service and repository interfaces in an `Interfaces` sub-folder of their layer.
+The backend SHALL keep each layer in a dedicated top-level folder (controllers, services, repositories, models, DTOs, middleware, config, common), with each service, repository and integration interface in a file of its own, named after the interface, in the same folder as the class that implements it. No layer SHALL have a separate `Interfaces` folder.
 
 #### Scenario: Type lives in its layer's folder
 - **WHEN** the architecture test suite inspects every controller, service and repository type
 - **THEN** each one's namespace begins with its layer's folder name
 
+#### Scenario: Interface beside its implementation
+- **WHEN** the architecture test suite inspects every interface and the classes in the same top-level folder that implement it
+- **THEN** each interface is the only interface in a file named after it, and shares its implementation's folder (for example `Services/Profile/IProfileService.cs` and `Services/Profile/ProfileService.cs`)
+
 ### Requirement: Module hierarchy mirrors the permission catalog
-Inside each layer, code SHALL be grouped by module and then sub-module, following the module tree shown in Role Configuration, plus an `Auth` module for flows that run before sign-in. A section of a sub-module SHALL get its own nested folder only when it has its own controller or service. No empty placeholder folders SHALL exist.
+Inside each layer, code SHALL be grouped by module and then sub-module, following the module tree shown in Role Configuration, plus an `Auth` module for flows that run before sign-in. A section of a sub-module SHALL get its own nested folder only when it has its own service. Controllers SHALL sit directly in their top-level module folder, with no sub-module folders. The unit and integration test projects SHALL use the same module and sub-module folders. No empty placeholder folders SHALL exist.
 
 #### Scenario: Same path across layers
-- **WHEN** a sub-module has a controller, a service and a repository
-- **THEN** all three live under the same module/sub-module path in their respective layers (for example `Monitoring/TaskManagement`)
+- **WHEN** a sub-module has a service and a repository
+- **THEN** both live under the same module/sub-module path in their respective layers (for example `Monitoring/TaskManagement`), and its controller lives in the module folder (`Controllers/Monitoring`)
 
 #### Scenario: Section with its own service is nested
 - **WHEN** a section such as task discussion has its own service
-- **THEN** its controller, service and repository live in a nested section folder (for example `Monitoring/TaskManagement/Discussion`)
+- **THEN** its service and repository live in a nested section folder (for example `Monitoring/TaskManagement/Discussion`), while its controller stays in `Controllers/Monitoring`
+
+#### Scenario: Tests follow the module tree
+- **WHEN** a test exercises one module's code
+- **THEN** it lives in that module and sub-module's folder of its test project (for example `TaskFlow.UnitTests/Auth/Mfa`), with a matching namespace
 
 ### Requirement: Consistent naming
 Types SHALL be named `<Name>Controller`, `<Name>Service` / `I<Name>Service`, and `<Name>Repository` / `I<Name>Repository`, using the same `<Name>` for one sub-module in every layer.

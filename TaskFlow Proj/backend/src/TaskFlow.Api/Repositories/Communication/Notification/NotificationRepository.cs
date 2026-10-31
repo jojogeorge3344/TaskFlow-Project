@@ -4,7 +4,6 @@ using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Dtos.Communication.Notification;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Notification;
 using NotificationEntity = TaskFlow.Api.Models.Entities.Notification;
 
 namespace TaskFlow.Api.Repositories.Communication.Notification;

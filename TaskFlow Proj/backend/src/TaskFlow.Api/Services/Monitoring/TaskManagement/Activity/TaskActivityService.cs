@@ -1,12 +1,11 @@
-using TaskFlow.Api.Services.Interfaces.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement;
-using TaskFlow.Api.Repositories.Interfaces.Monitoring.TaskManagement.Activity;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;

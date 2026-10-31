@@ -2,8 +2,7 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Config;
 using TaskFlow.Api.Dtos.Auth;
-using TaskFlow.Api.Repositories.Interfaces.Auth;
-using TaskFlow.Api.Services.Interfaces.Auth;
+using TaskFlow.Api.Repositories.Auth;
 
 namespace TaskFlow.Api.Services.Auth;
 

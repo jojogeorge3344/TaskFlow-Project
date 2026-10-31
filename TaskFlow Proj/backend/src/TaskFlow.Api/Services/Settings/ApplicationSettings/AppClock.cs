@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Config;
-using TaskFlow.Api.Repositories.Interfaces.Settings.ApplicationSettings;
-using TaskFlow.Api.Services.Interfaces.Settings.ApplicationSettings;
+using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 
 namespace TaskFlow.Api.Services.Settings.ApplicationSettings;
 

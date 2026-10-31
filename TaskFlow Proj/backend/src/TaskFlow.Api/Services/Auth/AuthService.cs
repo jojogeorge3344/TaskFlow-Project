@@ -3,12 +3,11 @@ using Microsoft.Extensions.Options;
 using TaskFlow.Api.Config;
 using TaskFlow.Api.Dtos.Auth;
 using TaskFlow.Api.Dtos.Auth.Mfa;
-using TaskFlow.Api.Integrations.Interfaces.Security;
+using TaskFlow.Api.Integrations.Security;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Auth;
-using TaskFlow.Api.Services.Interfaces.Auth;
-using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Auth;
+using TaskFlow.Api.Services.Auth.Mfa;
 
 namespace TaskFlow.Api.Services.Auth;
 

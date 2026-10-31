@@ -4,7 +4,6 @@ using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
 
 namespace TaskFlow.Api.Repositories.Management.EmployeeManagement;
 

@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using TaskFlow.Api.Common.Security;
-using TaskFlow.Api.Services.Interfaces.Auth;
+using TaskFlow.Api.Services.Auth;
 
 namespace TaskFlow.Api.Middleware;
 

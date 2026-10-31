@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces;
+using TaskFlow.Api.Repositories;
 
 namespace TaskFlow.Api.Common;
 

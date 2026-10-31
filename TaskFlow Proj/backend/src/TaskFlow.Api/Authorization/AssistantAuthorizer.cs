@@ -1,4 +1,4 @@
-using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 

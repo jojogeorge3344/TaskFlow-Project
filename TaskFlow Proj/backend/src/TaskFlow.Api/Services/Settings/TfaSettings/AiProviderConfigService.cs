@@ -1,13 +1,12 @@
-using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
-using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Integrations.Ai;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.Extensions.Logging;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Settings.TfaSettings;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Settings.TfaSettings;
 
 namespace TaskFlow.Api.Services.Settings.TfaSettings;
 

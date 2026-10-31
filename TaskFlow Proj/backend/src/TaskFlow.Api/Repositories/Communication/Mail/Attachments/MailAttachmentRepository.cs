@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Communication.Mail.Attachments;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail.Attachments;
 

@@ -1,5 +1,5 @@
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Services.Interfaces.Assistant;
+using TaskFlow.Api.Services.Assistant;
 
 namespace TaskFlow.Api.Services.Assistant.Rules;
 

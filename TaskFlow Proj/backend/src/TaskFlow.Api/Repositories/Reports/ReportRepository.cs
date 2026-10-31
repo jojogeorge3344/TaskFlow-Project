@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common;
 using TaskFlow.Api.Dtos.Reports;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Reports;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
 

@@ -1,6 +1,5 @@
-using TaskFlow.Api.Services.Interfaces.Auth.Mfa;
-using TaskFlow.Api.Services.Interfaces.Auth;
 using TaskFlow.Api.Services.Auth.Mfa;
+using TaskFlow.Api.Services.Auth;
 using TaskFlow.Api.Dtos.Auth.Mfa;
 using TaskFlow.Api.Dtos.Auth;
 using TaskFlow.Api.Common.Security;

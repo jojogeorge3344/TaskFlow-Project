@@ -4,7 +4,6 @@ using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces.Dashboard.Analytics;
 using static TaskFlow.Api.Repositories.Dashboard.Analytics.AnalyticsCounting;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;

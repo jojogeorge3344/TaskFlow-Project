@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories.Interfaces;
 
 namespace TaskFlow.Api.Repositories;
 

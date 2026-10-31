@@ -1,7 +1,5 @@
 using TaskFlow.Api.Services.Assistant;
-using TaskFlow.Api.Services.Interfaces.Settings.TfaSettings;
-using TaskFlow.Api.Services.Interfaces.Assistant;
-using TaskFlow.Api.Integrations.Interfaces.Ai;
+using TaskFlow.Api.Integrations.Ai;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Models.Enums;
 

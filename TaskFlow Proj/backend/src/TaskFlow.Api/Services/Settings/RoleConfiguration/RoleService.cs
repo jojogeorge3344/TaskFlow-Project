@@ -2,11 +2,10 @@ using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Settings.RoleConfiguration;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories.Interfaces;
-using TaskFlow.Api.Repositories.Interfaces.Auth;
-using TaskFlow.Api.Repositories.Interfaces.Management.EmployeeManagement;
-using TaskFlow.Api.Repositories.Interfaces.Settings.RoleConfiguration;
-using TaskFlow.Api.Services.Interfaces.Settings.RoleConfiguration;
+using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Auth;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement;
+using TaskFlow.Api.Repositories.Settings.RoleConfiguration;
 
 namespace TaskFlow.Api.Services.Settings.RoleConfiguration;
 
