@@ -5,8 +5,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { LOGIN_REASON_PASSWORD_RESET } from '../../../core/auth/login-reasons';
 import { apiErrorMessage } from '../../../shared/ui/api-error';
 import { LegalFooterComponent } from '../../legal/legal-footer.component';
-
-export type RecoveryStep = 'verify' | 'password';
+import { RecoveryStep } from './account-recovery.model';
 
 const MIN_PASSWORD_LENGTH = 6;
 const MAX_PASSWORD_LENGTH = 128;

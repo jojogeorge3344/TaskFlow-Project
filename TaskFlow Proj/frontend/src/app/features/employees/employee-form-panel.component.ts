@@ -28,16 +28,9 @@ import { PositionComboboxComponent } from '../../shared/position-combobox/positi
 import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.directive';
 import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
+import { AllocationRow } from './employee-form-panel.model';
 
 export const MIN_PASSWORD_LENGTH = 6;
-
-/** One project row of the allocation editor. A row is complete once it has a project, a position and a whole percentage. */
-export interface AllocationRow {
-  key: number;
-  projectId: number | null;
-  positionId: number | null;
-  percent: number | null;
-}
 
 /** Required, ignoring surrounding whitespace. */
 function requiredText(control: AbstractControl<string>): ValidationErrors | null {

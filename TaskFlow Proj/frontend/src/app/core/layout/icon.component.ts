@@ -5,7 +5,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
  * Inline stroke icons (24px viewBox, currentColor). Paths follow the Lucide icon set (ISC license).
  * The markup is a fixed, trusted constant; names outside this map render an empty <svg>.
  */
-const ICONS = {
+export const ICONS = {
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   'panel-close': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/>',
   'panel-open': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M13 10l2 2-2 2"/>',
@@ -53,8 +53,6 @@ const ICONS = {
   'eye-off': '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.39-1.61M2 2l20 20"/>',
   external:'<path d="M7 17L17 7M8 7h9v9"/>'
 } as const;
-
-export type IconName = keyof typeof ICONS;
 
 @Component({
   selector: 'tf-icon',

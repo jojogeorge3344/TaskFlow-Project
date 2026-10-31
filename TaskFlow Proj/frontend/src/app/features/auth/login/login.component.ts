@@ -9,6 +9,7 @@ import { isMfaChallenge } from '../../../core/auth/auth.models';
 import { AuthUser } from '../../../core/auth/auth.models';
 import { LegalFooterComponent } from '../../legal/legal-footer.component';
 import { LoginBackgroundComponent } from './login-background.component';
+import { apiErrorMessage } from '../../../shared/ui/api-error';
 
 @Component({
   selector: 'app-login',
@@ -110,12 +111,10 @@ export class LoginComponent {
         this.submitting.set(false);
         this.finishSignIn(user);
       },
-      error: (err: { status?: number; error?: { error?: string } }) => {
+      error: (err: unknown) => {
         this.submitting.set(false);
         this.mfaForm.controls.code.reset('');
-        this.errorMessage.set(
-          err.error?.error ?? 'That code did not work. Check the code and try again.'
-        );
+        this.errorMessage.set(apiErrorMessage(err, 'That code did not work. Check the code and try again.'));
       }
     });
   }

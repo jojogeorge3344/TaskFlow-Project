@@ -2,13 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { ChartConfiguration, ChartEvent } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { percentOf } from './chart-colors';
-
-export interface DonutSlice {
-  key: string;
-  label: string;
-  value: number;
-  color: string;
-}
+import { DonutSlice } from './donut-chart.model';
 
 @Component({
   selector: 'tf-donut-chart',

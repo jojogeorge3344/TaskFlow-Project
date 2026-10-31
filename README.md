@@ -278,3 +278,59 @@ The browser asks for microphone permission the first time. After a page reload i
 page listen again; the TFA button then says "Click anywhere on the page to turn "Hey TF assistant" back on". A microphone
 error stops voice for that visit only and is never saved as your choice, so the next visit tries again. Voice uses the
 browser's speech recognition and speech output, and Chrome processes the audio on Google's servers. Typing always works.
+
+## Backend structure
+
+The API is one project, `TaskFlow Proj/backend/src/TaskFlow.Api`, organised by layer first. Every layer uses the same
+module tree, which follows the permission catalogue (the modules on the Roles screen):
+
+```
+TaskFlow.Api/
+  Controllers/<Module>/                    HTTP only: routing, model binding, status codes (no sub-module folders)
+  Services/<Module>/<SubModule>/[<Pair>/]  I<Name>Service.cs + <Name>Service.cs, one pair per folder (rules in Rules/)
+  Repositories/<Module>/<SubModule>/[<Pair>/]
+                                           I<Name>Repository.cs + <Name>Repository.cs over EF Core, one pair per folder;
+                                           IBaseRepository, BaseRepository, IUnitOfWork and UnitOfWork in Base/
+  Dtos/<Module>/<SubModule>/               requests, responses, Validators/
+  Models/Entities/  Models/Enums/          database entities and enums
+  Integrations/<Area>/<Pair>/              AI providers, JWT, TOTP, key protection, file storage (interface beside class)
+  Middleware/  Filters/  Authorization/    exception handling, request logging, session validation, MFA gate,
+                                           request validation, permission policies
+  Config/                                  DI registration per layer, options classes
+  Common/                                  exceptions, security keys and policies, shared rules
+  Persistence/                             AppDbContext, migrations, seeders
+```
+
+Modules: `Auth` (`Mfa`, `PasswordRecovery`), `Dashboard` (`Analytics`), `Monitoring` (`TaskManagement` with
+`Discussion` and `Activity`, `Board` (frontend only), `EmployeeWorkload`), `Management` (`EmployeeManagement` with `Allocations`,
+`ProjectManagement` with `Positions`, `DepartmentManagement`), `Communication` (`Mail` with `Attachments`,
+`Notification` with `Reminders`), `Reports`, `Settings` (`ApplicationSettings`, `ReminderSettings`, `RoleConfiguration`,
+`TfaSettings`), `Profile` and `Assistant`.
+
+Layer rules, checked by `tests/TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` on every test run:
+
+- A request flows Controller → Service → Repository → database, and a layer only calls the one below it, through its
+  interface. Controllers never reach repositories, integrations or EF Core.
+- Only `Persistence`, `Repositories` and the startup code touch `AppDbContext`. Repositories never return `IQueryable`
+  and never save: the service that owns the use case commits through `IUnitOfWork`.
+- Controllers never take or return entities, never validate requests themselves (the global `ValidationFilter` runs the
+  FluentValidation validators) and never catch exceptions. Services throw `AppException` subclasses
+  (`BusinessRuleException` 400, `ForbiddenException` 403, `NotFoundException` 404, `ConflictException` 409,
+  `RateLimitedException` 429), and `GlobalExceptionHandler` turns them into ProblemDetails.
+- Each file's namespace matches its folder, each layer folder holds only module paths, classes are named for their
+  layer (`*Controller`, `*Service`, `*Repository`) and there are no empty folders.
+- Controllers sit directly in their top-level module folder (`Controllers/Auth/PasswordRecoveryController.cs`).
+- Every interface has a file of its own named after it, in the same folder as the class that implements it
+  (`Services/Profile/IProfileService.cs` next to `Services/Profile/ProfileService.cs`). There is no `Interfaces` folder,
+  and an interface file declares nothing but its interface: the records it uses each have a file of their own beside it.
+  `Authorization/` follows the same rule (`Authorization/Assistant/`, `TaskAccess/`, `Policies/`, `Auditing/`).
+- Every service and repository has a folder of its own. When a module has more than one, or also has sub-modules, each
+  pair gets a named folder: `Services/Auth/Login/` (`IAuthService`, `AuthService`), `Services/Auth/Sessions/`,
+  `Services/Auth/Mfa/`. A folder holds either code or sub-folders, never both; a module's shared `Rules/` folder and the
+  assistant's `Knowledge/` help topics are the only exceptions. Folders are named for what they hold, never after a
+  type, so a folder never hides a type name (`Tasks/`, not `Task/`).
+
+The test projects (`tests/TaskFlow.UnitTests`, `tests/TaskFlow.IntegrationTests`) use the same folders as the code
+they test, for example `Auth/Login/AuthServiceLoginTests.cs`, with namespaces that match. Tests that belong to no module sit in
+`Architecture/`, `Common/`, `Persistence/` or `Integrations/`. Fixtures and fakes shared across modules are in
+`TestSupport/`, which `GlobalUsings.cs` imports everywhere.

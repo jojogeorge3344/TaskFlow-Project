@@ -8,17 +8,9 @@ import { apiErrorMessage } from '../../shared/ui/api-error';
 import { DrawerComponent } from '../../shared/ui/drawer.component';
 import { ToastService } from '../../shared/ui/toast.service';
 import { formatSize } from './mail-format';
-import { RecipientChip, RecipientPickerComponent } from './recipient-picker.component';
-
-/** What to open the composer for. */
-export type ComposeRequest =
-  | { kind: 'new' }
-  | { kind: 'reply'; itemId: number; mode: MailComposeMode }
-  | { kind: 'draft'; itemId: number };
-
-export type ComposeResult = 'sent' | 'saved' | 'discarded' | 'cancelled';
-
-type ComposeField = 'To' | 'Cc' | 'Subject' | 'Body' | 'AttachmentIds' | 'Mode' | 'File';
+import { RecipientPickerComponent } from './recipient-picker.component';
+import { RecipientChip } from './recipient-picker.model';
+import { ComposeRequest, ComposeResult, ComposeField } from './compose-dialog.model';
 
 /** Writes a new mail, a reply, reply all or forward, or continues a draft. Recipients must be TaskFlow users. */
 @Component({

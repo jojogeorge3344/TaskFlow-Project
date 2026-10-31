@@ -5,8 +5,7 @@ import { Observable, Subject, catchError, map, of, switchMap } from 'rxjs';
 import { defaultFilter, localToday, toQueryParams, validateRange } from '../analytics/analytics-filter';
 import { AuthService } from '../auth/auth.service';
 import { AdminAnalytics, AnalyticsFilterOptions, AnalyticsFilterState } from '../models';
-
-type FetchResult = { data: AdminAnalytics } | { failed: true };
+import { FetchResult } from './dashboard-analytics.model';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardAnalyticsService {

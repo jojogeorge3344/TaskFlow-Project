@@ -69,9 +69,9 @@ Full rationale and the BRD→stack mapping are in TDD §4.
 ┌──────────────────────────┐   HTTPS / JSON   ┌──────────────────────────────────┐
 │  Angular SPA (browser)   │ ◄──────────────► │  ASP.NET Core Web API (.NET)     │
 │  standalone components   │   Bearer JWT     │  Controllers (thin)              │
-│  route guards, services  │                  │  Application services/validators │
-│  custom CSS, Chart.js    │                  │  Domain entities/rules           │
-└──────────────────────────┘                  │  Infrastructure (EF Core, SMTP)  │
+│  route guards, services  │                  │  Services (business rules)       │
+│  custom CSS, Chart.js    │                  │  Repositories (data access)      │
+└──────────────────────────┘                  │  Integrations (AI, JWT, storage) │
                                               │  ┌────────────────────────────┐  │
                                               │  │ ReminderSchedulerService   │  │
                                               │  │ (BackgroundService ~1 min) │  │
@@ -86,7 +86,8 @@ Full rationale and the BRD→stack mapping are in TDD §4.
 
 **Request lifecycle:**
 `HTTP → CORS/HTTPS → JWT auth → role/resource authorization → Controller → Service
-(validation + business rules) → EF Core → SQLite → DTO → JSON`.
+(business rules) → Repository → EF Core → SQLite → DTO → JSON`; request validation runs in a global filter and errors
+become ProblemDetails in `GlobalExceptionHandler`.
 
 **Key decisions**
 
@@ -108,10 +109,9 @@ TaskFlow Proj/
 ├─ backend/
 │  ├─ TaskFlow.sln
 │  ├─ src/
-│  │  ├─ TaskFlow.Api/            # ASP.NET Core Web API (host; SpaProxy launches the SPA)
-│  │  ├─ TaskFlow.Application/    # services, DTOs, validators, interfaces
-│  │  ├─ TaskFlow.Domain/         # entities, enums, pure business rules
-│  │  └─ TaskFlow.Infrastructure/ # EF Core DbContext, migrations, email, scheduler
+│  │  └─ TaskFlow.Api/            # ASP.NET Core Web API (host; SpaProxy launches the SPA), layer-first:
+│  │                                  #   Controllers, Services, Repositories, Dtos, Models, Integrations,
+│  │                                  #   Middleware, Filters, Config, Common, Persistence
 │  └─ tests/
 │     ├─ TaskFlow.UnitTests/
 │     └─ TaskFlow.IntegrationTests/
@@ -136,15 +136,18 @@ TaskFlow Proj/
 > `dotnet run` on the API auto-launches the Angular dev server (`npm start`) and redirects the
 > browser to it — no `.esproj` and no multiple-startup configuration is required.
 
-**Backend layer dependency direction:** `Api → Application → Domain`;
-`Infrastructure → Application/Domain`. No layer skips a layer.
+**Backend layer flow:** Controller → Service → Repository → database. Each layer calls only the one below it, through
+its interface, and every layer uses the same module tree (`Controllers/<Module>/<SubModule>`, the same path under
+`Services`, `Repositories` and `Dtos`). `tests/TaskFlow.UnitTests/ArchitectureTests.cs` enforces the rules.
 
-| Project | Contains | Depends on |
+| Folder | Contains | May call |
 |---|---|---|
-| `TaskFlow.Domain` | Entities, enums, business rules | — |
-| `TaskFlow.Application` | Services, DTOs, validators, mapping | Domain |
-| `TaskFlow.Infrastructure` | `AppDbContext`, migrations, SMTP, scheduler | Application, Domain |
-| `TaskFlow.Api` | Controllers, auth, middleware, DI | Application, Infrastructure |
+| `Controllers` | HTTP routing, binding, status codes | Services |
+| `Services` | Business rules, use cases | Repositories, Integrations |
+| `Repositories` | EF Core queries and changes (no saving) | Persistence |
+| `Integrations` | AI providers, JWT, TOTP, key protection, file storage | — |
+| `Dtos` / `Models` | Requests, responses, validators / entities, enums | — |
+| `Persistence` | `AppDbContext`, migrations, seeders | — |
 
 > The authoritative reference for the backend/frontend design is TDD §5–§6 and §12.
 
@@ -214,7 +217,7 @@ server (`npm start`) once the API is up, then redirects the browser to it
 
 ```
 dotnet build
-dotnet ef database update --project src/TaskFlow.Infrastructure --startup-project src/TaskFlow.Api
+dotnet ef database update --project src/TaskFlow.Api
 dotnet run --project src/TaskFlow.Api
 ```
 

@@ -1,19 +1,5 @@
 import { AfterViewInit, Directive, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
-
-interface Node {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-}
-
-export interface BackdropColors {
-  /** Link lines, as an `r, g, b` triplet; alpha is applied per line. */
-  link: string;
-  /** Node dots, as an `r, g, b` triplet. */
-  dot: string;
-}
+import { BackdropNode, BackdropColors } from './backdrop-animation.model';
 
 const LINK_DISTANCE = 140;
 const MAX_NODES = 70;
@@ -31,7 +17,7 @@ export abstract class BackdropAnimation implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: true }) protected readonly canvasRef!: ElementRef<HTMLCanvasElement>;
 
   private ctx: CanvasRenderingContext2D | null = null;
-  private nodes: Node[] = [];
+  private nodes: BackdropNode[] = [];
   private frame = 0;
   private width = 0;
   private height = 0;

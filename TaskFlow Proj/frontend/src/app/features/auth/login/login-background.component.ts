@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { BackdropAnimation, BackdropColors } from '../../../shared/backdrop/backdrop-animation';
+import { BackdropAnimation } from '../../../shared/backdrop/backdrop-animation';
+import { BackdropColors } from '../../../shared/backdrop/backdrop-animation.model';
 
 /** Full-screen particle network behind the login card, always in its fixed dark blue look (not themed). */
 @Component({

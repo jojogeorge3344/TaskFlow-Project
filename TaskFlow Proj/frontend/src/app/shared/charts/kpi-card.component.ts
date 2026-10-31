@@ -1,6 +1,5 @@
 import { Component, input } from '@angular/core';
-
-export type KpiTone = 'neutral' | 'good' | 'bad';
+import { KpiTone } from './kpi-card.model';
 
 @Component({
   selector: 'tf-kpi-card',

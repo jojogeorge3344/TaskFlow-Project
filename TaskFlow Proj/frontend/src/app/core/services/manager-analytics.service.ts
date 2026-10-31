@@ -5,8 +5,7 @@ import { Observable, Subject, catchError, map, of, switchMap } from 'rxjs';
 import { defaultFilter, localToday, toQueryParams, validateRange } from '../analytics/analytics-filter';
 import { AuthService } from '../auth/auth.service';
 import { AnalyticsFilterOptions, AnalyticsFilterState, TeamAnalytics, TeamFilterOptions } from '../models';
-
-type FetchResult = { data: TeamAnalytics } | { failed: true };
+import { FetchResult } from './manager-analytics.model';
 
 /** State for the Manager analytics page. The server limits everything to the manager's own team, and the filter options
  * only ever list that team's employees and projects; the department and manager filters do not exist here. */

@@ -14,6 +14,7 @@ import {
   SECOND_REMINDER_OPTIONS,
   withReminderDay
 } from '../tasks/reminder-options';
+import { SettingsField } from './reminder-settings.model';
 
 /** Mirrors the server rule: the first reminder must come before the second. */
 function firstBeforeSecond(group: AbstractControl): ValidationErrors | null {
@@ -23,8 +24,6 @@ function firstBeforeSecond(group: AbstractControl): ValidationErrors | null {
   };
   return Number(defaultFirstDays) > Number(defaultSecondDays) ? null : { secondNotBeforeFirst: true };
 }
-
-type SettingsField = 'defaultFirstDays' | 'defaultSecondDays' | 'defaultOverdueFrequency';
 
 /** Reminder Settings (Screen 13). Needs settings.reminders.manage; validation mirrors
  * UpdateReminderSettingsRequestValidator. */

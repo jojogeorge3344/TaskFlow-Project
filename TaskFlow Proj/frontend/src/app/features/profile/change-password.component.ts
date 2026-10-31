@@ -8,6 +8,7 @@ import { LOGIN_REASON_CREDENTIALS_CHANGED } from '../../core/auth/login-reasons'
 import { IconComponent } from '../../core/layout/icon.component';
 import { ProfileService } from '../../core/services/profile.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { PasswordField } from './change-password.model';
 
 const MIN_PASSWORD_LENGTH = 6;
 /** Mirrors the server rule: login rejects passwords longer than this, so the change form must too. */
@@ -18,8 +19,6 @@ function passwordsMatch(group: AbstractControl): { mismatch: true } | null {
   const { newPassword, confirmPassword } = (group as FormGroup).getRawValue() as { newPassword: string; confirmPassword: string };
   return newPassword === confirmPassword ? null : { mismatch: true };
 }
-
-type PasswordField = 'newPassword' | 'confirmPassword';
 
 /** A rough 0-4 score so the user sees how strong a new password is. Only a hint: the API enforces the real rules. */
 export function passwordStrength(password: string): { level: number; label: string } {

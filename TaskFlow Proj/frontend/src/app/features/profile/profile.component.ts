@@ -16,16 +16,7 @@ import { EmailLocalPartDirective } from '../../shared/ui/email-local-part.direct
 import { initials } from '../../shared/ui/initials';
 import { ToastService } from '../../shared/ui/toast.service';
 import { roleBadgeClass } from '../employees/role-badge';
-
-type ProfileField = 'fullName' | 'email' | 'mobileNumber';
-
-/** A read-only account fact. More than one value renders as a bulleted list; none renders as a dash. */
-interface ReadonlyField {
-  label: string;
-  values: string[];
-  /** Shown beneath the values, e.g. the total allocation. */
-  note?: string | null;
-}
+import { ProfileField, ReadonlyField } from './profile.model';
 
 function single(label: string, value: string | null | undefined): ReadonlyField {
   return { label, values: value ? [value] : [] };
@@ -60,7 +51,6 @@ export class ProfileComponent implements OnInit {
   readonly saving = signal(false);
   readonly saveError = signal<string | null>(null);
   readonly savedAt = signal<Date | null>(null);
-
 
   readonly allocationLabel = allocationLabel;
 
@@ -127,7 +117,6 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
-
 
   fieldError(name: ProfileField): string | null {
     const control = this.form.controls[name];

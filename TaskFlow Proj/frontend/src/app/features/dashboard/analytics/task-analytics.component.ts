@@ -12,15 +12,11 @@ import {
   TaskPriority
 } from '../../../core/models';
 import { BUCKET_SERIES, PRIORITY_COLORS, percentOf } from '../../../shared/charts/chart-colors';
-import { DonutChartComponent, DonutSlice } from '../../../shared/charts/donut-chart.component';
-import { LineChartComponent, LineSeries, PointClick } from '../../../shared/charts/line-chart.component';
-
-interface DeadlineRow {
-  key: DrillDeadlineBucket;
-  label: string;
-  value: number;
-  width: number;
-}
+import { DonutChartComponent } from '../../../shared/charts/donut-chart.component';
+import { DonutSlice } from '../../../shared/charts/donut-chart.model';
+import { LineChartComponent } from '../../../shared/charts/line-chart.component';
+import { LineSeries, PointClick } from '../../../shared/charts/line-chart.model';
+import { DeadlineRow } from './task-analytics.model';
 
 @Component({
   selector: 'tf-task-analytics',

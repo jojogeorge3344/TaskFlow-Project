@@ -1,13 +1,6 @@
 import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing';
-import {
-  MAX_SPOKEN_CHARS,
-  speakingLimitMs,
-  SPEECH_SYNTHESIS_FACTORY,
-  SpeakService,
-  SpeechSynthesisLike,
-  UTTERANCE_FACTORY,
-  toSpeech
-} from './speak.service';
+import { MAX_SPOKEN_CHARS, speakingLimitMs, SPEECH_SYNTHESIS_FACTORY, SpeakService, UTTERANCE_FACTORY, toSpeech } from './speak.service';
+import { SpeechSynthesisLike } from './speak.model';
 
 type FakeUtterance = { text: string; lang: string; onend: (() => void) | null; onerror: (() => void) | null };
 

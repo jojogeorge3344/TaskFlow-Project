@@ -1,7 +1,7 @@
 import { AuthUser } from '../auth/auth.models';
 import { DepartmentScreenPermissions, EmployeeScreenPermissions, Permissions } from '../auth/permissions';
 import { dashboardRouteFor } from '../auth/role-routes';
-import { IconName } from './icon.component';
+import { IconName } from './icon.model';
 
 export interface NavItem {
   label: string;

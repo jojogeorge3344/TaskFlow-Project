@@ -8,8 +8,7 @@ import { ApplicationSettings, TASK_PRIORITIES, TaskPriority } from '../../core/m
 import { ApplicationSettingsService } from '../../core/services/application-settings.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
-
-type SettingsField = 'name' | 'timezone' | 'defaultPriority';
+import { SettingsField } from './application-settings.model';
 
 /** Required, ignoring surrounding whitespace — mirrors the server rule. */
 function requiredText(control: AbstractControl<string>): ValidationErrors | null {

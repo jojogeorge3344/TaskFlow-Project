@@ -1,12 +1,6 @@
 import { Component, ElementRef, signal, viewChild } from '@angular/core';
 import { IconComponent } from '../../core/layout/icon.component';
-
-export interface ConfirmOptions {
-  title: string;
-  message: string;
-  confirmLabel: string;
-  variant?: 'primary' | 'danger';
-}
+import { ConfirmOptions } from './confirm-dialog.model';
 
 /**
  * Confirmation dialog built on the native <dialog> (focus trap, Esc and backdrop for free).

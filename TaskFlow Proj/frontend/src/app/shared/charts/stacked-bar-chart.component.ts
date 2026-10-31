@@ -2,20 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { ChartConfiguration, ChartEvent } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartSeries, percentOf } from './chart-colors';
-
-export interface StackedRow {
-  key: number | string | null;
-  label: string;
-  values: number[];
-  percent?: number;
-}
-
-export interface SegmentClick {
-  rowKey: number | string | null;
-  rowLabel: string;
-  seriesKey: string;
-  value: number;
-}
+import { StackedRow, SegmentClick } from './stacked-bar-chart.model';
 
 const ROW_HEIGHT = 34;
 const CHART_PADDING = 76;

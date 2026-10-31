@@ -3,7 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { MailService } from '../../core/services/mail.service';
 import { ToastService } from '../../shared/ui/toast.service';
-import { ComposeDialogComponent, ComposeRequest } from './compose-dialog.component';
+import { ComposeDialogComponent } from './compose-dialog.component';
+import { ComposeRequest } from './compose-dialog.model';
 import { MailServiceStub, detail, mailServiceStub } from './mail-test-data';
 
 describe('ComposeDialogComponent', () => {

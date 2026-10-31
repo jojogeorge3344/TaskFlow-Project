@@ -1,12 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-
-export type ToastKind = 'success' | 'error';
-
-export interface Toast {
-  id: number;
-  message: string;
-  kind: ToastKind;
-}
+import { ToastKind, Toast } from './toast.model';
 
 export const TOAST_DURATION_MS = 4000;
 

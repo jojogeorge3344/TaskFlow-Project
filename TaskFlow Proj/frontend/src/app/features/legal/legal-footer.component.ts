@@ -3,8 +3,7 @@ import { RouterLink } from '@angular/router';
 import { LEGAL_APPLICATION, legalOwnershipLine } from './legal-owner';
 import { LEGAL_DOCUMENTS } from './legal-documents';
 import { ActivatedRoute } from '@angular/router';
-
-export type LegalFooterVariant = 'surface' | 'dark';
+import { LegalFooterVariant } from './legal-footer.model';
 
 @Component({
   selector: 'app-legal-footer',

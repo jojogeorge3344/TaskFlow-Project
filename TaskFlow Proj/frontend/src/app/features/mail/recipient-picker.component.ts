@@ -4,13 +4,7 @@ import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs
 import { IconComponent } from '../../core/layout/icon.component';
 import { MailContact } from '../../core/models';
 import { MailService } from '../../core/services/mail.service';
-
-/** A recipient chip. `valid` is null while the address is being checked against TaskFlow users. */
-export interface RecipientChip {
-  email: string;
-  name: string | null;
-  valid: boolean | null;
-}
+import { RecipientChip } from './recipient-picker.model';
 
 /** Chips for To or Cc that only accept TaskFlow users: suggestions come from the user directory, and a typed
  * address that is not an active TaskFlow user is flagged before sending. */

@@ -1,19 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { ChartConfiguration, ChartEvent } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartSeries } from './chart-colors';
-
-export interface LineSeries extends ChartSeries {
-  data: number[];
-  dashed?: boolean;
-}
-
-export interface PointClick {
-  seriesKey: string;
-  index: number;
-  label: string;
-  value: number;
-}
+import { LineSeries, PointClick } from './line-chart.model';
 
 @Component({
   selector: 'tf-line-chart',

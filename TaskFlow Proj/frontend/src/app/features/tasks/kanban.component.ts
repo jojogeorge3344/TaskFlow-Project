@@ -14,11 +14,7 @@ import { IconComponent } from '../../core/layout/icon.component';
 import { apiErrorMessage } from '../../shared/ui/api-error';
 import { ToastService } from '../../shared/ui/toast.service';
 import { TaskService } from './task.service';
-
-interface BoardColumn {
-  status: TaskStatus;
-  tasks: TaskCard[];
-}
+import { BoardColumn } from './kanban.model';
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   ToDo: 'To Do',

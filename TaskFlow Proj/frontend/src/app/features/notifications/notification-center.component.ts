@@ -12,6 +12,7 @@ import {
 } from '../../core/models';
 import { NotificationService } from '../../core/services/notification.service';
 import { apiErrorMessage } from '../../shared/ui/api-error';
+import { ReadState } from './notification-center.model';
 
 export const PAGE_SIZE = 20;
 
@@ -22,8 +23,6 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   Overdue: 'Overdue',
   System: 'System'
 };
-
-type ReadState = '' | 'unread' | 'read';
 
 /** Notification Center (Screen 12): the caller's own notifications, filterable, paged, and
  * markable as read, with a link to the related task when one is present. */

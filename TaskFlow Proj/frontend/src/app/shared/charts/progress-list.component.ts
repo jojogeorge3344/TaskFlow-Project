@@ -1,12 +1,5 @@
 import { Component, input, output } from '@angular/core';
-
-export interface ProgressItem {
-  key: number | string | null;
-  label: string;
-  percent: number;
-  summary: string;
-  note?: string;
-}
+import { ProgressItem } from './progress-list.model';
 
 @Component({
   selector: 'tf-progress-list',

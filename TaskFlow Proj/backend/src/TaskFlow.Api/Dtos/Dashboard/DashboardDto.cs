@@ -1,0 +1,26 @@
+namespace TaskFlow.Api.Dtos.Dashboard;
+
+public record AdminDashboardDto(
+    int TotalEmployees,
+    int ActiveEmployees,
+    int TotalProjects,
+    int TotalTasks,
+    int PendingTasks,
+    int CompletedTasks,
+    int OverdueTasks);
+
+public record ManagerDashboardDto(
+    int TotalTasks,
+    int PendingTasks,
+    int TasksDueToday,
+    int UpcomingDeadlines,
+    int OverdueTasks,
+    int CompletedTasks);
+
+public record EmployeeDashboardDto(
+    int AssignedTasks,
+    int PendingTasks,
+    int TasksDueToday,
+    int OverdueTasks,
+    int InProgressTasks,
+    int CompletedTasks);
