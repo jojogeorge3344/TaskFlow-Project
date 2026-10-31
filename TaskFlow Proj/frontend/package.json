@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "npm run check:structure && ng test",
+    "check:structure": "node scripts/check-frontend-structure.mjs"
   },
   "private": true,
   "dependencies": {

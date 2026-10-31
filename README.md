@@ -334,3 +334,39 @@ The test projects (`tests/TaskFlow.UnitTests`, `tests/TaskFlow.IntegrationTests`
 they test, for example `Auth/Login/AuthServiceLoginTests.cs`, with namespaces that match. Tests that belong to no module sit in
 `Architecture/`, `Common/`, `Persistence/` or `Integrations/`. Fixtures and fakes shared across modules are in
 `TestSupport/`, which `GlobalUsings.cs` imports everywhere.
+
+## Frontend structure
+
+The Angular app, `TaskFlow Proj/frontend/src/app`, uses the same module and sub-module tree as the backend, in
+kebab-case (`Management/EmployeeManagement` -> `modules/management/employee-management`):
+
+```
+src/app/
+  modules/<module>/<sub-module>/     one folder per backend module; auth and legal are frontend-only (they run before sign-in)
+    pages/                           routed screens (*.component.ts/html/css)
+    components/                      non-routed pieces of the screens
+    services/                        API services (*.service.ts) for that module's endpoints
+    models/                          the module's types (*.model.ts)
+    utils/                           pure helpers used only by that module
+  modules/<module>/<module>.routes.ts  the module's routes, loaded by routes/app.routes.ts with loadChildren
+  shared/                            code used by two or more modules: components/, directives/, services/, utils/,
+                                     auth/ (guards, interceptor, auth service, token store, permission keys), testing/
+  layouts/                           the app shell, its navigation and the theme menu
+  routes/                            the root route table
+  config/                            app providers, the API base URL and its interceptor
+src/assets/                          static files (favicon)
+```
+
+Modules: `auth` (`login`, `account-recovery`, `security-setup`), `legal`, `dashboard` (`analytics`), `monitoring`
+(`task-management` with `discussion` and `activity`, `board`, `employee-workload`), `management` (`employee-management`,
+`project-management` with `positions`, `department-management`), `communication` (`mail`, `notification`), `reports`,
+`settings` (`application-settings`, `reminder-settings`, `role-configuration`, `tfa-settings`), `profile` and `assistant`.
+
+Placement rules, checked by `npm run check:structure` (also the first step of `npm test`):
+
+- A file sits in the layer folder for its kind; only `<module>.routes.ts` sits directly in a module folder.
+- An API service lives in the module whose endpoints it calls, even when other modules import it.
+- A component's or service's own types go in a `<name>.model.ts` beside it; types shared by a module go in its `models/`.
+- Code moves to `shared/` only when two or more modules, or the app shell, use it. Spec files sit next to the file they test.
+- A route's `loadComponent` target is always in a `pages/` folder.
+- There are no empty folders, and the old `core/` and `features/` folders are gone.

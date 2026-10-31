@@ -233,13 +233,13 @@ public class PermissionCatalogTests : IDisposable
     public void TheFrontendMirrorsTheStoredCatalogueKeys()
     {
         var directory = new DirectoryInfo(Path.GetDirectoryName(ThisFile())!);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "frontend", "src", "app", "core", "auth", "permissions.ts")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "frontend", "src", "app", "shared", "auth", "permissions.ts")))
         {
             directory = directory.Parent;
         }
 
         Assert.NotNull(directory);
-        var source = File.ReadAllText(Path.Combine(directory!.FullName, "frontend", "src", "app", "core", "auth", "permissions.ts"));
+        var source = File.ReadAllText(Path.Combine(directory!.FullName, "frontend", "src", "app", "shared", "auth", "permissions.ts"));
         var block = source[source.IndexOf("export const Permissions = {", StringComparison.Ordinal)..source.IndexOf("} as const;", StringComparison.Ordinal)];
         var frontendKeys = System.Text.RegularExpressions.Regex.Matches(block, @":\s*'([a-z.]+)'")
             .Select(match => match.Groups[1].Value)

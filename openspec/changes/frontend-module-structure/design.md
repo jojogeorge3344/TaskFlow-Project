@@ -118,3 +118,27 @@ Move `public/favicon.ico` to `src/assets/` and change both `angular.json` asset 
 ## Migration Plan
 
 Do one module batch per commit, each followed by `ng build`, `ng test` and `npm run check:structure` (warnings-only until the last batch). Deploy to the Render dev frontend at the end and smoke-test navigation for all three roles. To roll back, revert the commits. There is no data or API impact.
+
+## Implementation notes
+
+Where the code differs from the D1 table, because the "shared only when shared" rule or the route rule decided it:
+
+- `drill-down` and `analytics-filter` are in `shared/utils/` (the task list uses them as well as the dashboards), as are
+  `role-badge`, `reminder-options` and `backdrop-animation`. The charts and `chart-colors`/`chart-providers` are used by the
+  dashboard only, so they are in `modules/dashboard/components/charts/` and `modules/dashboard/utils/`; `linkify` is in
+  `modules/communication/mail/utils/` and `return-url` in `modules/monitoring/task-management/utils/`.
+- `legal-footer` is in `shared/components/` (the shell and the auth pages use it). `login-reasons` stays in
+  `shared/auth/` (the interceptor, profile and employee screens use it).
+- `dashboard-filter-bar` is in `modules/dashboard/components/` and `employee-picker` in
+  `modules/management/project-management/components/`, each used by one module only. `position-combobox` is used by two
+  management sub-modules, so it is in `modules/management/components/`.
+- Task discussion, activity and reassign are routed, so they are in `pages/`.
+- Each shared component has a folder of its own under `shared/components/`.
+- The structure check reads the code as well as the folders: a `loadComponent` target must be in `pages/`, a
+  `shared/` file must be used by two or more modules or by the app (root component, shell, config, routes), and
+  `HttpClient` is found from the import declaration. App-level code used only by the shell (theme, toast host,
+  backdrop) stays in `shared/`.
+- A component's or service's own types are in a `<name>.model.ts` beside it (spec "Consistent file naming").
+- Splitting the route table by module groups Monitoring's routes together, so the shell's child order changed while
+  every path, guard and `data` value stayed the same. `app.routes.spec.ts` compares the expanded table without
+  depending on module order, and keeps the `tasks/new` before `tasks/:id` check.
