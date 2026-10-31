@@ -384,6 +384,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var manager = await SeedAndLoginAsync(client, "tek-create-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-create-emp");
         var extra = await SeedUserAsync("tek-create-extra");
+        var projectId = await SeedProjectAsync("tek-create-project");
 
         var response = await SendWithTokenAsync(client, HttpMethod.Post, "/api/v1/tasks", manager.Token,
             JsonContent.Create(new
@@ -391,6 +392,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
                 title = "Draft launch plan",
                 description = "Screen 8 create flow",
                 assignedToUserId = employee.Id,
+                projectId,
                 priority = "High",
                 startDate = DateTime.UtcNow.AddDays(1),
                 deadline = DateTime.UtcNow.AddDays(4),
@@ -416,6 +418,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var stored = await db.Tasks.SingleAsync(task => task.Id == id);
+        Assert.Equal(projectId, stored.ProjectId);
         Assert.Equal(3, stored.FirstReminderDays);
         Assert.Equal(ReminderFrequency.Weekly, stored.OverdueReminderFrequency);
         Assert.Equal(2, await db.TaskRecipients.CountAsync(recipient => recipient.TaskId == id));
@@ -427,6 +430,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var manager = await SeedAndLoginAsync(client, "tek-defaults-mgr", SystemRoles.Manager);
         var employee = await SeedUserAsync("tek-defaults-emp");
+        var projectId = await SeedProjectAsync("tek-defaults-project");
 
         var configure = await SendWithTokenAsync(client, HttpMethod.Put, "/api/v1/settings/reminders", manager.Token,
             JsonContent.Create(new
@@ -447,6 +451,7 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
                 {
                     title = "Uses configured reminders",
                     assignedToUserId = employee.Id,
+                    projectId,
                     priority = "Medium",
                     startDate = DateTime.UtcNow.AddDays(1),
                     deadline = DateTime.UtcNow.AddDays(6),
@@ -641,6 +646,17 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await db.Users.SingleAsync(user => user.Username == username);
+    }
+
+    /// <summary>A task must belong to an active project, so creating one through the API needs a project first.</summary>
+    private async Task<int> SeedProjectAsync(string name)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var project = new TaskFlow.Api.Models.Entities.Project { Name = name, CreatedAt = DateTime.UtcNow };
+        db.Projects.Add(project);
+        await db.SaveChangesAsync();
+        return project.Id;
     }
 
     private async Task<int> GetUserIdAsync(string username)

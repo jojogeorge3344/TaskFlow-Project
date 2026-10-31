@@ -166,7 +166,8 @@ public class PermissionCatalogTests : IDisposable
         var keys = PermissionCatalog.All.Select(definition => definition.Key).ToHashSet();
 
         Assert.All(before, key => Assert.Contains(key, keys));
-        Assert.Equal(before.Length + 7, keys.Count);
+        // Added since: tasks.comment.edit/delete, roles.view.all, roles.modify.access and five from the regrouping.
+        Assert.Equal(before.Length + 9, keys.Count);
     }
 
     [Fact]

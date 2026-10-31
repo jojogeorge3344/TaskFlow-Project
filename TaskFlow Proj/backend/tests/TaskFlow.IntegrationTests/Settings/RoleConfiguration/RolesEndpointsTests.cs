@@ -162,7 +162,8 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     public async Task ADelegatedRoleManagerCanManageOrdinaryRolesAndTickRoleConfigurationForThem()
     {
         var (admin, adminToken) = await SignInAsync("roles-deleg-admin", SystemRoles.Administrator);
-        var delegated = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        // Changing roles needs the modify-access key on top of roles.manage, which alone gives a read-only screen.
+        var delegated = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers", permissionKeys = new[] { PermissionKeys.RolesManage, PermissionKeys.RolesModifyAccess } });
         var (client, token) = await SignInInRoleAsync("roles-deleg-user", (await JsonOf(delegated)).GetProperty("id").GetInt32());
 
         var ordinary = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Ordinary By Delegate", permissionKeys = new[] { PermissionKeys.WorkloadView } });
@@ -207,10 +208,30 @@ public class RolesEndpointsTests : IClassFixture<TaskFlowApiFactory>
     }
 
     [Fact]
+    public async Task ARoleManagerWithoutModifyAccessCannotCreateEditOrDeleteRoles()
+    {
+        var (admin, adminToken) = await SignInAsync("roles-readonly-admin", SystemRoles.Administrator);
+        var readOnly = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Read Only Role Managers", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var target = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Read Only Target", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        var targetId = (await JsonOf(target)).GetProperty("id").GetInt32();
+        var (client, token) = await SignInInRoleAsync("roles-readonly-user", (await JsonOf(readOnly)).GetProperty("id").GetInt32());
+
+        var create = await SendAsync(client, HttpMethod.Post, Roles, token, new { name = "Not Allowed", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        var update = await SendAsync(client, HttpMethod.Put, $"{Roles}/{targetId}", token, new { name = "Renamed", permissionKeys = new[] { PermissionKeys.WorkloadView } });
+        var delete = await SendAsync(client, HttpMethod.Delete, $"{Roles}/{targetId}", token);
+
+        Assert.Equal(HttpStatusCode.OK, (await SendAsync(client, HttpMethod.Get, Roles, token)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, update.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+        Assert.Equal("Read Only Target", await DbAsync(db => db.Roles.Where(role => role.Id == targetId).Select(role => role.Name).SingleAsync()));
+    }
+
+    [Fact]
     public async Task ADelegatedRoleManagerCanEditARoleThatHoldsAssignRoles()
     {
         var (admin, adminToken) = await SignInAsync("roles-restr-admin", SystemRoles.Administrator);
-        var managers = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers 2", permissionKeys = new[] { PermissionKeys.RolesManage } });
+        var managers = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Role Managers 2", permissionKeys = new[] { PermissionKeys.RolesManage, PermissionKeys.RolesModifyAccess } });
         var assigners = await SendAsync(admin, HttpMethod.Post, Roles, adminToken, new { name = "Assigners", permissionKeys = new[] { PermissionKeys.EmployeesView, PermissionKeys.EmployeesRoleAssign } });
         var assignersId = (await JsonOf(assigners)).GetProperty("id").GetInt32();
         var (client, token) = await SignInInRoleAsync("roles-restr-user", (await JsonOf(managers)).GetProperty("id").GetInt32());
