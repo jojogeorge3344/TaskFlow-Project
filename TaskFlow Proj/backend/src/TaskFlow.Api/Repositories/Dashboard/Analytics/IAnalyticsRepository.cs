@@ -2,6 +2,7 @@ using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Dtos.Dashboard.Analytics;
 using TaskFlow.Api.Models.Entities;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Dashboard.Analytics;
 

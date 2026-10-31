@@ -83,6 +83,10 @@ The backend SHALL keep each layer in a dedicated top-level folder (controllers, 
 - **WHEN** the architecture test suite inspects every interface and the classes in the same top-level folder that implement it
 - **THEN** each interface is the only interface in a file named after it, and shares its implementation's folder (for example `Services/Profile/IProfileService.cs` and `Services/Profile/ProfileService.cs`)
 
+#### Scenario: One service or repository per folder
+- **WHEN** a module holds more than one service or repository, or also has sub-modules
+- **THEN** each interface and its class get a folder of their own named for what they do (for example `Services/Auth/Login` and `Services/Auth/Sessions` beside `Services/Auth/Mfa`), and no folder holds both code files and sub-folders other than a shared `Rules` folder
+
 ### Requirement: Module hierarchy mirrors the permission catalog
 Inside each layer, code SHALL be grouped by module and then sub-module, following the module tree shown in Role Configuration, plus an `Auth` module for flows that run before sign-in. A section of a sub-module SHALL get its own nested folder only when it has its own service. Controllers SHALL sit directly in their top-level module folder, with no sub-module folders. The unit and integration test projects SHALL use the same module and sub-module folders. No empty placeholder folders SHALL exist.
 

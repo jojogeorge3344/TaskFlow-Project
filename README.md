@@ -287,12 +287,13 @@ module tree, which follows the permission catalogue (the modules on the Roles sc
 ```
 TaskFlow.Api/
   Controllers/<Module>/                    HTTP only: routing, model binding, status codes (no sub-module folders)
-  Services/<Module>/<SubModule>/           I<Name>Service.cs + <Name>Service.cs side by side (pure rules in Rules/)
-  Repositories/<Module>/<SubModule>/       I<Name>Repository.cs + <Name>Repository.cs side by side over EF Core;
-                                           IUnitOfWork, IBaseRepository and UnitOfWork at the root
+  Services/<Module>/<SubModule>/[<Pair>/]  I<Name>Service.cs + <Name>Service.cs, one pair per folder (rules in Rules/)
+  Repositories/<Module>/<SubModule>/[<Pair>/]
+                                           I<Name>Repository.cs + <Name>Repository.cs over EF Core, one pair per folder;
+                                           IUnitOfWork, IBaseRepository and UnitOfWork in Base/
   Dtos/<Module>/<SubModule>/               requests, responses, Validators/
   Models/Entities/  Models/Enums/          database entities and enums
-  Integrations/<Area>/                     AI providers, JWT, TOTP, key protection, file storage (interface beside class)
+  Integrations/<Area>/<Pair>/              AI providers, JWT, TOTP, key protection, file storage (interface beside class)
   Middleware/  Filters/  Authorization/    exception handling, request logging, session validation, MFA gate,
                                            request validation, permission policies
   Config/                                  DI registration per layer, options classes
@@ -321,8 +322,13 @@ Layer rules, checked by `tests/TaskFlow.UnitTests/ArchitectureTests.cs` on every
 - Controllers sit directly in their top-level module folder (`Controllers/Auth/PasswordRecoveryController.cs`).
 - Every interface has a file of its own named after it, in the same folder as the class that implements it
   (`Services/Profile/IProfileService.cs` next to `Services/Profile/ProfileService.cs`). There is no `Interfaces` folder.
+- Every service and repository has a folder of its own. When a module has more than one, or also has sub-modules, each
+  pair gets a named folder: `Services/Auth/Login/` (`IAuthService`, `AuthService`), `Services/Auth/Sessions/`,
+  `Services/Auth/Mfa/`. A folder holds either code or sub-folders, never both; a module's shared `Rules/` folder and the
+  assistant's `Knowledge/` help topics are the only exceptions. Folders are named for what they hold, never after a
+  type, so a folder never hides a type name (`Tasks/`, not `Task/`).
 
-The test projects (`tests/TaskFlow.UnitTests`, `tests/TaskFlow.IntegrationTests`) use the same module and sub-module
-folders, for example `Auth/Mfa/MfaServiceTests.cs`, with namespaces that match. Tests that belong to no module sit in
+The test projects (`tests/TaskFlow.UnitTests`, `tests/TaskFlow.IntegrationTests`) use the same folders as the code
+they test, for example `Auth/Login/AuthServiceLoginTests.cs`, with namespaces that match. Tests that belong to no module sit in
 `Architecture/`, `Common/`, `Persistence/` or `Integrations/`. Fixtures and fakes shared across modules are in
 `TestSupport/`, which `GlobalUsings.cs` imports everywhere.

@@ -40,7 +40,7 @@ if (OperatingSystem.IsWindows())
     var keyRingFolder = StorageRoot.ResolveUnder(
         storageRoot,
         app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<TaskFlow.Api.Config.AiProviderOptions>>().Value.KeyRingPath);
-    var keyRingCheck = TaskFlow.Api.Integrations.Ai.KeyRingProtectionCheck.Check(keyRingFolder);
+    var keyRingCheck = TaskFlow.Api.Integrations.Ai.KeyProtection.KeyRingProtectionCheck.Check(keyRingFolder);
     if (keyRingCheck.UnprotectedKeys > 0)
     {
         app.Logger.LogWarning(

@@ -6,6 +6,7 @@ using TaskFlow.Api.Common.Exceptions;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Task = System.Threading.Tasks.Task;
+using TaskFlow.UnitTests.Communication.Mail.Messages;
 
 namespace TaskFlow.UnitTests.Communication.Mail.Attachments;
 

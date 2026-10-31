@@ -1,5 +1,6 @@
 using TaskFlow.Api.Dtos.Management.EmployeeManagement;
 using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
 

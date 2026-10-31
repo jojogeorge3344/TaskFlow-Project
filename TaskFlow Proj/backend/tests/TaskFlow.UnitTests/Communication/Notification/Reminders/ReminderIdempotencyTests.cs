@@ -1,8 +1,6 @@
 using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
-using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using TaskFlow.Api.Config;
 using System.Data.Common;
 using TaskFlow.Api.Common.Security;
@@ -16,6 +14,8 @@ using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.UnitTests.Communication.Notification.Reminders;
 

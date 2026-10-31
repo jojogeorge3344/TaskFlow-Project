@@ -3,10 +3,10 @@ using TaskFlow.Api.Common.Exceptions;
 using System.Globalization;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories;
-using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
 using Task = System.Threading.Tasks.Task;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks;
 
 namespace TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
 

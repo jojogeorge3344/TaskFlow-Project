@@ -1,12 +1,7 @@
 ﻿using TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
-using TaskFlow.Api.Services.Monitoring.TaskManagement;
-using TaskFlow.Api.Services.Communication.Notification;
-using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
-using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
 using TaskFlow.Api.Common.Security;
@@ -18,6 +13,11 @@ using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Services.Communication.Notification.Notifications;
+using TaskFlow.Api.Services.Communication.Notification.Publishing;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Tasks;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.UnitTests.TestSupport;
 

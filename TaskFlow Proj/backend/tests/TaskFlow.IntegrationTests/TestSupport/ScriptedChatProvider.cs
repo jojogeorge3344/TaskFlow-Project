@@ -1,5 +1,5 @@
-using TaskFlow.Api.Integrations.Ai;
 using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Integrations.Ai.Providers;
 
 namespace TaskFlow.IntegrationTests.TestSupport;
 

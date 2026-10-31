@@ -5,7 +5,8 @@ using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Settings.TfaSettings;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Services.Settings.TfaSettings;
+using TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest;
+using TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig;
 
 namespace TaskFlow.Api.Controllers.Settings;
 

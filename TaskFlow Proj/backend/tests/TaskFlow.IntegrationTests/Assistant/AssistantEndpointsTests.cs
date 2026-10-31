@@ -1,8 +1,6 @@
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Services.Assistant.Rules;
-using TaskFlow.Api.Services.Assistant;
 using TaskFlow.Api.Dtos.Assistant;
-using TaskFlow.Api.Integrations.Ai;
 using System.Net;
 using TaskFlow.Api.Common.Security;
 using System.Net.Http.Headers;
@@ -19,6 +17,10 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
+using TaskFlow.Api.Integrations.Ai.Providers;
+using TaskFlow.Api.Services.Assistant.Access;
+using TaskFlow.Api.Services.Assistant.Chat;
+using TaskFlow.Api.Services.Assistant.RateLimits;
 
 namespace TaskFlow.IntegrationTests.Assistant;
 
@@ -238,7 +240,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(AssistantRateLimiterLimit(), _factory.Providers[AiProviderKind.Ollama].Calls.Count);
     }
 
-    private static int AssistantRateLimiterLimit() => TaskFlow.Api.Services.Assistant.AssistantRateLimiter.RequestsPerMinute;
+    private static int AssistantRateLimiterLimit() => TaskFlow.Api.Services.Assistant.RateLimits.AssistantRateLimiter.RequestsPerMinute;
 
     [Fact]
     public async Task AMessageWithAPasswordIsNotSentToAnyProviderOrStored()

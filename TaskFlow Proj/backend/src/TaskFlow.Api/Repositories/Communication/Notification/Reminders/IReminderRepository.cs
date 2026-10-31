@@ -1,6 +1,7 @@
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Notification.Reminders;
 

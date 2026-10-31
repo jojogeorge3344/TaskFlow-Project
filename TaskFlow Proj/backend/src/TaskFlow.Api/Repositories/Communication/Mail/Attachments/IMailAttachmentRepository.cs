@@ -1,4 +1,5 @@
 using TaskFlow.Api.Models.Entities;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Mail.Attachments;
 

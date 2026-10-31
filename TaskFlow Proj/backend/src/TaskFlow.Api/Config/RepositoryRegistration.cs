@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Persistence.Seeders;
-using TaskFlow.Api.Repositories;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Config;
 
@@ -24,47 +24,47 @@ public static class RepositoryRegistration
 
         // Settings
         services.AddScoped<TaskFlow.Api.Repositories.Settings.ApplicationSettings.IApplicationSettingsRepository, TaskFlow.Api.Repositories.Settings.ApplicationSettings.ApplicationSettingsRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Settings.RoleConfiguration.IRoleRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.RoleRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Settings.RoleConfiguration.IPermissionRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.PermissionRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Settings.TfaSettings.IAiProviderConfigRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.AiProviderConfigRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Settings.TfaSettings.IAiModelRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.AiModelRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Settings.RoleConfiguration.Roles.IRoleRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.Roles.RoleRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Settings.RoleConfiguration.Permissions.IPermissionRepository, TaskFlow.Api.Repositories.Settings.RoleConfiguration.Permissions.PermissionRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Settings.TfaSettings.ProviderConfig.IAiProviderConfigRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.ProviderConfig.AiProviderConfigRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Settings.TfaSettings.AiModels.IAiModelRepository, TaskFlow.Api.Repositories.Settings.TfaSettings.AiModels.AiModelRepository>();
 
         // Management
-        services.AddScoped<TaskFlow.Api.Repositories.Management.EmployeeManagement.IEmployeeRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.EmployeeRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Management.EmployeeManagement.Employees.IEmployeeRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.Employees.EmployeeRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Management.DepartmentManagement.IDepartmentRepository, TaskFlow.Api.Repositories.Management.DepartmentManagement.DepartmentRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Management.ProjectManagement.IProjectRepository, TaskFlow.Api.Repositories.Management.ProjectManagement.ProjectRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Management.ProjectManagement.Projects.IProjectRepository, TaskFlow.Api.Repositories.Management.ProjectManagement.Projects.ProjectRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Management.ProjectManagement.Positions.IPositionRepository, TaskFlow.Api.Repositories.Management.ProjectManagement.Positions.PositionRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Management.EmployeeManagement.Allocations.IUserAllocationRepository, TaskFlow.Api.Repositories.Management.EmployeeManagement.Allocations.UserAllocationRepository>();
 
         // Monitoring
-        services.AddScoped<TaskFlow.Api.Repositories.Monitoring.TaskManagement.ITaskRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.TaskRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks.ITaskRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks.TaskRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload.IWorkloadRepository, TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload.WorkloadRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion.ITaskCommentRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion.TaskCommentRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity.ITaskActivityRepository, TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity.TaskActivityRepository>();
 
         // Communication
-        services.AddScoped<TaskFlow.Api.Repositories.Communication.Mail.IMailRepository, TaskFlow.Api.Repositories.Communication.Mail.MailRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Communication.Mail.Messages.IMailRepository, TaskFlow.Api.Repositories.Communication.Mail.Messages.MailRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Communication.Mail.Attachments.IMailAttachmentRepository, TaskFlow.Api.Repositories.Communication.Mail.Attachments.MailAttachmentRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Communication.Notification.INotificationRepository, TaskFlow.Api.Repositories.Communication.Notification.NotificationRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Communication.Notification.Notifications.INotificationRepository, TaskFlow.Api.Repositories.Communication.Notification.Notifications.NotificationRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Communication.Notification.Reminders.IReminderRepository, TaskFlow.Api.Repositories.Communication.Notification.Reminders.ReminderRepository>();
 
         // Dashboard
-        services.AddScoped<TaskFlow.Api.Repositories.Dashboard.IDashboardRepository, TaskFlow.Api.Repositories.Dashboard.DashboardRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Dashboard.Overview.IDashboardRepository, TaskFlow.Api.Repositories.Dashboard.Overview.DashboardRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Dashboard.Analytics.IAnalyticsRepository, TaskFlow.Api.Repositories.Dashboard.Analytics.AnalyticsRepository>();
 
         // Reports
         services.AddScoped<TaskFlow.Api.Repositories.Reports.IReportRepository, TaskFlow.Api.Repositories.Reports.ReportRepository>();
 
         // Assistant
-        services.AddScoped<TaskFlow.Api.Repositories.Assistant.IAssistantConversationRepository, TaskFlow.Api.Repositories.Assistant.AssistantConversationRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Assistant.IAssistantMessageRepository, TaskFlow.Api.Repositories.Assistant.AssistantMessageRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Assistant.IAssistantPendingActionRepository, TaskFlow.Api.Repositories.Assistant.AssistantPendingActionRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Assistant.IAssistantAuditRepository, TaskFlow.Api.Repositories.Assistant.AssistantAuditRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Assistant.IAssistantDirectoryRepository, TaskFlow.Api.Repositories.Assistant.AssistantDirectoryRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.Conversations.IAssistantConversationRepository, TaskFlow.Api.Repositories.Assistant.Conversations.AssistantConversationRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.Messages.IAssistantMessageRepository, TaskFlow.Api.Repositories.Assistant.Messages.AssistantMessageRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.PendingActions.IAssistantPendingActionRepository, TaskFlow.Api.Repositories.Assistant.PendingActions.AssistantPendingActionRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.Audits.IAssistantAuditRepository, TaskFlow.Api.Repositories.Assistant.Audits.AssistantAuditRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Assistant.People.IAssistantDirectoryRepository, TaskFlow.Api.Repositories.Assistant.People.AssistantDirectoryRepository>();
 
         // Auth
-        services.AddScoped<TaskFlow.Api.Repositories.Auth.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokenRepository>();
-        services.AddScoped<TaskFlow.Api.Repositories.Auth.IAccountRepository, TaskFlow.Api.Repositories.Auth.AccountRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Auth.RefreshTokens.IRefreshTokenRepository, TaskFlow.Api.Repositories.Auth.RefreshTokens.RefreshTokenRepository>();
+        services.AddScoped<TaskFlow.Api.Repositories.Auth.Accounts.IAccountRepository, TaskFlow.Api.Repositories.Auth.Accounts.AccountRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Auth.Mfa.IMfaBackupCodeRepository, TaskFlow.Api.Repositories.Auth.Mfa.MfaBackupCodeRepository>();
         services.AddScoped<TaskFlow.Api.Repositories.Auth.PasswordRecovery.IPasswordResetGrantRepository, TaskFlow.Api.Repositories.Auth.PasswordRecovery.PasswordResetGrantRepository>();
 

@@ -1,7 +1,7 @@
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Dtos.Monitoring.EmployeeWorkload;
 using TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.Api.Services.Monitoring.EmployeeWorkload;
 

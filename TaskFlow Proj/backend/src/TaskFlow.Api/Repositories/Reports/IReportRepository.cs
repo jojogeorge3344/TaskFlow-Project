@@ -1,6 +1,7 @@
 using TaskFlow.Api.Dtos.Reports;
 using TaskPriority = TaskFlow.Api.Models.Enums.TaskPriority;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Reports;
 

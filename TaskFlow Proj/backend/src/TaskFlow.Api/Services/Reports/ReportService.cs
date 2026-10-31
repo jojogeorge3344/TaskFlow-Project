@@ -1,6 +1,6 @@
 using TaskFlow.Api.Dtos.Reports;
 using TaskFlow.Api.Repositories.Reports;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.Api.Services.Reports;
 

@@ -1,4 +1,3 @@
-using TaskFlow.Api.Integrations.Security;
 using System.Net;
 using TaskFlow.Api.Common.Security;
 using System.Net.Http.Headers;
@@ -6,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Integrations.Security.Tokens;
 
 namespace TaskFlow.IntegrationTests.Common;
 

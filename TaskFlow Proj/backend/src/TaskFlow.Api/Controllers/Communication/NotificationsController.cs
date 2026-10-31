@@ -1,10 +1,10 @@
-using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Dtos.Communication.Notification;
 using TaskFlow.Api.Common.Models;
 using System.Security.Claims;
 using TaskFlow.Api.Common.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Api.Services.Communication.Notification.Notifications;
 
 namespace TaskFlow.Api.Controllers.Communication;
 

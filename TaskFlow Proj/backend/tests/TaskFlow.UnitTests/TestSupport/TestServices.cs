@@ -1,42 +1,47 @@
-using TaskFlow.Api.Repositories.Dashboard;
 using TaskFlow.Api.Repositories.Dashboard.Analytics;
-using TaskFlow.Api.Services.Dashboard;
-using TaskFlow.Api.Services.Dashboard.Analytics;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
-using TaskFlow.Api.Services.Communication.Mail;
-using TaskFlow.Api.Services.Communication.Notification;
-using TaskFlow.Api.Services.Monitoring.TaskManagement;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Config;
-using TaskFlow.Api.Repositories.Communication.Notification;
 using TaskFlow.Api.Repositories.Communication.Notification.Reminders;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Services.Communication.Notification.Reminders;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
 using TaskFlow.Api.Integrations.Storage;
-using TaskFlow.Api.Repositories.Communication.Mail;
 using TaskFlow.Api.Repositories.Communication.Mail.Attachments;
 using TaskFlow.Api.Services.Communication.Mail.Attachments;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using Microsoft.AspNetCore.Identity;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Repositories;
-using TaskFlow.Api.Repositories.Auth;
 using TaskFlow.Api.Repositories.Management.DepartmentManagement;
-using TaskFlow.Api.Repositories.Management.EmployeeManagement;
 using TaskFlow.Api.Repositories.Management.EmployeeManagement.Allocations;
-using TaskFlow.Api.Repositories.Management.ProjectManagement;
 using TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
-using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
-using TaskFlow.Api.Repositories.Settings.RoleConfiguration;
 using TaskFlow.Api.Services.Management.EmployeeManagement.Allocations;
-using TaskFlow.Api.Services.Management.EmployeeManagement;
-using TaskFlow.Api.Services.Management.ProjectManagement;
+using TaskFlow.Api.Repositories.Auth.Accounts;
+using TaskFlow.Api.Repositories.Auth.RefreshTokens;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Repositories.Communication.Mail.Messages;
+using TaskFlow.Api.Repositories.Communication.Notification.Notifications;
+using TaskFlow.Api.Repositories.Dashboard.Overview;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement.Employees;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Projects;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks;
+using TaskFlow.Api.Repositories.Settings.RoleConfiguration.Roles;
+using TaskFlow.Api.Services.Communication.Mail.Messages;
+using TaskFlow.Api.Services.Communication.Notification.Notifications;
+using TaskFlow.Api.Services.Communication.Notification.Publishing;
+using TaskFlow.Api.Services.Dashboard.Analytics.Admin;
+using TaskFlow.Api.Services.Dashboard.Analytics.Employee;
+using TaskFlow.Api.Services.Dashboard.Analytics.Manager;
+using TaskFlow.Api.Services.Dashboard.Analytics.Scopes;
+using TaskFlow.Api.Services.Dashboard.Overview;
+using TaskFlow.Api.Services.Management.EmployeeManagement.Employees;
+using TaskFlow.Api.Services.Management.ProjectManagement.Projects;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.Tasks;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.UnitTests.TestSupport;
 
@@ -164,17 +169,17 @@ internal static class TestServices
             new UnitOfWork(db),
             hasher,
             mfa ?? new AcceptingMfaService(),
-            new TaskFlow.Api.Services.Auth.AttemptLimiter(TimeProvider.System));
+            new TaskFlow.Api.Services.Auth.AttemptLimits.AttemptLimiter(TimeProvider.System));
 
     public static TaskFlow.Api.Services.Auth.Mfa.MfaService Mfa(
         AppDbContext db,
         IPasswordHasher<User> hasher,
-        TaskFlow.Api.Integrations.Security.IMfaSecretProtector protector,
+        TaskFlow.Api.Integrations.Security.MfaSecrets.IMfaSecretProtector protector,
         INotificationPublisher publisher,
         IOptions<TaskFlow.Api.Config.MfaOptions> options,
         TimeProvider timeProvider) =>
         new(
-            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new TaskFlow.Api.Repositories.Auth.Accounts.AccountRepository(db),
             new TaskFlow.Api.Repositories.Auth.Mfa.MfaBackupCodeRepository(db),
             new RefreshTokenRepository(db),
             new UnitOfWork(db),
@@ -184,16 +189,16 @@ internal static class TestServices
             options,
             timeProvider);
 
-    public static TaskFlow.Api.Services.Auth.AuthService Auth(
+    public static TaskFlow.Api.Services.Auth.Login.AuthService Auth(
         AppDbContext db,
-        TaskFlow.Api.Integrations.Security.ITokenService tokenService,
+        TaskFlow.Api.Integrations.Security.Tokens.ITokenService tokenService,
         IPasswordHasher<User> hasher,
         TimeProvider timeProvider,
         TaskFlow.Api.Services.Auth.Mfa.IMfaService mfaService,
-        TaskFlow.Api.Integrations.Security.IMfaSecretProtector protector,
+        TaskFlow.Api.Integrations.Security.MfaSecrets.IMfaSecretProtector protector,
         IOptions<TaskFlow.Api.Config.MfaOptions> options) =>
         new(
-            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new TaskFlow.Api.Repositories.Auth.Accounts.AccountRepository(db),
             new RefreshTokenRepository(db),
             new UnitOfWork(db),
             tokenService,
@@ -209,16 +214,16 @@ internal static class TestServices
         INotificationPublisher publisher,
         TimeProvider timeProvider)
     {
-        var protector = new TaskFlow.Api.Integrations.Security.MfaSecretProtector(
+        var protector = new TaskFlow.Api.Integrations.Security.MfaSecrets.MfaSecretProtector(
             new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(),
             timeProvider);
         return new(
-            new TaskFlow.Api.Repositories.Auth.AccountRepository(db),
+            new TaskFlow.Api.Repositories.Auth.Accounts.AccountRepository(db),
             new TaskFlow.Api.Repositories.Auth.PasswordRecovery.PasswordResetGrantRepository(db),
             new RefreshTokenRepository(db),
             new UnitOfWork(db),
             Mfa(db, hasher, protector, publisher, Options.Create(new TaskFlow.Api.Config.MfaOptions()), timeProvider),
-            new TaskFlow.Api.Services.Auth.AttemptLimiter(timeProvider),
+            new TaskFlow.Api.Services.Auth.AttemptLimits.AttemptLimiter(timeProvider),
             hasher,
             publisher,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<TaskFlow.Api.Services.Auth.PasswordRecovery.PasswordRecoveryService>.Instance,

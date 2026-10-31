@@ -5,9 +5,9 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using TaskEntity = TaskFlow.Api.Models.Entities.Task;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
 
 namespace TaskFlow.IntegrationTests.Dashboard.Analytics;
 

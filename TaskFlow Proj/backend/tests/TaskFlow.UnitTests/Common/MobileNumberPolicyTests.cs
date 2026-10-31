@@ -2,7 +2,7 @@ using TaskFlow.Api.Dtos.Auth;
 using TaskFlow.Api.Dtos.Profile.Validators;
 using TaskFlow.Api.Dtos.Profile;
 using TaskFlow.Api.Common.Rules;
-using TaskFlow.UnitTests.Auth;
+using TaskFlow.UnitTests.Auth.Login;
 
 namespace TaskFlow.UnitTests.Common;
 

@@ -1,6 +1,5 @@
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Activity;
 using TaskFlow.Api.Dtos.Monitoring.TaskManagement.Discussion;
-using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Constants;
 using TaskFlow.Api.Common.Exceptions;
@@ -8,13 +7,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories;
-using TaskFlow.Api.Repositories.Communication.Mail;
-using TaskFlow.Api.Repositories.Management.EmployeeManagement;
-using TaskFlow.Api.Repositories.Monitoring.TaskManagement;
 using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Discussion;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using Task = System.Threading.Tasks.Task;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Repositories.Communication.Mail.Messages;
+using TaskFlow.Api.Repositories.Management.EmployeeManagement.Employees;
+using TaskFlow.Api.Repositories.Monitoring.TaskManagement.Tasks;
+using TaskFlow.Api.Services.Communication.Notification.Publishing;
 
 namespace TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion;
 

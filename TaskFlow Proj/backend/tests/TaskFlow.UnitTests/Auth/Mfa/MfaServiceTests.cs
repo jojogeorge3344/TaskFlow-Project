@@ -1,8 +1,6 @@
 using TaskFlow.Api.Dtos.Auth.Mfa;
 using TaskFlow.Api.Services.Auth.Mfa;
-using TaskFlow.Api.Integrations.Security;
 using TaskFlow.Api.Config;
-using TaskFlow.Api.Services.Communication.Notification;
 using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -13,6 +11,9 @@ using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Common.Security;
 using TaskFlow.Api.Persistence;
 using Task = System.Threading.Tasks.Task;
+using TaskFlow.Api.Integrations.Security.MfaSecrets;
+using TaskFlow.Api.Integrations.Security.OneTimeCodes;
+using TaskFlow.Api.Services.Communication.Notification.Publishing;
 
 namespace TaskFlow.UnitTests.Auth.Mfa;
 

@@ -1,7 +1,5 @@
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
-using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Services.Settings.ReminderSettings;
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +7,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.Clock;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.General;
 
 namespace TaskFlow.UnitTests.TestSupport;
 

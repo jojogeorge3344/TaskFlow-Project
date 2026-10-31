@@ -3,8 +3,8 @@ using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Exceptions;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Repositories;
 using TaskFlow.Api.Repositories.Communication.Mail.Attachments;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Services.Communication.Mail.Attachments;
 

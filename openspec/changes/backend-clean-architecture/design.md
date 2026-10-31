@@ -34,8 +34,8 @@ All code merges into `TaskFlow.Api`. The project-reference boundary is replaced 
 ```
 TaskFlow.Api/
   Controllers/<Module>/                           <Name>Controller.cs (top-level module folder only)
-  Services/<Module>/<SubModule>[/<Section>]/      I<Name>Service.cs + <Name>Service.cs, pure business-rule classes
-  Repositories/<Module>/<SubModule>[/<Section>]/  I<Name>Repository.cs + <Name>Repository.cs; IUnitOfWork.cs (root)
+  Services/<Module>/<SubModule>[/<Pair>]/         I<Name>Service.cs + <Name>Service.cs, one pair per folder; Rules/
+  Repositories/<Module>/<SubModule>[/<Pair>]/     I<Name>Repository.cs + <Name>Repository.cs, one pair per folder; Base/
   Integrations/<Area>/                            AI providers, JWT, TOTP, key protectors, file store
   Models/Entities/  Models/Enums/                 former TaskFlow.Domain
   Dtos/<Module>/<SubModule>/                      *Request, *Response/*Dto, Validators/

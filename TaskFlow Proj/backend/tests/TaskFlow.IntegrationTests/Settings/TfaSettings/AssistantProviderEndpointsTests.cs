@@ -1,10 +1,10 @@
-using TaskFlow.Api.Integrations.Ai;
 using System.Net;
 using TaskFlow.Api.Common.Security;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Integrations.Ai.Providers;
 
 namespace TaskFlow.IntegrationTests.Settings.TfaSettings;
 

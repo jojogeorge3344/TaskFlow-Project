@@ -1,10 +1,10 @@
-using TaskFlow.Api.Services.Settings.ApplicationSettings;
 using TaskFlow.Api.Dtos.Settings.ApplicationSettings;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Authorization;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Services.Settings.ApplicationSettings.General;
 
 namespace TaskFlow.Api.Controllers.Settings;
 

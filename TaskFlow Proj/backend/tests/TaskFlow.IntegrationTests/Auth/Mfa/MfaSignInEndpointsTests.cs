@@ -1,7 +1,7 @@
-using TaskFlow.Api.Integrations.Security;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using TaskFlow.Api.Integrations.Security.OneTimeCodes;
 
 namespace TaskFlow.IntegrationTests.Auth.Mfa;
 

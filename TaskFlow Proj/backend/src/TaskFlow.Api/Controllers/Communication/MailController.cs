@@ -1,5 +1,4 @@
 using TaskFlow.Api.Services.Communication.Mail.Attachments;
-using TaskFlow.Api.Services.Communication.Mail;
 using TaskFlow.Api.Dtos.Communication.Mail;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Common.Models;
@@ -8,6 +7,7 @@ using TaskFlow.Api.Common.Security;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Api.Services.Communication.Mail.Messages;
 
 namespace TaskFlow.Api.Controllers.Communication;
 

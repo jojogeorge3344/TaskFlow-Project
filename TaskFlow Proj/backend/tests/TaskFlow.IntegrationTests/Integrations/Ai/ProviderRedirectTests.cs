@@ -1,8 +1,8 @@
-using TaskFlow.Api.Integrations.Ai;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using TaskFlow.Api.Models.Enums;
+using TaskFlow.Api.Integrations.Ai.Providers;
 
 namespace TaskFlow.IntegrationTests.Integrations.Ai;
 

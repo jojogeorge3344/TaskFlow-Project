@@ -7,12 +7,13 @@ using TaskFlow.Api.Dtos.Auth.Mfa;
 using TaskFlow.Api.Dtos.Auth.PasswordRecovery;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
-using TaskFlow.Api.Repositories;
-using TaskFlow.Api.Repositories.Auth;
 using TaskFlow.Api.Repositories.Auth.PasswordRecovery;
-using TaskFlow.Api.Services.Auth;
 using TaskFlow.Api.Services.Auth.Mfa;
-using TaskFlow.Api.Services.Communication.Notification;
+using TaskFlow.Api.Repositories.Auth.Accounts;
+using TaskFlow.Api.Repositories.Auth.RefreshTokens;
+using TaskFlow.Api.Repositories.Base;
+using TaskFlow.Api.Services.Auth.AttemptLimits;
+using TaskFlow.Api.Services.Communication.Notification.Publishing;
 
 namespace TaskFlow.Api.Services.Auth.PasswordRecovery;
 

@@ -210,14 +210,54 @@ public class ArchitectureTests
     // ---------------------------------------------------------------- folders, modules and names
 
     /// <summary>Controllers are checked by <see cref="ControllersSitDirectlyInTheirTopLevelModuleFolder"/> instead: they keep
-    /// only the top-level module folder, while the other layers follow the full module tree.</summary>
+    /// only the top-level module folder, while the other layers follow the full module tree. In Services and Repositories a
+    /// module folder may hold one more level: the folder of one interface and its class (<c>Auth/Login</c>).</summary>
     [Fact]
     public void LayerNamespacesFollowTheModuleTree()
     {
         var offenders = LayerFolders.Where(layer => layer != "Controllers")
             .SelectMany(layer => TypesIn(layer).Select(type => (layer, type)))
-            .Where(item => !IsAllowedModulePath(ModulePathOf(item.type.Namespace!, item.layer)))
+            .Where(item => ModulePathOf(item.type.Namespace!, item.layer) is var path
+                           && !IsAllowedModulePath(path)
+                           && !(item.layer is "Services" or "Repositories" && IsAllowedModulePath(ParentPath(path))))
             .Select(item => item.type.FullName)
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>A folder holds either code or sub-folders, never both, so nothing sits loose beside a sub-module. A module's
+    /// shared <c>Rules</c> folder and non-code folders (the assistant's help topics) are the exception.</summary>
+    [Fact]
+    public void FoldersHoldEitherCodeOrSubFolders()
+    {
+        var roots = new[] { "Services", "Repositories", "Integrations" }.Select(layer => Path.Combine(SourceRoot, layer))
+            .Concat(TestProjectRoots.SelectMany(Directory.EnumerateDirectories).Where(directory => !IsTestBuildOutput(directory)));
+        var offenders = roots
+            .SelectMany(root => Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories).Prepend(root))
+            .Where(directory => !IsBuildOutput(directory) && !IsTestBuildOutput(directory))
+            .Where(directory => Directory.EnumerateFiles(directory, "*.cs").Any()
+                                && Directory.EnumerateDirectories(directory)
+                                    .Any(child => Path.GetFileName(child) != "Rules" && Directory.EnumerateFiles(child, "*.cs", SearchOption.AllDirectories).Any()))
+            .Select(directory => Path.GetRelativePath(Path.GetDirectoryName(SourceRoot)!, directory))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    /// <summary>Every service and every repository has a folder of its own: its interface, its class and the helpers only
+    /// it uses.</summary>
+    [Fact]
+    public void EachServiceAndRepositoryHasAFolderOfItsOwn()
+    {
+        var offenders = TypesIn("Services").Concat(TypesIn("Repositories"))
+            .Where(type => type.IsInterface && type.IsPublic
+                           && (type.Name.EndsWith("Service", StringComparison.Ordinal)
+                               || type.Name.EndsWith("Repository", StringComparison.Ordinal)
+                               || type.Name.EndsWith("Repository`1", StringComparison.Ordinal)))
+            .GroupBy(type => type.Namespace)
+            .Where(group => group.Count() > 1)
+            .Select(group => $"{group.Key} ({string.Join(", ", group.Select(type => type.Name))})")
             .ToList();
 
         Assert.Empty(offenders);
@@ -362,6 +402,16 @@ public class ArchitectureTests
     private static string? TopFolderOf(Type type) => type.Namespace?.Split('.') is [_, "Api", var folder, ..] ? folder : null;
 
     private static bool IsAllowedModulePath(string path) => path.Length == 0 || ModulePaths.Contains(path);
+
+    private static string ParentPath(string path) => path.Contains('.') ? path[..path.LastIndexOf('.')] : string.Empty;
+
+    /// <summary>The unit and integration test projects, beside the API under the solution folder.</summary>
+    private static string[] TestProjectRoots =>
+        new[] { "TaskFlow.UnitTests", "TaskFlow.IntegrationTests" }.Select(name => Path.Combine(SourceRoot, "..", "..", "tests", name)).ToArray();
+
+    private static bool IsTestBuildOutput(string path) => Path.GetFileName(path) is "bin" or "obj" or "Properties"
+                                                          || path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                                                          || path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}");
 
     private static bool ContainsEntity(Type type) =>
         type.Namespace == $"{Root}.Models.Entities"
