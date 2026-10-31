@@ -3,8 +3,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
-import { AppBackdropComponent } from './shared/backdrop/app-backdrop.component';
-import { LEGAL_APPLICATION, LEGAL_OWNER, legalOwnershipLine } from './features/legal/legal-owner';
+import { AppBackdropComponent } from './shared/components/backdrop/app-backdrop.component';
+import { LEGAL_APPLICATION, LEGAL_OWNER, legalOwnershipLine } from './modules/legal/utils/legal-owner';
 
 @Component({
   selector: 'app-root',

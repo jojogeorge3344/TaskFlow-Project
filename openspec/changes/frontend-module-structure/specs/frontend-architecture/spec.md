@@ -55,7 +55,11 @@ Files SHALL use Angular kebab-case names with a type suffix: `*.component.ts`, `
 
 #### Scenario: Suffix check
 - **WHEN** the structure check inspects files under `components/`, `pages/` and `services/`
-- **THEN** every `.ts` file other than specs has the suffix that matches its folder
+- **THEN** every `.ts` file other than specs has the suffix that matches its folder, except a `<name>.model.ts` that holds the types of the `<name>` component, service or directive beside it
+
+#### Scenario: A component's own types
+- **WHEN** a component or service declares interfaces or types of its own
+- **THEN** they live in a `<name>.model.ts` in the same folder, not in the component or service file
 
 ### Requirement: Structure is checked automatically
 The project SHALL provide `npm run check:structure`, which exits non-zero and lists each offending path when any rule in this capability is broken.
