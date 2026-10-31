@@ -126,6 +126,8 @@ public class ReportEndpointsTests : IClassFixture<TaskFlowApiFactory>
             header);
         Assert.Contains("Exportable task", body);
     }
+
+    [Fact]
     public async Task Export_EscapesFormulaInjectionInTitles()
     {
         var client = _factory.CreateClient();

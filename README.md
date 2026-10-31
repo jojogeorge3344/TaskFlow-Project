@@ -1,4 +1,277 @@
-# TaskFlow
+# TaskFlow – Intelligent Task Allocation & Tracking System
+
+> Personal Project · Skill Development (2026)
+> **Author:** Jojo George · jojogeorge3344@gmail.com
+> © 2026 Jojo George. All rights reserved.
+
+TaskFlow is a web application that helps an organization **allocate work to employees, track progress and never miss a
+deadline**. Managers create and assign tasks, employees update and discuss them, and a background reminder engine notifies
+the assignee and selected recipients as deadlines approach and pass. Administrators manage people, departments, projects,
+roles and settings. Everyone gets dashboards, workload views, activity history and reports scoped to their role. The
+built-in AI assistant, **TFA**, answers questions, suggests priorities and drafts mail, and it can also be used by voice.
+
+---
+
+## Contents
+
+1. [Features](#features)
+2. [Technologies](#technologies)
+3. [Architecture](#architecture)
+4. [Repository layout](#repository-layout)
+5. [Getting started](#getting-started)
+6. [Running the tests](#running-the-tests)
+7. [Documentation](#documentation)
+8. [Data folder and first sign-in](#data-folder-and-first-sign-in)
+9. [Roles and permissions](#roles-and-permissions)
+10. [Mail](#mail)
+11. [Two-step verification (authenticator app)](#two-step-verification-authenticator-app)
+12. [TFA, the AI assistant](#tfa-the-ai-assistant)
+13. [Backend structure](#backend-structure)
+14. [Frontend structure](#frontend-structure)
+15. [Copyright](#copyright)
+
+---
+
+## Features
+
+| Module | What it covers |
+|---|---|
+| **Authentication** | Sign-in with email or username, mandatory two-step verification (authenticator app and backup codes), password recovery with an authenticator code, JWT access and refresh-token sessions |
+| **Dashboard** | Role-specific dashboards for Administrator, Manager and Employee, with summary cards, charts, filters, and drill-down into the matching tasks |
+| **Management** | Employee management (accounts, roles, activation), department management and project management (teams, positions, allocations) |
+| **Monitoring** | Task management (create, assign, update status, reassign, recipients), comments and activity history, Kanban board, employee workload |
+| **Communication** | In-app notification center, automatic deadline reminders, and internal mail (folders, drafts, attachments, search) |
+| **Reports** | Task summary report with filters and CSV export |
+| **Profile** | My profile, change password, self-service two-step verification |
+| **Settings** | Application settings, reminder settings, role configuration (custom roles from a fixed permission catalog) and TFA (AI provider) settings |
+| **TFA Assistant** | AI chat assistant that follows your role's permissions, with confirm-before-acting actions, help topics, an audit log, rate limits and hands-free voice |
+| **Legal** | Copyright notice, terms of use, privacy policy, disclaimer and licences, plus an ownership footer on every screen |
+
+Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custom roles** built from the permission catalog.
+
+---
+
+## Technologies
+
+### Application stack
+
+| Layer | Technology | Version |
+|---|---|---|
+| Backend runtime | .NET (target framework `net10.0`) | 10 |
+| Web API | ASP.NET Core Web API | 10 |
+| Data access | Entity Framework Core (+ SQLite provider, Design tools) | 10.0.12 |
+| Database | SQLite (`taskflow.db`) | 3.x (via EF Core provider) |
+| Validation | FluentValidation (+ DependencyInjectionExtensions) | 12.2.0 |
+| Authentication | Microsoft.AspNetCore.Authentication.JwtBearer · System.IdentityModel.Tokens.Jwt | 10.0.12 · 8.23.0 |
+| API description | Microsoft.AspNetCore.OpenApi | 10.0.8 |
+| Dev integration | Microsoft.AspNetCore.SpaProxy (starting the API also launches the Angular dev server) | 10.0.12 |
+| Background jobs | `BackgroundService` reminder engine (`ReminderSchedulerService`) | built-in |
+| Password hashing / MFA | ASP.NET Core `PasswordHasher<T>` (PBKDF2) · TOTP authenticator codes · DPAPI key ring | built-in |
+| Frontend framework | Angular (standalone components) + Angular CLI | 19.2 |
+| Language | TypeScript | 5.7 |
+| Reactive library | RxJS | 7.8 |
+| Charts | Chart.js · ng2-charts | 4.6 · 8.0 |
+| Drag and drop | Angular CDK | 19.2 |
+| QR codes (MFA setup) | qrcode | 1.5 |
+| Styling | Custom CSS design tokens and `.tf-*` primitives (no CSS framework) | – |
+| Backend tests | xUnit (`TaskFlow.UnitTests` – including the `Architecture/` rules – and `TaskFlow.IntegrationTests`) | – |
+| Frontend tests | Jasmine 5.6 · Karma 6.4 · folder-structure check (`npm run check:structure`) | – |
+| Runtime tools | Node.js (22 LTS recommended) · .NET 10 SDK | – |
+
+### AI inside the application (TFA assistant)
+
+| Provider | Model / default | Notes |
+|---|---|---|
+| Ollama (local, free) | `llama3.2:3b` at `http://localhost:11434` | Installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; on by default for new installations |
+| Google Gemini | Built-in model list in `AiProviderCatalog.cs` | Cloud; free tier with rate limits; API key entered in TFA Settings |
+| OpenAI GPT | Built-in model list in `AiProviderCatalog.cs` | Cloud; paid API key |
+
+### AI-assisted and spec-driven development
+
+| Tool | Version | Used for |
+|---|---|---|
+| **Claude** (Anthropic) | Claude Opus 5.5 (documentation and TDD sync) | Requirements analysis, design, code generation and review, documentation |
+| **Claude Code** | 2.1.292 | AI coding agent in the repository; runs the project skills and `/opsx` commands |
+| **OpenCode** (with `@opencode-ai/plugin`) | plugin 1.19.0 | Second AI coding agent; reads the same `.claude/skills` |
+| **OpenSpec** (spec-driven development CLI) | 1.14.1 | Every feature is planned as a change with proposal → design → specs → tasks before it is built (`openspec/changes/`, 38 changes) |
+| Git · GitHub · GitHub CLI (`gh`) | – | Version control, branches, pull requests and PR reviews |
+
+### Claude Code skills, commands and plugins
+
+| Name | Type | Purpose |
+|---|---|---|
+| `openspec-propose`, `openspec-explore`, `openspec-apply-change`, `openspec-update-change`, `openspec-sync-specs`, `openspec-archive-change` | OpenSpec skills (`/opsx:propose`, `/opsx:explore`, `/opsx:apply`, `/opsx:update`, `/opsx:sync`, `/opsx:archive`) | Spec-driven workflow: propose, explore, implement, update, sync and archive changes |
+| `requirements-to-markdown` | Custom skill | Converts BRD/requirement DOCX or PDF into faithful Markdown |
+| `brd-writer` | Custom skill | Writes a Business Requirements Document (overall or per sub-module) from a fixed template |
+| `frd-writer` | Custom skill | Writes a Functional Requirements Document with use cases, validations, permissions and traceability |
+| `hld-writer` | Custom skill | Writes a High-Level Design: context, components, data, flows, security, deployment, decisions |
+| `lld-writer` | Custom skill | Writes a Low-Level Design: classes, endpoints, DTOs, tables, sequence diagrams, FR → code → test |
+| `module-docs` | Custom skill | Generates the module-wise Application and Technical workflow documents (MD + PDF) |
+| `tdd-sync` | Custom skill | Keeps the TDD in sync with the code (fact extraction + verification scripts) |
+| `commit-pr-review` | Custom skill | Branch, commit, push, open a PR and post a consolidated code review |
+| `manual-code-review` | Custom skill | Reviews a GitHub pull request and posts one findings comment |
+| `code-review-resolved` | Custom skill | Verifies fixes on a reviewed PR and posts a "Resolved Items" comment |
+| `@opencode-ai/plugin` | OpenCode plugin | Lets OpenCode use the shared skills and commands |
+| `scripts/openspec-update.ps1` | Helper script | Runs `openspec update` without duplicating skills |
+
+### Documentation set
+
+All project documents are in **`TF - Documents/`**. The BRD, FRD, HLD and LLD sets share one folder layout: `00-Overall`, then one
+folder per module with one sub-folder per sub-module (16 in total), each holding the Markdown file and its PDF.
+
+| Document | What it covers | Location | Formats | Status |
+|---|---|---|---|---|
+| **BRD** – Business Requirements Document (overall + 16 sub-modules) | Business goals, roles, scope, workflows, screen requirements, business rules, NFRs, acceptance criteria | `TF - Documents/TF - BRD/` | Markdown, PDF | **Approved v1.0** – signed off 31-Oct-2026 |
+| **FRD** – Functional Requirements Document (overall + 16) | Functional requirements, use cases, validations, messages, permissions, traceability to the BRD | `TF - Documents/TF - FRD/` | Markdown, PDF | Available (v1.0, draft) |
+| **HLD** – High-Level Design (overall + 16) | Context, architecture, components, data, key flows, security, deployment, design decisions | `TF - Documents/TF - HLD/` | Markdown, PDF | Available (v1.0, draft) |
+| **LLD** – Low-Level Design (overall + 16) | Classes and files, every API endpoint, DTOs, validators, database tables, sequence diagrams, FR → code → test | `TF - Documents/TF - LLD/` | Markdown, PDF | Available (v1.0, draft) |
+| **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.1) |
+| **Development Plan** | Screen-by-screen feature plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` | Markdown | Available |
+| **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
+| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TaskFlow Proj/TFWorkflow/` and `TaskFlow Proj/TFTechnicalWorkflow/` | Markdown, PDF | Available |
+| **Specs** | Spec-driven change records: proposal, design, delta specs and tasks per feature | `openspec/changes/` (38 changes) | Markdown, HTML mockups | Available |
+| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository; its content lives on in the BRD set and the Development Plan | DOCX | Superseded |
+| README / project.md / agent.md | Setup, operations, structure rules, contributor rules | repository root and `TaskFlow Proj/` | Markdown | Available |
+
+### Documentation formats and tooling
+
+| Format | Used for |
+|---|---|
+| **Markdown (`.md`)** | Source of truth for the BRD, FRD, HLD, LLD, TDD, workflow documents, specs and READMEs; diagrams written in Mermaid |
+| **DOCX (`.docx`)** | Original BRD (v1.0, superseded by the Markdown BRD set and retired from the repository) |
+| **PDF (`.pdf`)** | Print/share copy next to every Markdown document (BRD, FRD, HLD, LLD, TDD, workflow docs, permission documents), with rendered diagrams and the copyright footer |
+| **Excel (`.xlsx`)** | Permission documents (all permissions; Administrator, Manager, Employee) |
+| HTML | UI mockups inside OpenSpec changes |
+
+PDFs are generated from the Markdown with Mermaid CLI (diagrams), Pandoc (HTML) and Chromium (print to PDF).
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────┐   HTTPS / JSON   ┌──────────────────────────────────┐
+│  Angular SPA (browser)   │ ◄──────────────► │  ASP.NET Core Web API (.NET 10)  │
+│  modules, guards,        │   Bearer JWT     │  Controllers  (HTTP only)        │
+│  services, Chart.js      │                  │  Services     (business rules)   │
+└──────────────────────────┘                  │  Repositories (data access)      │
+                                              │  Integrations (AI, JWT, storage) │
+                                              │  Reminder engine (background)    │
+                                              └───────────────┬──────────────────┘
+                                                              │ EF Core
+                                                              ▼
+                                                  ┌───────────────────────┐
+                                                  │ SQLite  (taskflow.db) │
+                                                  └───────────────────────┘
+```
+
+The backend follows **Clean Architecture with the Repository pattern**: a request flows
+**Controller → Service → Repository → database**, and each layer calls only the one below it, through its interface.
+The rules are enforced by automated architecture tests (see [Backend structure](#backend-structure)).
+
+---
+
+## Repository layout
+
+```
+TaskFlow Project/
+├── README.md                 this file
+├── TF - Documents/
+│   ├── TF - BRD/             approved BRD set (00-Overall + 16 sub-modules, MD + PDF)
+│   ├── TF - FRD/             FRD set, same layout
+│   ├── TF - HLD/             HLD set, same layout
+│   ├── TF - LLD/             LLD set, same layout
+│   ├── TF - TDD/             TDD-TaskFlow.md / .pdf
+│   ├── Screens Wise Feature Development Plan/   the 20 screen-wise requirement files
+│   └── Permission Requirement/                  permission documents (Excel and PDF)
+├── .claude/skills/           Claude Code skills (OpenSpec, documentation writers, tdd-sync, code review)
+├── openspec/                 OpenSpec planning workspace (changes and specs)
+├── scripts/                  setup-ai.ps1 / setup-ai.sh (local AI setup), openspec-update.ps1
+└── TaskFlow Proj/
+    ├── backend/              TaskFlow.sln, src/TaskFlow.Api, tests/ (UnitTests, IntegrationTests)
+    ├── frontend/             Angular 19 workspace (src/app/modules/…)
+    ├── TFWorkflow/           functional (application) workflow docs, in MD and PDF
+    ├── TFTechnicalWorkflow/  technical workflow docs, in MD and PDF
+    ├── project.md            project overview for developers
+    └── agent.md              rules for AI and automation contributors
+```
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- **.NET 10 SDK** (`dotnet --list-sdks` shows 10.0.x)
+- **Node.js 22 LTS** (recommended; Angular 19 supports `^18.19.1 || ^20.11.1 || ^22.0.0`)
+- Optional: **Visual Studio 2022 17.8+ / 2026** with the *ASP.NET and web development* workload, for F5 debugging
+- Optional: **Ollama**, for the free local AI assistant (see [Free local AI in one command](#free-local-ai-in-one-command-ollama))
+
+### Run the application
+
+```powershell
+# 1. Install frontend packages (first time only)
+cd "TaskFlow Proj/frontend"
+npm install
+
+# 2. Start the API. It also starts the Angular dev server.
+cd ../backend
+dotnet run --project src/TaskFlow.Api
+```
+
+Or open `TaskFlow Proj/backend/TaskFlow.sln` in Visual Studio and press **F5**.
+
+| What | Address |
+|---|---|
+| Web application | `http://localhost:4200` |
+| API | `https://localhost:7055` (the SPA calls it through `/api/*`) |
+
+Trust the development certificate once with `dotnet dev-certs https --trust`. On the first start the API creates the
+data folder and the database and applies all migrations. In Development it also creates the three demo accounts listed under
+[Data folder and first sign-in](#data-folder-and-first-sign-in).
+
+### Optional: free local AI for TFA
+
+```powershell
+.\scripts\setup-ai.ps1        # Windows
+./scripts/setup-ai.sh         # macOS / Linux
+```
+
+---
+
+## Running the tests
+
+| Tests | Command | Folder |
+|---|---|---|
+| Backend unit and integration tests (including architecture rules) | `dotnet test` | `TaskFlow Proj/backend` |
+| Frontend folder-structure check and unit tests | `npm test` | `TaskFlow Proj/frontend` |
+| Frontend folder-structure check only | `npm run check:structure` | `TaskFlow Proj/frontend` |
+
+---
+
+## Documentation
+
+| Document | Location |
+|---|---|
+| Business Requirements – approved BRD set (overall + 16 sub-modules) | `TF - Documents/TF - BRD/` (start with `00-Overall/BRD-TaskFlow-Overall.md`) |
+| Functional Requirements – FRD set | `TF - Documents/TF - FRD/` |
+| High-Level Design – HLD set | `TF - Documents/TF - HLD/` |
+| Low-Level Design – LLD set | `TF - Documents/TF - LLD/` |
+| Technical Design Document | `TF - Documents/TF - TDD/TDD-TaskFlow.md` |
+| Screen-wise requirements (01–20) | `TF - Documents/Screens Wise Feature Development Plan/` |
+| Permission documents (all permissions; Administrator, Manager, Employee) | `TF - Documents/Permission Requirement/` |
+| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TaskFlow Proj/TFWorkflow/App WF in MD` and `App WF in PDF` |
+| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
+| Developer overview / contributor rules | `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md` |
+
+Each BRD, FRD, HLD and LLD sub-module uses the same folder and file stem, for example
+`TF - Documents/TF - BRD/02-TaskFlow-Monitoring/02.3-Board/BRD-Board.md` and `TF - Documents/TF - LLD/02-TaskFlow-Monitoring/02.3-Board/LLD-Board.md`.
+TDD §1.6 maps every sub-module to its documents, its original BRD screens and its TDD sections.
+
+The workflow docs have one folder per module (`01-Auth` … `10-Legal`). In each folder, `NN.0-<Module>-Overview` comes
+first, followed by one document per child module (for example `03-Management/03.1-Employee-Management`).
+
+---
 
 ## Data folder and first sign-in
 
@@ -370,3 +643,15 @@ Placement rules, checked by `npm run check:structure` (also the first step of `n
 - Code moves to `shared/` only when two or more modules, or the app shell, use it. Spec files sit next to the file they test.
 - A route's `loadComponent` target is always in a `pages/` folder.
 - There are no empty folders, and the old `core/` and `features/` folders are gone.
+
+
+---
+
+## Copyright
+
+© 2026 Jojo George (jojogeorge3344@gmail.com). All rights reserved.
+
+TaskFlow, its source code, screens and documentation are the work of the author, built as a personal project to
+develop and demonstrate software engineering skills. Unauthorized copying, distribution or modification of this software or its documentation, in whole or in part,
+is prohibited without the author's written permission. Third-party libraries remain under their own licences (see the
+**Licences** page in the application).

@@ -65,9 +65,9 @@ services):
   DB this change, but the Notification Center UI is Screen 12 (later module), so they are not
   user-visible until then. Mitigation: verify via DB/tests; the notification module reads them.
 - **Board payload growth** → `GET /tasks/board` returns every in-scope task. Acceptable for the
-  mini-project dataset; if it grows, a status-scoped virtual scroll is a later refinement.
+  small project dataset; if it grows, a status-scoped virtual scroll is a later refinement.
 - **Last-write-wins on concurrent status changes** → Accepted; no optimistic concurrency for
-  the mini project.
+  this project.
 - **New schema (3 tables)** → Covered by one migration; SQLite; rollback by dropping the
   migration before release.
 
