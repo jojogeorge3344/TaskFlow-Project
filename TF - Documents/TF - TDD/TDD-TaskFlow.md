@@ -9,7 +9,7 @@
 | Document | Technical Design Document |
 | Version | 2.1 |
 | Status | Updated to match implementation; aligned with the approved BRD set (signed off 31-Oct-2026) and the FRD / HLD / LLD set |
-| Basis | Approved BRD set v1.0 (`TF - Documents/TF - BRD`, overall + 16 sub-modules, signed off 31-Oct-2026) + FRD / HLD / LLD v1.0 (`TF - Documents/TF - FRD`, `TF - HLD`, `TF - LLD`) + original `BRD for Task management.docx` (v1.0) + `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` + the TaskFlow source code (`TaskFlow Proj/backend`, `TaskFlow Proj/frontend`) |
+| Basis | Approved BRD set v1.0 (`TF - Documents/TF - BRD`, overall + 16 sub-modules, signed off 31-Oct-2026) + FRD / HLD / LLD v1.0 (`TF - Documents/TF - FRD`, `TF - HLD`, `TF - LLD`) + the original BRD v1.0 (retired from the repository) + `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` + the TaskFlow source code (`TaskFlow Proj/backend`, `TaskFlow Proj/frontend`) |
 | Location | `TF - Documents/TF - TDD/TDD-TaskFlow.md` (+ `.pdf`) |
 | Stack | ASP.NET Core Web API on .NET 10 (`net10.0`), EF Core 10.0.12 + SQLite, FluentValidation 12.2.0, JwtBearer 10.0.12, SpaProxy 10.0.12; Angular 19.2 (standalone), TypeScript 5.7, Chart.js 4 + ng2-charts 8, Angular CDK 19, qrcode |
 | Project type | Personal Project (Skill Development) |
@@ -104,7 +104,7 @@ in the same folder.
 | HLD – High-Level Design (overall + 16) | Context, components, data architecture, key flows, security, deployment, design decisions (`D-…`) | `TF - Documents/TF - HLD/…/HLD-<Sub-module>.md` | v1.0 · Draft |
 | LLD – Low-Level Design (overall + 16) | Classes and files, every controller action, DTOs, validators, tables, sequence diagrams, error handling, FR → code → test | `TF - Documents/TF - LLD/…/LLD-<Sub-module>.md` | v1.0 · Draft (verified against the code: 114 actions, 70 keys, 31 entities) |
 | TDD – this document | Whole-system technical design synced to the code | `TF - Documents/TF - TDD/TDD-TaskFlow.md` | v2.1 |
-| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | `BRD for Task management.docx` | v1.0 · superseded |
+| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository | v1.0 · superseded |
 | Development Plan | Screen-by-screen feature plan, 20 screens (`01-login-screen.md` … `20-application-settings-screen.md`) | `TF - Documents/Screens Wise Feature Development Plan/` | Reference |
 | Permission documents | All permissions with purpose, and the Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/01-All-Permissions.xlsx` … `04-Employee-Permissions.xlsx` · PDF copies in `Permissions in PDF/` | Matches Appendix C |
 | Application workflow docs | Per module and child module: purpose, screens, who can see and use each feature, permissions, step-by-step flows | `TaskFlow Proj/TFWorkflow/App WF in MD/` (`01-Auth` … `10-Legal`) · PDF in `App WF in PDF/` | Verified from the code |

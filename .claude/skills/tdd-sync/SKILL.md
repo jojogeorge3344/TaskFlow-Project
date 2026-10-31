@@ -7,7 +7,7 @@ description: Update the TaskFlow Technical Design Document (TF - Documents/TF - 
 
 Goal: an **accurate, current** `TF - Documents/TF - TDD/TDD-TaskFlow.md` that describes what TaskFlow actually is today,
 while keeping traceability to the approved BRD set (`TF - Documents/TF - BRD/`, signed off 31-Oct-2026), the FRD, HLD
-and LLD sets, the original BRD (`BRD for Task management.docx`) and the 20 screen specs. The code is the source of
+and LLD sets, and the 20 screen specs (the original BRD docx is retired and no longer in the repository). The code is the source of
 truth for *how*; the approved BRD set is the source of truth for *what was asked*. Where they differ, the TDD documents the code and
 records the difference in a **Deviations from BRD** section. Never invent an endpoint, table, permission or setting.
 
@@ -21,7 +21,7 @@ records the difference in a **Deviations from BRD** section. Never invent an end
 | Frontend | `TaskFlow Proj/frontend/src/app/` (modules/, shared/, layouts/, routes/, config/) |
 | Permissions (source of truth) | `.../Common/Security/PermissionKeys.cs`, `PermissionCatalog.cs`, `SystemRoles.cs` |
 | Module docs (rich, already verified) | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` and `TaskFlow Proj/TFWorkflow/App WF in MD/` |
-| Requirements | Approved BRD set `TF - Documents/TF - BRD/` (start with `00-Overall/BRD-TaskFlow-Overall.md`: acceptance criteria `AC-01 – AC-26` in §14); screen specs `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md`; original BRD docx |
+| Requirements | Approved BRD set `TF - Documents/TF - BRD/` (start with `00-Overall/BRD-TaskFlow-Overall.md`: acceptance criteria `AC-01 – AC-26` in §14); screen specs `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` |
 | Design document set | `TF - Documents/TF - FRD/`, `TF - HLD/`, `TF - LLD/` (00-Overall + 16 sub-modules each; the HLD/LLD cite TDD sections by number) |
 | Other context | `README.md`, `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md`, permission documents `TF - Documents/Permission Requirement/` |
 
