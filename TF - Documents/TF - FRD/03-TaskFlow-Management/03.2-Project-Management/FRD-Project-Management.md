@@ -622,7 +622,7 @@ Test evidence lists the automated test suites whose names match the behaviour; t
 | REQ-PROJ-07 | FR-PROJ-08 | 4.1.1 | UC-PROJ-02 | Manual UI |
 | REQ-PROJ-08 | FR-PROJ-09, FR-PROJ-10, FR-PROJ-11 | 4.1.1 | UC-PROJ-02 | ⚠️ To be confirmed (no matching suite name) |
 | REQ-PROJ-09 | FR-PROJ-12 | 4.1.1 | UC-PROJ-01 | Manual UI |
-| REQ-PROJ-10 | FR-PROJ-14 | 4.1.2 | UC-PROJ-03 | ⚠️ To be confirmed (no project validator suite listed) |
+| REQ-PROJ-10 | FR-PROJ-14 | 4.1.2 | UC-PROJ-03 | `ProjectRequestValidatorsTests.cs` |
 | REQ-PROJ-11 | FR-PROJ-15 | 4.1.2 | UC-PROJ-03, UC-PROJ-04 | ⚠️ To be confirmed |
 | REQ-PROJ-12 | FR-PROJ-16 | 4.1.2 | UC-PROJ-04 | Manual UI |
 | REQ-PROJ-13 | FR-PROJ-17 | 4.1.2 | UC-PROJ-03 | Manual UI |
