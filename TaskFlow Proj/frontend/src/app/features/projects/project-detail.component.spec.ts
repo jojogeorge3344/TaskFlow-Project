@@ -90,7 +90,9 @@ describe('ProjectDetailComponent', () => {
     expect(team[0]).toContain('Ravi Kumar');
     expect(team[0]).toContain('Developer');
     expect(team[0]).toContain('60%');
-    expect(team[2]).toContain('Manager');
+    // The project manager gets no badge here: the team dialog is where the flag is shown and set.
+    expect(team[2]).toContain('Dev Two');
+    expect(team[2]).not.toContain('Manager');
     expect(el(fixture).querySelectorAll('[data-task]').length).toBe(2);
     expect(getTasks).toHaveBeenCalledOnceWith(7);
   });
