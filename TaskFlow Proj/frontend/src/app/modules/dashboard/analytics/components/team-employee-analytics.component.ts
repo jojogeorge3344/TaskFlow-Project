@@ -1,7 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { DrillTarget } from '../../../../shared/utils/drill-down';
 import { DrillBucket, TeamEmployee } from '../models/analytics.model';
-import { BUCKET_SERIES, bucketValues } from '../../../../shared/utils/chart-colors';
+import { BUCKET_SERIES, bucketValues } from '../../utils/chart-colors';
 
 @Component({
   selector: 'tf-team-employee-analytics',

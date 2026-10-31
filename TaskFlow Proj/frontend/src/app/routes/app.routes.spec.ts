@@ -1,9 +1,15 @@
-import { Routes } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { Router, Routes, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { authGuard, mfaSetupGuard, permissionGuard, securitySetupGuard } from '../shared/auth/auth.guard';
 import { DepartmentScreenPermissions, EmployeeScreenPermissions, Permissions } from '../shared/auth/permissions';
 import { routes } from './app.routes';
 import { expandRoutes } from '../shared/testing/routes';
 import { ShellComponent } from '../layouts/shell.component';
+import { LoginComponent } from '../modules/auth/login/pages/login.component';
+import { LegalPageComponent } from '../modules/legal/pages/legal-page.component';
 import { AdminDashboardComponent } from '../modules/dashboard/pages/admin-dashboard.component';
 import { EmployeeDashboardComponent } from '../modules/dashboard/pages/employee-dashboard.component';
 import { ManagerDashboardComponent } from '../modules/dashboard/pages/manager-dashboard.component';
@@ -267,4 +273,38 @@ describe('app routes', () => {
     expect(await load(childRoute('tasks/:id/activity'))).toBe(ActivityComponent);
     expect(await load(childRoute('tasks/:id/reassign'))).toBe(TaskReassignComponent);
   });
+  it('loads each module through a bare empty-path entry, so the module file holds every guard and data value', () => {
+    const wrappers = [...routes, ...shellRoute().children!].filter((route) => route.loadChildren !== undefined);
+
+    expect(wrappers.length).toBe(9);
+    for (const wrapper of wrappers) {
+      expect(Object.keys(wrapper).sort()).withContext(String(wrapper.loadChildren)).toEqual(['loadChildren', 'path']);
+      expect(wrapper.path).toBe('');
+    }
+  });
 });
+
+describe('app routes in a real router', () => {
+  async function navigate(url: string): Promise<{ url: string; component: unknown }> {
+    TestBed.configureTestingModule({ providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()] });
+    const harness = await RouterTestingHarness.create();
+    const component = await harness.navigateByUrl(url);
+    return { url: TestBed.inject(Router).url, component: (component as object).constructor };
+  }
+
+  it('opens the sign-in page from the root and from an unknown address', async () => {
+    expect(await navigate('/')).toEqual({ url: '/login', component: LoginComponent });
+    TestBed.resetTestingModule();
+    expect(await navigate('/no-such-page')).toEqual({ url: '/login', component: LoginComponent });
+  });
+
+  it('opens a legal page without signing in, past the auth module routes', async () => {
+    expect(await navigate('/legal/terms')).toEqual({ url: '/legal/terms', component: LegalPageComponent });
+  });
+
+  it('keeps a signed-out visitor out of the shell', async () => {
+    const result = await navigate('/tasks');
+    expect(result.url).not.toBe('/tasks');
+  });
+});
+

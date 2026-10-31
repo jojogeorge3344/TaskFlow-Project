@@ -30,6 +30,8 @@ const TOP_LEVEL = ['modules', 'shared', 'layouts', 'routes', 'config'];
 const SHARED = ['components', 'directives', 'services', 'utils', 'auth', 'testing'];
 
 const problems = [];
+/** Every non-spec .ts file under src/app, with its source. */
+const codeFiles = new Map();
 const rel = (full) => path.relative(appRoot, full).split(path.sep).join('/');
 const fail = (full, why) => problems.push(`${rel(full)}: ${why}`);
 
@@ -37,6 +39,15 @@ const fail = (full, why) => problems.push(`${rel(full)}: ${why}`);
 const isSiblingModel = (file, siblings) => {
   const match = /^(.+)\.model\.ts$/.exec(file);
   return !!match && siblings.some((other) => new RegExp(`^${match[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(component|service|directive)\\.ts$`).test(other));
+};
+
+/** A component's template or stylesheet sits beside its .component.ts; a stylesheet without "component" in its name is
+ * a shared stylesheet for the components in that folder. */
+const isComponentFile = (file, siblings) => {
+  if (file.endsWith('.component.ts')) return true;
+  const asset = /^(.+)\.component\.(html|css)$/.exec(file);
+  if (asset) return siblings.includes(`${asset[1]}.component.ts`);
+  return file.endsWith('.css');
 };
 
 /** Checks the files of a layer folder (and, for shared components, of their own sub-folders). */
@@ -47,14 +58,19 @@ function checkLayerFiles(dir, layer) {
     const full = path.join(dir, file);
     const spec = file.endsWith('.spec.ts');
     const ok = {
-      pages: () => /\.component\.(ts|html|css)$/.test(file) || spec || file.endsWith('.css') || isSiblingModel(file, files),
-      components: () => /\.component\.(ts|html|css)$/.test(file) || spec || file.endsWith('.css') || isSiblingModel(file, files),
+      pages: () => isComponentFile(file, files) || spec || isSiblingModel(file, files),
+      components: () => isComponentFile(file, files) || spec || isSiblingModel(file, files),
       services: () => file.endsWith('.service.ts') || spec || isSiblingModel(file, files),
       models: () => /\.models?\.ts$/.test(file) || spec,
-      utils: () => file.endsWith('.ts'),
+      utils: () => file.endsWith('.ts') && !/\.(component|service|directive)\.ts$/.test(file),
       directives: () => file.endsWith('.directive.ts') || spec || isSiblingModel(file, files),
-      auth: () => file.endsWith('.ts'),
+      auth: () => file.endsWith('.ts') && !/\.(component|directive)\.ts$/.test(file),
       testing: () => file.endsWith('.ts'),
+      // The app shell: its components, the layout service and plain navigation data.
+      layouts: () => isComponentFile(file, files) || spec || isSiblingModel(file, files) || file.endsWith('.service.ts')
+        || (file.endsWith('.ts') && !/\.(directive|routes)\.ts$/.test(file)),
+      routes: () => /\.routes(\.[\w-]+)?\.spec\.ts$/.test(file) || file.endsWith('.routes.ts'),
+      config: () => file.endsWith('.ts') && !/\.(component|service|directive|routes)\.ts$/.test(file),
     }[layer]();
     if (!ok) fail(full, `does not belong in a ${layer}/ folder`);
   }
@@ -108,6 +124,7 @@ for (const entry of fs.readdirSync(appRoot, { withFileTypes: true })) {
     for (const sub of fs.readdirSync(full, { withFileTypes: true })) {
       if (sub.isDirectory()) fail(path.join(full, sub.name), `${entry.name}/ has no sub-folders`);
     }
+    checkLayerFiles(full, entry.name);
   }
 }
 
@@ -123,12 +140,71 @@ for (const entry of fs.readdirSync(appRoot, { withFileTypes: true })) {
     }
     if (!entry.name.endsWith('.ts') || entry.name.endsWith('.spec.ts')) continue;
     const where = rel(full);
-    const injectsHttp = /\bHttpClient\b/.test(fs.readFileSync(full, 'utf8').replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, ''));
+    const source = fs.readFileSync(full, 'utf8');
+    // Read the import declarations themselves, so text in comments or strings cannot hide or fake a use.
+    const injectsHttp = /import\s+(?:type\s+)?\{[^}]*\bHttpClient\b[^}]*\}\s*from\s*['"]@angular\/common\/http['"]/.test(source);
     if (injectsHttp && !/(^|\/)services\//.test(where) && !where.startsWith('shared/auth/')) {
       fail(full, 'uses HttpClient outside a services/ folder or shared/auth/');
     }
+    codeFiles.set(full, source);
   }
 })(appRoot);
+
+// ---------------------------------------------------------------- imports: routed screens and shared code
+/** The project files a file imports, statically or with import(). */
+function importsOf(file) {
+  const targets = [];
+  for (const match of codeFiles.get(file).matchAll(/(?:from\s*|import\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g)) {
+    const target = `${path.resolve(path.dirname(file), match[1])}.ts`;
+    if (codeFiles.has(target)) targets.push(target);
+  }
+  return targets;
+}
+
+// A route's lazily loaded component is a routed screen and belongs in a pages/ folder (the shell is a layout).
+for (const [file, source] of codeFiles) {
+  if (!file.endsWith('.routes.ts')) continue;
+  for (const match of source.matchAll(/loadComponent\s*:\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+    const target = `${path.resolve(path.dirname(file), match[1])}.ts`;
+    if (!/(^|\/)pages\//.test(rel(target)) && !rel(target).startsWith('layouts/')) {
+      fail(target, `is routed from ${rel(file)} but is not in a pages/ folder`);
+    }
+  }
+}
+
+// Code in shared/ must be used by two or more modules, or by the app itself (root component, shell, config, routes).
+// A shared file that imports another passes its users on, so a helper used only through one module's widget is caught.
+const importers = new Map();
+for (const file of codeFiles.keys()) {
+  if (file.endsWith('.spec.ts')) continue;
+  for (const target of importsOf(file)) {
+    if (!importers.has(target)) importers.set(target, new Set());
+    importers.get(target).add(file);
+  }
+}
+const ownersCache = new Map();
+function ownersOf(file, visiting = new Set()) {
+  if (ownersCache.has(file)) return ownersCache.get(file);
+  const owners = new Set();
+  visiting.add(file);
+  for (const importer of importers.get(file) ?? []) {
+    const where = rel(importer);
+    const module = /^modules\/([^/]+)\//.exec(where);
+    if (module) owners.add(module[1]);
+    else if (/^(layouts|config|routes)\//.test(where) || where.startsWith('app.component')) owners.add('(app)');
+    else if (where.startsWith('shared/') && !visiting.has(importer)) for (const owner of ownersOf(importer, visiting)) owners.add(owner);
+  }
+  visiting.delete(file);
+  ownersCache.set(file, owners);
+  return owners;
+}
+for (const file of codeFiles.keys()) {
+  const where = rel(file);
+  if (!where.startsWith('shared/') || where.startsWith('shared/testing/') || file.endsWith('.spec.ts')) continue;
+  const owners = ownersOf(file);
+  if (owners.size === 0) fail(file, 'is in shared/ but no module uses it');
+  else if (owners.size === 1 && !owners.has('(app)')) fail(file, `is in shared/ but only the ${[...owners][0]} module uses it`);
+}
 
 if (problems.length === 0) {
   console.log('Frontend structure: OK');

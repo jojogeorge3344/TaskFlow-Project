@@ -3,11 +3,11 @@ import { addDays, shortDate } from '../../../../shared/utils/analytics-filter';
 import { DrillTarget } from '../../../../shared/utils/drill-down';
 import { AnalyticsBasis, AnalyticsTrend, BucketCounts, DeadlineBuckets, DrillBucket, DrillDeadlineBucket, PriorityCount } from '../models/analytics.model';
 import { TaskPriority } from '../../../monitoring/task-management/models/task.model';
-import { BUCKET_SERIES, PRIORITY_COLORS, percentOf } from '../../../../shared/utils/chart-colors';
-import { DonutChartComponent } from '../../../../shared/components/charts/donut-chart.component';
-import { DonutSlice } from '../../../../shared/components/charts/donut-chart.model';
-import { LineChartComponent } from '../../../../shared/components/charts/line-chart.component';
-import { LineSeries, PointClick } from '../../../../shared/components/charts/line-chart.model';
+import { BUCKET_SERIES, PRIORITY_COLORS, percentOf } from '../../utils/chart-colors';
+import { DonutChartComponent } from '../../components/charts/donut-chart.component';
+import { DonutSlice } from '../../components/charts/donut-chart.model';
+import { LineChartComponent } from '../../components/charts/line-chart.component';
+import { LineSeries, PointClick } from '../../components/charts/line-chart.model';
 import { DeadlineRow } from './task-analytics.model';
 
 @Component({

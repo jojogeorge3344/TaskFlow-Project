@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { DrillTarget } from '../../../../shared/utils/drill-down';
 import { BucketCounts, TeamAttention, TeamEmployee } from '../models/analytics.model';
-import { provideDashboardCharts } from '../../../../shared/utils/chart-providers';
+import { provideDashboardCharts } from '../../utils/chart-providers';
 import { TeamAttentionComponent } from './team-attention.component';
 import { TeamEmployeeAnalyticsComponent } from './team-employee-analytics.component';
 import { TeamTaskAnalyticsComponent } from './team-task-analytics.component';

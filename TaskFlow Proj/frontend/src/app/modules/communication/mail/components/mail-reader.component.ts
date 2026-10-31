@@ -6,7 +6,7 @@ import { IconComponent } from '../../../../shared/components/icon/icon.component
 import { MailAttachment, MailComposeMode, MailItemDetail, MailMessage } from '../models/mail.model';
 import { MailService } from '../services/mail.service';
 import { apiErrorMessage } from '../../../../shared/utils/api-error';
-import { linkify, sameOriginPath } from '../../../../shared/utils/linkify';
+import { linkify, sameOriginPath } from '../utils/linkify';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { displayName, formatSize, fullDate, saveBlob } from '../utils/mail-format';
 

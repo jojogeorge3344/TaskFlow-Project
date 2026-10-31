@@ -8,7 +8,7 @@ import { ActivityEntry, TaskComment, TaskDetails, TaskPriority, TaskStage, TaskS
 import { apiErrorMessage } from '../../../../shared/utils/api-error';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { initials } from '../../../../shared/utils/initials';
-import { backTarget } from '../../../../shared/utils/return-url';
+import { backTarget } from '../utils/return-url';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { ActivityEventMeta, eventMeta } from '../activity/utils/activity-meta';
 import { TaskService } from '../services/task.service';
@@ -45,7 +45,7 @@ function toInputDate(iso: string): string {
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, IconComponent, ConfirmDialogComponent],
   templateUrl: './task-details.component.html',
-  styleUrls: ['./task-details.component.css', './task-details-tabs.component.css']
+  styleUrls: ['./task-details.component.css', './task-details-tabs.css']
 })
 export class TaskDetailsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);

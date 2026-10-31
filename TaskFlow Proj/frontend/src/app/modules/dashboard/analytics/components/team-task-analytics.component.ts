@@ -2,9 +2,9 @@ import { Component, computed, input, output } from '@angular/core';
 import { DrillTarget } from '../../../../shared/utils/drill-down';
 import { BucketCounts, DrillBucket, PriorityCount } from '../models/analytics.model';
 import { TaskPriority } from '../../../monitoring/task-management/models/task.model';
-import { BUCKET_SERIES, PRIORITY_COLORS } from '../../../../shared/utils/chart-colors';
-import { DonutChartComponent } from '../../../../shared/components/charts/donut-chart.component';
-import { DonutSlice } from '../../../../shared/components/charts/donut-chart.model';
+import { BUCKET_SERIES, PRIORITY_COLORS } from '../../utils/chart-colors';
+import { DonutChartComponent } from '../../components/charts/donut-chart.component';
+import { DonutSlice } from '../../components/charts/donut-chart.model';
 
 const PRIORITY_ORDER: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 

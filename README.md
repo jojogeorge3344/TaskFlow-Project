@@ -367,5 +367,6 @@ Placement rules, checked by `npm run check:structure` (also the first step of `n
 - A file sits in the layer folder for its kind; only `<module>.routes.ts` sits directly in a module folder.
 - An API service lives in the module whose endpoints it calls, even when other modules import it.
 - A component's or service's own types go in a `<name>.model.ts` beside it; types shared by a module go in its `models/`.
-- Code moves to `shared/` only when two or more modules use it. Spec files sit next to the file they test.
+- Code moves to `shared/` only when two or more modules, or the app shell, use it. Spec files sit next to the file they test.
+- A route's `loadComponent` target is always in a `pages/` folder.
 - There are no empty folders, and the old `core/` and `features/` folders are gone.

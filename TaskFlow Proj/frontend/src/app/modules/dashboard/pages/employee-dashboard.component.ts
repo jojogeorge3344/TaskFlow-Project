@@ -7,15 +7,15 @@ import { AuthService } from '../../../shared/auth/auth.service';
 import { EMPLOYEE_PERIODS, EmployeeDeadline, EmployeePeriod, TaskBucket } from '../analytics/models/analytics.model';
 import { TaskPriority } from '../../monitoring/task-management/models/task.model';
 import { EmployeeAnalyticsService } from '../analytics/services/employee-analytics.service';
-import { BUCKET_SERIES, PRIORITY_COLORS } from '../../../shared/utils/chart-colors';
-import { provideDashboardCharts } from '../../../shared/utils/chart-providers';
-import { DonutChartComponent } from '../../../shared/components/charts/donut-chart.component';
-import { DonutSlice } from '../../../shared/components/charts/donut-chart.model';
-import { KpiCardComponent } from '../../../shared/components/charts/kpi-card.component';
-import { LineChartComponent } from '../../../shared/components/charts/line-chart.component';
-import { LineSeries, PointClick } from '../../../shared/components/charts/line-chart.model';
-import { ProgressListComponent } from '../../../shared/components/charts/progress-list.component';
-import { ProgressItem } from '../../../shared/components/charts/progress-list.model';
+import { BUCKET_SERIES, PRIORITY_COLORS } from '../utils/chart-colors';
+import { provideDashboardCharts } from '../utils/chart-providers';
+import { DonutChartComponent } from '../components/charts/donut-chart.component';
+import { DonutSlice } from '../components/charts/donut-chart.model';
+import { KpiCardComponent } from '../components/charts/kpi-card.component';
+import { LineChartComponent } from '../components/charts/line-chart.component';
+import { LineSeries, PointClick } from '../components/charts/line-chart.model';
+import { ProgressListComponent } from '../components/charts/progress-list.component';
+import { ProgressItem } from '../components/charts/progress-list.model';
 
 const PRIORITY_ORDER: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
