@@ -290,14 +290,14 @@ TaskFlow.Api/
   Services/<Module>/<SubModule>/[<Pair>/]  I<Name>Service.cs + <Name>Service.cs, one pair per folder (rules in Rules/)
   Repositories/<Module>/<SubModule>/[<Pair>/]
                                            I<Name>Repository.cs + <Name>Repository.cs over EF Core, one pair per folder;
-                                           IUnitOfWork, IBaseRepository and UnitOfWork in Base/
+                                           IBaseRepository, BaseRepository, IUnitOfWork and UnitOfWork in Base/
   Dtos/<Module>/<SubModule>/               requests, responses, Validators/
   Models/Entities/  Models/Enums/          database entities and enums
   Integrations/<Area>/<Pair>/              AI providers, JWT, TOTP, key protection, file storage (interface beside class)
   Middleware/  Filters/  Authorization/    exception handling, request logging, session validation, MFA gate,
                                            request validation, permission policies
   Config/                                  DI registration per layer, options classes
-  Common/                                  exceptions, security keys and policies, shared rules, BaseRepository
+  Common/                                  exceptions, security keys and policies, shared rules
   Persistence/                             AppDbContext, migrations, seeders
 ```
 
@@ -307,7 +307,7 @@ Modules: `Auth` (`Mfa`, `PasswordRecovery`), `Dashboard` (`Analytics`), `Monitor
 `Notification` with `Reminders`), `Reports`, `Settings` (`ApplicationSettings`, `ReminderSettings`, `RoleConfiguration`,
 `TfaSettings`), `Profile` and `Assistant`.
 
-Layer rules, checked by `tests/TaskFlow.UnitTests/ArchitectureTests.cs` on every test run:
+Layer rules, checked by `tests/TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` on every test run:
 
 - A request flows Controller → Service → Repository → database, and a layer only calls the one below it, through its
   interface. Controllers never reach repositories, integrations or EF Core.

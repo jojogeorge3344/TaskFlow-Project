@@ -8,7 +8,6 @@ import {
   ProjectTaskFilter,
   TASK_PRIORITIES,
   TASK_STATUSES,
-  TaskPriority,
   TaskStatus
 } from '../../core/models';
 import { ProjectService } from '../../core/services/project.service';

@@ -7,7 +7,6 @@ import {
   AiProviderOption,
   AssistantActionResult,
   AssistantConversation,
-  AssistantFailure,
   AssistantMessage,
   AssistantPendingAction,
   AssistantReply,

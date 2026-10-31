@@ -1,10 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Api.Common;
-using TaskFlow.Api.Common.Security;
-using TaskFlow.Api.Dtos.Assistant;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Assistant.PendingActions;
 

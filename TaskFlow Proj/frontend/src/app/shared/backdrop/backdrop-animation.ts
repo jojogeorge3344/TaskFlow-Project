@@ -1,5 +1,5 @@
 import { AfterViewInit, Directive, ElementRef, NgZone, OnDestroy, ViewChild, inject } from '@angular/core';
-import { Node, BackdropColors } from './backdrop-animation.model';
+import { BackdropNode, BackdropColors } from './backdrop-animation.model';
 
 const LINK_DISTANCE = 140;
 const MAX_NODES = 70;
@@ -17,7 +17,7 @@ export abstract class BackdropAnimation implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: true }) protected readonly canvasRef!: ElementRef<HTMLCanvasElement>;
 
   private ctx: CanvasRenderingContext2D | null = null;
-  private nodes: Node[] = [];
+  private nodes: BackdropNode[] = [];
   private frame = 0;
   private width = 0;
   private height = 0;

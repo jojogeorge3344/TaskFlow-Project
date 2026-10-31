@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Api.Common;
 using TaskFlow.Api.Common.Rules;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using TaskStatus = TaskFlow.Api.Models.Enums.TaskStatus;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Notification.Reminders;
 

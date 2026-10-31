@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Api.Common;
 using TaskFlow.Api.Common.Models;
 using TaskFlow.Api.Dtos.Communication.Notification;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using NotificationEntity = TaskFlow.Api.Models.Entities.Notification;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Communication.Notification.Notifications;
 

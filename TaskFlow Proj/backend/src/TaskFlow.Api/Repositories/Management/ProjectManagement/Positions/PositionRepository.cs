@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using TaskFlow.Api.Common;
 using TaskFlow.Api.Dtos.Management.ProjectManagement.Positions;
 using TaskFlow.Api.Models.Entities;
 using TaskFlow.Api.Persistence;
+using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Management.ProjectManagement.Positions;
 

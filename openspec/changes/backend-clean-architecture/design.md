@@ -42,7 +42,7 @@ TaskFlow.Api/
   Middleware/                                     exception handling, request logging, MFA gate, session validation
   Filters/                                        ValidationFilter
   Config/                                         DI extension methods per layer, options classes, auth policies
-  Common/  Exceptions/ Security/ (PermissionCatalog, keys, policies) Constants/ Utils/ BaseRepository.cs
+  Common/  Exceptions/ Security/ (PermissionCatalog, keys, policies) Constants/ Utils/
   Persistence/  AppDbContext, Configurations/, Migrations/, Seeders/
 ```
 
@@ -70,7 +70,7 @@ Domain `Rules/` (TaskStatusTransitions, ReminderCalculator, …) are pure busine
 *Alternative considered:* a flat `Services/` folder. Rejected because REQ-05 requires module sub-folders.
 
 ### D3. Repositories: base class plus intent-named methods (option C)
-- `Common/BaseRepository<T>` provides `GetByIdAsync`, `AddAsync`, `Remove`, and `ExistsAsync` over `AppDbContext`.
+- `Repositories/Base/BaseRepository<T>`, beside `IBaseRepository<T>`, provides `GetByIdAsync`, `AddAsync`, `Remove`, and `ExistsAsync` over `AppDbContext`.
 - Each sub-module has `I<Name>Repository : IBaseRepository<T>`, adding intent-named queries that take filter records (e.g. `TaskListFilter { AssigneeIds, ProjectIds, Status, From, To, Page }`).
 - Rules: no member returns `IQueryable`, and repositories never call `SaveChanges`.
 - **Read models:** writes and detail reads return entities, which the service maps to DTOs. List and analytics reads may project straight into response DTOs inside the repository, so the ~230 projections stay in SQL.
@@ -110,7 +110,8 @@ Existing custom exceptions (`MailValidationException`, `RoleException`, `Analyti
 
 `Middleware/GlobalExceptionHandler`, registered as an `IExceptionHandler` next to the existing `UseExceptionHandler`, works like this:
 - An `AppException` becomes a ProblemDetails with its status, title and message as `detail`, plus `traceId`. Validation exceptions add `errors`.
-- `DbUpdateConcurrencyException` becomes 409. This absorbs the existing `ConcurrencyExceptionHandler`.
+- `DbUpdateConcurrencyException` becomes 409. This absorbs the existing `ConcurrencyExceptionHandler`. A service that catches the conflict to give a clearer message rethrows it as `ConflictException`, so it stays 409 (for example two people logging hours on the same task at once).
+- A unique-index violation on save becomes `UniqueConstraintException`, 409 "That value is already in use." `UnitOfWork` maps it for every service. Before, only the role and AI-provider saves handled it, and other paths (such as a duplicate department or project name saved at the same moment) returned 500.
 - Anything else becomes a 500 with the generic detail "Something went wrong. Please try again.", and the exception is logged at Error with the `traceId`.
 
 The task "missing or deleted → 403" rule stays: the service throws `ForbiddenException` for both cases.
