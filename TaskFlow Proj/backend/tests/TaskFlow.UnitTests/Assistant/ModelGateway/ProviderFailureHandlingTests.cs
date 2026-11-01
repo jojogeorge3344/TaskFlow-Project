@@ -37,6 +37,12 @@ public class ProviderFailureHandlingTests
     }
 
     [Fact]
+    public void AMalformedModelNameSaysItIsNotAModelIdAndGivesAnExample() =>
+        Assert.Equal(
+            "Google Gemini did not accept the configured model name as a model ID. Ask an administrator to set a valid model ID, for example gemini-3.8-flash, or choose another model.",
+            ProviderFailureMessages.For(AiProviderKind.Gemini, ProviderFailureKind.InvalidModelName));
+
+    [Fact]
     public void EveryKindSuggestsAnotherModel()
     {
         foreach (var kind in Enum.GetValues<ProviderFailureKind>())

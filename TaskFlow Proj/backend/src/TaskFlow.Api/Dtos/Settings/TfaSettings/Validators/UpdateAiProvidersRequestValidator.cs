@@ -26,7 +26,8 @@ public class UpdateAiProviderRequestValidator : AbstractValidator<UpdateAiProvid
 
         RuleFor(provider => provider.ModelName)
             .NotEmpty().WithMessage("Model name cannot be blank.")
-            .MaximumLength(100);
+            .MaximumLength(100)
+            .Must(BeAModelId).WithMessage(ModelIdMessage);
 
         RuleFor(provider => provider.BaseUrl)
             .Must(BeHttpUrl).WithMessage("The server address must be a valid http or https URL, and not a link-local or cloud metadata address.")
@@ -42,7 +43,14 @@ public class UpdateAiProviderRequestValidator : AbstractValidator<UpdateAiProvid
             .WithMessage("Provide a new key or clear the key, not both.");
     }
 
-    private static bool BeHttpUrl(string? value) =>
+    internal const string ModelIdMessage = "A model name is the provider's model ID, without spaces, for example gemini-3.8-flash.";
+
+    /// <summary>A model name goes into the provider's URL or request as its model ID, so it has no spaces inside it (a
+    /// typed label such as "Gemini API Key" is refused before anything is sent). Blank names are reported by their own rule.</summary>
+    internal static bool BeAModelId(string? value) =>
+        string.IsNullOrWhiteSpace(value) || !value.Trim().Any(char.IsWhiteSpace);
+
+    internal static bool BeHttpUrl(string? value) =>
         string.IsNullOrWhiteSpace(value)
         || (Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" && !IsMetadataHost(uri));
 

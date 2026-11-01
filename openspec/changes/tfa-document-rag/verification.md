@@ -127,9 +127,9 @@ check and `npm run build` all pass.
 
 Driven in a real browser (headless Chrome) against the API and `ng serve`:
 
-- **Administrator, TFA Settings → Document search:** the card showed the folder, `nomic-embed-text`, 89 files,
-  3,406 chunks and "Up to date". **Re-index now** switched it to "Indexing…" with the button disabled, then back to
-  "Up to date" with a new last-indexed time.
+- **Administrator, TFA Settings → Document search (historical, 31-Oct-2026; the card was removed afterwards, see the
+  note below):** the card showed the folder, `nomic-embed-text`, 89 files, 3,406 chunks and "Up to date". **Re-index
+  now** switched it to "Indexing…" with the button disabled, then back to "Up to date" with a new last-indexed time.
 - **Employee, TFA panel, one conversation:**
 
 | Question | Answer | Sources |
@@ -142,3 +142,13 @@ Driven in a real browser (headless Chrome) against the API and `ng serve`:
 The first run of these questions showed that short complete questions were searched together with the previous question
 (design D9 as first written) and found the wrong sections. D9 was changed: a short message is searched on its own first,
 and with the previous message only when that finds nothing. The second run above is after the change.
+
+## Note, 01-Nov-2026: Document search card removed (design D13)
+
+After this verification, the **Document search** card on TFA Settings (index status, **Re-index now**, 3-second polling)
+and its endpoints `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` were removed
+(task 7, design D13), together with `DocumentIndexController`, `DocumentIndexService` and
+`DocumentIndexerService.RequestReindex()`. The card check in task 6.4 above is therefore historical. The results above
+are unchanged: the background `DocumentIndexerService` still indexes at startup and every `RescanMinutes` (5), re-embedding
+only changed files, and indexing problems are logged as warnings. To index at once, restart the API or wait for the
+next rescan.

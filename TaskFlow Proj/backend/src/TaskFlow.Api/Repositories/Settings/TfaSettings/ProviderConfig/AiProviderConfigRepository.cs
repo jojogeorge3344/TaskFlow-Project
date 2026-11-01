@@ -21,7 +21,4 @@ public class AiProviderConfigRepository : BaseRepository<AiProviderConfig>, IAiP
 
     public Task<AiProviderConfig?> GetAsync(AiProviderKind kind, CancellationToken cancellationToken = default) =>
         Set.AsNoTracking().FirstOrDefaultAsync(config => config.Kind == kind, cancellationToken);
-
-    public Task<bool> UsesModelAsync(AiProviderKind kind, string modelName, CancellationToken cancellationToken = default) =>
-        Set.AnyAsync(config => config.Kind == kind && config.ModelName == modelName, cancellationToken);
 }

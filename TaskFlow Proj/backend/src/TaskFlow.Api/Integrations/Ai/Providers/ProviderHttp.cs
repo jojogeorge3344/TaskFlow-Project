@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Integrations.Ai.Providers;
@@ -38,6 +39,34 @@ internal static class ProviderHttp
             Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json")
         };
         return request;
+    }
+
+    public const int MaxReasonLength = 200;
+
+    private static readonly Regex KeyLikeToken = new(
+        @"(AIza[0-9A-Za-z_\-]{10,}|sk-[0-9A-Za-z_\-]{10,}|AQ\.[0-9A-Za-z_.\-]{10,})",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
+
+    /// <summary>The provider's error status and message as one short line for an administrator: the key that was sent and
+    /// anything shaped like a Google or OpenAI key are replaced by <c>[key]</c>, and the text is cut to
+    /// <see cref="MaxReasonLength"/> characters. Null when the provider gave neither.</summary>
+    public static string? Reason(string? status, string? message, string? apiKey)
+    {
+        var text = string.Join(": ", new[] { status, message }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim()));
+        if (text.Length == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            text = text.Replace(apiKey.Trim(), "[key]", StringComparison.Ordinal);
+        }
+
+        text = Whitespace.Replace(KeyLikeToken.Replace(text, "[key]"), " ").Trim();
+        return text.Length <= MaxReasonLength ? text : string.Concat(text.AsSpan(0, MaxReasonLength - 1), "…");
     }
 
     public static TimeSpan? RetryAfter(HttpResponseMessage response)

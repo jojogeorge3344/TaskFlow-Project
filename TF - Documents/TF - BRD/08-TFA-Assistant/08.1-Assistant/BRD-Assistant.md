@@ -2,8 +2,8 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Business Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.1  ·  **Status:** Approved (v1.0 baseline); v1.1 change recorded
-> **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
+> **Document:** Business Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Approved (v1.0 baseline); v1.1 and v1.2 changes recorded
+> **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > © 2026 Jojo George. All rights reserved.
 
@@ -19,6 +19,7 @@
 | 1.0 | 31-Oct-2026 | Jojo George | Approved and signed off; baselined as the agreed business requirements. |
 | 1.0 | 31-Oct-2026 | Jojo George | Editorial only: Related Documents paths updated to the `TF - Documents` folder layout; no requirement changed, sign-off unchanged. |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). How-to help from the 19 built-in help topics is withdrawn: SCREEN 2 becomes "Answers from TaskFlow documents"; REQ-TFA-18 – REQ-TFA-21 and AC-TFA-08 are superseded by REQ-TFA-46 – REQ-TFA-55 and AC-TFA-18 – AC-TFA-22; BR-TFA-07 reworded; BR-TFA-15 – BR-TFA-16, NFR-TFA-09 – NFR-TFA-12 and R-TFA-07 – R-TFA-08 added; cloud notice text, objectives, scope, workflows, data, integrations, deliverables and glossary updated. Every role may get answers from every document (owner decision). |
+| 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` (revised, design D13 and D14). The Document search card, **Re-index now** and the document status/re-index endpoints were removed from TFA Settings: the server still builds the document index at start-up and re-checks the folder every 5 minutes, re-processing only changed documents, and indexing problems (folder not found, embedding model unavailable, a document that could not be indexed) are written to the server log as warnings naming the folder or file. REQ-TFA-55 and NFR-TFA-10 no longer mention a manual re-index; REQ-TFA-56 and AC-TFA-23 added (no index screen or endpoint, problems logged); stakeholders, scope, integrations and RTM updated. Chat replies for an unexpected provider error keep the plain message; the provider's own reason is shown only on Test connection in TFA Settings (SCREEN 1 messages). |
 
 ### Approvals / Sign-off
 
@@ -100,7 +101,7 @@ Users who do not know a screen must search training material or ask a colleague.
 |---|---|
 | Project owner (Jojo George) | Defines priorities, approves this BRD |
 | All TaskFlow users | Ask questions, plan work, confirm prepared actions |
-| Administrators | Configure AI providers in TFA Settings; see the document index and start a re-index in TFA Settings; grant TFA permissions in Role Configuration; change roles through TFA |
+| Administrators | Configure AI providers in TFA Settings; check the server log for document indexing problems (v1.2); grant TFA permissions in Role Configuration; change roles through TFA |
 | Document authors (project owner) | Keep the documents in the TaskFlow documents folder current; TFA picks up their changes automatically |
 
 ### 2.2 User Roles
@@ -133,7 +134,7 @@ Users who do not know a screen must search training material or ask a colleague.
 
 ### 3.2 Out of Scope (this release)
 - AI provider, model and API key setup – TFA Settings (`../../06-Settings/06.3-TFA-Settings/BRD-TFA-Settings.md`).
-- Document index status and **Re-index now** – TFA Settings (`../../06-Settings/06.3-TFA-Settings/BRD-TFA-Settings.md`).
+- A screen or endpoint for the document index status or for starting a re-index – not provided. (v1.1 placed a Document search card with **Re-index now** on TFA Settings; it was withdrawn in v1.2. Indexing problems are written to the server log.)
 - PDF and Excel documents, uploading documents through TaskFlow, and limiting which documents a role may ask about – not provided (v1.1).
 - Creating, editing or reassigning tasks through TFA – not offered; TFA links to the task screens.
 - Password changes through TFA – never; TFA points to My Profile.
@@ -307,6 +308,7 @@ Let the user ask TFA questions and read its answers in a running conversation, f
 | Ollama not running | "Ollama is not running or cannot be reached. Ask an administrator to start it, or choose another model." |
 | Model missing | "The configured model is not available on Ollama. …" / "The configured model is not available on `{Provider}`. …" |
 | No answer | "I could not come up with an answer. Please try again, or ask in a different way." |
+| Provider unexpected error | "`{Provider}` returned an unexpected error. Please try again, or choose another model." The provider's own status and reason are not added in the chat; they are shown only on Test connection in TFA Settings (v1.2). |
 | Other failure | "TFA could not answer. Please try again." · "Could not start a new chat." |
 | Cloud notice | "`{Provider}` is a cloud provider. Your message, related task details and matching TaskFlow document text are sent to it." (v1.1) |
 | No permission | "You do not have the required permission to perform this action. … Please contact your system administrator for assistance." |
@@ -349,7 +351,8 @@ Answer questions about TaskFlow's features, screens, rules and design only from 
 | REQ-TFA-52 | The system shall treat document text as data, never as an instruction to TFA. | Must |
 | REQ-TFA-53 | The system shall let every user who may chat with TFA get answers from every indexed document, whatever their role. | Must |
 | REQ-TFA-54 | The system shall keep answering task, mail and profile questions when the documents cannot be searched, and shall tell the user that the documents cannot be searched right now, or are still being prepared while the first indexing has stored nothing. | Must |
-| REQ-TFA-55 | The system shall pick up documents that were added, changed or deleted in the documents folder without a restart, at the next automatic check (every 5 minutes by default) or when an administrator starts a re-index. | Should |
+| REQ-TFA-55 | The system shall pick up documents that were added, changed or deleted in the documents folder without a restart, at the next automatic check (every 5 minutes by default), re-processing only changed documents (v1.2: the manual re-index was withdrawn). | Should |
+| REQ-TFA-56 | The system shall write a missing documents folder, an embedding model that cannot be reached (indexing stops) and a document that could not be indexed to the server log as warnings naming the folder or file, and shall offer no screen or endpoint for the document index status or for starting a re-index (v1.2). | Should |
 
 **Validations & Messages**
 
@@ -554,7 +557,7 @@ Global NFRs are in section 7 of the overall BRD. Sub-module specifics:
 | NFR-TFA-07 | Compatibility | Voice in browsers with speech recognition | Chrome and Edge; typing works in every supported browser |
 | NFR-TFA-08 | Usability | Every provider problem has a plain message and a next step | Each failure in SCREEN 1 offers Retry or another model |
 | NFR-TFA-09 | Privacy / cost | The documents are searched on the local AI server, at no cost, whichever chat model is chosen | Only the matching document sections reach a cloud chat provider, after the cloud notice |
-| NFR-TFA-10 | Freshness | Document changes reach TFA without a restart | Picked up at the next check (default every 5 minutes) or on Re-index now |
+| NFR-TFA-10 | Freshness | Document changes reach TFA without a restart | Picked up at the next automatic check (default every 5 minutes; v1.2: the manual re-index was withdrawn) |
 | NFR-TFA-11 | Performance | Unchanged documents are not processed again | Measured on a laptop CPU: first full indexing of 89 documents about 28 minutes; later checks with no changes finish in seconds |
 | NFR-TFA-12 | Reliability | TFA keeps working when the documents cannot be searched | Task, mail and profile questions are still answered; the user is told the documents cannot be searched |
 
@@ -579,7 +582,7 @@ Global NFRs are in section 7 of the overall BRD. Sub-module specifics:
 | System / service | Purpose | Required? | Notes |
 |---|---|---|---|
 | Ollama (local AI) | Answers questions on the local machine; also searches the TaskFlow documents (free embedding model `nomic-embed-text`) whichever chat provider is chosen | One provider required; Ollama with `nomic-embed-text` required for document answers | "Ollama is not running…" when unreachable; documents "cannot be searched right now" without it |
-| TaskFlow documents folder (v1.1) | Source of the answers about TaskFlow | Required for document answers | Markdown files only; see TFA Settings for its status |
+| TaskFlow documents folder (v1.1) | Source of the answers about TaskFlow | Required for document answers | Markdown files only; set in the server configuration; a missing folder is written to the server log (v1.2) |
 | Google Gemini (cloud AI) | Answers questions | Optional | Cloud notice; rate limit and key messages |
 | OpenAI GPT (cloud AI) | Answers questions | Optional | Cloud notice; rate limit and key messages |
 | Browser speech service | Speech to text and text to speech | Optional | Chrome, Edge; needs internet in some browsers |
@@ -657,6 +660,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | AC-TFA-20 | "Which of my tasks are overdue?" is answered from the user's own tasks even when document sections matched; an instruction written inside a document is not followed. | SCREEN 2, REQ-TFA-51, REQ-TFA-52 |
 | AC-TFA-21 | An Employee asking how the reminder scheduler works gets the answer from the technical documents; after reloading, earlier answers still show their sources. | SCREEN 2, REQ-TFA-50, REQ-TFA-53 |
 | AC-TFA-22 | With Ollama stopped, a documentation question gets "the documents cannot be searched right now" while task questions still work; an edited document is reflected after the next check without a restart. | SCREEN 2, REQ-TFA-54, REQ-TFA-55 |
+| AC-TFA-23 | With the documents folder missing, the server log has a warning naming the folder and TFA says the documents cannot be searched right now; TFA Settings shows no Document search card, and `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` answer 404 (v1.2). | SCREEN 2, REQ-TFA-56 |
 
 ---
 
@@ -671,7 +675,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | OBJ-TFA-04 | BR-TFA-01, BR-TFA-10 | SCREEN 3 | REQ-TFA-23, REQ-TFA-30, REQ-TFA-31, REQ-TFA-33, REQ-TFA-34, REQ-TFA-35 | AC-TFA-10, AC-TFA-12, AC-TFA-13 |
 | OBJ-TFA-04 | BR-TFA-03 | SCREEN 1 | REQ-TFA-04, REQ-TFA-05, REQ-TFA-15 | AC-TFA-02, AC-TFA-03 |
 | OBJ-TFA-04 | BR-TFA-12, BR-TFA-13 | SCREEN 5 | REQ-TFA-42, REQ-TFA-43, REQ-TFA-44, REQ-TFA-45 | AC-TFA-16, AC-TFA-17 |
-| OBJ-TFA-05 | BR-TFA-07, BR-TFA-15, BR-TFA-16 | SCREEN 2 | REQ-TFA-46, REQ-TFA-47, REQ-TFA-48, REQ-TFA-49, REQ-TFA-50, REQ-TFA-51, REQ-TFA-52, REQ-TFA-53, REQ-TFA-54, REQ-TFA-55 (v1.1; REQ-TFA-18 – REQ-TFA-21 superseded) | AC-TFA-18, AC-TFA-19, AC-TFA-20, AC-TFA-21, AC-TFA-22 |
+| OBJ-TFA-05 | BR-TFA-07, BR-TFA-15, BR-TFA-16 | SCREEN 2 | REQ-TFA-46, REQ-TFA-47, REQ-TFA-48, REQ-TFA-49, REQ-TFA-50, REQ-TFA-51, REQ-TFA-52, REQ-TFA-53, REQ-TFA-54, REQ-TFA-55, REQ-TFA-56 (v1.1; REQ-TFA-18 – REQ-TFA-21 superseded; REQ-TFA-56 v1.2) | AC-TFA-18, AC-TFA-19, AC-TFA-20, AC-TFA-21, AC-TFA-22, AC-TFA-23 |
 | OBJ-TFA-06 | BR-TFA-14 | SCREEN 4 | REQ-TFA-36, REQ-TFA-37, REQ-TFA-38, REQ-TFA-39, REQ-TFA-40, REQ-TFA-41 | AC-TFA-14, AC-TFA-15 |
 
 ---

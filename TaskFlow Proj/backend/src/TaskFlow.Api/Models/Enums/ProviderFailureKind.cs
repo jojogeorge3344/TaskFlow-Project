@@ -7,5 +7,6 @@ public enum ProviderFailureKind
     Timeout,
     Unreachable,
     ModelUnavailable,
-    Unexpected
+    Unexpected,
+    InvalidModelName
 }

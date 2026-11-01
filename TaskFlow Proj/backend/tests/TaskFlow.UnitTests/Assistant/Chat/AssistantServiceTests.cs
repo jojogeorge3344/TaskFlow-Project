@@ -133,6 +133,36 @@ public class AssistantServiceTests
     }
 
     [Fact]
+    public async Task AChatFailureNeverShowsTheProvidersOwnReason()
+    {
+        await using var h = await AssistantServiceHarness.CreateAsync();
+        h.Gateway.Handler = (kind, _) => throw new ProviderFailureException(
+            kind, ProviderFailureKind.Unexpected, httpStatus: 400, providerReason: "FAILED_PRECONDITION: User location is not supported");
+
+        var reply = await h.SendAsync(h.Asha, "hello", AiProviderKind.Gemini);
+
+        var failure = Assert.IsType<AssistantFailureDto>(reply.Failure);
+        Assert.Contains("unexpected error", failure.Message);
+        Assert.DoesNotContain("location", failure.Message);
+        Assert.DoesNotContain("HTTP", failure.Message);
+    }
+
+    [Fact]
+    public async Task AMalformedModelNameInChatShowsOnlyTheFixedMessage()
+    {
+        await using var h = await AssistantServiceHarness.CreateAsync();
+        h.Gateway.Handler = (kind, _) => throw new ProviderFailureException(
+            kind, ProviderFailureKind.InvalidModelName, httpStatus: 400, providerReason: "INVALID_ARGUMENT: * GenerateContentRequest.model: unexpected model name format");
+
+        var reply = await h.SendAsync(h.Asha, "hello", AiProviderKind.Gemini);
+
+        var failure = Assert.IsType<AssistantFailureDto>(reply.Failure);
+        Assert.Equal(ProviderFailureKind.InvalidModelName, failure.Kind);
+        Assert.Contains("not accept the configured model name as a model ID", failure.Message);
+        Assert.DoesNotContain("INVALID_ARGUMENT", failure.Message);
+    }
+
+    [Fact]
     public async Task ARetryAfterAFailureDoesNotDuplicateTheMessage()
     {
         await using var h = await AssistantServiceHarness.CreateAsync();

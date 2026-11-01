@@ -313,6 +313,68 @@ public class ChatProviderTests
         Assert.Equal(ProviderFailureKind.InvalidKey, failure.Kind);
     }
 
+    [Fact]
+    public async Task GeminiMalformedModelNameIsInvalidModelNameWithItsReason()
+    {
+        var provider = new GeminiProvider(new HttpClient(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest,
+            """{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"* GenerateContentRequest.model: unexpected model name format\n"}}""")));
+
+        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(GeminiRuntime, Request(User("hi"))));
+
+        Assert.Equal(ProviderFailureKind.InvalidModelName, failure.Kind);
+        Assert.Equal(400, failure.HttpStatus);
+        Assert.Equal("INVALID_ARGUMENT: * GenerateContentRequest.model: unexpected model name format", failure.ProviderReason);
+    }
+
+    [Fact]
+    public async Task GeminiModelNotFoundStaysModelUnavailable()
+    {
+        var provider = new GeminiProvider(new HttpClient(new FakeHttpHandler().Reply(HttpStatusCode.NotFound,
+            """{"error":{"code":404,"status":"NOT_FOUND","message":"models/gemini-9.9-flash is not found for API version v1beta"}}""")));
+
+        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(GeminiRuntime, Request(User("hi"))));
+
+        Assert.Equal(ProviderFailureKind.ModelUnavailable, failure.Kind);
+    }
+
+    [Fact]
+    public async Task GeminiOtherInvalidArgumentStaysUnexpected()
+    {
+        var provider = new GeminiProvider(new HttpClient(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest,
+            """{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"Request contains an invalid argument."}}""")));
+
+        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(GeminiRuntime, Request(User("hi"))));
+
+        Assert.Equal(ProviderFailureKind.Unexpected, failure.Kind);
+    }
+
+    [Theory]
+    [InlineData("bad key AIzaSyTestKey1234 here", "bad key [key] here")]
+    [InlineData("token AQ.FakeTestToken12345 and sk-proj-abcdefghijkl", "token [key] and [key]")]
+    [InlineData("  spread\nover   lines ", "spread over lines")]
+    public async Task TheProviderReasonHidesKeysAndTidiesSpaces(string message, string expected)
+    {
+        var failure = await GeminiFailure(new JsonObject { ["error"] = new JsonObject { ["message"] = message } }.ToJsonString());
+
+        Assert.Equal(expected, failure.ProviderReason);
+    }
+
+    [Fact]
+    public async Task TheProviderReasonIsCutTo200Characters()
+    {
+        var failure = await GeminiFailure($$$"""{"error":{"status":"FAILED_PRECONDITION","message":"{{{new string('x', 500)}}}"}}""");
+
+        Assert.Equal(200, failure.ProviderReason!.Length);
+        Assert.EndsWith("…", failure.ProviderReason);
+        Assert.Null((await GeminiFailure("not json")).ProviderReason);
+    }
+
+    private static async Task<ProviderFailureException> GeminiFailure(string body)
+    {
+        var provider = new GeminiProvider(new HttpClient(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest, body)));
+        return await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(GeminiRuntime, Request(User("hi"))));
+    }
+
     // ------------------------------------------------------------------ OpenAI
 
     private static AiProviderRuntime OpenAiRuntime => new(AiProviderKind.OpenAI, "gpt-4o-mini", null, "sk-test-9999");

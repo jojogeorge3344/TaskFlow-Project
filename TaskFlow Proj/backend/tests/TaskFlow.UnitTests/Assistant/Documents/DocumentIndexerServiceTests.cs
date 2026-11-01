@@ -94,24 +94,7 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task TwoConcurrentRequestsCauseOneRun()
-    {
-        var service = NewService();
-        await service.StartAsync(CancellationToken.None);
-        await Eventually(() => _scopes.Scopes == 1);
-
-        var accepted = await Task.WhenAll(Task.Run(service.RequestReindex), Task.Run(service.RequestReindex));
-        await Eventually(() => _provider.GetRequiredService<DocumentIndexStatus>().Current.LastIndexedAt is not null);
-        await Task.Delay(300);
-        await service.StopAsync(CancellationToken.None);
-
-        Assert.Equal(1, accepted.Count(value => value));
-        Assert.Equal(2, _scopes.Scopes);
-        Assert.Single(_embeddings.Calls);
-    }
-
-    [Fact]
-    public async Task ARequestWhileARunIsInProgressIsIgnored()
+    public async Task ARunWhileAnotherIsInProgressDoesNotStart()
     {
         var service = NewService();
         _embeddings.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -120,13 +103,12 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
         await _embeddings.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.True(_provider.GetRequiredService<DocumentIndexStatus>().Current.IsRunning);
-        Assert.False(service.RequestReindex());
         Assert.False(await service.RunOnceAsync());
 
         _embeddings.Gate.SetResult();
         Assert.True(await run);
         Assert.False(_provider.GetRequiredService<DocumentIndexStatus>().Current.IsRunning);
-        Assert.True(service.RequestReindex());
+        Assert.Single(_embeddings.Calls);
     }
 
     [Fact]
@@ -163,7 +145,7 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task WhenDisabledNothingRunsAndRequestsAreRefused()
+    public async Task WhenDisabledNothingRuns()
     {
         var service = NewService(enabled: false);
 
@@ -172,7 +154,6 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
         await service.StopAsync(CancellationToken.None);
 
         Assert.Equal(0, _scopes.Scopes);
-        Assert.False(service.RequestReindex());
         Assert.False(_provider.GetRequiredService<DocumentIndexStatus>().Current.Enabled);
     }
 

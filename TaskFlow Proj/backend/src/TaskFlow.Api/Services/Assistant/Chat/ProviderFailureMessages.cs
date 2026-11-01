@@ -31,6 +31,8 @@ public static class ProviderFailureMessages
                 "The configured model is not available on Ollama. Ask an administrator to install it, or choose another model.",
             ProviderFailureKind.ModelUnavailable =>
                 $"The configured model is not available on {name}. Ask an administrator to check the model name, or choose another model.",
+            ProviderFailureKind.InvalidModelName =>
+                $"{name} did not accept the configured model name as a model ID. Ask an administrator to set a valid model ID, for example {AiProviderCatalog.DefaultModel(provider)}, or choose another model.",
             _ =>
                 $"{name} returned an unexpected error. Please try again, or choose another model."
         };

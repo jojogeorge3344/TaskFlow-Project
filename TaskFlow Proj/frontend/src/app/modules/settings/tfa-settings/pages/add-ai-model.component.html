@@ -1,0 +1,128 @@
+<section class="tf-page add-model" data-page="add-ai-model">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" data-action="back" [routerLink]="settingsUrl">
+        <tf-icon name="arrow" />
+        Back to TFA settings
+      </a>
+      @if (editing) {
+        <h1>Edit AI model</h1>
+        <p>Change the model name, or enter a new key or server address, and test the connection. The changes are saved only when the test works; the model TFA uses does not change.</p>
+      } @else {
+        <h1>Add AI model</h1>
+        <p>Choose the provider, enter the model name and its API key, and test the connection. The model is saved and becomes the one TFA uses only when the test works.</p>
+      }
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-alert" role="alert">
+      <tf-icon name="alert" />
+      <span>{{ loadError() }}</span>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card add-model__card" aria-busy="true">
+      <span class="tf-skeleton add-model__skeleton"></span>
+      <span class="tf-skeleton add-model__skeleton"></span>
+    </div>
+  } @else {
+    <form class="tf-card add-model__card" [formGroup]="form" (ngSubmit)="test()" (input)="clearResult()" novalidate>
+      <div class="tf-field">
+        <label for="add-model-kind">AI provider <span class="add-model__required" aria-hidden="true">*</span></label>
+        <select id="add-model-kind" class="tf-select" formControlName="kind" data-field="kind" (change)="clearResult()"
+          [class.is-invalid]="form.controls.kind.invalid && form.controls.kind.touched">
+          <option value="" disabled>Choose a provider</option>
+          @for (provider of providers(); track provider.kind) {
+            <option [value]="provider.kind">{{ provider.displayName }} · {{ provider.locality }}</option>
+          }
+        </select>
+        @if (form.controls.kind.invalid && form.controls.kind.touched) {
+          <span class="tf-field__error" data-error="kind">Choose the AI provider.</span>
+        }
+      </div>
+
+      @if (selected(); as provider) {
+        <div class="tf-field">
+          <label for="add-model-name">Model name <span class="add-model__required" aria-hidden="true">*</span></label>
+          <input id="add-model-name" class="tf-input" formControlName="modelName" data-field="modelName" spellcheck="false"
+            [placeholder]="'For example ' + modelExamples[provider.kind]"
+            [class.is-invalid]="form.controls.modelName.invalid && form.controls.modelName.touched" />
+          @if (form.controls.modelName.hasError('modelId') && form.controls.modelName.touched) {
+            <span class="tf-field__error" data-error="modelName">
+              {{ modelIdMessages[provider.kind] }}
+            </span>
+          } @else if (form.controls.modelName.invalid && form.controls.modelName.touched) {
+            <span class="tf-field__error" data-error="modelName">Enter the model name (100 characters at most).</span>
+          }
+        </div>
+
+        @if (provider.requiresKey) {
+          <div class="tf-field">
+            <label for="add-model-key">
+              API key
+              @if (!hasUsableKey(provider)) {
+                <span class="add-model__required" aria-hidden="true">*</span>
+              }
+            </label>
+            <input id="add-model-key" class="tf-input" type="password" autocomplete="new-password" spellcheck="false"
+              formControlName="apiKey" data-field="apiKey"
+              [placeholder]="hasUsableKey(provider) ? '••••••••••••' : 'Paste the API key'"
+              [class.is-invalid]="(form.errors?.['apiKeyRequired'] || form.controls.apiKey.invalid) && form.controls.apiKey.touched" />
+            @if (form.controls.apiKey.invalid && form.controls.apiKey.touched) {
+              <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
+            } @else if (form.errors?.['apiKeyRequired'] && form.controls.apiKey.touched) {
+              <span class="tf-field__error" data-error="apiKey">Enter the API key.</span>
+            }
+            <span class="tf-field__hint" data-hint="key">{{ keyHint(provider) }}</span>
+            @if (editing && provider.keySet) {
+              <button type="button" class="tf-btn tf-btn--ghost add-model__remove-key" data-action="remove-key"
+                [disabled]="removingKey()" (click)="removeKey()">
+                {{ removingKey() ? 'Removing…' : 'Remove the key' }}
+              </button>
+            }
+            @if (provider.kind === 'Gemini') {
+              <span class="tf-field__hint" data-hint="key-source">
+                Create a Gemini key in Google AI Studio:
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>.
+              </span>
+            }
+          </div>
+        } @else {
+          <div class="tf-field">
+            <label for="add-model-url">Server address <span class="add-model__optional">(optional)</span></label>
+            <input id="add-model-url" class="tf-input" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
+              [placeholder]="provider.baseUrl || defaultOllamaUrl"
+              [class.is-invalid]="form.controls.baseUrl.invalid && form.controls.baseUrl.touched" />
+            @if (form.controls.baseUrl.invalid && form.controls.baseUrl.touched) {
+              <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
+            }
+            <span class="tf-field__hint">Leave it empty to use {{ provider.baseUrl || defaultOllamaUrl }}. Pull the model in Ollama first (for example <code>ollama pull phi3:mini</code>).</span>
+          </div>
+        }
+      }
+
+      <div class="add-model__actions">
+        <button type="submit" class="tf-btn tf-btn--primary" data-action="test-connection" [disabled]="testing()">
+          {{ testing() ? 'Testing…' : (editing ? 'Test and save' : 'Test connection') }}
+        </button>
+        <a class="tf-btn tf-btn--ghost" data-action="cancel" [routerLink]="settingsUrl">Cancel</a>
+
+        @if (result(); as failed) {
+          <span class="add-model__result" [attr.data-result]="failed.failureKind ?? 'failed'" role="status">
+            <tf-icon name="alert" />
+            {{ failed.message }} Nothing was saved.
+          </span>
+        }
+        @if (requestError()) {
+          <span class="add-model__result" data-result="error" role="alert">
+            <tf-icon name="alert" />
+            {{ requestError() }}
+          </span>
+        }
+      </div>
+    </form>
+  }
+
+  <tf-confirm-dialog />
+</section>

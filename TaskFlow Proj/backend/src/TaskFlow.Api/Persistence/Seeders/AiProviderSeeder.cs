@@ -23,9 +23,41 @@ public class AiProviderSeeder
 
     public async System.Threading.Tasks.Task SeedAsync(CancellationToken cancellationToken = default)
     {
+        await RetireOldBuiltInModelsAsync(cancellationToken);
         await SeedModelsAsync(cancellationToken);
         await SeedProvidersAsync(cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>A model that was built in once but is no longer in <see cref="AiProviderCatalog.BuiltInModels"/> (Google
+    /// retires Gemini models, for example) becomes an administrator-added one, so it can be removed in Settings. A provider
+    /// nobody has set up yet (switched off, no key) that still names such a model moves to the current default; a provider
+    /// an administrator set up keeps its model.</summary>
+    private async System.Threading.Tasks.Task RetireOldBuiltInModelsAsync(CancellationToken cancellationToken)
+    {
+        var retired = (await _db.AiModels.Where(model => model.IsBuiltIn).ToListAsync(cancellationToken))
+            .Where(model => !AiProviderCatalog.BuiltInModels(model.Kind).Contains(model.Name))
+            .ToList();
+        if (retired.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var model in retired)
+        {
+            model.IsBuiltIn = false;
+        }
+
+        var retiredNames = retired.Select(model => (model.Kind, model.Name)).ToHashSet();
+        var untouched = await _db.AiProviderConfigs
+            .Where(config => !config.IsEnabled && config.EncryptedApiKey == null)
+            .ToListAsync(cancellationToken);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        foreach (var config in untouched.Where(config => retiredNames.Contains((config.Kind, config.ModelName))))
+        {
+            config.ModelName = AiProviderCatalog.DefaultModel(config.Kind);
+            config.UpdatedAt = now;
+        }
     }
 
     private async System.Threading.Tasks.Task SeedModelsAsync(CancellationToken cancellationToken)

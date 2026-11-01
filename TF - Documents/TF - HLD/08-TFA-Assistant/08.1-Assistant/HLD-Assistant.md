@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** High-Level Design (Sub-module: TFA Assistant, code `TFA`)  ·  **Version:** 1.1  ·  **Status:** Draft
-> **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
+> **Document:** High-Level Design (Sub-module: TFA Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** BRD-Assistant v1.1, FRD-Assistant v1.1
+> **Based on:** BRD-Assistant v1.2, FRD-Assistant v1.2
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Built-in help (`SearchHelpTool`, `HelpKnowledgeBase`, 19 embedded topics) replaced by document knowledge: background indexing of the Markdown documents, local embeddings on Ollama (`nomic-embed-text`), document index in SQLite, in-memory vector search before every model call, answer sources. Updated §1, §2, §3, §4, §5, §6, §7, §8 (new §8.5), §9, §10, §11, §12, §13 (D-TFA-5 superseded, D-TFA-11 – D-TFA-14 added), §14 and §15. |
+| 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` revised (design D13, D14). The Document search card on TFA Settings, **Re-index now** and the endpoints `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` were removed, together with `DocumentIndexerService.RequestReindex()`; the indexer waits `RescanMinutes` between runs, keeps one run at a time, and logs indexing problems as warnings (folder not found, embeddings unavailable, a file that could not be indexed). `DocumentIndexStatus` stays for the "documents cannot be searched right now" answer. Provider failures carry the provider's cleaned reason (logged; shown only on Test connection, never in chat); a Gemini 400 about the model name is "model unavailable"; Gemini default model now `gemini-3.8-flash`. Updated §1, §2, §5.1, §7, §8.5, §9, §12, §13 (D-TFA-15 added) and §14. |
 
 **Related documents:**
 
@@ -47,8 +48,8 @@ ranked work order, answers about TaskFlow from the Markdown documents of the doc
 search and prompt rules), Action Cards (mail draft, own-profile update, role change), user lookup
 and fixed guidance, voice controls, message limit and action audit.
 
-**Out of scope:** configuring providers, models and API keys, and the document index status card and re-index control
-(TFA Settings HLD); PDF and Excel documents, document upload, per-role document filtering, hybrid ranking, re-ranking,
+**Out of scope:** configuring providers, models and API keys (TFA Settings HLD); an admin screen or endpoint for the
+document index (the v1.1 status card and re-index control on TFA Settings were removed in v1.2); PDF and Excel documents, document upload, per-role document filtering, hybrid ranking, re-ranking,
 streaming answers; the mailbox, profile and employee rules
 themselves (their HLDs); creating, editing or reassigning tasks through TFA; password changes through TFA; an audit
 screen. Shared stack and deployment are in the overall HLD.
@@ -104,10 +105,10 @@ flowchart LR
 | Users with `assistant.actions.confirm` (and `roles.manage` for role changes) | Edit, confirm or cancel Action Cards | HTTPS / REST |
 | Ollama | Local chat model (default `llama3.2:3b`); embedding model `nomic-embed-text` for document search, whatever chat provider is chosen | HTTP to `{BaseUrl or http://localhost:11434}/api/chat` and `/api/embed` |
 | Documents folder | Markdown files (BRD, FRD, HLD, LLD, TDD, screen specs) indexed in the background | File system reads, recursive, `.md` only |
-| Google Gemini | Cloud chat model (default `gemini-2.0-flash`) | HTTPS, key in `x-goog-api-key` header |
+| Google Gemini | Cloud chat model (default `gemini-3.8-flash`; built-ins `gemini-3.8-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`) | HTTPS, key in `x-goog-api-key` header |
 | OpenAI | Cloud chat model (default `gpt-4o-mini`) | HTTPS, Bearer key |
 | Browser speech service | Wake phrase, dictation, read-aloud (Chrome, Edge) | Web Speech API in the browser; nothing sent to TaskFlow but recognised text |
-| TFA Settings | Which providers are enabled, model names, encrypted keys; the saved Ollama address also serves embeddings; Document search card shows the index status and starts a re-index | In-process reads; `api/v1/assistant/documents` |
+| TFA Settings | Which providers are enabled, model names, encrypted keys; the saved Ollama address also serves embeddings (v1.2: no Document search card; the `api/v1/assistant/documents` endpoints were removed) | In-process reads |
 | Task Management, Mail, My Profile, Employee Management | Data for answers; execution of confirmed actions | In-process service calls |
 
 ---
@@ -238,7 +239,7 @@ flowchart LR
 | TFA → My Profile | Apply a confirmed own name / email change, mobile unchanged | `IProfileService.UpdateAsync` + `UpdateOwnProfileRequestValidator` |
 | TFA → Employee Management | Apply a confirmed role change; target user's sessions end | `IEmployeeService.UpdateAsync` |
 | TFA Settings → TFA | Enabled providers, model names, keys | Read per request; panel refreshes the list every 60 s |
-| TFA Settings ↔ Document knowledge | Saved Ollama address used for embeddings; the Document search card reads `DocumentIndexStatus` and wakes `DocumentIndexerService` | `DocumentEmbeddingEndpoint`; `DocumentIndexService` (TFA Settings HLD) |
+| TFA Settings → Document knowledge | Saved Ollama address used for embeddings (v1.2: the Document search card no longer reads `DocumentIndexStatus` or wakes `DocumentIndexerService`; `DocumentIndexService` removed) | `DocumentEmbeddingEndpoint` |
 
 ---
 
@@ -297,11 +298,11 @@ erDiagram
 | Integration | Direction | Purpose | Failure behaviour |
 |---|---|---|---|
 | Ollama (`OllamaProvider`) | Outbound HTTP | Local answers (sends `options.num_ctx` = `AiProviders:OllamaContextTokens`, default 8192, so reference text is not cut off) | Unreachable / model missing → plain message, Retry, Use another provider; nothing stored |
-| Ollama embeddings (`OllamaEmbeddingClient`) | Outbound HTTP `POST /api/embed` | Embed document chunks and questions with `nomic-embed-text` (prefixes `search_document: ` / `search_query: `) | `EmbeddingUnavailableException` (unreachable, timeout, model not found, unexpected): a message gets the "documents cannot be searched right now" rule and live-data answers continue; an indexing run stops and records the error |
-| Documents folder | File system read | Source of document answers | Missing folder → status "The documents folder was not found: …", stored sources removed, API keeps running; one unreadable file → error recorded with the file, other files continue |
-| Gemini (`GeminiProvider`) | Outbound HTTPS | Cloud answers | Rate limited, invalid key, timeout, unreachable, model unavailable, unexpected → `ProviderFailureKind` message; no automatic switch |
+| Ollama embeddings (`OllamaEmbeddingClient`) | Outbound HTTP `POST /api/embed` | Embed document chunks and questions with `nomic-embed-text` (prefixes `search_document: ` / `search_query: `) | `EmbeddingUnavailableException` (unreachable, timeout, model not found, unexpected): a message gets the "documents cannot be searched right now" rule and live-data answers continue; an indexing run stops and logs a warning "TFA document indexing stopped: …" |
+| Documents folder | File system read | Source of document answers | Missing folder → warning logged with the folder path, stored sources removed, API keeps running; one unreadable file → warning logged with the file, other files continue. The error is also kept in `DocumentIndexStatus` for TFA's own use; no screen shows it (v1.2) |
+| Gemini (`GeminiProvider`) | Outbound HTTPS | Cloud answers | Rate limited, invalid key, timeout, unreachable, model unavailable (also a 400 `INVALID_ARGUMENT` about the model name, v1.2), unexpected → `ProviderFailureKind` message; no automatic switch |
 | OpenAI (`OpenAiProvider`) | Outbound HTTPS | Cloud answers | As Gemini |
-| All providers and the embedding client | – | Typed `HttpClient`s, timeout 60 s, redirects not followed, no header or body logging | Raw provider bodies never shown or logged (provider, kind, HTTP status only) |
+| All providers and the embedding client | – | Typed `HttpClient`s, timeout 60 s, redirects not followed, no header or body logging | Raw provider bodies never shown or logged. Each failure carries `ProviderReason` (provider status and message, keys replaced by `[key]`, at most 200 characters, v1.2); TFA Settings' Test connection logs and shows it, chat replies use only the fixed `ProviderFailureMessages` text |
 | Browser speech (`WakePhraseService`, `SpeakService`) | Browser local | Wake phrase, dictation, read-aloud | Matching message (unsupported browser, microphone blocked or missing, no internet); typing still works |
 | Mail / My Profile / Employee Management | Outbound in-process | Execute confirmed actions | Status `Failed`, "I could not do that: … Nothing was sent." / "Nothing was changed." |
 | Task Management | Outbound in-process | Task answers | Inaccessible task → "That task was not found, or you do not have access to it." |
@@ -404,12 +405,13 @@ sequenceDiagram
   participant V as DocumentVectorIndex
   S->>I: Load stored index at startup
   I->>V: Replace snapshot
-  Note over S: 10 s after start, then every RescanMinutes or on Re-index now
+  Note over S: 10 s after start, then every RescanMinutes (v1.2: Re-index now removed)
   S->>I: RunAsync (one run at a time)
   I->>F: List .md files, hash each
   I->>E: Embed changed files only (batches of 16)
   I->>DB: Swap a file's chunks in one save; remove deleted files
   I->>V: Reload every 10 embedded files and at the end
+  Note over I: Problems are logged as warnings (folder not found, embeddings unavailable, file not indexed)
 ```
 
 ---
@@ -422,7 +424,7 @@ sequenceDiagram
 | Authorization | `perm:assistant.chat` on conversation, messages, new chat and providers; `perm:assistant.actions.confirm` on edit, confirm and cancel; `roles.manage` required by the role-change tool and its confirm. `AssistantAuthorizer` evaluates the API's own `perm:{key}` policies through `IAuthorizationService`, so TFA can never do more than the screens. The panel is mounted by `ShellComponent` only with `assistant.chat` |
 | Data scope | Own conversation and actions only; foreign ids (Guids) return 404, Administrators included; task answers follow Task Management access |
 | Model containment | The model sees only tools the caller may use; every tool call re-checks the gate; action tools only prepare; refusals and confirmations use fixed texts; tool output and retrieved document text treated as data, document text between fixed markers it cannot close (prompt-injection defence, R-TFA-02) |
-| Document access | Every user with `assistant.chat` may get answers from every indexed document (owner decision, BR-TFA-15, R-TFA-07); the index holds no user data. The status and re-index endpoints need `settings.ai.view` / `settings.ai.edit` (TFA Settings HLD) |
+| Document access | Every user with `assistant.chat` may get answers from every indexed document (owner decision, BR-TFA-15, R-TFA-07); the index holds no user data. No endpoint exposes the index status (v1.2: the v1.1 status and re-index endpoints were removed and answer 404) |
 | Embedding server address | `DocumentKnowledge:OllamaBaseUrl` validated at startup (http/https, no link-local or metadata host); otherwise the saved Ollama address, validated when saved |
 | Secrets | `SecretScreen` blocks messages that look like passwords, API keys, Bearer tokens or JWTs before any provider call or storage; tool output passed through redaction; provider keys stored encrypted by TFA Settings (`AiKeyProtector`) and never sent to the SPA |
 | Cloud data | One-time cloud notice per provider, naming the matching document text; embeddings always made locally; local Ollama option where nothing leaves the machine (R-TFA-03) |
@@ -466,7 +468,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | Availability | Local Ollama works offline; cloud providers optional; plain message and next step for every failure (NFR-TFA-08) |
 | Security | Secret screen on every message (NFR-TFA-01); permission re-check at confirm (NFR-TFA-02) |
 | Maintainability | Provider adapters behind one gateway; document answers come from the project documents themselves, so editing a document updates TFA without a code change; chunking is a pure, unit-tested rule; tools registered in one toolbox |
-| Observability | Audit outcomes; provider failures logged with provider, kind and HTTP status only |
+| Observability | Audit outcomes; provider failures logged with provider, kind and HTTP status (plus the cleaned provider reason on Test connection, v1.2); indexing problems logged as warnings, a failed run as an error |
 | Compatibility | Voice in Chrome and Edge; typing in every supported browser (NFR-TFA-07) |
 | Backup & Recovery | Conversations, actions and audit in `taskflow.db`; key ring folder backed up with it; the document index needs no backup (rebuilt from the folder) |
 
@@ -490,6 +492,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | D-TFA-12 | Local embeddings with Ollama `nomic-embed-text` through `/api/embed`, whatever chat provider is selected | Gemini or OpenAI embeddings | Free, runs on CPU, documents never leave the machine for indexing |
 | D-TFA-13 | Vectors in the existing SQLite database, searched by brute force in memory | Vector database; `sqlite-vec` extension | A few thousand vectors search in milliseconds; no new process, package or native extension |
 | D-TFA-14 | Heading-aware Markdown chunks with incremental, hash-based indexing in a background service | Fixed-size chunks; re-index everything on each run | Chunks keep their section context; only changed files are re-embedded; edits apply without a restart |
+| D-TFA-15 | No admin screen or endpoint for the document index (v1.2, OpenSpec `tfa-document-rag` D13): the indexer runs only on its own schedule and logs problems as warnings; `DocumentIndexStatus` is kept for TFA's own "cannot search right now" answer | Document search card with Re-index now (v1.1); a problem-only banner on TFA Settings | Nothing on the card was editable; the 5-minute rescan does what Re-index did; folder, model and chunk count are developer details |
 
 ---
 
@@ -509,7 +512,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | Open issue | ⚠️ To be confirmed: "my manager" matches by role name, so custom roles are treated as others (the role-restricted help topics were removed in v1.1) | Jojo George |
 | Open issue | ⚠️ To be confirmed: password guidance text still mentions the current password (R-TFA-06) | Jojo George |
 | Assumption | An administrator configures at least one provider; users understand AI answers can be wrong | Jojo George |
-| Assumption | Ollama runs with `nomic-embed-text` pulled; the documents folder is kept current | Jojo George |
+| Assumption | Ollama runs with `nomic-embed-text` pulled; the documents folder is kept current; whoever runs the server reads its log for indexing warnings (no screen shows them since v1.2) | Jojo George |
 
 ---
 

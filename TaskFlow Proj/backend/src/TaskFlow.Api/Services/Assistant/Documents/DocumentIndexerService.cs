@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,8 +8,8 @@ using Task = System.Threading.Tasks.Task;
 namespace TaskFlow.Api.Services.Assistant.Documents;
 
 /// <summary>Keeps the TFA document index in step with the documents folder (design D7): it loads the stored index at
-/// startup, indexes the folder shortly after, then checks it every <c>RescanMinutes</c> and whenever an administrator asks.
-/// Only one run happens at a time; a request made while a run is in progress is ignored.</summary>
+/// startup, indexes the folder shortly after, then checks it every <c>RescanMinutes</c>. Only one run happens at a time.
+/// There is no admin screen for it: problems are written to the log.</summary>
 public class DocumentIndexerService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -18,8 +17,6 @@ public class DocumentIndexerService : BackgroundService
     private readonly DocumentIndexStatus _status;
     private readonly ILogger<DocumentIndexerService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Channel<bool> _requests = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
-    private int _pending;
 
     public DocumentIndexerService(
         IServiceScopeFactory scopeFactory,
@@ -42,20 +39,6 @@ public class DocumentIndexerService : BackgroundService
 
     /// <summary>How long after startup the first run waits, so startup itself stays quick.</summary>
     public TimeSpan StartDelay { get; set; } = TimeSpan.FromSeconds(10);
-
-    /// <summary>Asks for a run now. Returns false, and does nothing, when indexing is off or a run is already in progress
-    /// or already requested.</summary>
-    public bool RequestReindex()
-    {
-        if (!_options.Enabled || _gate.CurrentCount == 0 || _status.Current.IsRunning
-            || Interlocked.CompareExchange(ref _pending, 1, 0) != 0)
-        {
-            return false;
-        }
-
-        _requests.Writer.TryWrite(true);
-        return true;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -95,14 +78,11 @@ public class DocumentIndexerService : BackgroundService
 
         try
         {
-            _requests.Reader.TryRead(out _);
             await RunInScopeAsync(indexer => indexer.RunAsync(cancellationToken), cancellationToken);
             return true;
         }
         finally
         {
-            // A request accepted before this run started is answered by it.
-            Interlocked.Exchange(ref _pending, 0);
             _gate.Release();
         }
     }
@@ -125,20 +105,7 @@ public class DocumentIndexerService : BackgroundService
         }
     }
 
-    /// <summary>Waits for <paramref name="delay"/> or until a run is requested, whichever comes first.</summary>
-    private async Task WaitAsync(TimeSpan delay, CancellationToken stoppingToken)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        timeout.CancelAfter(delay);
-        try
-        {
-            await _requests.Reader.WaitToReadAsync(timeout.Token);
-        }
-        catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
-        {
-            // The delay passed.
-        }
-    }
+    private static Task WaitAsync(TimeSpan delay, CancellationToken stoppingToken) => Task.Delay(delay, stoppingToken);
 
     public override void Dispose()
     {

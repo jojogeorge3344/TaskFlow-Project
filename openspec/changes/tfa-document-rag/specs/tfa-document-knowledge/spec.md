@@ -164,43 +164,26 @@ answering a documentation question from general knowledge.
 - **WHEN** the first index has not finished and a user asks a documentation question
 - **THEN** TFA answers from the chunks already stored, or says the documents are still being prepared when there are none
 
-### Requirement: Administrators see the index status
+### Requirement: Indexing problems are logged, not shown in the UI
 
-A user with the TFA Settings view permission (`SettingsAiView`, held by Administrators by default)
-SHALL be able to see the index status in TFA Settings: the documents folder, the embedding model,
-the number of files and chunks, when indexing last finished, whether it is running, and the last
-error with the file it concerns. Users without this permission SHALL NOT see the status.
+The system SHALL NOT offer a screen or endpoint for the document index status or for starting a
+re-index. A missing documents folder, an unavailable embedding model and a file that cannot be
+indexed SHALL each be written to the server log as a warning, naming the folder or file.
 
-#### Scenario: Status shown
+#### Scenario: No Document search card
 
 - **WHEN** an Administrator opens TFA Settings
-- **THEN** a Document search card shows the folder, model, file and chunk counts and the last indexed time
+- **THEN** the screen shows no Document search card and no Re-index now button
 
-#### Scenario: Status refused
+#### Scenario: Old endpoints are gone
 
-- **WHEN** a Manager without `SettingsAiView` calls the index status endpoint
-- **THEN** the request is refused with 403
+- **WHEN** any user calls `GET api/v1/assistant/documents/status` or `POST api/v1/assistant/documents/reindex`
+- **THEN** the response is 404
 
-### Requirement: Administrators start a re-index
+#### Scenario: Folder missing
 
-A user with the TFA Settings edit permission (`SettingsAiEdit`) SHALL be able to start a re-index. A
-re-index requested while one is running SHALL NOT start a second run. Users without this permission
-SHALL NOT start a re-index.
-
-#### Scenario: Re-index now
-
-- **WHEN** an Administrator clicks Re-index now
-- **THEN** the indexer checks the folder immediately and the card shows that indexing is running until it finishes
-
-#### Scenario: Re-index while running
-
-- **WHEN** an Administrator clicks Re-index now while indexing is already running
-- **THEN** the request is accepted and no second run starts
-
-#### Scenario: Re-index refused
-
-- **WHEN** a Manager without `SettingsAiEdit` calls the re-index endpoint
-- **THEN** the request is refused with 403
+- **WHEN** the configured documents folder does not exist
+- **THEN** the server log has a warning naming the folder, and TFA says the documents cannot be searched right now
 
 ### Requirement: Cloud notice mentions documents
 

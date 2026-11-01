@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.1  ·  **Status:** Draft
-> **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
+> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** HLD-Assistant v1.1, FRD-Assistant v1.1, TDD v2.2 (§16)
+> **Based on:** HLD-Assistant v1.2, FRD-Assistant v1.2, TDD v2.3 (§16)
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -16,6 +16,7 @@
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version: `AssistantController` (7 actions), chat engine, model gateway and providers, 9 tools, pending actions, help knowledge, audit and rate limit, voice input, 4 tables, tests and FR-TFA traceability |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Child module 08.1.3 Help Knowledge replaced by **Document Knowledge** (`MarkdownChunker`, `OllamaEmbeddingClient`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentVectorIndex`, `DocumentSearch`, `DocumentIndexRepository`); `search_help` / `SearchHelpTool`, `HelpKnowledgeBase`, `IHelpKnowledgeBase`, `HelpTopicDto`, the 19 `Knowledge/*.md` topics and their `EmbeddedResource` item removed (8 tools). `SendAsync` retrieves documents before the model call; `AssistantPrompt.Build` takes a `DocumentContext`; `AssistantSourceDto` sources on `AssistantMessageDto` and in `AssistantMessageMeta`; `OllamaProvider` sends `options.num_ctx`. Tables `DocumentSources`, `DocumentChunks` (migration `20261031134802_AddDocumentIndex`); `DocumentKnowledge` configuration; tests and FR-TFA-57 – FR-TFA-66 traceability. The status/re-index endpoints are in the TFA Settings LLD. |
+| 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` revised (design D13, D14). The administrator endpoints `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` (`DocumentIndexController`, `DocumentIndexService`, TFA Settings) and the Document search card were removed; `DocumentIndexerService.RequestReindex()` and its request channel removed (the service waits with `Task.Delay`; `RunOnceAsync` keeps the single-run guard). Indexing problems are logged as warnings; `DocumentIndexStatus` stays for `DocumentSearch`. Tests: `ARunWhileAnotherIsInProgressDoesNotStart` replaces the concurrent-request tests; `WhenDisabledNothingRuns`; `AChatFailureNeverShowsTheProvidersOwnReason`. Providers: `ProviderFailureException.ProviderReason` via `ProviderHttp.Reason` (never shown in chat), Gemini 400 model-name error → `ModelUnavailable`; Gemini default model `gemini-3.8-flash`. |
 
 **Related documents:** BRD (`../../../BRD/08-TFA-Assistant/08.1-Assistant/BRD-Assistant.md`) · FRD (`../../../FRD/08-TFA-Assistant/08.1-Assistant/FRD-Assistant.md`) · HLD (`../../../HLD/08-TFA-Assistant/08.1-Assistant/HLD-Assistant.md`) · Overall LLD (`../../00-Overall/LLD-TaskFlow-Overall.md`) · TFA Settings LLD (`../../06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md`) · TDD (`TF - Documents/TF - TDD/TDD-TaskFlow.md` §16)
 
@@ -33,14 +34,15 @@ per-user rate limit, the Angular TFA Panel and its voice input, the six TFA tabl
 
 ### 1.2 Scope & Conventions
 - Child modules: **08.1.1 Chat** (4 actions), **08.1.2 Actions and Tools** (3 actions + 8 tools), **08.1.3 Document
-  Knowledge** (0 actions here; its 2 administrator endpoints are on `DocumentIndexController`, TFA Settings LLD),
+  Knowledge** (0 actions; no administrator endpoint since v1.2 – the v1.1 `DocumentIndexController` was removed),
   **08.1.4 Audit Log and Rate Limits** (0 actions), **08.1.5 Voice Input** (frontend only).
   Total: **7 controller actions**, all on `AssistantController` (facts.md §3, rows `AssistantController`).
 - Out of scope: provider, model and API key configuration – `AiProvidersController`
   (`/api/v1/assistant/providers/config`, `/api/v1/assistant/providers/{kind}/models`, `/api/v1/assistant/providers/{kind}/test`),
-  `IAiProviderConfigService`, tables `AiProviderConfigs`, `AiModels` (TFA Settings LLD). TFA only reads them. The
-  document index status and re-index endpoints (`DocumentIndexController`, `/api/v1/assistant/documents/status`,
-  `/api/v1/assistant/documents/reindex`, `IDocumentIndexService`) and the Document search card are in the TFA Settings LLD.
+  `IAiProviderConfigService`, tables `AiProviderConfigs`, `AiModels` (TFA Settings LLD). TFA only reads them.
+- Removed in v1.2: the document index status and re-index endpoints (`DocumentIndexController`,
+  `/api/v1/assistant/documents/status`, `/api/v1/assistant/documents/reindex`, `IDocumentIndexService`) and the Document
+  search card on TFA Settings. Both routes answer 404; nothing outside this sub-module reads `DocumentIndexStatus`.
 - Naming: `*Controller`, `I*Service`/`*Service`, `I*Repository`/`*Repository`, tools `*Tool` implementing `IAssistantTool`,
   DTOs `*Request`/`*Dto`/`*Payload`.
 - API base path `/api/v1`; JSON camelCase, enums as strings; errors as `application/problem+json`.
@@ -160,7 +162,8 @@ eight `IAssistantTool` registrations,
 `AssistantActionService` (also resolved as `IAssistantActionCards`), `IAssistantService` → `AssistantService`.
 `Config/IntegrationRegistration.cs`: typed `HttpClient` `OllamaEmbeddingClient` (AI timeout, `AllowAutoRedirect = false`,
 loggers removed) resolved as `IEmbeddingClient`. `Config/RepositoryRegistration.cs`: `IDocumentIndexRepository` →
-`DocumentIndexRepository` (scoped).
+`DocumentIndexRepository` (scoped). (v1.2: the TFA Settings registration `IDocumentIndexService` → `DocumentIndexService`
+was removed; nothing else in DI changed for document knowledge.)
 
 **Module class diagram**
 
@@ -339,7 +342,7 @@ classDiagram
    `SecretScreen.Redact` before going back to the model. Empty model text → `AssistantTexts.EmptyAnswer` with no
    sources; a fixed reply has no sources; a non-empty model answer carries the sources from step 8.
 10. `ProviderFailureException` → `AssistantReplyDto([], AssistantFailureDto(kind, provider, message, retryAfterSeconds,
-   alternatives))`; nothing stored.
+   alternatives))` with `message` = `ProviderFailureMessages.For` (never `ProviderReason`, v1.2); nothing stored.
 11. Success → insert user and assistant `AssistantMessage` rows (assistant `CreatedAt` = now + 1 ms, `ProviderKind`,
     `MetaJson` = `AssistantMessageMeta` with `Sources`), set `conversation.UpdatedAt`, `SaveChangesAsync`, map with
     `ToDtosAsync` (cards from `IAssistantActionCards.GetCardsAsync`; `meta?.Sources ?? []`, so older messages load with no
@@ -361,9 +364,16 @@ messages reversed; none → `AssistantConversationDto(null, [])`.
 
 Failure classification (`ProviderFailureKind`): 429 / `insufficient_quota` / `rate_limit_exceeded` / `RESOURCE_EXHAUSTED`
 → `RateLimited`; 401, 403 / `invalid_api_key` / `UNAUTHENTICATED` / `PERMISSION_DENIED` → `InvalidKey`; 404 /
-`model_not_found` / `NOT_FOUND` → `ModelUnavailable`; `HttpClient` timeout → `Timeout`; `HttpRequestException` →
-`Unreachable`; unparsable or empty reply → `Unexpected`. Ollama retries once without tools when the model does not
-support tools.
+`model_not_found` / `NOT_FOUND` → `ModelUnavailable`; (v1.2, Gemini) 400 / `INVALID_ARGUMENT` whose message contains
+"model name" → `ModelUnavailable` (checked after the API-key rule); `HttpClient` timeout → `Timeout`;
+`HttpRequestException` → `Unreachable`; unparsable or empty reply → `Unexpected`. Ollama retries once without tools when
+the model does not support tools.
+
+`ProviderFailureException` (v1.2) carries `Provider`, `Kind`, `RetryAfter`, `HttpStatus` and `ProviderReason`: the
+provider's error status and message from `ProviderHttp.Reason(status, message, apiKey)` – the sent key and key-shaped
+tokens (`AIza…`, `sk-…`, `AQ.…`) replaced by `[key]`, whitespace collapsed, cut to `MaxReasonLength` (200). Gemini, OpenAI
+and Ollama fill it. Only TFA Settings' Test connection shows or logs it; step 10 of `SendAsync` uses
+`ProviderFailureMessages.For` alone, so a chat reply never contains it.
 
 **Sequence diagram**
 
@@ -674,8 +684,8 @@ row past `ExpiresAt` as `Expired` without writing it.
 | Context | `DocumentContext(Kind, Chunks, Reason)`; `DocumentContextKind` (Found, NoMatch, Unavailable); `DocumentUnavailableReason` (Preparing, CannotSearch) | `Services/Assistant/Documents/DocumentContext.cs` | Search outcome for one message |
 | Vector index | `DocumentVectorIndex` (singleton): `Count`, `Model`, `Replace(chunks, model)`, `Search(query, topK, minScore, maxCharacters)`; records `IndexedChunk(ChunkId, RelativePath, Title, HeadingPath, Text, Vector)`, `ScoredChunk(Chunk, Score)` | `Services/Assistant/Documents/DocumentVectorIndex.cs` | In-memory brute-force cosine search over an atomically swapped snapshot |
 | Indexer | `DocumentIndexer` (scoped): `RunAsync` → `DocumentIndexRun(Embedded, Skipped, Removed, Failed)`, `ReloadIndexAsync`; `ReloadEvery` 10 | `Services/Assistant/Documents/DocumentIndexer.cs` | Bring the stored index in step with the folder |
-| Background | `DocumentIndexerService : BackgroundService` (singleton + hosted): `RequestReindex()`, `RunOnceAsync()`, `StartDelay` 10 s | `Services/Assistant/Documents/DocumentIndexerService.cs` | Startup load, first run, periodic runs, manual trigger, single-run guard |
-| Status | `DocumentIndexStatus` (singleton, `Current`, `Update`); `DocumentIndexState` | `Services/Assistant/Documents/DocumentIndexStatus.cs` | Shared state for the search and the TFA Settings card |
+| Background | `DocumentIndexerService : BackgroundService` (singleton + hosted): `RunOnceAsync()`, `StartDelay` 10 s (v1.2: `RequestReindex()` and its channel removed) | `Services/Assistant/Documents/DocumentIndexerService.cs` | Startup load, first run, periodic runs, single-run guard |
+| Status | `DocumentIndexStatus` (singleton, `Current`, `Update`); `DocumentIndexState` | `Services/Assistant/Documents/DocumentIndexStatus.cs` | Shared state for the indexer and `DocumentSearch` (Preparing / CannotSearch); no longer read by TFA Settings (v1.2) |
 | Endpoint | `DocumentEmbeddingEndpoint.ResolveAsync()` → `EmbeddingEndpoint(BaseUrl, Model)` | `Services/Assistant/Documents/DocumentEmbeddingEndpoint.cs` | `DocumentKnowledge:OllamaBaseUrl`, else saved Ollama `BaseUrl` (`IAiProviderConfigRepository`), else `AiProviderCatalog.DefaultOllamaBaseUrl` |
 | Rules | `MarkdownChunker.Chunk(markdown, fileName, maxChunkCharacters, excludedHeadings)` → `ChunkedDocument(Title, Chunks)`, `MarkdownChunk(Ordinal, HeadingPath, Text, EmbeddingText)`; `HeadingSeparator` " › ", `MinSectionCharacters` 200, `MaxHeadingPathLength` 1000; `EmbeddingVectors.ToBytes` / `FromBytes` | `Services/Assistant/Documents/Rules/` | Pure chunking; float32 little-endian (de)serialisation |
 | Integration | `IEmbeddingClient` / `OllamaEmbeddingClient.EmbedAsync(endpoint, inputs, purpose)`; `BatchSize` 16; `EmbeddingPurpose` (Document, Query); `EmbeddingFailureKind` (Unreachable, Timeout, ModelNotFound, Unexpected); `EmbeddingUnavailableException` | `Integrations/Ai/Embeddings/` | Ollama `/api/embed` |
@@ -699,7 +709,6 @@ classDiagram
     +Search(query, topK, minScore, maxCharacters)
   }
   class DocumentIndexerService {
-    +RequestReindex()
     +RunOnceAsync()
   }
   class DocumentIndexer {
@@ -726,6 +735,7 @@ classDiagram
   DocumentSearch --> DocumentEmbeddingEndpoint
   DocumentSearch --> DocumentIndexStatus
   DocumentIndexerService --> DocumentIndexer : per-run scope
+  DocumentIndexerService --> DocumentIndexStatus
   DocumentIndexer --> MarkdownChunker
   DocumentIndexer --> IEmbeddingClient
   DocumentIndexer --> IDocumentIndexRepository
@@ -735,8 +745,9 @@ classDiagram
 ```
 
 **API contracts:** no endpoint on `AssistantController` – retrieval runs inside `POST /api/v1/assistant/conversation/messages`
-(`perm:assistant.chat`) and adds `sources` to the reply. The administrator endpoints `GET /api/v1/assistant/documents/status`
-(`settings.ai.view`) and `POST /api/v1/assistant/documents/reindex` (`settings.ai.edit`) are specified in the TFA Settings LLD.
+(`perm:assistant.chat`) and adds `sources` to the reply. There is no administrator endpoint for the index (v1.2): the v1.1
+`GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` were removed and answer 404
+(`DocumentIndexEndpointsRemovedTests`).
 
 **Embedding request / response** (`OllamaEmbeddingClient`, not a TaskFlow API)
 
@@ -776,15 +787,17 @@ classDiagram
 
 **Service logic – `DocumentIndexer.RunAsync`**
 1. Status: running, error cleared. Folder = `ResolveSourcePath(contentRoot)` (absolute kept; relative against the API
-   content root). Missing → error "The documents folder was not found: {folder}", no files (so every stored source is
-   removed below).
+   content root). Missing → error "The documents folder was not found: {folder}" and warning log "The TFA documents
+   folder was not found: {Folder}", no files (so every stored source is removed below).
 2. List `*.md` (extension case-insensitive) recursively; relative paths with `/`, ordered.
 3. For each file: SHA-256 hex of its bytes; stored source with the same hash and the same model → skipped. Otherwise chunk
    it, embed all chunks (`Document` purpose), set `Title` (max 300), `ContentHash`, `EmbeddingModel`, `ChunkCount`,
    `IndexedAt`, `ReplaceChunksAsync` and `SaveChangesAsync` (old chunks deleted and new inserted in one save). Every 10
    embedded files → `ReloadIndexAsync`.
-4. `EmbeddingUnavailableException` → error = its message, error file = the file, stop the loop. Any other exception →
-   error "{path} could not be indexed: {message}", `IUnitOfWork.DetachAll`, sources re-read, next file.
+4. `EmbeddingUnavailableException` → error = its message, error file = the file, warning log "TFA document indexing
+   stopped: {Reason}", stop the loop. Any other exception → error "{path} could not be indexed: {message}", warning log
+   (with the exception) "TFA could not index the document {File}", `IUnitOfWork.DetachAll`, sources re-read, next file.
+   Since v1.2 these warnings are the only place an administrator sees indexing problems.
 5. Sources whose path is no longer on disk → `RemoveByPathsAsync` + `SaveChangesAsync` (chunks cascade).
 6. Anything embedded or removed, or the index loaded for another model → `ReloadIndexAsync` (stream chunks, keep the
    configured model's rows, `EmbeddingVectors.FromBytes`, `DocumentVectorIndex.Replace`).
@@ -793,13 +806,14 @@ classDiagram
 
 **Service logic – `DocumentIndexerService`**
 - Constructor sets `Enabled`, `SourcePath` (full path) and `EmbeddingModel` in the status.
-- `ExecuteAsync`: disabled → log and return. Otherwise `ReloadIndexAsync` (stored index searchable at once), wait
-  `StartDelay` (10 s) or a request, then loop: `RunOnceAsync`, wait `RescanMinutes` or a request.
-- `RunOnceAsync`: `SemaphoreSlim(1,1).WaitAsync(0)`; busy → false. Each run creates its own DI scope. An unexpected
-  exception is logged and shown as "Indexing failed. See the API log for details."; the loop continues.
-- `RequestReindex()`: false (nothing started) when disabled, a run holds the semaphore, the status says running, or a
-  request is already pending (`Interlocked` flag); otherwise writes to a bounded channel (capacity 1, drop when full)
-  that wakes the wait.
+- `ExecuteAsync`: disabled → information log "TFA document indexing is disabled by configuration." and return.
+  Otherwise `ReloadIndexAsync` (stored index searchable at once), `Task.Delay(StartDelay)` (10 s), then loop:
+  `RunOnceAsync`, `Task.Delay(RescanMinutes)`. Cancellation on shutdown ends the loop quietly.
+- `RunOnceAsync`: `SemaphoreSlim(1,1).WaitAsync(0)`; busy → false (a second run never starts). Each run creates its own
+  DI scope. An unexpected exception is logged as an error "TFA document indexing failed." and stored in the status as
+  "Indexing failed. See the API log for details."; the loop continues.
+- `RequestReindex()` (v1.1) – _removed in v1.2_ with its bounded request channel and pending flag: nothing called it
+  after the Re-index now button and endpoint were removed.
 
 **Sequence diagram**
 
@@ -1187,7 +1201,7 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | Secret screen (`SecretScreen`) | Each message; each tool result | Regex patterns: password phrases, `sk-`, `AIza`, `Bearer`, JWT, long mixed token | Pure function |
 | Ranking (`TaskPrioritiser.Rank`) | `prioritise_tasks` | Stage → local due date → priority desc → deadline → task code | Deterministic, provider-independent |
 | Document retrieval (`DocumentSearch.SearchAsync`) | Each message, before the model call | Query (if it finds nothing and is < 40 chars: again with the previous user message) → local embedding → dot product over the in-memory index → score ≥ `MinScore`, top `TopK`, ≤ `MaxContextCharacters` | Read only |
-| Document indexing (`DocumentIndexerService` → `DocumentIndexer.RunAsync`) | Startup: load stored index; 10 s after start; then every `RescanMinutes` (5); at once on `RequestReindex` | Hash each `.md` file → skip unchanged (hash and model) → chunk, embed in batches of 16, swap chunks in one save → remove deleted files → reload the vector index (every 10 embedded files and at the end) | Hash-based skip; one run at a time (`SemaphoreSlim`); a re-run converges to the folder |
+| Document indexing (`DocumentIndexerService` → `DocumentIndexer.RunAsync`) | Startup: load stored index; 10 s after start; then every `RescanMinutes` (5) (v1.2: no manual trigger) | Hash each `.md` file → skip unchanged (hash and model) → chunk, embed in batches of 16, swap chunks in one save → remove deleted files → reload the vector index (every 10 embedded files and at the end) | Hash-based skip; one run at a time (`SemaphoreSlim`); a re-run converges to the folder |
 | Confirm once (`TryClaimAsync`) | `POST …/confirm` | `UPDATE … SET Status = 'Confirmed' WHERE Id = @id AND Status = 'Pending'` | Only one concurrent confirm wins |
 | Rate limit (`AssistantRateLimiter`) | Each counted message | Sliding 1-minute window, 20 per user | In memory, per process; reset on restart |
 | Key-ring check (`KeyRingProtectionCheck.Check`) | Application start (`Program.cs`) | Warns when the key ring is unprotected or cannot be checked | Read only |
@@ -1243,7 +1257,7 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | Frontend `localStorage` | `tfa.provider`, `tfa.cloudAck`, `tfa.handsfree` | Chosen model, cloud acknowledgement, deliberate voice off |
 | Frontend constants | `PROVIDER_REFRESH_MS` 60000, `COMMAND_SILENCE_MS` 2000, `WAKE_CAPTURE_TIMEOUT_MS` 8000, `DICTATION_TIMEOUT_MS` 10000, `MAX_SPOKEN_CHARS` 500 | Panel and voice timing |
 
-Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-flash`, `gpt-4o-mini`.
+Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-flash` (v1.2; was `gemini-2.0-flash`, retired by Google), `gpt-4o-mini`.
 
 ---
 
@@ -1254,7 +1268,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | Endpoints | `TaskFlow.IntegrationTests/Assistant/AssistantEndpointsTests.cs` | Integration | 7 endpoints, policies, owner filter |
 | Providers list | `TaskFlow.IntegrationTests/Settings/TfaSettings/AssistantProviderEndpointsTests.cs`, `AiDefaultsOnFirstRunTests.cs` | Integration | Provider options, default models |
 | Key ring | `TaskFlow.IntegrationTests/Common/KeyRingStartupWarningTests.cs` | Integration | Startup warning |
-| Chat engine | `TaskFlow.UnitTests/Assistant/Chat/AssistantServiceTests.cs` (+ `AssistantServiceHarness.cs`) | Unit | Length, history, tool loop, persistence |
+| Chat engine | `TaskFlow.UnitTests/Assistant/Chat/AssistantServiceTests.cs` (+ `AssistantServiceHarness.cs`) | Unit | Length, history, tool loop, persistence; `AChatFailureNeverShowsTheProvidersOwnReason` (v1.2) |
 | Gateway | `TaskFlow.UnitTests/Assistant/ModelGateway/ChatModelGatewayTests.cs`, `ProviderFailureHandlingTests.cs` | Unit | Dispatch, failure classification |
 | Secrets | `TaskFlow.UnitTests/Assistant/Rules/SecretScreenTests.cs` | Unit | Detection and redaction |
 | Ranking | `TaskFlow.UnitTests/Assistant/Rules/TaskPrioritiserTests.cs` | Unit | Work order |
@@ -1264,7 +1278,8 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | Document prompt | `TaskFlow.UnitTests/Assistant/Chat/AssistantDocumentPromptTests.cs` | Unit | Found / NoMatch / Unavailable / Preparing blocks, one retrieval per message through a tool loop, retrieval without tools, follow-up query, blocked message not searched, end marker removed, TaskFlow-only and live-data rules |
 | Sources | `TaskFlow.UnitTests/Assistant/Chat/AssistantSourcesTests.cs` | Unit | One source per section, none without documents / for fixed replies / empty answers, reload, pre-v1.1 messages |
 | Live data | `TaskFlow.UnitTests/Assistant/Chat/AssistantLiveDataTests.cs` | Unit | Overdue-tasks question uses the task tool even when documents match |
-| Document knowledge | `TaskFlow.UnitTests/Assistant/Documents/MarkdownChunkerTests.cs`, `DocumentIndexerTests.cs`, `DocumentIndexerServiceTests.cs`, `DocumentIndexRepositoryTests.cs`, `DocumentSearchTests.cs`, `DocumentVectorIndexTests.cs`, `DocumentKnowledgeOptionsTests.cs` (+ `DocumentIndexerHarness.cs`, `Fixtures/`) | Unit | Chunking, incremental indexing, single-run guard, repository staging, search outcomes, ranking and budget, option validation |
+| Document knowledge | `TaskFlow.UnitTests/Assistant/Documents/MarkdownChunkerTests.cs`, `DocumentIndexerTests.cs`, `DocumentIndexerServiceTests.cs`, `DocumentIndexRepositoryTests.cs`, `DocumentSearchTests.cs`, `DocumentVectorIndexTests.cs`, `DocumentKnowledgeOptionsTests.cs` (+ `DocumentIndexerHarness.cs`, `Fixtures/`) | Unit | Chunking, incremental indexing, single-run guard (`ARunWhileAnotherIsInProgressDoesNotStart`, v1.2; replaces the v1.1 concurrent `RequestReindex` tests), `WhenDisabledNothingRuns`, repository staging, search outcomes, ranking and budget, option validation |
+| Old document endpoints (v1.2) | `TaskFlow.IntegrationTests/Settings/TfaSettings/DocumentIndexEndpointsRemovedTests.cs` | Integration | `GET …/documents/status` and `POST …/documents/reindex` answer 404 (replaces the deleted `DocumentIndexEndpointsTests`) |
 | Embeddings | `TaskFlow.UnitTests/Integrations/Ai/Embeddings/OllamaEmbeddingClientTests.cs` | Unit | Request, prefixes, batches, normalisation, failure kinds |
 | Migration | `TaskFlow.UnitTests/Persistence/DocumentIndexMigrationTests.cs` | Unit | Upgrade leaves existing tables and rows alone, cascade delete, unique path, downgrade |
 | Document answers | `TaskFlow.IntegrationTests/Assistant/DocumentAnswerEndpointsTests.cs`, `DocumentIndexStartupTests.cs` (`TestSupport/DocumentKnowledgeFactory.cs`) | Integration | Employee answer with sources kept after reload; API starts and answers with the indexer on and the folder missing |
@@ -1299,7 +1314,8 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
   indexed (no PDF/Excel); no upload through the UI; vector-only ranking (no hybrid keyword ranking or re-ranking); answers
   are not streamed. Sources list every chunk given to the model, not only the ones the answer used. The first full index
   of 89 files took about 28 minutes on a laptop CPU (3,327 chunks); until it stores chunks TFA says the documents are
-  still being prepared.
+  still being prepared. Since v1.2 there is no screen or endpoint for the index and no way to force a run: changes are
+  picked up within `RescanMinutes`, and problems are visible only as warnings in the API log.
 - **Two "not available" texts:** server 400 "TFA is not available yet. An administrator needs to configure an AI
   provider."; panel empty state "An administrator needs to choose an AI model in TFA Settings."
 - **Lazy expiry:** no job marks old actions `Expired`; the card shows a fixed "Expires in 10 minutes".
@@ -1381,7 +1397,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-2.0-fla
 | FR-TFA-63 | `AssistantPrompt.DocumentsStart` / `DocumentsEnd`, end marker stripped from chunk text, data rule | `AssistantDocumentPromptTests` |
 | FR-TFA-64 | `DocumentSearch` (no role filter) | `DocumentAnswerEndpointsTests` |
 | FR-TFA-65 | `DocumentSearch` `Unavailable(CannotSearch / Preparing)` · `AssistantPrompt.UnavailableRule`, `PreparingRule` | `DocumentSearchTests`, `AssistantDocumentPromptTests` |
-| FR-TFA-66 | `DocumentIndexerService` (`StartDelay`, `RescanMinutes`, `RequestReindex`) · `DocumentIndexer.RunAsync` (hash skip, swap in one save, removals) | `DocumentIndexerTests`, `DocumentIndexerServiceTests` |
+| FR-TFA-66 | `DocumentIndexerService` (`StartDelay`, `RescanMinutes`, `RunOnceAsync` single-run guard; `RequestReindex` removed in v1.2) · `DocumentIndexer.RunAsync` (hash skip, swap in one save, removals) | `DocumentIndexerTests`, `DocumentIndexerServiceTests` |
 
 **Coverage:** 66 of 66 `FR-TFA-nn` traced (FR-TFA-25 – FR-TFA-28 superseded); 7 of 7 `AssistantController` actions documented.
 

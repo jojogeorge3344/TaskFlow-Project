@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.1  ·  **Status:** Draft
-> **Project type:** Personal Project (Skill Development)  ·  **Date:** 31-Oct-2026
+> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** BRD-Assistant.md v1.1
+> **Based on:** BRD-Assistant.md v1.2
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -18,6 +18,7 @@
 |---|---|---|---|
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version: TFA Panel, how-to help, Action Card, voice controls and background safeguards, traced to BRD-Assistant v1.0 |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`), traced to BRD-Assistant v1.1. 4.1.2 becomes "Answers from TaskFlow Documents": FR-TFA-25 – FR-TFA-28 superseded by FR-TFA-57 – FR-TFA-66; UC-TFA-04 rewritten; cloud notice text (FR-TFA-15 element, M-TFA-03) and side effects updated; sources added to the conversation feed; messages M-TFA-10 – M-TFA-12, data, NFR-TFA-09 – NFR-TFA-12, open issues and traceability updated. |
+| 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` (revised, design D13 and D14), traced to BRD-Assistant v1.2. The Document search card and **Re-index now** on TFA Settings and the endpoints `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` were removed: FR-TFA-66 no longer mentions a manual re-index; FR-TFA-67 added (indexing problems written to the server log as warnings naming the folder or file; no index screen or endpoint), traced to REQ-TFA-56; related documents, scope and traceability updated. FR-TFA-16 and the "Other provider error" message state that chat replies keep the plain message; the provider's own status and reason appear only on Test connection in TFA Settings. |
 
 ### Related Documents
 
@@ -30,7 +31,7 @@
 | FRD – My Profile | Profile rules applied to own-profile changes | `../../07-My-Profile/07.1-My-Profile/FRD-My-Profile.md` |
 | FRD – Task Management | Task access rules used by task answers | `../../02-TaskFlow-Monitoring/02.1-Task-Management/FRD-Task-Management.md` |
 | FRD – Employee Management | Role change of a user | `../../03-TaskFlow-Management/03.1-Employee-Management/FRD-Employee-Management.md` |
-| FRD – TFA Settings (Document search) | Document index status and Re-index now | `../../06-Settings/06.3-TFA-Settings/FRD-TFA-Settings.md` |
+| FRD – TFA Settings (Test connection) | Provider's own reason on a failed test (v1.2); the v1.1 Document search card with **Re-index now** was withdrawn in v1.2 | `../../06-Settings/06.3-TFA-Settings/FRD-TFA-Settings.md` |
 | HLD / LLD / TDD | Technical design | `../../../HLD/08-TFA-Assistant/08.1-Assistant/HLD-Assistant.md`, `../../../LLD/08-TFA-Assistant/08.1-Assistant/LLD-Assistant.md`, `TF - Documents/TF - TDD/TDD-TaskFlow.md` (section 16) |
 
 ---
@@ -43,7 +44,7 @@ This FRD specifies the detailed, testable behaviour of TFA (TaskFlow Assistant):
 ### 1.2 Scope
 **In scope:** TFA Panel (conversation, model selector, cloud notice, new chat, provider failures); task answers and ranked list; Action Cards for mail drafts, own-profile changes and role changes; user lookup, password guidance, administrator guidance; answers about TaskFlow from the Markdown documents in the TaskFlow documents folder, with sources; secret screen, 20-messages-per-minute limit, action audit; voice input in Chrome and Edge.
 
-**Out of scope** (BRD §3.2): AI provider, model and API key setup and the document index status and re-index (TFA Settings); PDF and Excel documents, uploading documents, limiting documents by role; creating, editing or reassigning tasks through TFA; password changes through TFA; a screen to view the audit log; deleting one's own conversation history.
+**Out of scope** (BRD §3.2): AI provider, model and API key setup (TFA Settings); a screen or endpoint for the document index status or for starting a re-index (removed in v1.2; indexing problems go to the server log); PDF and Excel documents, uploading documents, limiting documents by role; creating, editing or reassigning tasks through TFA; password changes through TFA; a screen to view the audit log; deleting one's own conversation history.
 
 ### 1.3 Audience
 Developer and tester of TaskFlow, reviewers, and the product owner (Jojo George).
@@ -173,7 +174,7 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 | FR-TFA-13 | The system shall show "TFA is not available yet. An administrator needs to choose an AI model in TFA Settings." when no provider is configured, and "`{Provider}` is not configured. Choose another model, or ask an administrator to set it up." when the chosen provider was removed. | Must | `assistant.chat` | REQ-TFA-09, BR-TFA-11 |
 | FR-TFA-14 | The system shall show the name of the provider that answered under each TFA answer. | Could | `assistant.chat` | REQ-TFA-09 |
 | FR-TFA-15 | The system shall hold the first message to each cloud provider and show the cloud notice; **I understand** sends it and is remembered in that browser, **Cancel** puts the text back into the message box. | Must | `assistant.chat` | REQ-TFA-10, BR-TFA-11 |
-| FR-TFA-16 | The system shall save nothing when a provider fails (rate limit, rejected key, timeout, unreachable, model missing, unexpected error), show the matching plain message, and offer **Retry** (same text) and **Use** `{other provider}` for each other configured provider. | Must | `assistant.chat` | REQ-TFA-11 |
+| FR-TFA-16 | The system shall save nothing when a provider fails (rate limit, rejected key, timeout, unreachable, model missing, unexpected error), show the matching plain message, and offer **Retry** (same text) and **Use** `{other provider}` for each other configured provider. The chat message never includes the provider's own status or reason; that is added only on Test connection in TFA Settings (FRD-TFA-Settings FR-TFAS-39, v1.2). | Must | `assistant.chat` | REQ-TFA-11 |
 | FR-TFA-17 | The system shall start a new conversation on **New chat**, empty the panel and show the welcome bubble; earlier messages stay stored but are no longer used as context. On failure it shall show "Could not start a new chat." | Should | `assistant.chat` | REQ-TFA-12 |
 | FR-TFA-18 | The system shall use at most the last 12 messages, about 6000 characters, of the current conversation as context, excluding notices. | Should | `assistant.chat` | REQ-TFA-13 |
 | FR-TFA-19 | The system shall allow at most 4 rounds of lookups per answer, after which TFA shall answer in words. | Should | `assistant.chat` | REQ-TFA-14 |
@@ -266,7 +267,7 @@ flowchart LR
 | Cloud provider unreachable | "`{Provider}` cannot be reached right now. Check the connection and retry, or choose another model." |
 | Model not installed (Ollama) | "The configured model is not available on Ollama. Ask an administrator to install it, or choose another model." |
 | Model not available (cloud) | "The configured model is not available on `{Provider}`. Ask an administrator to check the model name, or choose another model." |
-| Other provider error | "`{Provider}` returned an unexpected error. Please try again, or choose another model." |
+| Other provider error | "`{Provider}` returned an unexpected error. Please try again, or choose another model." (plain message only; the provider's reason is not shown in the chat, v1.2) |
 | Any other send error | "TFA could not answer. Please try again." |
 | No permission | "You do not have the required permission to perform this action. `{Action}` can only be performed by `{who}`. Please contact your system administrator for assistance." |
 
@@ -304,7 +305,8 @@ flowchart LR
 | FR-TFA-63 | The system shall pass document text to TFA marked as data, between fixed start and end markers that the document text cannot close early, and TFA shall not follow instructions written in it. | Must | `assistant.chat` | REQ-TFA-52, BR-TFA-16 |
 | FR-TFA-64 | The system shall search every indexed document for every user with `assistant.chat`, whatever their role. | Must | `assistant.chat` | REQ-TFA-53, BR-TFA-15 |
 | FR-TFA-65 | The system shall, when the documents cannot be searched (the local AI server or embedding model is unavailable, document search is switched off, or the index is empty), still answer task, mail and profile questions and instruct TFA to say that the TaskFlow documents cannot be searched right now; while the first indexing has stored nothing yet, TFA shall say the documents are still being prepared. | Must | `assistant.chat` | REQ-TFA-54 |
-| FR-TFA-66 | The system shall use added, changed and deleted documents without a restart: the folder is checked 10 seconds after start and then every 5 minutes by default, or at once when an administrator clicks **Re-index now** (FRD-TFA-Settings). A changed document's earlier sections stay in use until its new sections are stored. | Should | – (automatic) | REQ-TFA-55 |
+| FR-TFA-66 | The system shall use added, changed and deleted documents without a restart: the folder is checked 10 seconds after start and then every `RescanMinutes` (5 minutes by default), and only changed documents are embedded again (v1.2: the manual **Re-index now** of v1.1 was withdrawn). A changed document's earlier sections stay in use until its new sections are stored. | Should | – (automatic) | REQ-TFA-55 |
+| FR-TFA-67 | The system shall write a missing documents folder, an embedding model that cannot be reached (the indexing run stops) and a document that could not be indexed to the server log as warnings naming the folder or file, and shall offer no screen or endpoint for the document index status or for starting a re-index (`GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` answer 404). The in-memory index status is used only to tell users that the documents cannot be searched right now or are still being prepared (FR-TFA-65). | Should | – (automatic) | REQ-TFA-56 |
 
 **Use case: UC-TFA-04 – Ask about TaskFlow**
 
@@ -818,6 +820,7 @@ Test cases are the automated test suites (backend test classes and frontend `*.s
 | REQ-TFA-53 | FR-TFA-64 | Answers from TaskFlow Documents | UC-TFA-04 | `DocumentAnswerEndpointsTests` |
 | REQ-TFA-54 | FR-TFA-65 | Answers from TaskFlow Documents | UC-TFA-04 | `DocumentSearchTests`, `AssistantDocumentPromptTests` |
 | REQ-TFA-55 | FR-TFA-66 | Answers from TaskFlow Documents | – | `DocumentIndexerTests`, `DocumentIndexerServiceTests` |
+| REQ-TFA-56 | FR-TFA-67 | Answers from TaskFlow Documents | – | `DocumentIndexEndpointsRemovedTests`, `DocumentIndexStartupTests` (missing folder recorded; the log warnings themselves: no automated test) |
 | BR-TFA-01 | FR-TFA-01, FR-TFA-23, FR-TFA-30 | TFA Panel, Action Card | UC-TFA-07 | `AssistantToolGateTests` |
 | BR-TFA-02 | FR-TFA-20, FR-TFA-24, FR-TFA-29 | Action Card | UC-TFA-05 | `AssistantActionServiceTests` |
 | BR-TFA-03 | FR-TFA-08 | TFA Panel | UC-TFA-01 | `SecretScreenTests` |
@@ -835,7 +838,7 @@ Test cases are the automated test suites (backend test classes and frontend `*.s
 | BR-TFA-15 | FR-TFA-64 | Answers from TaskFlow Documents | UC-TFA-04 | `DocumentAnswerEndpointsTests` |
 | BR-TFA-16 | FR-TFA-62, FR-TFA-63 | Answers from TaskFlow Documents | UC-TFA-04 | `AssistantLiveDataTests`, `AssistantDocumentPromptTests` |
 
-**Untraced BRD items:** 0 (55 of 55 `REQ-TFA-nn`, of which REQ-TFA-18 – REQ-TFA-21 are superseded; 16 of 16 `BR-TFA-nn`).
+**Untraced BRD items:** 0 (56 of 56 `REQ-TFA-nn`, of which REQ-TFA-18 – REQ-TFA-21 are superseded; 16 of 16 `BR-TFA-nn`).
 
 ---
 

@@ -1,8 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvider } from '../../../assistant/models/assistant.model';
-import { DocumentIndexStatus } from './ai-provider-admin.model';
+import { AddAiModelRequest, AddAiModelResult, AiProviderConfig, AiProviderKind, AiProviderTestResult, UpdateAiProvider } from '../../../assistant/models/assistant.model';
 
 /** Administrator-only configuration of the AI providers TFA can use. The API key is sent to the server when it is
  * saved and is never returned: the server only says whether a key is set and its last four characters. */
@@ -10,7 +9,6 @@ import { DocumentIndexStatus } from './ai-provider-admin.model';
 export class AiProviderAdminService {
   private readonly http = inject(HttpClient);
   private readonly url = '/api/v1/assistant/providers';
-  private readonly documentsUrl = '/api/v1/assistant/documents';
 
   getConfig(): Observable<AiProviderConfig[]> {
     return this.http.get<AiProviderConfig[]>(`${this.url}/config`);
@@ -20,23 +18,31 @@ export class AiProviderAdminService {
     return this.http.put<AiProviderConfig[]>(`${this.url}/config`, { providers });
   }
 
-  /** Removes a model an administrator added. The server refuses built-in models and the one saved for the server. */
+  /** Removes a model an administrator added. The server refuses built-in models and the one TFA uses. */
   removeModel(kind: AiProviderKind, name: string): Observable<AiProviderConfig[]> {
     return this.http.delete<AiProviderConfig[]>(`${this.url}/${kind}/models`, { params: { name } });
   }
 
-  /** Sends one tiny request to the saved provider settings. */
-  test(kind: AiProviderKind): Observable<AiProviderTestResult> {
-    return this.http.post<AiProviderTestResult>(`${this.url}/${kind}/test`, {});
+  /** Sends one tiny request to the saved provider settings, or, with `modelName`, to that listed model with the saved
+   * key or address (also for a provider TFA does not use). Nothing is saved. */
+  test(kind: AiProviderKind, modelName?: string): Observable<AiProviderTestResult> {
+    return this.http.post<AiProviderTestResult>(`${this.url}/${kind}/test`, modelName ? { modelName } : {});
   }
 
-  /** The document index TFA answers from: folder, model, counts, last run and last error. */
-  getDocumentStatus(): Observable<DocumentIndexStatus> {
-    return this.http.get<DocumentIndexStatus>(`${this.documentsUrl}/status`);
+  /** "Use this model": makes a listed model the one TFA uses and switches the other providers off. */
+  useModel(kind: AiProviderKind, modelName: string): Observable<AiProviderConfig[]> {
+    return this.http.post<AiProviderConfig[]>(`${this.url}/${kind}/models/use`, { modelName });
   }
 
-  /** Asks the server to check the documents folder now. A request while a run is going starts nothing new. */
-  reindexDocuments(): Observable<DocumentIndexStatus> {
-    return this.http.post<DocumentIndexStatus>(`${this.documentsUrl}/reindex`, {});
+  /** The edit screen: tests the typed values and, only if the test passes, renames the model and saves the key or
+   * address. `clearKey` removes the key without a test. A failed test comes back as `ok: false` with nothing saved. */
+  editModel(kind: AiProviderKind, name: string, body: AddAiModelRequest): Observable<AddAiModelResult> {
+    return this.http.put<AddAiModelResult>(`${this.url}/${kind}/models`, body, { params: { name } });
+  }
+
+  /** The Add AI model page: tests the typed model and key (or Ollama address) and, only if the test passes, saves the
+   * model and makes it the one TFA uses. A failed test comes back as `ok: false` with nothing saved. */
+  addModel(kind: AiProviderKind, body: AddAiModelRequest): Observable<AddAiModelResult> {
+    return this.http.post<AddAiModelResult>(`${this.url}/${kind}/models`, body);
   }
 }

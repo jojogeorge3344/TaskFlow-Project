@@ -27,16 +27,27 @@ Ollama server TFA already uses, and the index lives in the existing SQLite datab
 - A **background indexer** builds the index at startup and checks the folder every few minutes. It
   re-embeds only files whose content changed and removes chunks of deleted files, so editing a
   document updates TFA's answers without a restart.
-- Administrators (users with the TFA Settings permissions) get a **Document search** card in TFA Settings showing the index status (files,
-  chunks, last indexed, embedding model, any error) with a **Re-index now** button.
+- **No admin screen for the index.** A Document search card with a Re-index now button was built
+  first (tasks 4.5 and 5.3) and is removed again (task 7): nothing on it could be changed from the
+  UI, the 5-minute rescan already does what the button did, and its folder path, model name and
+  chunk count were developer details. Indexing problems are written to the server log.
 - The AI setup scripts also pull `nomic-embed-text`.
+- **Model names and provider errors on TFA Settings** (found while setting up Gemini): a model name
+  must be a model ID without spaces, the Add AI model page shows an example ID and where to get a
+  Gemini key, a Gemini request rejected because of the model name is reported as "model not available",
+  and a provider error TaskFlow does not recognise shows the provider's own status and reason to the
+  administrator running Test connection instead of only "unexpected error".
 
 ## Capabilities
 
 ### New Capabilities
-- `tfa-document-knowledge`: indexing the documents folder, retrieval for each TFA message, answering
-  documentation questions only from the documents with sources, and the administrator index status
-  and re-index control.
+- `tfa-document-knowledge`: indexing the documents folder, retrieval for each TFA message, and
+  answering documentation questions only from the documents with sources.
+
+### Added to an existing capability
+- `ai-provider-management` (defined in the unarchived `tfa-assistant` and `tfa-add-ai-model-page`
+  changes): model-name format, Gemini model-name errors, and provider reasons on Test connection.
+  The requirements are ADDED, not MODIFIED, because `openspec/specs/` has no archived base yet.
 
 ### Modified Capabilities
 
@@ -50,9 +61,12 @@ folder instead of the keyword help knowledge base. That change's other requireme
 - **Backend:** new `Integrations/Ai/Embeddings` (Ollama embedding client), `Repositories/Assistant/Documents`,
   `Services/Assistant/Documents` (chunker, indexer, vector search, background service), two new
   entities and an additive migration `AddDocumentIndex`, a `DocumentKnowledge` configuration section,
-  changes to `AssistantService`, `AssistantPrompt`, `AssistantReadTools` and the assistant DTOs, and
-  two endpoints guarded by the existing TFA Settings permissions (`SettingsAiView`, `SettingsAiEdit`). **No new NuGet packages.**
-- **Frontend:** source chips in `tfa-message`, and a Document search card in TFA Settings.
+  changes to `AssistantService`, `AssistantPrompt`, `AssistantReadTools` and the assistant DTOs. No
+  new endpoints (the index status and re-index endpoints are removed again in task 7). Provider
+  fixes touch `GeminiProvider`, `ProviderFailureException`, `AiProviderConnectionTester` and the
+  model-name validators. **No new NuGet packages.**
+- **Frontend:** source chips in `tfa-message`. The Document search card is removed from TFA Settings.
+  The Add AI model page gets a model-name example and a Gemini key hint.
 - **Data:** tables `DocumentSources` and `DocumentChunks` (89 Markdown files, about 3.2 MB, give
   roughly 3,000-4,000 chunks and 10-15 MB of vectors; task 6.2 records the real count). Existing
   tables are unchanged.

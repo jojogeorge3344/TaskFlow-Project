@@ -27,7 +27,7 @@ public class OpenAiProvider : IChatModelProvider
         var (response, body) = await ProviderHttp.SendAsync(_client, Kind, httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw Classify(response, body);
+            throw Classify(response, body, runtime.ApiKey);
         }
 
         return Parse(body);
@@ -115,12 +115,15 @@ public class OpenAiProvider : IChatModelProvider
         return new ChatModelResult(string.IsNullOrWhiteSpace(text) ? null : text, calls);
     }
 
-    private ProviderFailureException Classify(HttpResponseMessage response, string body)
+    private ProviderFailureException Classify(HttpResponseMessage response, string body, string? apiKey)
     {
         var code = string.Empty;
+        var message = string.Empty;
         try
         {
-            code = JsonNode.Parse(body)?["error"]?["code"]?.ToString() ?? string.Empty;
+            var error = JsonNode.Parse(body)?["error"];
+            code = error?["code"]?.ToString() ?? string.Empty;
+            message = error?["message"]?.ToString() ?? string.Empty;
         }
         catch (System.Text.Json.JsonException)
         {
@@ -137,6 +140,8 @@ public class OpenAiProvider : IChatModelProvider
             _ => ProviderFailureKind.Unexpected
         };
 
-        return new ProviderFailureException(Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode);
+        return new ProviderFailureException(
+            Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            providerReason: ProviderHttp.Reason(code, message, apiKey));
     }
 }

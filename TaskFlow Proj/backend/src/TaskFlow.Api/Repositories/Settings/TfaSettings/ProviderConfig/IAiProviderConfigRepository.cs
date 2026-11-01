@@ -13,7 +13,4 @@ public interface IAiProviderConfigRepository : IBaseRepository<AiProviderConfig>
     Task<List<AiProviderConfig>> GetAllForUpdateAsync(CancellationToken cancellationToken = default);
 
     Task<AiProviderConfig?> GetAsync(AiProviderKind kind, CancellationToken cancellationToken = default);
-
-    /// <summary>Whether a provider's saved model is this one.</summary>
-    Task<bool> UsesModelAsync(AiProviderKind kind, string modelName, CancellationToken cancellationToken = default);
 }

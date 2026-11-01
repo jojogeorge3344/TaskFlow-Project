@@ -50,12 +50,27 @@ export type ProviderFailureKind =
   | 'Timeout'
   | 'Unreachable'
   | 'ModelUnavailable'
-  | 'Unexpected';
+  | 'Unexpected'
+  | 'InvalidModelName';
 
 export interface AiProviderTestResult {
   ok: boolean;
   message: string;
   failureKind: ProviderFailureKind | null;
+}
+
+/** A model to add from the Add AI model page. An empty `apiKey` uses the provider's saved key; `baseUrl` is Ollama only. */
+export interface AddAiModelRequest {
+  modelName: string;
+  apiKey?: string | null;
+  baseUrl?: string | null;
+  /** Edit only: removes the provider's key without a test, and without other changes. */
+  clearKey?: boolean;
+}
+
+/** The outcome of adding a model: when `ok` is false nothing was saved and `providers` is null. */
+export interface AddAiModelResult extends AiProviderTestResult {
+  providers: AiProviderConfig[] | null;
 }
 
 export type AssistantMessageKind = 'Text' | 'Refusal' | 'Notice';

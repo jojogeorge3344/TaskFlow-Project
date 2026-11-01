@@ -129,6 +129,89 @@ public class AiProviderSeederTests : IAsyncLifetime
         Assert.Equal(AiProviderKind.Ollama, custom.Kind);
     }
 
+    /// <summary>A database seeded before Google retired gemini-2.0-flash, gemini-2.5-flash and gemini-2.5-pro.</summary>
+    private async Task SeedAnOldDatabaseAsync(bool geminiSetUp)
+    {
+        foreach (var name in new[] { "gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro" })
+        {
+            _harness.Db.AiModels.Add(new AiModel { Kind = AiProviderKind.Gemini, Name = name, IsBuiltIn = true });
+        }
+
+        _harness.Db.AiProviderConfigs.Add(new AiProviderConfig
+        {
+            Kind = AiProviderKind.Gemini,
+            IsEnabled = geminiSetUp,
+            ModelName = "gemini-2.0-flash",
+            EncryptedApiKey = geminiSetUp ? "protected-key" : null,
+            KeyLast4 = geminiSetUp ? "1234" : null,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await _harness.Db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task RetiredBuiltInModelsBecomeRemovableAndCurrentOnesStayBuiltIn()
+    {
+        await SeedAnOldDatabaseAsync(geminiSetUp: false);
+
+        await Seeder().SeedAsync();
+
+        var gemini = await _harness.Db.AiModels.Where(model => model.Kind == AiProviderKind.Gemini).ToDictionaryAsync(model => model.Name, model => model.IsBuiltIn);
+        Assert.False(gemini["gemini-2.0-flash"]);
+        Assert.False(gemini["gemini-2.5-flash"]);
+        Assert.False(gemini["gemini-2.5-pro"]);
+        foreach (var name in AiProviderCatalog.BuiltInModels(AiProviderKind.Gemini))
+        {
+            Assert.True(gemini[name]);
+        }
+
+        await Service().RemoveModelAsync(AiProviderKind.Gemini, "gemini-2.5-pro");
+        Assert.False(await _harness.Db.AiModels.AnyAsync(model => model.Name == "gemini-2.5-pro"));
+    }
+
+    [Fact]
+    public async Task AGeminiRowNobodySetUpMovesToTheNewDefault()
+    {
+        await SeedAnOldDatabaseAsync(geminiSetUp: false);
+
+        await Seeder().SeedAsync();
+
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        Assert.Equal("gemini-3.8-flash", gemini.ModelName);
+        Assert.False(gemini.IsEnabled);
+        Assert.Null(gemini.EncryptedApiKey);
+    }
+
+    [Fact]
+    public async Task AGeminiRowAnAdministratorSetUpKeepsItsRetiredModel()
+    {
+        await SeedAnOldDatabaseAsync(geminiSetUp: true);
+
+        await Seeder().SeedAsync();
+
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        Assert.Equal("gemini-2.0-flash", gemini.ModelName);
+        Assert.True(gemini.IsEnabled);
+        Assert.Equal("protected-key", gemini.EncryptedApiKey);
+        Assert.False((await _harness.Db.AiModels.SingleAsync(model => model.Name == "gemini-2.0-flash")).IsBuiltIn);
+    }
+
+    [Fact]
+    public async Task RetiringOldModelsTwiceChangesNothingMore()
+    {
+        await SeedAnOldDatabaseAsync(geminiSetUp: false);
+        await Seeder().SeedAsync();
+        var models = await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.Id).Select(model => new { model.Name, model.IsBuiltIn }).ToListAsync();
+        var gemini = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+
+        await Seeder().SeedAsync();
+
+        Assert.Equal(models, await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.Id).Select(model => new { model.Name, model.IsBuiltIn }).ToListAsync());
+        var again = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        Assert.Equal(gemini.ModelName, again.ModelName);
+        Assert.Equal(gemini.UpdatedAt, again.UpdatedAt);
+    }
+
     [Fact]
     public async Task ASeededModelRemovedByNobodyIsNotDuplicatedWhenTheListGrows()
     {
@@ -139,6 +222,6 @@ public class AiProviderSeederTests : IAsyncLifetime
         await Seeder().SeedAsync();
 
         Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "gemini-custom"));
-        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Kind == AiProviderKind.Gemini && model.Name == "gemini-2.0-flash"));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Kind == AiProviderKind.Gemini && model.Name == AiProviderCatalog.DefaultModel(AiProviderKind.Gemini)));
     }
 }

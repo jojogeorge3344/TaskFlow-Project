@@ -7,13 +7,13 @@
 | Field | Value |
 |---|---|
 | Document | Technical Design Document |
-| Version | 2.2 |
+| Version | 2.3 |
 | Status | Updated to match implementation; aligned with the approved BRD set (signed off 31-Oct-2026) and the FRD / HLD / LLD set |
 | Basis | Approved BRD set v1.0 (`TF - Documents/TF - BRD`, overall + 16 sub-modules, signed off 31-Oct-2026) + FRD / HLD / LLD v1.0 (`TF - Documents/TF - FRD`, `TF - HLD`, `TF - LLD`) + the original BRD v1.0 (retired from the repository) + `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` + the TaskFlow source code (`TaskFlow Proj/backend`, `TaskFlow Proj/frontend`) |
 | Location | `TF - Documents/TF - TDD/TDD-TaskFlow.md` (+ `.pdf`) |
 | Stack | ASP.NET Core Web API on .NET 10 (`net10.0`), EF Core 10.0.12 + SQLite, FluentValidation 12.2.0, JwtBearer 10.0.12, SpaProxy 10.0.12; Angular 19.2 (standalone), TypeScript 5.7, Chart.js 4 + ng2-charts 8, Angular CDK 19, qrcode |
 | Project type | Personal Project (Skill Development) |
-| Date | 31-Oct-2026 |
+| Date | 01-Nov-2026 |
 | Author | Jojo George (jojogeorge3344@gmail.com) |
 
 > This TDD describes TaskFlow **as implemented**. The code is the source of truth for *how*; the BRD is the source of
@@ -30,6 +30,7 @@
 | 2.0 | 31-Oct-2026 | Jojo George | Synced to the implementation. Single `TaskFlow.Api` project, layer-first with module sub-folders, enforced by architecture tests and `npm run check:structure`. Permission-based authorization (70 permission keys, read-only system roles, configurable custom roles, `TaskAccess` resource check, Own/Team/Organization scopes). Mandatory MFA (TOTP + 10 backup codes) and password recovery via authenticator code. Internal Mail replaces SMTP email (BRD Screen 14 superseded). Projects, positions and allocations added; `InQA` task status; comment edit/delete and hours logging. TFA AI assistant (Ollama/Gemini/OpenAI). Data folder `C:\TaskFlow`. Legal pages. API documented as 114 actions over 83 routes. Serilog and Playwright removed from the stack (not installed). New sections §15, §16, §23 and Appendix C. |
 | 2.1 | 31-Oct-2026 | Jojo George | Aligned with the new document set. Added §1.5 Reference Documents (approved BRD set, FRD, HLD, LLD, Development Plan, permission documents, workflow docs, developer docs, OpenSpec, skills) and §1.6 Document Hierarchy & Traceability (document chain, ID schemes, sub-module document map, original-screen → sub-module mapping). §5.1 repository layout updated to the `TF - Documents` folder. §13 linked to the sub-module documents. §21 maps each criterion to the approved BRD acceptance IDs (AC-01 – AC-26) and adds AC-02 – AC-06 and AC-21 – AC-26. §22.5 lists where open items are tracked in the document set. Design content and section numbers unchanged; code facts re-verified (114 actions, 83 routes, 70 keys, 31 entities). |
 | 2.2 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Keyword help (`search_help`, `HelpKnowledgeBase`, the 19 `Services/Assistant/Knowledge/*.md` topics) removed. New document index: `DocumentSources` and `DocumentChunks` tables (migration `20261031134802_AddDocumentIndex`), `MarkdownChunker`, `OllamaEmbeddingClient` (`nomic-embed-text`), in-memory `DocumentVectorIndex`, hosted `DocumentIndexerService`, retrieval in `AssistantService.SendAsync` before the model call, answer sources, `DocumentKnowledge` configuration section and `AiProviders:OllamaContextTokens`. New `DocumentIndexController` (2 actions). Updated §3.2, §3.3, §4.1, §5.2, §6.3–§6.5, §7, §8, §12.5, §13.2, §16, §18.2, §20, §22.4 and §24. Counts now 116 actions, 85 routes, 22 controllers, 33 entities, 22 migrations. |
+| 2.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag`, design D13 and D14. Document index administration removed: `DocumentIndexController` (`GET /api/v1/assistant/documents/status`, `POST /api/v1/assistant/documents/reindex`), `DocumentIndexService`, `DocumentIndexStatusDto`, the TFA Settings Document search card (`DocumentIndexCardComponent`) and `DocumentIndexerService.RequestReindex()`; the background indexer and the internal `DocumentIndexStatus` stay, and indexing problems are logged as warnings. Model names must contain no whitespace; the Add AI model page shows an example model ID per provider and a Google AI Studio key link for Gemini; a Gemini `INVALID_ARGUMENT` about the model name is `ModelUnavailable`; Test connection adds the provider's own reason ("{Provider} said: HTTP {status} - {reason}", at most 200 characters, keys replaced by `[key]`). Built-in Gemini models now `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite`; `AiProviderSeeder` retires old built-ins in existing databases. Also records the Add AI model endpoint `POST /api/v1/assistant/providers/{kind}/models` (`AiModelAdditionService`, `AddAiModelComponent`, route `/settings/tfa/models/new`; OpenSpec change `tfa-add-ai-model-page`), which the counts include. Updated §5.2, §6.1, §6.3, §8 (8.9, 8.11), §12.5, §12.8, §13.2, §16.1, §16.2, §16.4, §16.8, §16.9 and §20.2. Counts now 115 actions, 83 routes, 21 controllers. |
 
 ---
 
@@ -456,7 +457,7 @@ Reminders), `Reports`, `Profile`, `Settings` (ApplicationSettings, ReminderSetti
 | Communication | `MailController`, `NotificationsController` |
 | Reports | `ReportController` |
 | Profile | `ProfileController` |
-| Settings | `ApplicationSettingsController`, `ReminderSettingsController`, `RolesController`, `AiProvidersController`, `DocumentIndexController` |
+| Settings | `ApplicationSettingsController`, `ReminderSettingsController`, `RolesController`, `AiProvidersController` |
 | Assistant | `AssistantController` |
 
 ### 5.3 Frontend: `frontend/src/app`
@@ -518,7 +519,7 @@ The backend is one ASP.NET Core Web API project, `TaskFlow.Api` (`net10.0`). It 
 | Forwarded headers | `UseForwardedHeaders` with `X-Forwarded-For` only. Only loopback proxies plus the addresses listed in `Proxy:KnownProxies` are trusted, so a caller cannot spoof the client IP that the password-recovery throttle uses. |
 | API versioning | URL segment: every controller route starts with `/api/v1/`. There is no versioning package. |
 | Time | `TimeProvider.System` is registered as a singleton. `IAppClock` (`AppClock`) resolves the application timezone (see §7.5). |
-| OpenAPI | `Microsoft.AspNetCore.OpenApi`. `MapOpenApi()` runs only in Development. Development also maps a minimal-API fault probe, `/api/v1/diagnostics/throw`. It is not one of the 116 controller actions. |
+| OpenAPI | `Microsoft.AspNetCore.OpenApi`. `MapOpenApi()` runs only in Development. Development also maps a minimal-API fault probe, `/api/v1/diagnostics/throw`. It is not one of the 115 controller actions. |
 | Configuration | `appsettings.json` → optional `appsettings.Environment.json` (reload on change) → environment variables. Options classes are in `Config/` (`JwtOptions`, `MfaOptions`, `MailOptions`, `ReminderEngineOptions`, `ApplicationOptions`, `AiProviderOptions`), plus `StorageOptions` in `Persistence/StorageRoot.cs`. See §18. |
 
 **Pipeline order** (`Program.cs`): `UseForwardedHeaders` → `RequestLoggingMiddleware` → `UseExceptionHandler` → `UseHttpsRedirection` → `UseCors(SpaClient)` → `UseAuthentication` → `MfaSetupGateMiddleware` → `UseAuthorization` → `MapControllers`. Before the pipeline starts, the application does the following in order: resolves and checks the data folder (`StorageRoot.EnsureAvailable`), warns about a legacy database, checks the DPAPI key ring on Windows (`KeyRingProtectionCheck`), applies migrations (`Database.MigrateAsync`), then runs `SettingsInitializer`, `AccessControlSeeder`, `AiProviderSeeder` and `DatabaseSeeder` (demo sign-ins only when `Seed:Enabled`, see §18).
@@ -585,8 +586,8 @@ Paths are relative to `Services/`. Each service has an `I<Name>` interface next 
 | Settings | `Settings/ReminderSettings` | `ReminderSettingsService` | Typed view of the `Reminder.*` setting rows (Screen 13) |
 | Settings | `Settings/RoleConfiguration` | `RoleService` | Custom role CRUD and permission grants. System roles and the catalog are read-only. |
 | Settings | `Settings/TfaSettings/ProviderConfig` | `AiProviderConfigService` | AI provider configuration, models and protected API key |
-| Settings | `Settings/TfaSettings/ConnectionTest` | `AiProviderConnectionTester` | Provider connection test |
-| Settings | `Settings/TfaSettings/DocumentIndex` | `DocumentIndexService` | Document index status for the TFA Settings Document search card, and the Re-index now request (§16.8) |
+| Settings | `Settings/TfaSettings/ConnectionTest` | `AiProviderConnectionTester` | Provider connection test; for an unexpected or model-not-available failure it adds the provider's own reason (§16.4) |
+| Settings | `Settings/TfaSettings/ModelAddition` | `AiModelAdditionService` | Add AI model page: tests the typed model, key or address without saving, and only on success saves it and makes it the one in use |
 | Assistant | `Assistant/Chat` | `AssistantService`, `AssistantPrompt`, `AssistantTexts`, `ProviderFailureMessages` | TFA conversation engine: length and secret checks → rate limit → document search → provider with a tool loop (see §16) |
 | Assistant | `Assistant/Actions` | `AssistantActionService` | Pending actions. They run only on the user's own confirm request. |
 | Assistant | `Assistant/Toolbox`, `Assistant/Tools` | `AssistantToolbox`, `ToolOutcome`, `AssistantReadTools`, `AssistantActionTools` | Tools checked against the same permission policies as REST. Reads go through `ITaskService`. |
@@ -595,7 +596,7 @@ Paths are relative to `Services/`. Each service has an `I<Name>` interface next 
 | Assistant | `Assistant/Documents`, `Assistant/Documents/Rules` | `DocumentSearch` (`IDocumentSearch`), `DocumentContext`, `DocumentVectorIndex`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentIndexStatus`, `DocumentEmbeddingEndpoint`, `MarkdownChunker`, `EmbeddingVectors` | Document knowledge: heading-aware chunking, incremental indexing, in-memory vector search and the hosted indexer (see §16.8) |
 | Assistant | `Assistant/RateLimits`, `Assistant/AuditLog`, `Assistant/Access` | `AssistantRateLimiter`, `AssistantAuditLog`, `AssistantCaller` | Per-user one-minute window, action audit, caller identity from token claims |
 
-**Controllers** (`Controllers/<Module>`): Auth – `AuthController`, `PasswordRecoveryController`. Dashboard – `DashboardController`, `AnalyticsController`. Management – `EmployeesController`, `ProjectsController`, `PositionsController`, `DepartmentsController`. Monitoring – `TasksController`, `TaskCommentsController`, `TaskActivityController`, `WorkloadController`. Communication – `MailController`, `NotificationsController`. Reports – `ReportController`. Profile – `ProfileController`. Settings – `ApplicationSettingsController`, `ReminderSettingsController`, `RolesController`, `AiProvidersController`, `DocumentIndexController`. Assistant – `AssistantController`. The full endpoint list is in §8.
+**Controllers** (`Controllers/<Module>`): Auth – `AuthController`, `PasswordRecoveryController`. Dashboard – `DashboardController`, `AnalyticsController`. Management – `EmployeesController`, `ProjectsController`, `PositionsController`, `DepartmentsController`. Monitoring – `TasksController`, `TaskCommentsController`, `TaskActivityController`, `WorkloadController`. Communication – `MailController`, `NotificationsController`. Reports – `ReportController`. Profile – `ProfileController`. Settings – `ApplicationSettingsController`, `ReminderSettingsController`, `RolesController`, `AiProvidersController`. Assistant – `AssistantController`. The full endpoint list is in §8.
 
 ### 6.4 Repositories and unit of work
 
@@ -1195,8 +1196,8 @@ Migrations are in `Persistence/Migrations` and are applied automatically at star
 
 ## 8. API Design
 
-The API is one ASP.NET Core project (`TaskFlow.Api`) with 22 controllers in module sub-folders of `Controllers/`. It exposes
-**116 HTTP actions over 85 distinct routes**, all under `/api/v1`. Every action is listed below exactly once, grouped by module
+The API is one ASP.NET Core project (`TaskFlow.Api`) with 21 controllers in module sub-folders of `Controllers/`. It exposes
+**115 HTTP actions over 83 distinct routes**, all under `/api/v1`. Every action is listed below exactly once, grouped by module
 in the order of the module docs. The Legal module (module 10) has no API endpoints. Its pages are client routes only (see §12).
 
 ### 8.1 Conventions
@@ -1534,9 +1535,9 @@ while MFA setup is pending.
 
 ### 8.9 Settings
 
-`ApplicationSettingsController`, `ReminderSettingsController`, `RolesController`, `AiProvidersController` and
-`DocumentIndexController`, in `Controllers/Settings/`. `AiProvidersController` is routed under `/api/v1/assistant/providers`
-and `DocumentIndexController` under `/api/v1/assistant/documents`, but both belong to Settings (TFA Settings screen).
+`ApplicationSettingsController`, `ReminderSettingsController`, `RolesController` and `AiProvidersController`, in
+`Controllers/Settings/`. `AiProvidersController` is routed under `/api/v1/assistant/providers` but belongs to Settings
+(TFA Settings screen). TFA's document index has no endpoint (design D13 of `tfa-document-rag`; see §16.8).
 
 **Application and reminder settings**
 
@@ -1568,14 +1569,11 @@ and `DocumentIndexController` under `/api/v1/assistant/documents`, but both belo
 | GET | `/api/v1/assistant/providers/config` | `settings.ai.view` | Every provider (`AiProviderKind`: `Ollama`, `Gemini`, `OpenAI`) with status, model lists, `keySet` and `keyLast4`. The API key is never returned. |
 | PUT | `/api/v1/assistant/providers/config` | `settings.ai.edit` | Saves provider settings. An empty `apiKey` keeps the stored key, and `clearKey` removes it. |
 | DELETE | `/api/v1/assistant/providers/{kind}/models` | `settings.ai.model.remove` | Removes an administrator-added model (query `name`, required). Built-in models and the saved model stay. |
-| POST | `/api/v1/assistant/providers/{kind}/test` | `settings.ai.test` | Sends one tiny request to the provider. Returns `{ ok, message, failureKind }`, where `message` is fixed text and never the provider's own error. |
+| POST | `/api/v1/assistant/providers/{kind}/models` | `settings.ai.edit` (attribute) + `settings.ai.test` (checked in the action, else 403) | Add AI model page (`AddAiModelRequest`: `modelName`, `apiKey`, `baseUrl`). Tests the typed values without saving; only when the test passes saves the model and key or address and makes it the one in use. Returns `AddAiModelResultDto` (`ok`, `message`, `failureKind`, `providers`). |
+| POST | `/api/v1/assistant/providers/{kind}/test` | `settings.ai.test` | Sends one tiny request to the provider. Returns `{ ok, message, failureKind }`. `message` is the fixed text; for an `Unexpected` or `ModelUnavailable` failure it ends with the provider's own reason, "{Provider} said: HTTP {status} - {reason}" (at most 200 characters, keys replaced by `[key]`, §16.4). |
 
-**TFA Settings: document search** (`DocumentIndexController`, class-level `[Authorize]`)
-
-| Method | Route | Permission / policy | Purpose |
-|---|---|---|---|
-| GET | `/api/v1/assistant/documents/status` | `settings.ai.view` | The TFA document index (`DocumentIndexStatusDto`: `enabled`, `sourcePath`, `folderFound`, `embeddingModel`, `fileCount`, `chunkCount`, `lastIndexedAt`, `isRunning`, `lastError`, `lastErrorFile`). |
-| POST | `/api/v1/assistant/documents/reindex` | `settings.ai.edit` | Asks the indexer to check the documents folder now and returns **202 Accepted** with the status (`isRunning` true when the request was accepted or a run is already going). A request while a run is in progress starts nothing new. 400 when `DocumentKnowledge:Enabled` is false. |
+A model name (save and Add AI model) must contain no whitespace: "A model name is the provider's model ID, without
+spaces, for example gemini-3.8-flash." (`UpdateAiProviderRequestValidator`, `AddAiModelRequestValidator`).
 
 **Example requests**
 
@@ -1596,7 +1594,7 @@ and `DocumentIndexController` under `/api/v1/assistant/documents`, but both belo
     { "kind": "OpenAI", "isEnabled": true, "modelName": "gpt-4o-mini", "baseUrl": null, "apiKey": "<secret>", "clearKey": false } ] }
 ```
 
-The example values are the built-in defaults from `Common/Constants/AiProviderCatalog.cs`: `llama3.2:3b` and base URL `http://localhost:11434` for Ollama, `gemini-2.0-flash` for Gemini, `gpt-4o-mini` for OpenAI. `AiProviderSeeder` enables only Ollama on a new installation.
+The example values are the built-in defaults from `Common/Constants/AiProviderCatalog.cs`: `llama3.2:3b` and base URL `http://localhost:11434` for Ollama, `gemini-3.8-flash` for Gemini, `gpt-4o-mini` for OpenAI. `AiProviderSeeder` enables only Ollama on a new installation. On every start it also turns built-in model rows that are no longer in `AiProviderCatalog.BuiltInModels` into administrator-added ones (so they can be removed), and moves a provider row that is switched off with no key and names such a model to the current default.
 
 ### 8.10 Assistant
 
@@ -1634,9 +1632,9 @@ the confirm endpoint. The model cannot call it (see §16).
 | 8.6 Communication | `MailController` (16), `NotificationsController` (4) | 20 |
 | 8.7 Reports | `ReportController` (2) | 2 |
 | 8.8 Profile | `ProfileController` (7) | 7 |
-| 8.9 Settings | `ApplicationSettingsController` (2), `ReminderSettingsController` (2), `RolesController` (9), `AiProvidersController` (4), `DocumentIndexController` (2) | 19 |
+| 8.9 Settings | `ApplicationSettingsController` (2), `ReminderSettingsController` (2), `RolesController` (9), `AiProvidersController` (5) | 18 |
 | 8.10 Assistant | `AssistantController` (7) | 7 |
-| **Total** | 22 controllers | **116** |
+| **Total** | 21 controllers | **115** |
 
 The three `/api/v1/permissions` write rows are one C# method (`CatalogIsFixed`) carrying three HTTP attributes. They count as
 three HTTP actions in the totals above.
@@ -2247,7 +2245,7 @@ elements in three layers:
 |---|---|---|
 | Menu | `buildNavigation(user)` adds an entry only when `user.permissions.includes(key)` (§12.2) | Mail entry only with `mail.read` |
 | Route | `permissionGuard` with `data.permissions` (§12.3, §12.8) | `/tasks/new` needs `tasks.create` |
-| Element | `computed()` signals in the component built from `AuthService.hasPermission(key)` / `currentUser().permissions`, used in `@if` blocks | `canEdit = computed(() => this.can(Permissions.DepartmentsEdit))` in `DepartmentListComponent`; `canCompose()` / `canOrganize()` in `MailReaderComponent` and `MailListComponent`; `canEdit`, `canTest`, `mayRemoveModel` in `AiProviderSettingsComponent`; `canReindex` in `DocumentIndexCardComponent`; `canEdit` in `TaskDetailsComponent` (combined with "assignee is the current user"); the **Reset MFA** button with `employees.mfa.reset`; the shell's `canUseAssistant()`, `canSeeMail()`, `canSeeNotifications()` |
+| Element | `computed()` signals in the component built from `AuthService.hasPermission(key)` / `currentUser().permissions`, used in `@if` blocks | `canEdit = computed(() => this.can(Permissions.DepartmentsEdit))` in `DepartmentListComponent`; `canCompose()` / `canOrganize()` in `MailReaderComponent` and `MailListComponent`; `canEdit`, `canTest`, `mayRemoveModel`, `canAddModel` in `AiProviderSettingsComponent`; `canEdit` in `TaskDetailsComponent` (combined with "assignee is the current user"); the **Reset MFA** button with `employees.mfa.reset`; the shell's `canUseAssistant()`, `canSeeMail()`, `canSeeNotifications()` |
 
 None of these is a security boundary: the API re-checks every request (§9, §14). Role and permission changes
 reach the SPA through the `/auth/me` permission re-sync on the 15 s session check, and the API applies them on the next
@@ -2305,6 +2303,7 @@ All routes except Login, Account Recovery, Security Setup and Legal are children
 | 20 Application Settings | `/settings/application` | `ApplicationSettingsComponent` | `permissionGuard`: `settings.application.manage` |
 | Mail (added) | `/mail` | `MailComponent` | `permissionGuard`: `mail.read` |
 | TFA Settings (added) | `/settings/tfa` | `TfaSettingsComponent` | `permissionGuard`: `settings.ai.view` |
+| Add AI model (added) | `/settings/tfa/models/new` | `AddAiModelComponent` | `permissionGuard`: `settings.ai.edit`; the page also needs `settings.ai.test` (otherwise back to `/settings/tfa`) |
 | Role Configuration (added) | `/settings/permissions` | `PermissionsManagementComponent` | `permissionGuard`: `roles.manage` |
 | TFA Assistant panel (added) | no route | `TfaPanelComponent` (in the shell) | rendered only with `assistant.chat` |
 | Legal pages (added) | `/legal/copyright`, `/legal/terms`, `/legal/privacy`, `/legal/disclaimer`, `/legal/licenses` | `LegalPageComponent` (`data.documentId`) | public |
@@ -2356,7 +2355,7 @@ BRD, FRD, HLD and LLD named in §1.6 (the "#" column below is the original BRD s
 | Project Management | `/projects`, `/projects/:id`; `ProjectService` | `ProjectsController`, `PositionsController`; `ProjectService`, `PositionService` | `/api/v1/projects`, `/api/v1/projects/{id}`, `/api/v1/projects/{id}/employees`, `/api/v1/projects/{id}/members`, `/api/v1/projects/{id}/tasks`, `/api/v1/positions` |
 | Mail | `/mail`; `MailService` | `MailController`; `MailService`, `MailAttachmentService` | 16 endpoints under `/api/v1/mail` (§15.2) |
 | Role Configuration | `/settings/permissions`; `RoleService` | `RolesController`; `RoleService` | `/api/v1/roles`, `/api/v1/roles/{id}`, `GET /api/v1/permissions`, `GET /api/v1/users/roles` |
-| TFA Settings | `/settings/tfa`; `AiProviderAdminService`; `DocumentIndexCardComponent` | `AiProvidersController`, `DocumentIndexController`; `AiProviderConfigService`, `AiProviderConnectionTester`, `DocumentIndexService` | `/api/v1/assistant/providers/config`, `/api/v1/assistant/providers/{kind}/models`, `/api/v1/assistant/providers/{kind}/test`, `/api/v1/assistant/documents/status`, `/api/v1/assistant/documents/reindex` |
+| TFA Settings | `/settings/tfa`, `/settings/tfa/models/new` (Add AI model); `AiProviderAdminService` | `AiProvidersController`; `AiProviderConfigService`, `AiProviderConnectionTester`, `AiModelAdditionService` | `/api/v1/assistant/providers/config`, `/api/v1/assistant/providers/{kind}/models` (DELETE, POST), `/api/v1/assistant/providers/{kind}/test` |
 | TFA Assistant panel | shell; `AssistantService`, `WakePhraseService`, `SpeakService` | `AssistantController`; `AssistantService`, `AssistantActionService`, `AssistantToolbox` | 7 endpoints under `/api/v1/assistant` (§16.2) |
 | Legal pages | `/legal/*`; `LegalPageComponent` (static content in `modules/legal/utils/legal-documents.ts`) | none | none |
 
@@ -2606,8 +2605,10 @@ flowchart LR
 | Authorization | `IAssistantAuthorizer` → `AssistantAuthorizer` (evaluates the API's own `perm:{key}` policies through `IAuthorizationService`) |
 | Safety | `SecretScreen`, `AssistantRateLimiter`, `AssistantAuditLog` |
 | Document knowledge | `DocumentSearch` (`IDocumentSearch`), `DocumentContext`, `DocumentVectorIndex`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentIndexStatus`, `DocumentEmbeddingEndpoint`, `MarkdownChunker`, `EmbeddingVectors` (`Services/Assistant/Documents`); `OllamaEmbeddingClient` (`Integrations/Ai/Embeddings`); `DocumentIndexRepository` (`Repositories/Assistant/Documents`) |
-| Provider configuration | `AiProviderConfigService`, `AiProviderConnectionTester`, `AiKeyProtector` (Settings → TFA Settings) |
-| Document index administration | `DocumentIndexController`, `DocumentIndexService` (Settings → TFA Settings → Document search) |
+| Provider configuration | `AiProviderConfigService`, `AiProviderConnectionTester`, `AiModelAdditionService`, `AiKeyProtector` (Settings → TFA Settings and Add AI model) |
+
+The document index has no administration endpoint or screen (design D13 of `tfa-document-rag`); §16.8 describes how it
+runs and how problems are reported.
 
 ### 16.2 Endpoints and permissions
 
@@ -2622,9 +2623,8 @@ flowchart LR
 | POST | `/api/v1/assistant/actions/{id}/cancel` | `assistant.actions.confirm` | Cancel a pending action |
 | GET / PUT | `/api/v1/assistant/providers/config` | `settings.ai.view` / `settings.ai.edit` | TFA Settings: provider configuration |
 | DELETE | `/api/v1/assistant/providers/{kind}/models` | `settings.ai.model.remove` | Remove an added model |
-| POST | `/api/v1/assistant/providers/{kind}/test` | `settings.ai.test` | Connection test through `ChatModelGateway` |
-| GET | `/api/v1/assistant/documents/status` | `settings.ai.view` | TFA Settings: document index status (`DocumentIndexStatusDto`) |
-| POST | `/api/v1/assistant/documents/reindex` | `settings.ai.edit` | TFA Settings: check the documents folder now; 202 with the status, no second run while one is going; 400 when indexing is switched off |
+| POST | `/api/v1/assistant/providers/{kind}/models` | `settings.ai.edit` + `settings.ai.test` | Add AI model: test the typed values, save and activate only on success (§8.9) |
+| POST | `/api/v1/assistant/providers/{kind}/test` | `settings.ai.test` | Connection test through `ChatModelGateway`; an unexpected or model-not-available failure adds the provider's reason (§16.4) |
 
 `assistant.chat` and `assistant.actions.confirm` are granted to Manager and Employee by default and to every existing role
 when first added. The `settings.ai.*` keys are Administrator defaults (legacy `settings.ai.manage` expands to the four).
@@ -2673,15 +2673,30 @@ Assistant, Tool). Conversations are kept indefinitely (no retention job).
 | Provider (`AiProviderKind`) | Endpoint | Locality | Key transport | Built-in default model |
 |---|---|---|---|---|
 | Ollama | `{BaseUrl or http://localhost:11434}/api/chat` | Local | none | `llama3.2:3b` |
-| Gemini | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | Cloud | `x-goog-api-key` header | `gemini-2.0-flash` |
+| Gemini | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | Cloud | `x-goog-api-key` header | `gemini-3.8-flash` |
 | OpenAI | `https://api.openai.com/v1/chat/completions` | Cloud | Bearer header | `gpt-4o-mini` |
 
 - One `AiProviderConfig` row per provider (`IsEnabled`, `ModelName`, `BaseUrl`, `EncryptedApiKey`, `KeyLast4`); selectable
   models in `AiModel` (`IsBuiltIn`; built-in names in `AiProviderCatalog`). On a brand-new installation `AiProviderSeeder`
   turns Ollama on with `llama3.2:3b`; Gemini and OpenAI start off with no key.
+- Built-in Gemini models: `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite`. The earlier list
+  (`gemini-2.0-flash` default, `gemini-2.5-flash`, `gemini-2.5-pro`) was replaced on 01-Nov-2026 because Google answers
+  404 for those models to new keys. A saved setting that still names an old model keeps it; Test connection reports it.
+- A model name is the provider's model ID and may not contain whitespace (`UpdateAiProviderRequestValidator`,
+  `AddAiModelRequestValidator`): "A model name is the provider's model ID, without spaces, for example gemini-3.8-flash."
+  There is no allow-list; Test connection checks that the model exists. The Add AI model page shows an example ID per
+  provider (`gemini-3.8-flash`, `gpt-4o-mini`, `llama3.2:3b`) and, for Gemini, a link to create a key in Google AI Studio
+  (`https://aistudio.google.com/apikey`). Keys are not judged by prefix (AI Studio keys start with `AQ.` or, older, `AIza`).
 - Failures are classified into `ProviderFailureKind` (RateLimited, InvalidKey, Timeout, Unreachable, ModelUnavailable,
   Unexpected) and shown as fixed messages with the other available providers as alternatives; TFA never switches model by
-  itself. Raw provider bodies are never shown or logged (provider, kind and HTTP status only).
+  itself. `GeminiProvider.Classify` maps a `400` / `INVALID_ARGUMENT` whose message mentions the model name (for example
+  "unexpected model name format") to `ModelUnavailable`, after the API-key rule.
+- `ProviderFailureException.ProviderReason` carries the provider's own error status and message, built by
+  `ProviderHttp.Reason`: the sent key and key-shaped tokens (`AIza…`, `sk-…`, `AQ.…`) replaced by `[key]`, whitespace
+  collapsed, at most 200 characters. Raw provider bodies are never shown or logged. The failure log has provider, kind,
+  HTTP status and this reason. `AiProviderConnectionTester` (Test connection and the Add AI model test, both
+  `settings.ai.test`) appends "{Provider} said: HTTP {status} - {reason}" for `Unexpected` and `ModelUnavailable`
+  failures; chat replies keep the fixed message.
 - `AiProviders:TimeoutSeconds` (60) is the `HttpClient` timeout of the cloud providers and `AiProviders:OllamaTimeoutSeconds`
   (180) that of the Ollama chat and embedding clients; redirects are not followed.
 - `OllamaProvider` sends `options.num_ctx` = `AiProviders:OllamaContextTokens` (default 8192) with every chat request, so a
@@ -2792,11 +2807,12 @@ sequenceDiagram
 | Chunking (`MarkdownChunker`, pure) | ATX headings (`#`–`######`) outside fenced code blocks start sections. The first level-1 heading is the document title (else the file name) and is not part of the heading path. The heading path is the heading stack joined with ` › ` (max 1000 characters). A section shorter than 200 characters (`MinSectionCharacters`) is merged into the next section under the same parent. A section longer than `MaxChunkCharacters` is split at blank lines; a table is split between rows and every piece repeats the header and separator rows; a paragraph longer than the limit is split at sentence ends. Sections whose heading, with its number removed, is or starts with an entry of `ExcludedHeadings` (default `Document Control`, `Revision History`, `Approvals`) are skipped with their sub-sections. The embedded text is `Document: {title}\nSection: {headingPath}\n\n{text}`; the stored `Text` is the section text only |
 | Embeddings (`OllamaEmbeddingClient : IEmbeddingClient`) | `POST {baseUrl}/api/embed` with `{ model, input[] }`; model `DocumentKnowledge:EmbeddingModel` (`nomic-embed-text`, 768 dimensions); prefixes `search_document: ` for chunks and `search_query: ` for questions (`EmbeddingPurpose`); batches of 16; every vector L2-normalised. Uses `ProviderHttp` on a typed `HttpClient` with the AI timeout, redirects not followed and HTTP logging removed. Failures throw `EmbeddingUnavailableException` (`Unreachable`, `Timeout`, `ModelNotFound` with "Run: ollama pull {model}", `Unexpected`) with fixed text that never holds document text |
 | Embedding server (`DocumentEmbeddingEndpoint`) | `DocumentKnowledge:OllamaBaseUrl` when set (checked at startup: http/https, not a link-local or cloud metadata address), else the base URL saved for the Ollama provider in TFA Settings, else `http://localhost:11434`. Embeddings always run on Ollama, whatever chat provider is selected |
-| Indexer (`DocumentIndexer`, scoped) | For each file: SHA-256 of its bytes; skipped when the stored `ContentHash` and `EmbeddingModel` match. Otherwise chunk, embed, and in one `SaveChangesAsync` delete the old chunks and insert the new ones (`IDocumentIndexRepository.ReplaceChunksAsync`), so the old chunks stay searchable until then. Sources of files no longer on disk are removed (cascade to chunks). A changed `EmbeddingModel` re-embeds every file. An error on one file is recorded in the status with the file's path and the run continues; an unavailable embedding server stops the run. A missing folder sets the error "The documents folder was not found: {path}" and removes the stored sources. During a run the in-memory index is reloaded every 10 embedded files (`ReloadEvery`) and at the end, so a long first run becomes searchable as it goes |
+| Indexer (`DocumentIndexer`, scoped) | For each file: SHA-256 of its bytes; skipped when the stored `ContentHash` and `EmbeddingModel` match. Otherwise chunk, embed, and in one `SaveChangesAsync` delete the old chunks and insert the new ones (`IDocumentIndexRepository.ReplaceChunksAsync`), so the old chunks stay searchable until then. Sources of files no longer on disk are removed (cascade to chunks). A changed `EmbeddingModel` re-embeds every file. An error on one file is recorded in the status with the file's path, logged as a warning ("TFA could not index the document {File}") and the run continues; an unavailable embedding server stops the run and is logged as a warning ("TFA document indexing stopped: {Reason}"). A missing folder sets the error "The documents folder was not found: {path}", is logged as a warning, and removes the stored sources. During a run the in-memory index is reloaded every 10 embedded files (`ReloadEvery`) and at the end, so a long first run becomes searchable as it goes |
 | Search index (`DocumentVectorIndex`, singleton) | All chunks of the configured model with their normalised vectors in memory, replaced atomically as one snapshot. A search is one dot product per chunk (brute force); chunks with a score ≥ `MinScore` are ranked, at most `TopK` are kept, and they are trimmed to `MaxContextCharacters` of text in score order (the best match is always kept) |
 | Search (`DocumentSearch : IDocumentSearch`, scoped) | Embeds the query and searches the index. Returns `Unavailable(CannotSearch)` when `Enabled` is false, when the embedding call fails, or when the index is empty after indexing finished; `Unavailable(Preparing)` when the index is empty and the first run is still going or has not finished; `NoMatch` when no chunk reaches `MinScore`; `Found` otherwise |
-| Background service (`DocumentIndexerService : BackgroundService`, singleton + hosted) | Loads the stored index at startup, waits 10 s (`StartDelay`), runs the indexer, then repeats every `RescanMinutes`. `RequestReindex()` wakes it at once. One run at a time (`SemaphoreSlim(1)` plus a pending flag): a request while a run is going or already requested is ignored. Each run uses its own DI scope. A failed run is logged and shown as "Indexing failed. See the API log for details."; the service keeps running. `DocumentKnowledge:Enabled` = false turns the service and retrieval off |
-| Status (`DocumentIndexStatus`, singleton) | `Enabled`, `SourcePath` (full path), `FolderFound`, `EmbeddingModel`, `FileCount`, `ChunkCount`, `LastIndexedAt`, `IsRunning`, `LastError`, `LastErrorFile`; returned by `GET /api/v1/assistant/documents/status` |
+| Background service (`DocumentIndexerService : BackgroundService`, singleton + hosted) | Loads the stored index at startup, waits 10 s (`StartDelay`), runs the indexer, then repeats every `RescanMinutes` (default 5). One run at a time (`SemaphoreSlim(1)`; `RunOnceAsync` returns false when a run is already going). Each run uses its own DI scope. A failed run is logged as an error and recorded in the status as "Indexing failed. See the API log for details."; the service keeps running. `DocumentKnowledge:Enabled` = false turns the service and retrieval off. There is no way to trigger a run from the UI or API: to index at once an operator restarts the API (startup run) or waits for the next rescan |
+| Status (`DocumentIndexStatus`, singleton) | `Enabled`, `SourcePath` (full path), `FolderFound`, `EmbeddingModel`, `FileCount`, `ChunkCount`, `LastIndexedAt`, `IsRunning`, `LastError`, `LastErrorFile`. Internal only: `DocumentSearch` uses it to tell the user that the documents cannot be searched or are still being prepared. It is not exposed by any endpoint |
+| No admin UI (design D13) | A first version had `DocumentIndexController` (`GET .../documents/status`, `POST .../documents/reindex`), `DocumentIndexService`, `DocumentIndexStatusDto`, a TFA Settings "Document search" card (`DocumentIndexCardComponent`, 3 s polling, **Re-index now**) and `DocumentIndexerService.RequestReindex()`. They were removed on 01-Nov-2026: nothing on the card could be changed from the UI, the rescan does what the button did, and the folder path, model and chunk count are developer details. Indexing problems are in the server log |
 | Storage | `DocumentSources` and `DocumentChunks` (§7.2.6), migration `20261031134802_AddDocumentIndex`. `DocumentIndexRepository` stages changes only; `DocumentIndexer` saves through `IUnitOfWork` |
 | Access | Every role that can chat with TFA can get answers from every indexed document (project owner decision). Per-role document filtering is future work (§24) |
 | Measured size | On a laptop CPU the first full index of the 89 Markdown files took about 28 minutes and stored 3,327 chunks; later runs skip unchanged files and finish in seconds |
@@ -2813,7 +2829,7 @@ sequenceDiagram
 | `TfaMessageComponent` | Text, refusal, notice, ranked tasks, screen links, embedded action card, and "Sources" chips (document title + last heading; tooltip with the full heading path and the file path) |
 | `TfaActionCardComponent` | Confirm / Edit / Cancel, mail edit form, status labels (not gated by `assistant.actions.confirm`, §14.5) |
 | `AssistantService` (Angular) | All `/api/v1/assistant` calls; signals for panel, providers, messages, failure; provider list refreshed every 60 s (`PROVIDER_REFRESH_MS`) |
-| `DocumentIndexCardComponent` (Settings → TFA Settings) | "Document search" card: documents folder (with "Not found"), embedding model, files, chunks, last indexed ("Not yet"), state (Up to date / Indexing… / Switched off), last error with its file, and **Re-index now** (only with `settings.ai.edit`). Polls the status every 3 s (`DOCUMENT_STATUS_POLL_MS`) while a run is going. Calls `AiProviderAdminService.getDocumentStatus()` / `reindexDocuments()` |
+| `AddAiModelComponent` (Settings → TFA Settings → Add AI model) | Provider, model name (placeholder from `MODEL_ID_EXAMPLES`: `gemini-3.8-flash`, `gpt-4o-mini`, `llama3.2:3b`; the `modelId` validator refuses whitespace), API key or Ollama address, Test connection. For Gemini a hint links to Google AI Studio (`https://aistudio.google.com/apikey`). Calls `AiProviderAdminService.addModel()`. TFA Settings has no document index card (§16.8) |
 
 
 ---
@@ -3011,8 +3027,8 @@ knowledge tests added, `HelpKnowledgeBaseTests` removed), the run totals were no
 | Mail | `MailSendTests`, `MailDraftAndThreadTests`, `MailboxTests`, `MailAttachmentTests` | `MailEndpointsTests` |
 | Dashboard / reports | `DashboardServiceTests`, `*AnalyticsServiceTests`, `AnalyticsScopeTests`, `ManagerScopeTests`, `ReportServiceTests`, `ReportCsvTests` | `DashboardEndpointsTests`, `*AnalyticsEndpointsTests`, `EmployeeAnalyticsIsolationTests`, `ManagerAnalyticsIsolationTests`, `ReportEndpointsTests` |
 | Management | `UserAllocationServiceTests`, `ManagerAssignmentTests`, `UserDeletionTests`, `DepartmentRequestValidatorsTests` | `UsersEndpointsTests`, `LastAdministratorTests`, `LastAdministratorStatusTests`, `AdminDeleteEndpointsTests`, `DepartmentsEndpointsTests`, `ProjectTeamEndpointsTests` |
-| Assistant / AI | `AssistantServiceTests`, `AssistantActionServiceTests`, `AssistantActionConcurrencyTests`, `AssistantToolGateTests`, `SecretScreenTests`, `ChatModelGatewayTests`, `ProviderFailureHandlingTests`, `AiKeyProtectorTests`, `AssistantDocumentPromptTests`, `AssistantSourcesTests`, `AssistantLiveDataTests` | `AssistantEndpointsTests`, `AssistantProviderEndpointsTests`, `AiDefaultsOnFirstRunTests`, `ProviderRedirectTests`, `DocumentAnswerEndpointsTests` |
-| TFA document knowledge | `MarkdownChunkerTests`, `DocumentIndexerTests`, `DocumentIndexerServiceTests`, `DocumentIndexRepositoryTests`, `DocumentSearchTests`, `DocumentVectorIndexTests`, `DocumentKnowledgeOptionsTests`, `OllamaEmbeddingClientTests`, `DocumentIndexMigrationTests` | `DocumentIndexEndpointsTests`, `DocumentIndexStartupTests` |
+| Assistant / AI | `AssistantServiceTests`, `AssistantActionServiceTests`, `AssistantActionConcurrencyTests`, `AssistantToolGateTests`, `SecretScreenTests`, `ChatModelGatewayTests`, `ProviderFailureHandlingTests`, `AiKeyProtectorTests`, `AssistantDocumentPromptTests`, `AssistantSourcesTests`, `AssistantLiveDataTests`, `ChatProviderTests` (Gemini model-name errors, provider reason), `AiProviderConnectionTesterTests`, `AiModelAdditionServiceTests`, `AddAiModelRequestValidatorTests` | `AssistantEndpointsTests`, `AssistantProviderEndpointsTests`, `AddAiModelEndpointsTests`, `AiDefaultsOnFirstRunTests`, `ProviderRedirectTests`, `DocumentAnswerEndpointsTests` |
+| TFA document knowledge | `MarkdownChunkerTests`, `DocumentIndexerTests`, `DocumentIndexerServiceTests`, `DocumentIndexRepositoryTests`, `DocumentSearchTests`, `DocumentVectorIndexTests`, `DocumentKnowledgeOptionsTests`, `OllamaEmbeddingClientTests`, `DocumentIndexMigrationTests` | `DocumentIndexStartupTests` (`DocumentIndexEndpointsTests` removed with the endpoints, §16.8) |
 | Platform | `StorageRootTests`, `SettingsInitializerTests`, `DatabaseSeederTests`, `AppClockTests`, `AppExceptionTests`, `EmailDomainTests` | `ApiConventionsTests`, `GlobalExceptionHandlerTests`, `DependencyInjectionTests`, `ForwardedHeadersTests`, `KeyRingStartupWarningTests`, `AuthenticationWiringTests` |
 
 ### 20.3 Critical scenarios

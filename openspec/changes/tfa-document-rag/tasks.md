@@ -134,4 +134,64 @@
   documents (new version entry for the approved BRD), per `agent.md` §6.
 - [x] 6.4 Run `dotnet build`, `dotnet test`, `ng test` and `npm run build`, then start the app,
   re-index from TFA Settings, and ask three documentation questions and one task question in TFA as
-  an Employee. Confirm the answers, sources and status card.
+  an Employee. Confirm the answers, sources and status card. (The status card and Re-index were
+  removed afterwards; task 7.5 repeats this check without them.)
+
+## 7. Remove the Document search card and index endpoints (design D13)
+
+- [x] 7.1 Frontend: delete `components/document-index-card.component.{ts,html,css,spec.ts}`, remove
+  the card from `pages/tfa-settings.component.{ts,html}` and the card assertion from
+  `tfa-settings.component.spec.ts`, and remove `getDocumentStatus()` / `reindexDocuments()` from
+  `ai-provider-admin.service.ts` and `DocumentIndexStatus` from `ai-provider-admin.model.ts`.
+  Verify that a search for `document-index`, `DocumentIndexStatus`, `getDocumentStatus` and
+  `reindexDocuments` over `frontend/src` finds nothing.
+- [x] 7.2 Backend: delete `Controllers/Settings/DocumentIndexController.cs`,
+  `Services/Settings/TfaSettings/DocumentIndex/` (service and interface) and
+  `Dtos/Settings/TfaSettings/DocumentIndexDtos.cs`; remove the `IDocumentIndexService` registration
+  from `Config/ServiceRegistration.cs`; remove `DocumentIndexerService.RequestReindex()` and its
+  signal, keeping the start delay, the rescan loop and the single-run guard used by the loop. Keep
+  `DocumentIndexStatus`, `DocumentIndexer`, `DocumentSearch` and their log warnings.
+- [x] 7.3 Tests: delete `IntegrationTests/Settings/TfaSettings/DocumentIndexEndpointsTests.cs`, remove
+  the concurrent `RequestReindex()` test from `DocumentIndexerServiceTests.cs`, and add an
+  integration test that both old routes return 404. Verify that `ArchitectureTests` still pass.
+- [x] 7.4 Docs: remove the Document search card, Re-index now and the two endpoints from the README,
+  the TDD, the TFA Settings and Assistant BRD/FRD/HLD/LLD documents, both `08.4-TFA-Settings` workflow
+  docs and `verification.md` (keep its tuning results; add a note that the card was removed). Add a
+  version entry to each approved document, per `agent.md` §6.
+- [ ] 7.5 Run `dotnet build`, `dotnet test`, `ng test` and `npm run build`, start the app, and confirm
+  that TFA Settings has no Document search card, that TFA still answers a documentation question with
+  sources, and that renaming the documents folder produces the warning in the server log.
+
+## 8. Model names and provider errors (design D14)
+
+- [x] 8.1 Reject a model name containing whitespace in `AddAiModelRequestValidator` and
+  `UpdateAiProviderRequestValidator` with the D14 message, and mirror the rule in the Add AI model
+  form. Verify with validator unit tests (`Gemini API Key` rejected, `gemini-3.8-flash` and
+  `llama3.2:3b` accepted) and a component spec that no test request is sent.
+- [x] 8.2 Add the per-provider model-name placeholder and the Gemini key hint (where to get a key in
+  Google AI Studio; no check on the key prefix) to the Add AI model page. Verify with a component spec for each
+  provider.
+- [x] 8.3 In `GeminiProvider.Classify`, map 400 / `INVALID_ARGUMENT` with a model-related message to
+  `ModelUnavailable`, after the API-key rule. Verify with unit tests for "unexpected model name
+  format" (model not available) and "API key not valid" (key problem).
+- [x] 8.4 Add `ProviderReason` to `ProviderFailureException`, filled by the Gemini, OpenAI and Ollama
+  providers from the error body (status text and message, at most 200 characters, keys replaced by
+  `[key]`). In `AiProviderConnectionTester`, append "<provider> said: HTTP <status> - <reason>" to an
+  `Unexpected` or `ModelUnavailable` failure and add the reason to the warning log; leave chat replies unchanged. Verify
+  with unit tests: an unclassified 400 shows the reason on Test connection, the sent key is
+  replaced by `[key]`, a long reason is cut, and `AssistantService` replies do not contain it.
+- [x] 8.5 Update the TFA Settings and Add AI model sections of the FRD/LLD and the TDD with the
+  model-name rule and the Test connection reason.
+- [ ] 8.6 Manual check: on the Add AI model page, `Gemini API Key` as the model name is refused before
+  any test, `gemini-3.8-flash` with a valid AI Studio key passes, and a retired model such as
+  `gemini-2.0-flash` shows Google's own reason naming the replacement.
+- [x] 8.7 Update the Gemini models in `AiProviderCatalog` (design D14) to `gemini-3.8-flash` (default),
+  `gemini-3.5-flash` and `gemini-3.5-flash-lite` (replacing `gemini-3.1-pro-preview`, which has no
+  free-tier quota), after checking them with `GET v1beta/models` and a test call. Update the catalog tests, the README and the TFA Settings docs that name the old models.
+- [x] 8.8 Retire old built-in models in existing databases (design D14, "Existing databases"): in
+  `AiProviderSeeder`, mark built-in `AiModels` rows that are no longer in `BuiltInModels` as
+  `IsBuiltIn = false`, and move a provider row that is switched off, has no key and names a retired
+  built-in model to `DefaultModel`. Verify with seeder tests: a retired built-in becomes removable
+  and is removed through `AiProviderConfigService`; a never-set-up Gemini row moves to
+  `gemini-3.8-flash`; a set-up provider keeps its retired model; current built-ins stay built-in;
+  running the seeder twice changes nothing more. Add a line to the TFA Settings LLD and the TDD.

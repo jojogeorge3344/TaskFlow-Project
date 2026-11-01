@@ -22,6 +22,7 @@ import { NotificationCenterComponent } from '../modules/communication/notificati
 import { ReportComponent } from '../modules/reports/pages/report.component';
 import { PermissionsManagementComponent } from '../modules/settings/role-configuration/pages/permissions-management.component';
 import { ReminderSettingsComponent } from '../modules/settings/reminder-settings/pages/reminder-settings.component';
+import { AddAiModelComponent } from '../modules/settings/tfa-settings/pages/add-ai-model.component';
 import { TfaSettingsComponent } from '../modules/settings/tfa-settings/pages/tfa-settings.component';
 import { WorkloadComponent } from '../modules/monitoring/employee-workload/pages/workload.component';
 import { ActivityComponent } from '../modules/monitoring/task-management/activity/pages/activity.component';
@@ -126,6 +127,8 @@ describe('app routes', () => {
       'settings/reminders',
       'settings/application',
       'settings/tfa',
+      'settings/tfa/models/:kind/:name/edit',
+      'settings/tfa/models/new',
       'settings/permissions',
       'profile',
       'profile/change-password',
@@ -210,6 +213,20 @@ describe('app routes', () => {
     expect(route.canActivate).toEqual([permissionGuard]);
     expect(route.data?.['permissions']).toEqual([Permissions.SettingsAiView]);
     expect(await load(route)).toBe(TfaSettingsComponent);
+  });
+
+  it('protects the Add AI model page with settings.ai.edit (the page itself also needs settings.ai.test)', async () => {
+    const route = childRoute('settings/tfa/models/new');
+    expect(route.canActivate).toEqual([permissionGuard]);
+    expect(route.data?.['permissions']).toEqual([Permissions.SettingsAiEdit]);
+    expect(await load(route)).toBe(AddAiModelComponent);
+  });
+
+  it('protects the Edit AI model page like the Add AI model page', async () => {
+    const route = childRoute('settings/tfa/models/:kind/:name/edit');
+    expect(route.canActivate).toEqual([permissionGuard]);
+    expect(route.data?.['permissions']).toEqual([Permissions.SettingsAiEdit]);
+    expect(await load(route)).toBe(AddAiModelComponent);
   });
 
   it('protects Permissions Management with roles.manage, which only the Administrator role holds', async () => {

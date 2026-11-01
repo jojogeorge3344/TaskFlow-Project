@@ -203,7 +203,9 @@ public partial class OllamaProvider : IChatModelProvider
             _ => ProviderFailureKind.Unexpected
         };
 
-        return new ProviderFailureException(Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode);
+        return new ProviderFailureException(
+            Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            providerReason: ProviderHttp.Reason(null, error, null));
     }
 
     private static bool DoesNotSupportTools(string body) =>

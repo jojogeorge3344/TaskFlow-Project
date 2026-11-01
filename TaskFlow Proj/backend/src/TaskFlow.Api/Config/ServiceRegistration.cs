@@ -68,7 +68,7 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Settings.RoleConfiguration.IRoleService, TaskFlow.Api.Services.Settings.RoleConfiguration.RoleService>();
         services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig.IAiProviderConfigService, TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig.AiProviderConfigService>();
         services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest.IAiProviderConnectionTester, TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest.AiProviderConnectionTester>();
-        services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.DocumentIndex.IDocumentIndexService, TaskFlow.Api.Services.Settings.TfaSettings.DocumentIndex.DocumentIndexService>();
+        services.AddScoped<TaskFlow.Api.Services.Settings.TfaSettings.ModelAddition.IAiModelAdditionService, TaskFlow.Api.Services.Settings.TfaSettings.ModelAddition.AiModelAdditionService>();
 
         // Assistant
         services

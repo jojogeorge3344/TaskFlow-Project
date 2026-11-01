@@ -191,13 +191,64 @@ Ollama calls (chat and embeddings) use their own timeout, `AiProviders:OllamaTim
 | `RescanMinutes` | `5` | |
 | `ExcludedHeadings` | `["Document Control","Revision History","Approvals"]` | Defaults in code; configured headings are added to them (the configuration binder appends to arrays). A heading matches after its section number is removed, also when followed by text such as "Approvals / Sign-off" |
 
-**D13 - Admin endpoints** on a new `Controllers/Settings/DocumentIndexController`, route
-`api/v1/assistant/documents`:
-- `GET status` with `[RequirePermission(PermissionKeys.SettingsAiView)]` → `DocumentIndexStatusDto`
-- `POST reindex` with `[RequirePermission(PermissionKeys.SettingsAiEdit)]` → `202 Accepted`, plus the
-  status (with `isRunning`)
+**D13 - No admin UI or endpoints for the index** (revised).
+The first version added `DocumentIndexController` (`GET api/v1/assistant/documents/status`,
+`POST .../reindex`), `DocumentIndexService` and a Document search card on TFA Settings that polled
+the status every 3 s while a run was going. They are removed:
+- Nothing on the card could be changed from the UI. Every value comes from `DocumentKnowledge` in
+  `appsettings.json` or from the indexer.
+- The background rescan (`RescanMinutes`, default 5) re-embeds changed files, so Re-index now only
+  saved up to five minutes.
+- The folder path, embedding model and chunk count are developer details. The relative default path
+  only makes sense in this workspace.
 
-The TFA Settings page gets a Document search card. It polls `status` every 3 s while `isRunning`.
+What stays: `DocumentIndexer`, `DocumentIndexerService` (start delay and rescan loop), `DocumentSearch`
+and the `DocumentIndexStatus` singleton, which `DocumentSearch` and the indexer still use to tell the
+user that the documents cannot be searched or are still being prepared. `RequestReindex()` and its
+single-run guard test go, because nothing calls them. A missing folder, an embedding failure and a
+per-file error are logged as warnings with the file path (the indexer already logs them; the
+removal must not drop those calls).
+
+*Alternatives rejected:* keeping the card (cost of a controller, a service, a polling component and
+their tests for status nobody acts on); a problem-only banner on TFA Settings (still needs the
+status endpoint, for a failure the server log already records).
+
+**D14 - Model names and provider errors** (`ai-provider-management`).
+- *Model name format.* `AddAiModelRequestValidator` and `UpdateAiProviderRequestValidator` reject a
+  model name that contains whitespace: "A model name is the provider's model ID, without spaces, for
+  example gemini-3.8-flash." No allow-list: providers add models often, and Test connection already
+  checks that the model exists. The Add AI model page shows a placeholder per provider
+  (`gemini-3.8-flash`, `gpt-4o-mini`, `llama3.2:3b`) and, for Gemini, a hint that the key comes from
+  Google AI Studio (aistudio.google.com/apikey). The hint does not judge a key by its prefix: current
+  AI Studio keys start with `AQ.`, older ones with `AIza`, and both work with the Gemini API.
+- *Built-in Gemini models.* `AiProviderCatalog` lists `gemini-2.0-flash` (the default),
+  `gemini-2.5-flash` and `gemini-2.5-pro`. On 1 Nov 2026 Google answers 404 for all three for new
+  keys ("no longer available ... use models/gemini-3.8-flash"), so a fresh install cannot use Gemini
+  with any built-in choice. The list becomes `gemini-3.8-flash` (default), `gemini-3.5-flash` and
+  `gemini-3.5-flash-lite`: each answered a test call with a free AI Studio key on 1 Nov 2026.
+  `gemini-3.1-pro-preview`, first planned as the third, answered 429 (no free-tier quota), so a
+  free-tier administrator would only ever see the rate-limit message for it; it can still be added
+  with Add AI model on a paid key. Saved settings that still name an old model keep it, and Test
+  connection reports it.
+- *Existing databases.* `AiProviderSeeder` only adds missing rows, so the retired models would stay
+  in the dropdown as built-ins that cannot be removed. At every start the seeder now turns a
+  built-in `AiModels` row that is no longer in `BuiltInModels` into an administrator-added one
+  (`IsBuiltIn = false`), so it can be removed like any added model (still not while it is the model
+  saved for its provider). A provider row that was never set up (switched off, no key) and still
+  names a retired built-in model gets the new default model. A provider an administrator set up
+  keeps its model.
+- *Gemini model-name errors.* `GeminiProvider.Classify` maps a `400`/`INVALID_ARGUMENT` whose message
+  mentions the model (for example "unexpected model name format") to `ModelUnavailable`, after the
+  existing API-key rule, so a bad name gets "The configured model is not available on Google Gemini"
+  instead of "unexpected error".
+- *Provider reason on Test connection.* `ProviderFailureException` also carries the provider's error
+  status text and message (`ProviderReason`), cut to 200 characters, with anything that looks like a
+  key (the saved key's value, and `AIza…`/`sk-…`/`AQ.…` tokens) replaced by `[key]`. When a test
+  fails with `Unexpected` or `ModelUnavailable` (Google's 404 names the replacement model), `AiProviderConnectionTester` appends "Google Gemini said: HTTP 400 -
+  <reason>" to the message. Only Test connection shows it: it needs `settings.ai.test`, so it reaches
+  administrators only. Chat users keep the plain message. The existing warning log adds the reason.
+  *Alternative rejected:* showing the raw response body, which can be long and is not written for
+  users.
 
 ## Risks / Trade-offs
 

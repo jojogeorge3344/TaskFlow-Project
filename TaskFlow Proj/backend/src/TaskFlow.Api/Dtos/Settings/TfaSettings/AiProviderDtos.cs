@@ -36,3 +36,15 @@ public record UpdateAiProvidersRequest(IReadOnlyList<UpdateAiProviderRequest>? P
 /// <summary>The outcome of an administrator's "Test connection". <see cref="Message"/> is a fixed message, never the
 /// provider's own error text.</summary>
 public record AiProviderTestResultDto(bool Ok, string Message, ProviderFailureKind? FailureKind);
+
+/// <summary>A model to add from the Add AI model page. It is tested with these values first and saved only if the test
+/// passes. An empty <see cref="ApiKey"/> uses the provider's saved key; <see cref="BaseUrl"/> is only for Ollama. Also the body
+/// of an edit, where <see cref="ClearKey"/> removes the provider's key without a test (and without other changes).</summary>
+public record AddAiModelRequest(string? ModelName, string? ApiKey, string? BaseUrl, bool? ClearKey = null);
+
+/// <summary>The listed model to switch TFA to ("Use this model"), or to test from the list.</summary>
+public record AiModelChoiceRequest(string? ModelName);
+
+/// <summary>The outcome of adding a model. When <see cref="Ok"/> is false nothing was saved and <see cref="Providers"/> is
+/// null; when it is true the model is the one TFA uses and <see cref="Providers"/> is every provider's new status.</summary>
+public record AddAiModelResultDto(bool Ok, string Message, ProviderFailureKind? FailureKind, IReadOnlyList<AiProviderConfigDto>? Providers);

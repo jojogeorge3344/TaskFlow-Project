@@ -28,7 +28,7 @@ public class GeminiProvider : IChatModelProvider
         var (response, body) = await ProviderHttp.SendAsync(_client, Kind, httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw Classify(response, body);
+            throw Classify(response, body, runtime.ApiKey);
         }
 
         return Parse(body);
@@ -139,7 +139,7 @@ public class GeminiProvider : IChatModelProvider
         return new ChatModelResult(text.Length == 0 ? null : text.ToString(), calls);
     }
 
-    private ProviderFailureException Classify(HttpResponseMessage response, string body)
+    private ProviderFailureException Classify(HttpResponseMessage response, string body, string? apiKey)
     {
         var status = string.Empty;
         var message = string.Empty;
@@ -161,9 +161,15 @@ public class GeminiProvider : IChatModelProvider
                 => ProviderFailureKind.InvalidKey,
             _ when message.Contains("API key", StringComparison.OrdinalIgnoreCase) => ProviderFailureKind.InvalidKey,
             _ when response.StatusCode == HttpStatusCode.NotFound || status == "NOT_FOUND" => ProviderFailureKind.ModelUnavailable,
+            // A malformed model name comes back as 400 INVALID_ARGUMENT ("unexpected model name format"), not 404: the
+            // name is not a model ID at all, which needs a different fix from a model that does not exist.
+            _ when (response.StatusCode == HttpStatusCode.BadRequest || status == "INVALID_ARGUMENT")
+                   && message.Contains("model name", StringComparison.OrdinalIgnoreCase) => ProviderFailureKind.InvalidModelName,
             _ => ProviderFailureKind.Unexpected
         };
 
-        return new ProviderFailureException(Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode);
+        return new ProviderFailureException(
+            Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            providerReason: ProviderHttp.Reason(status, message, apiKey));
     }
 }

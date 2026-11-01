@@ -6,6 +6,7 @@ using TaskFlow.Api.Common.Exceptions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using AiProviderConfig = TaskFlow.Api.Models.Entities.AiProviderConfig;
 using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Integrations.Ai.KeyProtection;
 using TaskFlow.Api.Repositories.Base;
@@ -80,6 +81,38 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AGeminiNameThatIsNotAModelIdIsRejectedAndNothingChanges()
+    {
+        await Save(Update(AiProviderKind.Gemini, model: "gemini-3.8-flash"));
+
+        var failure = await Assert.ThrowsAsync<RequestValidationException>(() => Save(Update(AiProviderKind.Gemini, model: "Gemini_TF_AI")));
+
+        Assert.Contains("Google AI Studio", failure.Message);
+        _harness.Db.ChangeTracker.Clear();
+        Assert.Equal("gemini-3.8-flash", (await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Gemini)).ModelName);
+        Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "Gemini_TF_AI"));
+    }
+
+    [Fact]
+    public async Task OtherProvidersKeepTheirOwnModelIdFormat()
+    {
+        await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"), Update(AiProviderKind.OpenAI, enabled: false, model: "ft:gpt-4o-mini:my_org:custom:abc123"));
+
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "llama3.2:3b"));
+    }
+
+    [Fact]
+    public async Task AGeminiNameAlreadyStoredForASwitchedOffProviderDoesNotBlockTheSave()
+    {
+        _harness.Db.AiProviderConfigs.Add(new AiProviderConfig { Kind = AiProviderKind.Gemini, IsEnabled = false, ModelName = "Old_Gemini_Name" });
+        await _harness.Db.SaveChangesAsync();
+
+        await Save(Update(AiProviderKind.Ollama), Update(AiProviderKind.Gemini, enabled: false, model: "Old_Gemini_Name"));
+
+        await Assert.ThrowsAsync<RequestValidationException>(() => Save(Update(AiProviderKind.Gemini, enabled: true, model: "Old_Gemini_Name")));
+    }
+
+    [Fact]
     public async Task OnlyTheModelOfTheEnabledServerIsAddedToTheList()
     {
         await Save(
@@ -110,6 +143,56 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
         Assert.DoesNotContain("typo-model", ollama.Models);
         Assert.Empty(ollama.CustomModels);
         Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name == "typo-model"));
+    }
+
+    [Fact]
+    public async Task UsingAModelSwitchesTfaToItAndKeepsTheOtherProviders()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+        await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"), Update(AiProviderKind.Gemini, enabled: false, key: "AIza-gemini-1234"));
+
+        var after = await Service().UseModelAsync(1, AiProviderKind.Gemini, "gemini-3.5-flash");
+
+        var gemini = after.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        Assert.True(gemini.IsEnabled);
+        Assert.Equal("gemini-3.5-flash", gemini.ModelName);
+        Assert.Equal("1234", gemini.KeyLast4);
+        var ollama = after.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        Assert.False(ollama.IsEnabled);
+        Assert.Equal("llama3.2:3b", ollama.ModelName);
+        Assert.Equal("http://localhost:11434", ollama.BaseUrl);
+    }
+
+    [Fact]
+    public async Task UsingAModelOfAProviderWithoutAKeyIsRefusedAndNothingChanges()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+        await Save(Update(AiProviderKind.Ollama, model: "llama3.2:3b"));
+
+        var failure = await Assert.ThrowsAsync<RequestValidationException>(() => Service().UseModelAsync(1, AiProviderKind.OpenAI, "gpt-4o-mini"));
+
+        Assert.Equal("No key saved for OpenAI GPT yet. Add it on the Add AI model screen.", failure.Message);
+        _harness.Db.ChangeTracker.Clear();
+        Assert.True((await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Ollama)).IsEnabled);
+        await Assert.ThrowsAsync<NotFoundException>(() => Service().UseModelAsync(1, AiProviderKind.Ollama, "never-added"));
+    }
+
+    [Fact]
+    public async Task TheModelInUseCannotBeDeletedButOneSavedOnlyForASwitchedOffProviderCan()
+    {
+        await new AiProviderSeeder(_harness.Db, TimeProvider.System).SeedAsync();
+        await Save(Update(AiProviderKind.Gemini, model: "gemini-2.5-pro", key: "AIza-gemini-1234"));
+
+        var inUse = await Assert.ThrowsAsync<RequestValidationException>(() => Service().RemoveModelAsync(AiProviderKind.Gemini, "gemini-2.5-pro"));
+        Assert.Equal("gemini-2.5-pro is in use by TFA. Switch TFA to another model first, then delete it.", inUse.Message);
+
+        await Service().UseModelAsync(1, AiProviderKind.Ollama, "llama3.2:3b");
+        var after = await Service().RemoveModelAsync(AiProviderKind.Gemini, "gemini-2.5-pro");
+
+        var gemini = after.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        Assert.DoesNotContain("gemini-2.5-pro", gemini.Models);
+        Assert.Equal("gemini-3.8-flash", gemini.ModelName);
+        Assert.False(gemini.IsEnabled);
     }
 
     [Fact]
@@ -352,6 +435,8 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
 
         Assert.False(validator.Validate(new UpdateAiProvidersRequest(null)).IsValid);
         Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Ollama, model: "")])).IsValid);
+        Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Gemini, model: "Gemini API Key")])).IsValid);
+        Assert.True(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Gemini, model: "gemini-3.8-flash")])).IsValid);
         Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Ollama, baseUrl: "ftp://host")])).IsValid);
         Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.Ollama, baseUrl: "not a url")])).IsValid);
         Assert.False(validator.Validate(new UpdateAiProvidersRequest([Update(AiProviderKind.OpenAI, key: "has space")])).IsValid);

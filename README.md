@@ -83,7 +83,7 @@ Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custo
 | Provider | Model / default | Notes |
 |---|---|---|
 | Ollama (local, free) | `llama3.2:3b` at `http://localhost:11434` | Installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; on by default for new installations |
-| Google Gemini | Built-in model list in `AiProviderCatalog.cs` | Cloud; free tier with rate limits; API key entered in TFA Settings |
+| Google Gemini | `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite` (built-in list in `AiProviderCatalog.cs`) | Cloud; free tier with rate limits; key from Google AI Studio, entered in TFA Settings |
 | OpenAI GPT | Built-in model list in `AiProviderCatalog.cs` | Cloud; paid API key |
 | Ollama embeddings (local, free) | `nomic-embed-text` (768 dimensions) | Embeds the `TF - Documents` Markdown files so TFA can answer from them; always local, whichever chat model is used; installed by the same setup scripts |
 
@@ -126,7 +126,7 @@ folder per module with one sub-folder per sub-module (16 in total), each holding
 | **FRD** – Functional Requirements Document (overall + 16) | Functional requirements, use cases, validations, messages, permissions, traceability to the BRD | `TF - Documents/TF - FRD/` | Markdown, PDF | Available (v1.0, draft) |
 | **HLD** – High-Level Design (overall + 16) | Context, architecture, components, data, key flows, security, deployment, design decisions | `TF - Documents/TF - HLD/` | Markdown, PDF | Available (v1.0, draft) |
 | **LLD** – Low-Level Design (overall + 16) | Classes and files, every API endpoint, DTOs, validators, database tables, sequence diagrams, FR → code → test | `TF - Documents/TF - LLD/` | Markdown, PDF | Available (v1.0, draft) |
-| **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.1) |
+| **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.3) |
 | **Development Plan** | Screen-by-screen feature plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` | Markdown | Available |
 | **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
 | **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TF - Documents/TFWorkflow/` and `TF - Documents/TFTechnicalWorkflow/` | Markdown, PDF | Available |
@@ -460,9 +460,10 @@ tasks, priorities, mail and profile still use your live data.
   content changed are embedded again, and deleted files are removed, so editing a document updates TFA's answers
   without a restart. The first index of the whole folder takes a while on a laptop CPU (about 30 minutes for 89 files
   and 3,300 sections); TFA answers from what is already indexed meanwhile, and later checks take seconds.
-- **Document search card.** **Settings → TFA Settings → Document search** shows the folder, the embedding model, the
-  number of files and sections, when indexing last finished and the last error. **Re-index now** (needs the
-  `settings.ai.edit` permission) checks the folder immediately.
+- **No admin screen.** There is no settings card or endpoint for the index. Indexing problems are written to the API
+  log as warnings: the documents folder was not found, indexing stopped because the embedding model is not available
+  (for example `nomic-embed-text` not pulled or Ollama not running), or a file could not be indexed (with its path). To
+  index at once instead of waiting for the next check, restart the API.
 - **Without Ollama** TFA still answers questions about your own work, and says the documents cannot be searched right
   now. Embeddings always run on Ollama, even when the chat model is Gemini or OpenAI; with a cloud chat model, the
   matching document text is sent to that provider with your message (the Cloud notice says so).
@@ -503,7 +504,11 @@ department. If there is none, or more than one, TFA asks you to choose.
 Open **Settings → TFA Settings** (Administrator only).
 
 - The **Model** dropdown lists the models kept in the database, grouped by server (Ollama, Google Gemini, OpenAI GPT).
-  Choose **Add new model…** to type one that is not in the list: it is saved to the database and offered from then on.
+  To add one that is not in the list, click **Add AI model**. On that screen choose the provider, type the model name
+  and its API key (or, for Ollama, an optional server address) and click **Test connection**. The model name is the
+  provider's model ID, without spaces (the box shows an example: `gemini-3.8-flash`, `gpt-4o-mini` or `llama3.2:3b`).
+  Only when the test works
+  is the model saved, made the one TFA uses, and you are taken back to TFA Settings; a failed test saves nothing.
   A model you added can be taken out again with **Remove this model from the list** (not the built-in ones, and not the
   one saved for its server).
 - The **Server** dropdown lists where each model runs: your Ollama address, or Google's or OpenAI's server. The two
@@ -513,7 +518,10 @@ Open **Settings → TFA Settings** (Administrator only).
   models and keys stay stored. With one model there is nothing to switch to, so the TFA window just shows it.
 - Below them are only the fields of the chosen server: the **server address** for Ollama, the **API key** for Gemini and
   OpenAI, and **Test connection**. Test connection is always available: unsaved changes are saved first.
-- Click **Save TFA settings**, then **Test connection**.
+- Click **Save TFA settings**, then **Test connection**. When the model is not available or the provider returns an
+  error TaskFlow does not recognise, the test result adds the provider's own reason, for example
+  "Google Gemini said: HTTP 404 - …" (keys replaced by `[key]`, at most 200 characters). Google names the model to use
+  instead of a retired one. Only Test connection shows this; TFA users in the chat get the plain message.
 
 **First run.** The database is created, migrated and filled the first time the API starts, on any machine, with no
 manual step. For TFA that means the list of models (Ollama, Gemini and OpenAI models) and one row per provider:
@@ -531,7 +539,7 @@ each installation enters its own.
 | Model | Cost | Where it runs | Setup |
 |---|---|---|---|
 | **Ollama** | Free | On your own server: nothing leaves it | Run the setup script below (installs Ollama and the `llama3.2:3b` model), and keep the address `http://localhost:11434` |
-| **Google Gemini** | Free tier, with rate limits | Google's cloud | Create a key in Google AI Studio and paste it |
+| **Google Gemini** | Free tier, with rate limits | Google's cloud | Create a key in Google AI Studio (https://aistudio.google.com/apikey). Then use **Add AI model** (provider Google Gemini, model `gemini-3.8-flash`, paste the key, Test connection), or pick `gemini-3.8-flash` in the Model list, paste the key and save |
 | **OpenAI GPT** | **No free tier**: needs a paid key | OpenAI's cloud | Paste a paid API key |
 
 #### Free local AI in one command (Ollama)
