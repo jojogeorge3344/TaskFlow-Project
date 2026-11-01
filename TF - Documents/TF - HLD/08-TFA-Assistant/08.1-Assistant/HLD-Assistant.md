@@ -129,7 +129,7 @@ flowchart LR
 
 ### 3.2 Constraints
 - Single server; rate limiter and provider list refresh are per process.
-- Providers are external and may be slow, rate-limited or offline; HTTP timeout `AiProviders:TimeoutSeconds` (60).
+- Providers are external and may be slow, rate-limited or offline; HTTP timeout `AiProviders:TimeoutSeconds` (120).
 - Voice depends on the browser's speech recognition (Chrome, Edge).
 - Document answers need a Google Gemini API key saved for the built-in Gemini provider and internet access; without them TFA still answers live-data questions (NFR-TFA-12).
 - Small local models may not call tools, so retrieval cannot depend on a tool call.
@@ -280,7 +280,9 @@ erDiagram
 
 ### 6.3 Data Flow
 - **Question:** panel → length and secret checks → rate limit → document search (the message; a message under 40 characters that matches nothing is
-  searched again with the previous user message; embedded by Google Gemini; best chunks by cosine similarity) → last 12 messages
+  searched again with the previous user message; embedded by Google Gemini and ranked by cosine similarity, and searched by
+  keyword in the SQLite FTS5 index `DocumentChunks_fts`; the two rankings are merged with Reciprocal Rank Fusion; when the
+  message cannot be embedded, keyword search alone is used) → last 12 messages
   (about 6000 characters) + prompt with the document block → provider, with tool rounds whose results are redacted →
   question and answer (with sources) stored together only after a successful answer; a provider failure stores nothing.
 - **Indexing:** background service → enumerate `.md` files → skip files whose SHA-256 and model are unchanged → chunk,
@@ -448,13 +450,13 @@ Web Speech API for voice (no package). Versions and rationale: overall HLD (`../
 
 TFA runs inside the single `TaskFlow.Api` process. Deployment-specific items: an optional Ollama service on the same
 machine or network for chat only (`BaseUrl`, default `http://localhost:11434`), outbound internet access to Google for
-document search and when Gemini or OpenAI answer, `AiProviders:TimeoutSeconds` (60) and the Data Protection key ring (`AiProviders:KeyRingPath`) that holds the keys
+document search and when Gemini or OpenAI answer, `AiProviders:TimeoutSeconds` (120) and the Data Protection key ring (`AiProviders:KeyRingPath`) that holds the keys
 protecting provider API keys. On a new installation `AiProviderSeeder` stores a configured `AiProviders:GeminiApiKey` (user
 secrets or `AiProviders__GeminiApiKey`) encrypted and enables Gemini with `gemini-3.8-flash`; without one every provider is
 off until an administrator saves a key in TFA Settings. Ollama is never enabled automatically. Document knowledge adds: the documents folder readable by the API (`DocumentKnowledge:SourcePath`,
 default `../../../../TF - Documents` relative to the API content root; in Docker the folder is mounted and the path set),
 a saved Gemini API key (the AI setup scripts ask for it and store it with user secrets), and the `DocumentKnowledge` settings
-(EmbeddingModel, EmbeddingDimensions, TopK, MinScore,
+(EmbeddingModel, EmbeddingDimensions, TopK, MinScore, HybridSearch, KeywordAssistMinScore, CandidateCount, RrfK,
 chunk and context limits, RescanMinutes; `Enabled` = false switches it off). Environments and the deployment diagram:
 overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 
@@ -493,6 +495,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | D-TFA-11 | Answers about TaskFlow only from the TaskFlow documents, retrieved in code before the model call and added to the system prompt with a strict rule; every chunk given is a source | A `search_documents` tool; keyword help topics; the model's own knowledge | Works with models that cannot call tools; the documents state the rules exactly; no invented features (BR-TFA-07) |
 | D-TFA-12 | Google Gemini embeddings (`gemini-embedding-2`, 768 dimensions) through `batchEmbedContents` with the saved Gemini key, whatever chat provider is selected | Local embeddings on the computer; OpenAI embeddings | Free tier, fast, no local model to install; document text is sent to Google, which the notice and TFA Settings state |
 | D-TFA-13 | Vectors in the existing SQLite database, searched by brute force in memory | Vector database; `sqlite-vec` extension | A few thousand vectors search in milliseconds; no new process, package or native extension |
+| D-TFA-15 | Hybrid retrieval: vector similarity plus SQLite FTS5 keyword search (bm25, headings weighted double) over `DocumentChunks_fts`, merged with Reciprocal Rank Fusion; a keyword match of ordinary words also needs similarity ≥ `KeywordAssistMinScore` (0.55), a match for an exact identifier (NFR-14, TimeoutSeconds) or any match while embeddings are unavailable stands alone | Vector search only; in-memory inverted index; OR-of-terms keyword query; weighted sum of cosine and bm25 | Exact IDs, setting and model names are found even when embeddings blur them; document search keeps working without a Gemini key or at the rate limit; FTS5 is built into SQLite, so no new package; RRF needs no tuning between two score scales |
 | D-TFA-14 | Heading-aware Markdown chunks with incremental, hash-based indexing in a background service | Fixed-size chunks; re-index everything on each run | Chunks keep their section context; only changed files are re-embedded; edits apply without a restart |
 | D-TFA-15 | No admin screen or endpoint for the document index (v1.2, OpenSpec `tfa-document-rag` D13): the indexer runs only on its own schedule and logs problems as warnings; `DocumentIndexStatus` is kept for TFA's own "cannot search right now" answer | Document search card with Re-index now (v1.1); a problem-only banner on TFA Settings | Nothing on the card was editable; the 5-minute rescan does what Re-index did; folder, model and chunk count are developer details |
 
@@ -506,6 +509,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | Risk | Small local model paraphrases loosely or misses a detail (R-TFA-08) | Small labelled chunks, 4000-character cap, strict rule; a larger model (or Gemini) answers better |
 | Risk | Technical documents answered to every role (R-TFA-07) | Owner decision; per-role filtering is future work |
 | Risk | `MinScore` too high or too low (missed answers or noise) | Configurable (`DocumentKnowledge:MinScore`, default 0.65, tuned against a fixed question set) |
+| Risk | Keyword matches of common words pull document text into live-data questions | Every significant term must match (AND), stop words are dropped, and ordinary words still need similarity ≥ `KeywordAssistMinScore`; `HybridSearch` = false restores similarity-only search |
 | Risk | Prompt injection through task, comment or mail text (R-TFA-02) | Data marking, redaction, confirm and permission re-check |
 | Risk | Company data sent to a cloud provider (R-TFA-03) | Notice once per provider; document text and questions only sent to Google for embeddings (never task or user details); optional local Ollama chat; secret screen |
 | Risk | Conversations kept indefinitely (R-TFA-04) | ⚠️ To be confirmed: retention period or "delete my history" – Jojo George |

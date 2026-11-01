@@ -2,8 +2,10 @@ using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Integrations.Ai.Providers;
 
-/// <summary>A tool the model asked to run. <see cref="ArgumentsJson"/> is the raw JSON object of arguments.</summary>
-public record ChatToolCall(string Id, string Name, string ArgumentsJson);
+/// <summary>A tool the model asked to run. <see cref="ArgumentsJson"/> is the raw JSON object of arguments.
+/// <see cref="ThoughtSignature"/> is Gemini's opaque <c>thoughtSignature</c> for the call: a Gemini 3 model refuses the next
+/// request of the turn (HTTP 400) unless it is sent back with the call. Other providers leave it null.</summary>
+public record ChatToolCall(string Id, string Name, string ArgumentsJson, string? ThoughtSignature = null);
 
 /// <summary>One turn in provider-neutral form. A Tool message answers the call named by <see cref="ToolCallId"/>.</summary>
 public record ChatMessage(
