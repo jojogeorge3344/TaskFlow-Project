@@ -1572,8 +1572,8 @@ while MFA setup is pending.
 | POST | `/api/v1/assistant/providers/{kind}/models` | `settings.ai.edit` (attribute) + `settings.ai.test` (checked in the action, else 403) | Add AI model page (`AddAiModelRequest`: `modelName`, `apiKey`, `baseUrl`). Tests the typed values without saving; only when the test passes saves the model and key or address and makes it the one in use. Returns `AddAiModelResultDto` (`ok`, `message`, `failureKind`, `providers`). |
 | POST | `/api/v1/assistant/providers/{kind}/test` | `settings.ai.test` | Sends one tiny request to the provider. Returns `{ ok, message, failureKind }`. `message` is the fixed text; for an `Unexpected` or `ModelUnavailable` failure it ends with the provider's own reason, "{Provider} said: HTTP {status} - {reason}" (at most 200 characters, keys replaced by `[key]`, §16.4). |
 
-A model name (save and Add AI model) must contain no whitespace: "A model name is the provider's model ID, without
-spaces, for example gemini-3.8-flash." (`UpdateAiProviderRequestValidator`, `AddAiModelRequestValidator`).
+A model name (save and Add AI model) must contain no whitespace and no "@": "A model name is the provider's model ID,
+without spaces or @, for example gemini-3.8-flash." (`UpdateAiProviderRequestValidator`, `AddAiModelRequestValidator`).
 
 **Example requests**
 
@@ -2683,7 +2683,7 @@ Assistant, Tool). Conversations are kept indefinitely (no retention job).
   (`gemini-2.0-flash` default, `gemini-2.5-flash`, `gemini-2.5-pro`) was replaced on 01-Nov-2026 because Google answers
   404 for those models to new keys. A saved setting that still names an old model keeps it; Test connection reports it.
 - A model name is the provider's model ID and may not contain whitespace (`UpdateAiProviderRequestValidator`,
-  `AddAiModelRequestValidator`): "A model name is the provider's model ID, without spaces, for example gemini-3.8-flash."
+  `AddAiModelRequestValidator`): "A model name is the provider's model ID, without spaces or @, for example gemini-3.8-flash."
   There is no allow-list; Test connection checks that the model exists. The Add AI model page shows an example ID per
   provider (`gemini-3.8-flash`, `gpt-4o-mini`, `llama3.2:3b`) and, for Gemini, a link to create a key in Google AI Studio
   (`https://aistudio.google.com/apikey`). Keys are not judged by prefix (AI Studio keys start with `AQ.` or, older, `AIza`).

@@ -23,12 +23,13 @@ public class AddAiModelRequestValidatorTests
     [InlineData("Gemini API Key")]
     [InlineData("gemini 3.8 flash")]
     [InlineData("gpt-4o\tmini")]
-    public void Model_name_with_spaces_fails(string name)
+    [InlineData("someone@example.com")]
+    public void Model_name_with_spaces_or_an_email_address_fails(string name)
     {
         var result = _validator.TestValidate(new AddAiModelRequest(name, "key", null));
 
         result.ShouldHaveValidationErrorFor(request => request.ModelName)
-            .WithErrorMessage("A model name is the provider's model ID, without spaces, for example gemini-3.8-flash.");
+            .WithErrorMessage("A model name is the provider's model ID, without spaces or @, for example gemini-3.8-flash.");
     }
 
     [Theory]

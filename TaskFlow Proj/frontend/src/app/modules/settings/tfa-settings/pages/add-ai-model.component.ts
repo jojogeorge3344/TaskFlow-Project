@@ -24,19 +24,19 @@ export const MODEL_ID_EXAMPLES: Record<AiApiType, string> = {
 /** The model ID rule for each API type, matching AiProviderCatalog on the server. Gemini IDs are lowercase letters,
  * digits, dots and hyphens, so a key's label such as "Gemini_TF_AI" is refused here; OpenAI-compatible and Ollama IDs
  * may hold uppercase, "_", ":" and "/" (fine-tuned IDs, Ollama tags, meta-llama/Llama-3.3-70B-Instruct), so only spaces
- * are refused. */
+ * and "@" are refused (no model ID has an "@", so an email address the browser filled in is caught here). */
 export const MODEL_ID_RULES: Record<AiApiType, RegExp> = {
   Gemini: /^[a-z0-9][a-z0-9.-]*$/,
-  OpenAI: /^\S*$/,
-  Ollama: /^\S*$/
+  OpenAI: /^[^\s@]*$/,
+  Ollama: /^[^\s@]*$/
 };
 
 export const MODEL_ID_MESSAGES: Record<AiApiType, string> = {
   Gemini:
     'A Google Gemini model name is its model ID: lowercase letters, digits, dots and hyphens, for example gemini-3.8-flash. ' +
     'The name you gave your key in Google AI Studio is not a model ID.',
-  OpenAI: `A model name is the provider's model ID, without spaces, for example ${MODEL_ID_EXAMPLES.OpenAI}.`,
-  Ollama: `A model name is the provider's model ID, without spaces, for example ${MODEL_ID_EXAMPLES.Ollama}.`
+  OpenAI: `A model name is the provider's model ID, without spaces or @, for example ${MODEL_ID_EXAMPLES.OpenAI}.`,
+  Ollama: `A model name is the provider's model ID, without spaces or @, for example ${MODEL_ID_EXAMPLES.Ollama}.`
 };
 
 /** The API types a custom provider can use, as offered on the screen. */
@@ -357,7 +357,7 @@ export class AddAiModelComponent implements OnInit, OnDestroy {
     const matched = matchProvider(this.providers?.() ?? [], typed);
     const chosen = (control.parent?.get('apiType')?.value as AiApiType | undefined) ?? 'OpenAI';
     const apiType: AiApiType | '' = matched?.apiType ?? (typed.trim() ? chosen : '');
-    const rule = apiType ? MODEL_ID_RULES[apiType] : /^\S*$/;
+    const rule = apiType ? MODEL_ID_RULES[apiType] : /^[^\s@]*$/;
     return rule.test(normalizeModelName(apiType, value)) ? null : { modelId: true };
   }
 

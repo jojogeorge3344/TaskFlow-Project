@@ -46,16 +46,17 @@ public static class AiProviderCatalog
 
     /// <summary>Whether a normalised name looks like the provider's model ID. Gemini IDs are lowercase letters, digits,
     /// dots and hyphens (gemini-3.8-flash), so a key's label such as "Gemini_TF_AI" is refused before Google is called.
-    /// OpenAI and Ollama IDs may hold uppercase, "_", ":" and "/" (fine-tuned IDs, Ollama tags), so only spaces are refused.</summary>
+    /// OpenAI-compatible and Ollama IDs may hold uppercase, "_", ":" and "/" (fine-tuned IDs, Ollama tags), so only spaces and
+    /// "@" are refused; no model ID has an "@", so an email address the browser filled in is caught before anything is sent.</summary>
     public static bool IsValidModelId(AiApiType kind, string name) => kind == AiApiType.Gemini
         ? name.Length > 0
           && (char.IsAsciiLetterLower(name[0]) || char.IsAsciiDigit(name[0]))
           && name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '.' or '-')
-        : !name.Any(char.IsWhiteSpace);
+        : !name.Any(char.IsWhiteSpace) && !name.Contains('@');
 
     public static string ModelIdMessage(AiApiType kind) => kind == AiApiType.Gemini
         ? $"A Google Gemini model name is its model ID: lowercase letters, digits, dots and hyphens, for example {DefaultModel(kind)}. The name you gave your key in Google AI Studio is not a model ID."
-        : $"A model name is the provider's model ID, without spaces, for example {DefaultModel(kind)}.";
+        : $"A model name is the provider's model ID, without spaces or @, for example {DefaultModel(kind)}.";
 
     /// <summary>The models offered in the dropdown from the first run, on every machine. They are inserted into the
     /// database by the seeder; an administrator can add more in Settings. The first one is the default.</summary>

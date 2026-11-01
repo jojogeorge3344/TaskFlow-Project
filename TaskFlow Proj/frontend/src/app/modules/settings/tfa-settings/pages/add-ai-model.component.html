@@ -27,7 +27,7 @@
       <span class="tf-skeleton add-model__skeleton"></span>
     </div>
   } @else {
-    <form class="tf-card add-model__card" [formGroup]="form" (ngSubmit)="test()" (input)="clearResult()" novalidate>
+    <form class="tf-card add-model__card" autocomplete="off" [formGroup]="form" (ngSubmit)="test()" (input)="clearResult()" novalidate>
       <div class="tf-field">
         <label for="add-model-provider">
           AI provider <span class="add-model__required" aria-hidden="true">*</span>
@@ -37,7 +37,7 @@
         </label>
         <input id="add-model-provider" class="tf-input" formControlName="provider" data-field="provider" list="add-model-providers"
           autocomplete="off" spellcheck="false" placeholder="For example Google Gemini, or a new name such as Groq"
-          [class.is-invalid]="form.controls.provider.invalid && form.controls.provider.touched" />
+          [class.is-invalid]="form.controls.provider.invalid && form.controls.provider.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
         <datalist id="add-model-providers">
           @for (provider of providers(); track provider.providerId) {
             <option [value]="provider.displayName">{{ provider.locality }}</option>
@@ -79,9 +79,9 @@
 
         <div class="tf-field">
           <label for="add-model-url">Server address <span class="add-model__required" aria-hidden="true">*</span></label>
-          <input id="add-model-url" class="tf-input" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
+          <input id="add-model-url" class="tf-input" autocomplete="off" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
             [placeholder]="form.controls.apiType.value === 'Ollama' ? defaultOllamaUrl : 'For example https://api.groq.com/openai/v1'"
-            [class.is-invalid]="(form.errors?.['baseUrlRequired'] || form.controls.baseUrl.invalid) && form.controls.baseUrl.touched" />
+            [class.is-invalid]="(form.errors?.['baseUrlRequired'] || form.controls.baseUrl.invalid) && form.controls.baseUrl.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
           @if (form.controls.baseUrl.invalid && form.controls.baseUrl.touched) {
             <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
           } @else if (form.errors?.['baseUrlRequired'] && form.controls.baseUrl.touched) {
@@ -94,9 +94,9 @@
       @if (apiType(); as type) {
         <div class="tf-field">
           <label for="add-model-name">Model name <span class="add-model__required" aria-hidden="true">*</span></label>
-          <input id="add-model-name" class="tf-input" formControlName="modelName" data-field="modelName" spellcheck="false"
+          <input id="add-model-name" class="tf-input" autocomplete="off" formControlName="modelName" data-field="modelName" spellcheck="false"
             [placeholder]="'For example ' + modelExamples[type]"
-            [class.is-invalid]="form.controls.modelName.invalid && form.controls.modelName.touched" />
+            [class.is-invalid]="form.controls.modelName.invalid && form.controls.modelName.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
           @if (form.controls.modelName.hasError('modelId') && form.controls.modelName.touched) {
             <span class="tf-field__error" data-error="modelName">
               {{ modelIdMessages[type] }}
@@ -113,7 +113,7 @@
             <label for="add-model-key">API key <span class="add-model__optional">(optional)</span></label>
             <input id="add-model-key" class="tf-input" type="password" autocomplete="new-password" spellcheck="false"
               formControlName="apiKey" data-field="apiKey" placeholder="Paste the API key, if the service needs one"
-              [class.is-invalid]="form.controls.apiKey.invalid && form.controls.apiKey.touched" />
+              [class.is-invalid]="form.controls.apiKey.invalid && form.controls.apiKey.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
             @if (form.controls.apiKey.invalid && form.controls.apiKey.touched) {
               <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
             }
@@ -126,9 +126,9 @@
         @if (usesAddress(provider)) {
           <div class="tf-field">
             <label for="add-model-url">Server address <span class="add-model__optional">(optional)</span></label>
-            <input id="add-model-url" class="tf-input" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
+            <input id="add-model-url" class="tf-input" autocomplete="off" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
               [placeholder]="provider.baseUrl || defaultOllamaUrl"
-              [class.is-invalid]="form.controls.baseUrl.invalid && form.controls.baseUrl.touched" />
+              [class.is-invalid]="form.controls.baseUrl.invalid && form.controls.baseUrl.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
             @if (form.controls.baseUrl.invalid && form.controls.baseUrl.touched) {
               <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
             }
@@ -154,7 +154,7 @@
             <input id="add-model-key" class="tf-input" type="password" autocomplete="new-password" spellcheck="false"
               formControlName="apiKey" data-field="apiKey"
               [placeholder]="hasUsableKey(provider) ? '••••••••••••' : 'Paste the API key'"
-              [class.is-invalid]="(form.errors?.['apiKeyRequired'] || form.controls.apiKey.invalid) && form.controls.apiKey.touched" />
+              [class.is-invalid]="(form.errors?.['apiKeyRequired'] || form.controls.apiKey.invalid) && form.controls.apiKey.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
             @if (form.controls.apiKey.invalid && form.controls.apiKey.touched) {
               <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
             } @else if (form.errors?.['apiKeyRequired'] && form.controls.apiKey.touched) {

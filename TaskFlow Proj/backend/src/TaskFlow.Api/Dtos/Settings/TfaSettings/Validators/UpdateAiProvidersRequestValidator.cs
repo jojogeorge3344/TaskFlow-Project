@@ -43,12 +43,12 @@ public class UpdateAiProviderRequestValidator : AbstractValidator<UpdateAiProvid
             .WithMessage("Provide a new key or clear the key, not both.");
     }
 
-    internal const string ModelIdMessage = "A model name is the provider's model ID, without spaces, for example gemini-3.8-flash.";
+    internal const string ModelIdMessage = "A model name is the provider's model ID, without spaces or @, for example gemini-3.8-flash.";
 
     /// <summary>A model name goes into the provider's URL or request as its model ID, so it has no spaces inside it (a
     /// typed label such as "Gemini API Key" is refused before anything is sent). Blank names are reported by their own rule.</summary>
     internal static bool BeAModelId(string? value) =>
-        string.IsNullOrWhiteSpace(value) || !value.Trim().Any(char.IsWhiteSpace);
+        string.IsNullOrWhiteSpace(value) || (!value.Trim().Any(char.IsWhiteSpace) && !value.Contains('@'));
 
     internal static bool BeHttpUrl(string? value) =>
         string.IsNullOrWhiteSpace(value)

@@ -24,6 +24,8 @@ public class AiProviderCatalogTests
     [InlineData(AiApiType.Gemini, "tunedModels/my-model")]
     [InlineData(AiApiType.OpenAI, "GPT API Key")]
     [InlineData(AiApiType.Ollama, "llama 3.2")]
+    [InlineData(AiApiType.OpenAI, "someone@example.com")]
+    [InlineData(AiApiType.Ollama, "someone@example.com")]
     public void Model_id_fails(AiApiType kind, string name) =>
         Assert.False(AiProviderCatalog.IsValidModelId(kind, AiProviderCatalog.NormalizeModelName(kind, name)));
 
@@ -44,6 +46,6 @@ public class AiProviderCatalogTests
     [Fact]
     public void Other_providers_message_gives_their_example() =>
         Assert.Equal(
-            "A model name is the provider's model ID, without spaces, for example gpt-4o-mini.",
+            "A model name is the provider's model ID, without spaces or @, for example gpt-4o-mini.",
             AiProviderCatalog.ModelIdMessage(AiApiType.OpenAI));
 }

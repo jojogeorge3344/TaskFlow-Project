@@ -525,7 +525,7 @@ logs) is in the Assistant LLD 4.1.3.
 1. `provider` null (a new provider): `AiProviderRuntime(0, NewProvider.ApiType, NewProvider.Name.Trim(), Locality ==
    Local, ModelName(apiType, request.ModelName), NormalizeBaseUrl(NewProvider.BaseUrl), typed key)`.
 2. Otherwise `ModelName(provider.ApiType, request.ModelName)` – normalised and checked with
-   `AiProviderCatalog.IsValidModelId` (Gemini strict format; OpenAI-compatible and Ollama refuse only whitespace) →
+   `AiProviderCatalog.IsValidModelId` (Gemini strict format; OpenAI-compatible and Ollama refuse only whitespace and "@") →
    `RequestValidationException("modelName", ModelIdMessage(apiType))`.
 3. A typed key for an Ollama-type provider → "`Name` does not use an API key."
 4. `UsesAddress(provider)` → address typed, else saved, else `DefaultOllamaBaseUrl`; key typed, else the readable saved
@@ -783,7 +783,7 @@ sequenceDiagram
 | `ProviderId` (v1.5; replaces `Kind` `NotNull()`, `IsInEnum()`) | `NotNull()` | FluentValidation default; unknown id → 404 in the service |
 | `IsEnabled` | `NotNull()` | FluentValidation default |
 | `ModelName` | `NotEmpty()`, `MaximumLength(100)` | "Model name cannot be blank." |
-| `ModelName` | `Must(BeAModelId)`: no whitespace inside the trimmed name (v1.2) | `ModelIdMessage` "A model name is the provider's model ID, without spaces, for example gemini-3.8-flash." |
+| `ModelName` | `Must(BeAModelId)`: no whitespace inside the trimmed name (v1.2) and no "@" (v1.5) | `ModelIdMessage` "A model name is the provider's model ID, without spaces or @, for example gemini-3.8-flash." |
 | `BaseUrl` | blank, or absolute `http`/`https` URI not matching `IsMetadataHost` (`metadata.google.internal`, `metadata`, `instance-data`, 0.0.0.0, `::`, IPv6 link-local, 169.254.x.x) | "The server address must be a valid http or https URL, and not a link-local or cloud metadata address." |
 | `BaseUrl` | `MaximumLength(300)` | FluentValidation default |
 | `ApiKey` | `MaximumLength(500)`, no whitespace | "The API key cannot contain spaces." |
@@ -813,7 +813,8 @@ spaces; `BaseUrl` `BeHttpUrl`, max 300. (v1.3) The provider comes from the route
 before any key lookup or provider call: the name is normalised (`models/` removed for Gemini), and a name failing
 `AiProviderCatalog.IsValidModelId(apiType, name)` throws `RequestValidationException("modelName",
 AiProviderCatalog.ModelIdMessage(apiType))`. Gemini rule: lowercase letters, digits, dots and hyphens, starting with a
-letter or digit; OpenAI-compatible and Ollama (built-in or custom, v1.5): no whitespace, so
+letter or digit; OpenAI-compatible and Ollama (built-in or custom, v1.5): no whitespace and no "@" (an email address filled in by the
+browser is not a model ID), so
 `meta-llama/Llama-3.3-70B-Instruct` and `llama3.2:3b` pass.
 
 Client mirror: `modelName` required, max 100; `baseUrl` pattern `^(https?:\/\/\S+)?$`; `apiKey` pattern `^\S*$`, max 500.

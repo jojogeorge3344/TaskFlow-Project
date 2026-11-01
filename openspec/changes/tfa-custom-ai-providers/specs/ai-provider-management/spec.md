@@ -8,7 +8,7 @@ Lets an administrator configure which AI providers and models TFA uses, add a ne
 
 ### Requirement: AI provider is a textbox
 
-On the Add AI model and Edit AI model screens, the AI provider field SHALL be a required text input with suggestions of existing providers, not a dropdown. It SHALL be editable on both screens. A blank value SHALL be refused with "Enter the AI provider." before anything is sent.
+On the Add AI model and Edit AI model screens, the AI provider field SHALL be a required text input with suggestions of existing providers, not a dropdown. It SHALL be editable on both screens. The browser and password managers SHALL NOT fill in the AI provider, model name, server address or API key fields. A blank value SHALL be refused with "Enter the AI provider." before anything is sent.
 
 #### Scenario: Add screen
 
@@ -55,7 +55,12 @@ When the provider was changed, Test connection SHALL test the model on the targe
 
 ### Requirement: Model ID format follows the API type
 
-The model ID format check SHALL apply by API type: Google Gemini keeps its lowercase format and the `models/` prefix removal; OpenAI-compatible and Ollama providers SHALL refuse only names with spaces, so IDs such as `meta-llama/Llama-3.3-70B-Instruct` and `llama3.2:3b` are accepted.
+The model ID format check SHALL apply by API type: Google Gemini keeps its lowercase format and the `models/` prefix removal; OpenAI-compatible and Ollama providers SHALL refuse only names with spaces or an "@" (no model ID has one, so an email address filled in by the browser is caught), so IDs such as `meta-llama/Llama-3.3-70B-Instruct` and `llama3.2:3b` are accepted.
+
+#### Scenario: Email address as the model name
+
+- **WHEN** the model name is `someone@example.com` for OpenAI GPT or a custom provider
+- **THEN** the screen shows "A model name is the provider's model ID, without spaces or @, for example gpt-4o-mini." and nothing is sent
 
 #### Scenario: Slash and uppercase on a custom provider
 

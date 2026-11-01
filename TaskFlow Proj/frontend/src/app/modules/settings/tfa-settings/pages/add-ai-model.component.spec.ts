@@ -226,9 +226,41 @@ describe('AddAiModelComponent', () => {
     clickTest();
 
     expect(el().querySelector('[data-error="modelName"]')?.textContent).toContain(
-      "A model name is the provider's model ID, without spaces, for example gpt-4o-mini."
+      "A model name is the provider's model ID, without spaces or @, for example gpt-4o-mini."
     );
     http.expectNone((request) => request.url.endsWith('/models'));
+  });
+
+  it('refuses an email address in the model name, for an OpenAI-compatible provider too, before sending anything', () => {
+    openLoaded();
+    choose('OpenAI');
+
+    type('modelName', 'someone@example.com');
+    type('apiKey', 'sk-new-key-9999');
+    clickTest();
+
+    expect(el().querySelector('[data-error="modelName"]')?.textContent).toContain('without spaces or @');
+    http.expectNone(ADD_URL);
+
+    choose('Groq');
+    type('baseUrl', 'https://api.groq.com/openai/v1');
+    type('modelName', 'someone@example.com');
+    clickTest();
+    expect(el().querySelector('[data-error="modelName"]')).toBeTruthy();
+    http.expectNone(ADD_URL);
+  });
+
+  it('keeps the browser and password managers from filling in the fields', () => {
+    openLoaded();
+    choose('Groq');
+
+    expect(el().querySelector('form')?.getAttribute('autocomplete')).toBe('off');
+    for (const name of ['provider', 'baseUrl', 'modelName', 'apiKey']) {
+      const input = field<HTMLInputElement>(name);
+      expect(input.getAttribute('autocomplete')).withContext(name).toBe(name === 'apiKey' ? 'new-password' : 'off');
+      expect(input.hasAttribute('data-1p-ignore')).withContext(name).toBeTrue();
+      expect(input.getAttribute('data-lpignore')).withContext(name).toBe('true');
+    }
   });
 
   it('refuses a Gemini key label typed as the model, before sending anything', () => {
