@@ -10,7 +10,7 @@ public class AiProviderOptions
     public string KeyRingPath { get; set; } = "dp-keys";
 
     /// <summary>How long one call to a cloud provider (Gemini, OpenAI), including a Gemini embedding call, may take before it is reported as a timeout.</summary>
-    public int TimeoutSeconds { get; set; } = 60;
+    public int TimeoutSeconds { get; set; } = 120;
 
     /// <summary>How long one call to Ollama chat may take. Longer than the cloud timeout because a local model on a
     /// laptop CPU can take over a minute to read a prompt that carries reference documents.</summary>

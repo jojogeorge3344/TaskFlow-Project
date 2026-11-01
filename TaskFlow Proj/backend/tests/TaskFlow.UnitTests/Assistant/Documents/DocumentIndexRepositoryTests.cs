@@ -16,7 +16,8 @@ public sealed class DocumentIndexRepositoryTests : IAsyncDisposable
     {
         _connection.Open();
         using var db = NewContext();
-        db.Database.EnsureCreated();
+        // Migrations, not EnsureCreated: the keyword index (DocumentChunks_fts) and its triggers come from a migration.
+        db.Database.Migrate();
     }
 
     public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
@@ -122,5 +123,80 @@ public sealed class DocumentIndexRepositoryTests : IAsyncDisposable
         await StoreAsync(Source("a.md"), Chunks("a0", "a1"));
 
         Assert.Equal(["a0", "a1", "b0", "b1"], (await AllRowsAsync()).Select(row => row.Text));
+    }
+
+    private async Task<IReadOnlyList<int>> KeywordAsync(string ftsQuery, int limit = 20)
+    {
+        await using var db = NewContext();
+        return await new DocumentIndexRepository(db).SearchKeywordAsync(ftsQuery, limit);
+    }
+
+    private async Task<int> ChunkIdAsync(string text)
+    {
+        await using var db = NewContext();
+        return await db.DocumentChunks.Where(chunk => chunk.Text == text).Select(chunk => chunk.Id).SingleAsync();
+    }
+
+    [Fact]
+    public async Task KeywordSearchFindsTheMatchingChunk()
+    {
+        await StoreAsync(Source("a.md"), Chunks("NFR-14 reminder engine runs every minute", "dashboard widgets"));
+
+        Assert.Equal([await ChunkIdAsync("NFR-14 reminder engine runs every minute")], await KeywordAsync("\"NFR-14\""));
+    }
+
+    [Fact]
+    public async Task KeywordSearchWithNoMatchIsEmpty()
+    {
+        await StoreAsync(Source("a.md"), Chunks("dashboard widgets"));
+
+        Assert.Empty(await KeywordAsync("\"payroll\""));
+    }
+
+    [Fact]
+    public async Task AHeadingMatchRanksAboveATextMatchAndTheLimitApplies()
+    {
+        var chunks = new List<DocumentChunk>
+        {
+            new() { Ordinal = 0, HeadingPath = "Overview", Text = "Reminders are mentioned once here among other words", Embedding = BitConverter.GetBytes(1f), Dimensions = 1 },
+            new() { Ordinal = 1, HeadingPath = "Reminders", Text = "How the engine works among other words", Embedding = BitConverter.GetBytes(1f), Dimensions = 1 },
+            new() { Ordinal = 2, HeadingPath = "Other", Text = "a reminder again", Embedding = BitConverter.GetBytes(1f), Dimensions = 1 }
+        };
+        await StoreAsync(Source("a.md"), chunks);
+
+        var ids = await KeywordAsync("\"reminders\"", limit: 2);
+
+        Assert.Equal(2, ids.Count);
+        Assert.Equal(await ChunkIdAsync("How the engine works among other words"), ids[0]);
+    }
+
+    [Fact]
+    public async Task TheKeywordIndexFollowsReplaceRemoveAndCascadeDelete()
+    {
+        await StoreAsync(Source("a.md"), Chunks("alpha"));
+        await StoreAsync(Source("b.md"), Chunks("beta"));
+        Assert.Single(await KeywordAsync("\"alpha\""));
+
+        await StoreAsync(Source("a.md", "h2"), Chunks("gamma"));
+        Assert.Empty(await KeywordAsync("\"alpha\""));
+        Assert.Single(await KeywordAsync("\"gamma\""));
+
+        await using (var db = NewContext())
+        {
+            await new DocumentIndexRepository(db).RemoveByPathsAsync(["b.md"]);
+            await new UnitOfWork(db).SaveChangesAsync();
+        }
+
+        Assert.Empty(await KeywordAsync("\"beta\""));
+
+        // A source deleted in SQL (not through EF) takes its chunks with it by ON DELETE CASCADE; the triggers still fire.
+        await using (var db = NewContext())
+        {
+            await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON; DELETE FROM \"DocumentSources\" WHERE \"RelativePath\" = 'a.md';");
+        }
+
+        Assert.Empty(await KeywordAsync("\"gamma\""));
+        await using var check = NewContext();
+        Assert.Equal(0, await check.DocumentChunks.CountAsync());
     }
 }

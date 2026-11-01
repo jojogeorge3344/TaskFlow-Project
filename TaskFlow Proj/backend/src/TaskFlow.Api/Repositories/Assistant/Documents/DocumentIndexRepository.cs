@@ -54,6 +54,18 @@ public class DocumentIndexRepository : BaseRepository<DocumentSource>, IDocument
         Set.RemoveRange(sources);
     }
 
+    public async Task<IReadOnlyList<int>> SearchKeywordAsync(string ftsQuery, int limit, CancellationToken cancellationToken = default) =>
+        // DocumentChunks_fts is the FTS5 index the AddDocumentChunkFullText migration keeps in step with DocumentChunks;
+        // its rowid is the chunk id. bm25 is lower for a better match, and the heading column weighs double.
+        await Db.Database.SqlQuery<int>(
+                $"""
+                SELECT "rowid" AS "Value" FROM "DocumentChunks_fts"
+                WHERE "DocumentChunks_fts" MATCH {ftsQuery}
+                ORDER BY bm25("DocumentChunks_fts", 2.0, 1.0), "rowid"
+                LIMIT {limit}
+                """)
+            .ToListAsync(cancellationToken);
+
     public async IAsyncEnumerable<DocumentChunkRow> StreamChunksAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var rows = Db.DocumentChunks.AsNoTracking()

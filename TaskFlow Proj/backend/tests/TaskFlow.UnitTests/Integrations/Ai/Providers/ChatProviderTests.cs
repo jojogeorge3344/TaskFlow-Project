@@ -241,6 +241,34 @@ public class ChatProviderTests
         Assert.Equal("integer", declaration["parameters"]!["properties"]!["limit"]!["type"]!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("gemini-3.8-flash", "low", null)]
+    [InlineData("gemini-3.1-pro-preview", "low", null)]
+    [InlineData("gemini-2.5-pro", null, GeminiProvider.Gemini25ThinkingBudget)]
+    [InlineData("gemini-2.5-flash-lite", null, GeminiProvider.Gemini25ThinkingBudget)]
+    public async Task GeminiKeepsThinkingShort(string model, string? level, int? budget)
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""");
+        var provider = new GeminiProvider(new HttpClient(handler));
+
+        await provider.CompleteAsync(GeminiRuntime, new ChatModelRequest("sys", [User("hi")], [], model));
+
+        var thinking = JsonNode.Parse(handler.Sent[0].Body)!["generationConfig"]!["thinkingConfig"]!;
+        Assert.Equal(level, thinking["thinkingLevel"]?.GetValue<string>());
+        Assert.Equal(budget, thinking["thinkingBudget"]?.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task GeminiSendsNoThinkingConfigForAModelThatDoesNotThink()
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""");
+        var provider = new GeminiProvider(new HttpClient(handler));
+
+        await provider.CompleteAsync(GeminiRuntime, new ChatModelRequest("sys", [User("hi")], [], "gemini-2.0-flash"));
+
+        Assert.Null(JsonNode.Parse(handler.Sent[0].Body)!["generationConfig"]);
+    }
+
     [Fact]
     public async Task AFailureCarriesTheHttpStatusForTheLog()
     {

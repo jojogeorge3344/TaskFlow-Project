@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Draft
+> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.4  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > **Based on:** HLD-Assistant v1.2, FRD-Assistant v1.3, TDD v2.3 (§16)
@@ -18,6 +18,7 @@
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Child module 08.1.3 Help Knowledge replaced by **Document Knowledge** (`MarkdownChunker`, `OllamaEmbeddingClient`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentVectorIndex`, `DocumentSearch`, `DocumentIndexRepository`); `search_help` / `SearchHelpTool`, `HelpKnowledgeBase`, `IHelpKnowledgeBase`, `HelpTopicDto`, the 19 `Knowledge/*.md` topics and their `EmbeddedResource` item removed (8 tools). `SendAsync` retrieves documents before the model call; `AssistantPrompt.Build` takes a `DocumentContext`; `AssistantSourceDto` sources on `AssistantMessageDto` and in `AssistantMessageMeta`; `OllamaProvider` sends `options.num_ctx`. Tables `DocumentSources`, `DocumentChunks` (migration `20261031134802_AddDocumentIndex`); `DocumentKnowledge` configuration; tests and FR-TFA-57 – FR-TFA-66 traceability. The status/re-index endpoints are in the TFA Settings LLD. |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` revised (design D13, D14). The administrator endpoints `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` (`DocumentIndexController`, `DocumentIndexService`, TFA Settings) and the Document search card were removed; `DocumentIndexerService.RequestReindex()` and its request channel removed (the service waits with `Task.Delay`; `RunOnceAsync` keeps the single-run guard). Indexing problems are logged as warnings; `DocumentIndexStatus` stays for `DocumentSearch`. Tests: `ARunWhileAnotherIsInProgressDoesNotStart` replaces the concurrent-request tests; `WhenDisabledNothingRuns`; `AChatFailureNeverShowsTheProvidersOwnReason`. Providers: `ProviderFailureException.ProviderReason` via `ProviderHttp.Reason` (never shown in chat), Gemini 400 model-name error → `ModelUnavailable`; Gemini default model `gemini-3.8-flash`. |
 | 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-custom-ai-providers`. TFA identifies providers by id, so a **custom provider** (OpenAI-compatible or Ollama API, created in TFA Settings) works in chat like a built-in one: `SendAssistantMessageRequest(Text, ProviderId)` replaces `Provider`; `AssistantMessageDto` carries `ProviderId` and `Provider` (the provider's name); `AssistantFailureDto` carries `ProviderId` and `ProviderName` (replacing the provider kind); `AiProviderOptionDto(ProviderId, DisplayName, ModelName, Locality)`; `AssistantMessages.ProviderKind` replaced by `ProviderId` (nullable FK to `AiProviderConfigs`, set null; migration `20261101050239_AddCustomAiProviders`, TFA Settings LLD); gateway `CompleteAsync(providerId, …)`. Frontend: the model selector and `AssistantService` send `providerId`, remember it in `tfa.provider` (a name stored before ids is ignored), and the cloud notice comes from `locality`, so a custom Cloud provider gets it too; the header badge is "Custom" for non-built-in names. Updated 1.2, inventory, API contracts and examples, `SendAsync` steps 3, 10 and 11, gateway text, validation, `AssistantMessages` table, indexes, enums, migrations, security, configuration, tests and FR-TFA-12 – FR-TFA-16, FR-TFA-68 traceability. Everything else unchanged. |
+| 1.4 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-hybrid-document-search`. Document retrieval is **hybrid**: vector similarity plus a SQLite FTS5 keyword search over the new virtual table `DocumentChunks_fts` (migration `20261101140000_AddDocumentChunkFullText`, kept in step by triggers), merged with Reciprocal Rank Fusion; keyword search alone when the message cannot be embedded. New pure rules `KeywordQuery`, `RankFusion`, `ChunkSelection`; `DocumentVectorIndex.Similarities` / `Resolve`; `IDocumentIndexRepository.SearchKeywordAsync`; settings `HybridSearch`, `KeywordAssistMinScore`, `CandidateCount`, `RrfK`. |
 
 **Related documents:** BRD (`../../../BRD/08-TFA-Assistant/08.1-Assistant/BRD-Assistant.md`) · FRD (`../../../FRD/08-TFA-Assistant/08.1-Assistant/FRD-Assistant.md`) · HLD (`../../../HLD/08-TFA-Assistant/08.1-Assistant/HLD-Assistant.md`) · Overall LLD (`../../00-Overall/LLD-TaskFlow-Overall.md`) · TFA Settings LLD (`../../06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md`) · TDD (`TF - Documents/TF - TDD/TDD-TaskFlow.md` §16)
 
@@ -697,9 +698,10 @@ row past `ExpiresAt` as `Expired` without writing it.
 
 | Layer | Type | File | Responsibility |
 |---|---|---|---|
-| Search | `IDocumentSearch` / `DocumentSearch.SearchAsync(message, previousUserMessage)`; `BuildQuery`; `ShortFollowUpLength` 40 | `Services/Assistant/Documents/` | Embed the question, search the index, return a `DocumentContext` |
+| Search | `IDocumentSearch` / `DocumentSearch.SearchAsync(message, previousUserMessage)`; `BuildQuery`; `ShortFollowUpLength` 40 | `Services/Assistant/Documents/` | Embed the question, search the index by similarity and by keyword (v1.4), return a `DocumentContext` |
+| Search rules (v1.4) | `KeywordQuery.Build(message)` → `KeywordQuery(FtsQuery, HasExactIdentifier, Terms)`, `IsExactIdentifier(term)`, `StopWords`; `RankFusion.Fuse(vectorRanked, keywordRanked, similarity, FusionRules)`, `IsEligible`; `FusionRules(MinScore, KeywordAssistMinScore, RrfK, KeywordAlone)`; `ChunkSelection.Take(ranked, topK, maxCharacters)` | `Services/Assistant/Documents/Rules/KeywordQuery.cs`, `RankFusion.cs` | Pure: safe FTS5 query, eligibility, Reciprocal Rank Fusion, TopK and character budget |
 | Context | `DocumentContext(Kind, Chunks, Reason)`; `DocumentContextKind` (Found, NoMatch, Unavailable); `DocumentUnavailableReason` (Preparing, CannotSearch) | `Services/Assistant/Documents/DocumentContext.cs` | Search outcome for one message |
-| Vector index | `DocumentVectorIndex` (singleton): `Count`, `Model`, `Replace(chunks, model)`, `Search(query, topK, minScore, maxCharacters)`; records `IndexedChunk(ChunkId, RelativePath, Title, HeadingPath, Text, Vector)`, `ScoredChunk(Chunk, Score)` | `Services/Assistant/Documents/DocumentVectorIndex.cs` | In-memory brute-force cosine search over an atomically swapped snapshot |
+| Vector index | `DocumentVectorIndex` (singleton): `Count`, `Model`, `Replace(chunks, model)`, `Search(query, topK, minScore, maxCharacters)`, `Similarities(query, floor)`, `Resolve(chunkIds)` (v1.4); records `IndexedChunk(ChunkId, RelativePath, Title, HeadingPath, Text, Vector)`, `ScoredChunk(Chunk, Score)` | `Services/Assistant/Documents/DocumentVectorIndex.cs` | In-memory brute-force cosine search over an atomically swapped snapshot |
 | Indexer | `DocumentIndexer` (scoped): `RunAsync` → `DocumentIndexRun(Embedded, Skipped, Removed, Failed)`, `ReloadIndexAsync`; `ReloadEvery` 10 | `Services/Assistant/Documents/DocumentIndexer.cs` | Bring the stored index in step with the folder |
 | Background | `DocumentIndexerService : BackgroundService` (singleton + hosted): `RunOnceAsync()`, `StartDelay` 10 s (v1.2: `RequestReindex()` and its channel removed) | `Services/Assistant/Documents/DocumentIndexerService.cs` | Startup load, first run, periodic runs, single-run guard |
 | Status | `DocumentIndexStatus` (singleton, `Current`, `Update`); `DocumentIndexState` | `Services/Assistant/Documents/DocumentIndexStatus.cs` | Shared state for the indexer and `DocumentSearch` (Preparing / CannotSearch); no longer read by TFA Settings (v1.2) |
@@ -724,6 +726,8 @@ classDiagram
   class DocumentVectorIndex {
     +Replace(chunks, model)
     +Search(query, topK, minScore, maxCharacters)
+    +Similarities(query, floor)
+    +Resolve(chunkIds)
   }
   class DocumentIndexerService {
     +RunOnceAsync()
@@ -788,12 +792,23 @@ for questions and `title: none | text: {text}` for document chunks. Each returne
 3. Queries = the message (trimmed); when it is shorter than 40 characters and a previous user message exists, also the
    follow-up query `"{previous}\n{message}"` (`DocumentSearch.FollowUpQuery`).
 4. `DocumentEmbeddingEndpoint.ResolveAsync`, then `EmbedAsync(queries, Query)` in one call; `EmbeddingUnavailableException` →
-   warning logged (reason only), `Unavailable(CannotSearch)`.
-5. For each query vector in order (the message alone first), `DocumentVectorIndex.Search(vector, TopK, MinScore,
-   MaxContextCharacters)`: dot product with every chunk of the same dimensions, keep score ≥ `MinScore`, order by score
-   desc then chunk id, take `TopK`, then add in that order while the text total stays ≤ `MaxContextCharacters` (the first
-   is always kept). The first non-empty result → `Found(chunks)`; none → `NoMatch`. A short complete question is so
-   answered from its own search, and only a follow-up that matches nothing alone uses the previous message.
+   warning logged (reason only); with `HybridSearch` false → `Unavailable(CannotSearch)`, otherwise continue without
+   vectors (keyword only, step 5c).
+5. For each query in order (the message alone first); the first non-empty result → `Found(chunks)`:
+   a. **`HybridSearch` false:** `DocumentVectorIndex.Search(vector, TopK, MinScore, MaxContextCharacters)`: dot product with
+      every chunk of the same dimensions, keep score ≥ `MinScore`, order by score desc then chunk id, then
+      `ChunkSelection.Take` (at most `TopK`, added in order while the text total stays ≤ `MaxContextCharacters`; the first is
+      always kept).
+   b. **Hybrid (v1.4):** `KeywordQuery.Build(query)` → quoted AND of the significant terms (stop words and terms under 2
+      characters dropped) and `HasExactIdentifier` (a term with a digit, `-`, `_`, `.` or an inner capital).
+      `DocumentVectorIndex.Similarities(vector, min(KeywordAssistMinScore, MinScore))` → vector ranking (first
+      `CandidateCount`) and a similarity lookup; `SearchKeywordAsync(ftsQuery, CandidateCount)` → ids, `Resolve` → keyword
+      ranking. `RankFusion.Fuse`: score = Σ 1 / (`RrfK` + rank) over the rankings a chunk is in; eligible when similarity ≥
+      `MinScore`, or keyword match with similarity ≥ `KeywordAssistMinScore`, or keyword match and `HasExactIdentifier`;
+      ordered by score desc then chunk id; then `ChunkSelection.Take`.
+   c. **No vectors (v1.4):** keyword ranking only, every keyword match eligible (`KeywordAlone`), then `ChunkSelection.Take`.
+   None found → `NoMatch` when the queries were embedded, `Unavailable(CannotSearch)` when they were not. A short complete
+   question is so answered from its own search, and only a follow-up that matches nothing alone uses the previous message.
 
 **Service logic – `MarkdownChunker.Chunk`**
 1. Normalise line endings. Title = first level-1 ATX heading outside fenced code (`` ``` `` / `~~~`), else the file name
@@ -848,12 +863,17 @@ sequenceDiagram
   participant P as DocumentEmbeddingEndpoint
   participant E as GeminiEmbeddingClient
   participant V as DocumentVectorIndex
+  participant R as DocumentIndexRepository
   S->>D: SearchAsync(text, previous user message)
   D->>P: ResolveAsync
   D->>E: EmbedAsync([query], Query)
   E-->>D: L2-normalised vector
-  D->>V: Search(vector, TopK, MinScore, MaxContextCharacters)
-  V-->>D: ScoredChunk list
+  D->>V: Similarities(vector, KeywordAssistMinScore)
+  V-->>D: ScoredChunk list (vector ranking)
+  D->>R: SearchKeywordAsync(KeywordQuery.FtsQuery, CandidateCount)
+  R-->>D: chunk ids by bm25 (DocumentChunks_fts)
+  D->>V: Resolve(ids)
+  D->>D: RankFusion.Fuse, ChunkSelection.Take(TopK, MaxContextCharacters)
   D-->>S: DocumentContext Found / NoMatch / Unavailable
   S->>S: AssistantPrompt.Build(..., context), SourcesOf(context)
 ```
@@ -867,6 +887,7 @@ sequenceDiagram
 | `ReplaceChunksAsync(source, chunks)` | New source → added with its chunks; existing → old chunk ids read and marked deleted by key (text and vectors not loaded), new chunks added | Staged only; the caller saves |
 | `RemoveByPathsAsync(relativePaths)` | Marks those sources deleted | Chunks deleted by the FK cascade on save |
 | `StreamChunksAsync()` | `AsNoTracking` rows `DocumentChunkRow(ChunkId, RelativePath, Title, EmbeddingModel, HeadingPath, Text, Embedding, Dimensions)` | Loads the in-memory index |
+| `SearchKeywordAsync(ftsQuery, limit)` (v1.4) | `SELECT rowid FROM DocumentChunks_fts WHERE … MATCH @q ORDER BY bm25(DocumentChunks_fts, 2.0, 1.0), rowid LIMIT @limit` (`Database.SqlQuery<int>`, parameterised) | Chunk ids, best first; headings weigh double; the query comes from `KeywordQuery` |
 
 **Validation rules** (`DocumentKnowledgeOptions.Validate`, at startup; the message names the key)
 
@@ -877,6 +898,9 @@ sequenceDiagram
 | `EmbeddingDimensions` | 128–3072 |
 | `TopK` | 1–20 |
 | `MinScore` | 0–1 |
+| `KeywordAssistMinScore` (v1.4) | 0–1 |
+| `CandidateCount` (v1.4) | 1–100 and ≥ `TopK` |
+| `RrfK` (v1.4) | 1–1000 |
 | `MaxChunkCharacters` | 300–6000 |
 | `MaxContextCharacters` | ≥ `MaxChunkCharacters` |
 | `RescanMinutes` | ≥ 1 |
@@ -1217,6 +1241,7 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | `20261018183210_AddAssistant` | Creates `AssistantConversations`, `AssistantMessages`, `AssistantPendingActions`, `AssistantAudits` (+ `AiProviderConfigs`, TFA Settings) and their indexes |
 | `20261031134802_AddDocumentIndex` | Creates `DocumentSources` (unique `RelativePath`) and `DocumentChunks` (FK cascade, index on `DocumentSourceId`). Additive; message sources need no schema change (`MetaJson`) |
 | `20261101050239_AddCustomAiProviders` (v1.3; TFA Settings LLD 5.5) | `AssistantMessages.ProviderKind` → `ProviderId`, filled from the built-in provider row of the old kind, so earlier answers keep their provider; index and set-null FK added |
+| `20261101140000_AddDocumentChunkFullText` (v1.4) | Creates the FTS5 virtual table `DocumentChunks_fts(HeadingPath, Text)` (external content on `DocumentChunks`, `content_rowid = Id`, tokenizer `porter unicode61`), triggers `DocumentChunks_fts_ai` / `_ad` / `_au` that keep it in step with every insert, delete (also by cascade) and update, and runs `rebuild` to index the stored chunks (no re-embedding). Down drops the triggers and the table. No EF entity; the model snapshot is unchanged |
 
 ---
 
@@ -1228,7 +1253,7 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | History window (`LoadHistoryAsync`) | Each message | 24 newest → drop notices → 12 → ≤ 6000 chars → chronological | Read only |
 | Secret screen (`SecretScreen`) | Each message; each tool result | Regex patterns: password phrases, `sk-`, `AIza`, `Bearer`, JWT, long mixed token | Pure function |
 | Ranking (`TaskPrioritiser.Rank`) | `prioritise_tasks` | Stage → local due date → priority desc → deadline → task code | Deterministic, provider-independent |
-| Document retrieval (`DocumentSearch.SearchAsync`) | Each message, before the model call | Query (if it finds nothing and is < 40 chars: again with the previous user message) → Google Gemini embedding → dot product over the in-memory index → score ≥ `MinScore`, top `TopK`, ≤ `MaxContextCharacters` | Read only |
+| Document retrieval (`DocumentSearch.SearchAsync`) | Each message, before the model call | Query (if it finds nothing and is < 40 chars: again with the previous user message) → Google Gemini embedding → dot product over the in-memory index, plus FTS5 keyword search (v1.4), merged by Reciprocal Rank Fusion → eligible chunks, top `TopK`, ≤ `MaxContextCharacters`; keyword search alone when the message cannot be embedded | Read only |
 | Document indexing (`DocumentIndexerService` → `DocumentIndexer.RunAsync`) | Startup: load stored index; 10 s after start; then every `RescanMinutes` (5) (v1.2: no manual trigger) | Hash each `.md` file → skip unchanged (hash and model) → chunk, embed in batches of 100, swap chunks in one save → remove deleted files → reload the vector index (every 10 embedded files and at the end) | Hash-based skip; one run at a time (`SemaphoreSlim`); a re-run converges to the folder |
 | Confirm once (`TryClaimAsync`) | `POST …/confirm` | `UPDATE … SET Status = 'Confirmed' WHERE Id = @id AND Status = 'Pending'` | Only one concurrent confirm wins |
 | Rate limit (`AssistantRateLimiter`) | Each counted message | Sliding 1-minute window, 20 per user | In memory, per process; reset on restart |
@@ -1271,6 +1296,10 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | `DocumentKnowledge:EmbeddingDimensions` | `768` (128–3072) | `outputDimensionality` of each vector; changing it re-embeds every document (an older index is re-embedded automatically on the first start) |
 | `DocumentKnowledge:TopK` | `4` (1–20) | Most chunks per message |
 | `DocumentKnowledge:MinScore` | `0.65` (0–1) | Minimum cosine similarity (tuned against a fixed question set) |
+| `DocumentKnowledge:HybridSearch` (v1.4) | `true` | Keyword search (FTS5) as well as similarity, merged; `false` = similarity only |
+| `DocumentKnowledge:KeywordAssistMinScore` (v1.4) | `0.55` (0–1; above `MinScore` acts as `MinScore`) | Lowest similarity at which a keyword match of ordinary words may be used |
+| `DocumentKnowledge:CandidateCount` (v1.4) | `20` (1–100, ≥ `TopK`) | Chunks each ranking contributes to the fusion |
+| `DocumentKnowledge:RrfK` (v1.4) | `60` (1–1000) | k of Reciprocal Rank Fusion, score 1 / (k + rank) |
 | `DocumentKnowledge:MaxChunkCharacters` | `1500` (300–6000) | Section split size |
 | `DocumentKnowledge:MaxContextCharacters` | `4000` (≥ `MaxChunkCharacters`) | Document text per message |
 | `DocumentKnowledge:RescanMinutes` | `5` (≥ 1) | Folder check interval |
@@ -1310,6 +1339,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | Old document endpoints (v1.2) | `TaskFlow.IntegrationTests/Settings/TfaSettings/DocumentIndexEndpointsRemovedTests.cs` | Integration | `GET …/documents/status` and `POST …/documents/reindex` answer 404 (replaces the deleted `DocumentIndexEndpointsTests`) |
 | Embeddings | `TaskFlow.UnitTests/Integrations/Ai/Embeddings/GeminiEmbeddingClientTests.cs` | Unit | Request (key in header, not URL), task prefixes, `outputDimensionality`, batches of 100, normalisation, failure kinds |
 | Migration | `TaskFlow.UnitTests/Persistence/DocumentIndexMigrationTests.cs` | Unit | Upgrade leaves existing tables and rows alone, cascade delete, unique path, downgrade |
+| Hybrid search (v1.4) | `TaskFlow.UnitTests/Persistence/DocumentChunkFullTextMigrationTests.cs`, `Assistant/Documents/KeywordQueryTests.cs`, `RankFusionTests.cs`, `DocumentSearchTests.cs`, `DocumentIndexRepositoryTests.cs`, `DocumentVectorIndexTests.cs` | Unit | FTS migration (upgrade indexes stored chunks, triggers follow insert / update / cascade delete, downgrade), safe query building and identifiers, eligibility and RRF, identifier below `MinScore`, borderline lift, ordinary words below the assist floor, hybrid off, keyword-only fallback without a key or at the rate limit |
 | Document answers | `TaskFlow.IntegrationTests/Assistant/DocumentAnswerEndpointsTests.cs`, `DocumentIndexStartupTests.cs` (`TestSupport/DocumentKnowledgeFactory.cs`) | Integration | Employee answer with sources kept after reload; API starts and answers with the indexer on and the folder missing |
 | Sources chips | `frontend/src/app/modules/assistant/components/tfa-message.component.spec.ts` | Frontend unit | Chips render for a message with sources, nothing without |
 | Key protection | `TaskFlow.UnitTests/Integrations/Ai/KeyProtection/AiKeyProtectorTests.cs`, `KeyRingProtectionCheckTests.cs` | Unit | Encryption, key-ring check |
@@ -1419,7 +1449,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | FR-TFA-56 | `AssistantToolbox.ExecuteAsync` refusal audit · `ConfirmAsync` refusal audit | `AssistantToolGateTests` (`ARefusedActionToolIsRecordedInTheAuditLogButAReadToolIsNot`), `AssistantActionServiceTests` (`ThePermissionIsCheckedAgainAtConfirmation`) |
 
 | FR-TFA-57 | `DocumentIndexer.FindMarkdownFiles` (`.md`, recursive) · `MarkdownChunker` · `DocumentKnowledgeOptions.SourcePath` | `DocumentIndexerTests`, `MarkdownChunkerTests` |
-| FR-TFA-58 | `AssistantService.SendAsync` → `IDocumentSearch.SearchAsync` · `DocumentSearch.BuildQuery` · `DocumentVectorIndex.Search` (`TopK`, `MinScore`, `MaxContextCharacters`) | `AssistantDocumentPromptTests`, `DocumentSearchTests`, `DocumentVectorIndexTests` |
+| FR-TFA-58 | `AssistantService.SendAsync` → `IDocumentSearch.SearchAsync` · `DocumentSearch.BuildQuery` · `DocumentVectorIndex.Search` / `Similarities` (`TopK`, `MinScore`, `MaxContextCharacters`) · `KeywordQuery`, `RankFusion`, `IDocumentIndexRepository.SearchKeywordAsync` (v1.4) | `AssistantDocumentPromptTests`, `DocumentSearchTests`, `DocumentVectorIndexTests`, `KeywordQueryTests`, `RankFusionTests` |
 | FR-TFA-59 | `AssistantPrompt.FoundRule`, `NoMatchRule` | `AssistantDocumentPromptTests` |
 | FR-TFA-60 | `AssistantPrompt` rule "You only answer questions about TaskFlow and the user's work in it" | `AssistantDocumentPromptTests` |
 | FR-TFA-61 | `AssistantService.SourcesOf` · `AssistantSourceDto` · `AssistantMessageMeta.Sources` · `ToDtosAsync` · `TfaMessageComponent.sources()` | `AssistantSourcesTests`, `DocumentAnswerEndpointsTests`, `tfa-message.component.spec.ts` |

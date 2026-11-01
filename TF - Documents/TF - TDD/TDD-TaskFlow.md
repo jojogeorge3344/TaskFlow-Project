@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Document | Technical Design Document |
-| Version | 2.3 |
+| Version | 2.4 |
 | Status | Updated to match implementation; aligned with the approved BRD set (signed off 31-Oct-2026) and the FRD / HLD / LLD set |
 | Basis | Approved BRD set v1.0 (`TF - Documents/TF - BRD`, overall + 16 sub-modules, signed off 31-Oct-2026) + FRD / HLD / LLD v1.0 (`TF - Documents/TF - FRD`, `TF - HLD`, `TF - LLD`) + the original BRD v1.0 (retired from the repository) + `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` + the TaskFlow source code (`TaskFlow Proj/backend`, `TaskFlow Proj/frontend`) |
 | Location | `TF - Documents/TF - TDD/TDD-TaskFlow.md` (+ `.pdf`) |
@@ -31,6 +31,7 @@
 | 2.1 | 31-Oct-2026 | Jojo George | Aligned with the new document set. Added §1.5 Reference Documents (approved BRD set, FRD, HLD, LLD, Development Plan, permission documents, workflow docs, developer docs, OpenSpec, skills) and §1.6 Document Hierarchy & Traceability (document chain, ID schemes, sub-module document map, original-screen → sub-module mapping). §5.1 repository layout updated to the `TF - Documents` folder. §13 linked to the sub-module documents. §21 maps each criterion to the approved BRD acceptance IDs (AC-01 – AC-26) and adds AC-02 – AC-06 and AC-21 – AC-26. §22.5 lists where open items are tracked in the document set. Design content and section numbers unchanged; code facts re-verified (114 actions, 83 routes, 70 keys, 31 entities). |
 | 2.2 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Keyword help (`search_help`, `HelpKnowledgeBase`, the 19 `Services/Assistant/Knowledge/*.md` topics) removed. New document index: `DocumentSources` and `DocumentChunks` tables (migration `20261031134802_AddDocumentIndex`), `MarkdownChunker`, `OllamaEmbeddingClient` (`nomic-embed-text`), in-memory `DocumentVectorIndex`, hosted `DocumentIndexerService`, retrieval in `AssistantService.SendAsync` before the model call, answer sources, `DocumentKnowledge` configuration section and `AiProviders:OllamaContextTokens`. New `DocumentIndexController` (2 actions). Updated §3.2, §3.3, §4.1, §5.2, §6.3–§6.5, §7, §8, §12.5, §13.2, §16, §18.2, §20, §22.4 and §24. Counts now 116 actions, 85 routes, 22 controllers, 33 entities, 22 migrations. |
 | 2.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag`, design D13 and D14. Document index administration removed: `DocumentIndexController` (`GET /api/v1/assistant/documents/status`, `POST /api/v1/assistant/documents/reindex`), `DocumentIndexService`, `DocumentIndexStatusDto`, the TFA Settings Document search card (`DocumentIndexCardComponent`) and `DocumentIndexerService.RequestReindex()`; the background indexer and the internal `DocumentIndexStatus` stay, and indexing problems are logged as warnings. Model names must contain no whitespace; the Add AI model page shows an example model ID per provider and a Google AI Studio key link for Gemini; a Gemini `INVALID_ARGUMENT` about the model name is `ModelUnavailable`; Test connection adds the provider's own reason ("{Provider} said: HTTP {status} - {reason}", at most 200 characters, keys replaced by `[key]`). Built-in Gemini models now `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite`; `AiProviderSeeder` retires old built-ins in existing databases. Also records the Add AI model endpoint `POST /api/v1/assistant/providers/{kind}/models` (`AiModelAdditionService`, `AddAiModelComponent`, route `/settings/tfa/models/new`; OpenSpec change `tfa-add-ai-model-page`), which the counts include. Updated §5.2, §6.1, §6.3, §8 (8.9, 8.11), §12.5, §12.8, §13.2, §16.1, §16.2, §16.4, §16.8, §16.9 and §20.2. Counts now 115 actions, 83 routes, 21 controllers. |
+| 2.4 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-hybrid-document-search`: TFA document retrieval is hybrid (§16.8). Vector similarity plus a SQLite FTS5 keyword search over `DocumentChunks_fts` (migration `20261101140000_AddDocumentChunkFullText`, kept in step by triggers), merged with Reciprocal Rank Fusion; exact identifiers (NFR-14, TimeoutSeconds) are found by keyword; keyword search alone when the message cannot be embedded. New `DocumentKnowledge` settings `HybridSearch`, `KeywordAssistMinScore`, `CandidateCount`, `RrfK`. `AiProviders:TimeoutSeconds` default 120. |
 
 ---
 
@@ -340,7 +341,7 @@ initializer that restores the session (`AuthService.restoreSession`). Authentica
 | Scheduler | `BackgroundService` + `PeriodicTimer` | built-in | Deadline reminders |
 | Logging | `Microsoft.Extensions.Logging` (`Logging:LogLevel`) | built-in | Request log and application log |
 | AI providers | `HttpClient` to Gemini, OpenAI, Ollama | n/a | TFA assistant |
-| Document embeddings | `HttpClient` to Google Gemini `batchEmbedContents`, model `gemini-embedding-2` (768 dimensions); vectors in SQLite, brute-force search in memory (no vector database, no new package) | n/a | TFA answers from the documents folder (§16.8) |
+| Document embeddings | `HttpClient` to Google Gemini `batchEmbedContents`, model `gemini-embedding-2` (768 dimensions); vectors in SQLite, brute-force search in memory, plus SQLite FTS5 keyword search (built into SQLite; no vector database, no new package) | n/a | TFA answers from the documents folder (§16.8) |
 
 ### 4.2 Frontend
 
@@ -2702,7 +2703,7 @@ Assistant, Tool). Conversations are kept indefinitely (no retention job).
   HTTP status and this reason. `AiProviderConnectionTester` (Test connection and the Add AI model test, both
   `settings.ai.test`) appends "{Provider} said: HTTP {status} - {reason}" for `Unexpected` and `ModelUnavailable`
   failures; chat replies keep the fixed message.
-- `AiProviders:TimeoutSeconds` (60) is the `HttpClient` timeout of the cloud providers and of the Gemini embedding
+- `AiProviders:TimeoutSeconds` (120) is the `HttpClient` timeout of the cloud providers and of the Gemini embedding
   client, and `AiProviders:OllamaTimeoutSeconds` (180) that of the Ollama chat client; redirects are not followed.
 - `OllamaProvider` sends `options.num_ctx` = `AiProviders:OllamaContextTokens` (default 8192) with every chat request, so a
   system prompt carrying up to `DocumentKnowledge:MaxContextCharacters` of reference text is not cut off by Ollama's
@@ -2797,13 +2798,17 @@ sequenceDiagram
   participant D as DocumentSearch
   participant E as GeminiEmbeddingClient
   participant V as DocumentVectorIndex
+  participant R as DocumentIndexRepository
   participant P as AssistantPrompt
   participant G as ChatModelGateway
   S->>D: SearchAsync(message, previous user message)
   D->>E: EmbedAsync(message [, previous + message], Query)
   E-->>D: normalised vectors (or EmbeddingUnavailableException)
-  D->>V: Search(message vector, TopK, MinScore, MaxContextCharacters)
-  V-->>D: scored chunks (if none and short: search the follow-up vector)
+  D->>V: Similarities(message vector, KeywordAssistMinScore)
+  V-->>D: vector ranking
+  D->>R: SearchKeywordAsync(KeywordQuery, CandidateCount)
+  R-->>D: keyword ranking (FTS5 bm25 over DocumentChunks_fts)
+  D->>D: RankFusion (RRF), eligibility, TopK, MaxContextCharacters (if none and short: the follow-up query)
   D-->>S: DocumentContext (Found / NoMatch / Unavailable)
   S->>P: Build(..., DocumentContext)
   S->>G: system prompt + history + tools
@@ -2817,7 +2822,8 @@ sequenceDiagram
 | Embedding endpoint (`DocumentEmbeddingEndpoint`) | Returns `EmbeddingEndpoint(Model, Dimensions, ApiKey)`: the configured model and dimensions with the API key saved for the built-in Google Gemini provider, decrypted through `IAiKeyProtector`. Embeddings always run on Gemini, whatever chat provider is selected (Ollama included). Resolved on every index run and every question, so a key saved in TFA Settings is used at the next rescan without a restart. No saved key → `MissingKey` ("No Google Gemini API key is saved. Save a Google Gemini API key in TFA Settings to enable document search.") |
 | Indexer (`DocumentIndexer`, scoped) | For each file: SHA-256 of its bytes; skipped when the stored `ContentHash` and `EmbeddingModel` match. Otherwise chunk, embed, and in one `SaveChangesAsync` delete the old chunks and insert the new ones (`IDocumentIndexRepository.ReplaceChunksAsync`), so the old chunks stay searchable until then. Sources of files no longer on disk are removed (cascade to chunks). A changed `EmbeddingModel` or `EmbeddingDimensions` (stored together as `<model>@<dimensions>`) re-embeds every file, so an index built with an earlier embedding model is re-embedded on the first start. An error on one file is recorded in the status with the file's path, logged as a warning ("TFA could not index the document {File}") and the run continues; an unavailable embedding service (no saved Gemini key, key refused, rate limit reached, Google unreachable or timed out) stops the run and is logged as a warning ("TFA document indexing stopped: {Reason}"); unchanged files stay indexed and the next rescan continues. A missing folder sets the error "The documents folder was not found: {path}", is logged as a warning, and removes the stored sources. During a run the in-memory index is reloaded every 10 embedded files (`ReloadEvery`) and at the end, so a long first run becomes searchable as it goes |
 | Search index (`DocumentVectorIndex`, singleton) | All chunks of the configured model with their normalised vectors in memory, replaced atomically as one snapshot. A search is one dot product per chunk (brute force); chunks with a score ≥ `MinScore` are ranked, at most `TopK` are kept, and they are trimmed to `MaxContextCharacters` of text in score order (the best match is always kept) |
-| Search (`DocumentSearch : IDocumentSearch`, scoped) | Embeds the query and searches the index. Returns `Unavailable(CannotSearch)` when `Enabled` is false, when the embedding call fails, or when the index is empty after indexing finished; `Unavailable(Preparing)` when the index is empty and the first run is still going or has not finished; `NoMatch` when no chunk reaches `MinScore`; `Found` otherwise |
+| Keyword index (`DocumentChunks_fts`, v2.4) | SQLite FTS5 virtual table over `DocumentChunks.HeadingPath` and `Text` (external content, `rowid` = chunk id, tokenizer `porter unicode61`), created by migration `20261101140000_AddDocumentChunkFullText`; insert / delete / update triggers on `DocumentChunks` keep it in step (also on cascade delete), and the migration's `rebuild` indexed the stored chunks. Queried by `IDocumentIndexRepository.SearchKeywordAsync` ordered by `bm25(…, 2.0, 1.0)` (headings weigh double) |
+| Search (`DocumentSearch : IDocumentSearch`, scoped) | Embeds the query and searches by similarity and, with `HybridSearch` (default on), by keyword: `KeywordQuery` quotes every significant term (stop words dropped) and joins them with AND, so no user text forms an FTS operator; the two rankings are merged with Reciprocal Rank Fusion (`RankFusion`, k = `RrfK`). A chunk is eligible with similarity ≥ `MinScore`, or with a keyword match and similarity ≥ `KeywordAssistMinScore`, or with a keyword match for an exact identifier (a term with a digit, `-`, `_`, `.` or an inner capital). When the embedding call fails, keyword search alone is used and every match is eligible. Returns `Unavailable(CannotSearch)` when `Enabled` is false, when the embedding call fails and the keyword search finds nothing (or `HybridSearch` is off), or when the index is empty after indexing finished; `Unavailable(Preparing)` when the index is empty and the first run is still going or has not finished; `NoMatch` when no chunk is eligible; `Found` otherwise |
 | Background service (`DocumentIndexerService : BackgroundService`, singleton + hosted) | Loads the stored index at startup, waits 10 s (`StartDelay`), runs the indexer, then repeats every `RescanMinutes` (default 5). One run at a time (`SemaphoreSlim(1)`; `RunOnceAsync` returns false when a run is already going). Each run uses its own DI scope. A failed run is logged as an error and recorded in the status as "Indexing failed. See the API log for details."; the service keeps running. `DocumentKnowledge:Enabled` = false turns the service and retrieval off. There is no way to trigger a run from the UI or API: to index at once an operator restarts the API (startup run) or waits for the next rescan |
 | Status (`DocumentIndexStatus`, singleton) | `Enabled`, `SourcePath` (full path), `FolderFound`, `EmbeddingModel`, `FileCount`, `ChunkCount`, `LastIndexedAt`, `IsRunning`, `LastError`, `LastErrorFile`. Internal only: `DocumentSearch` uses it to tell the user that the documents cannot be searched or are still being prepared. It is not exposed by any endpoint |
 | No admin UI (design D13) | A first version had `DocumentIndexController` (`GET .../documents/status`, `POST .../documents/reindex`), `DocumentIndexService`, `DocumentIndexStatusDto`, a TFA Settings "Document search" card (`DocumentIndexCardComponent`, 3 s polling, **Re-index now**) and `DocumentIndexerService.RequestReindex()`. They were removed on 01-Nov-2026: nothing on the card could be changed from the UI, the rescan does what the button did, and the folder path, model and chunk count are developer details. Indexing problems are in the server log |
@@ -2913,6 +2919,10 @@ Local `true` line is commented out. Secrets such as `Jwt:Key` stay in user-secre
 | `DocumentKnowledge:EmbeddingDimensions` | 768 (128–3072) | Vector length requested from Gemini (`outputDimensionality`); stored with the model as `<model>@<dimensions>`, so changing it re-embeds every document |
 | `DocumentKnowledge:TopK` | 4 (1–20) | Most chunks passed to the model per message |
 | `DocumentKnowledge:MinScore` | 0.65 (0–1; tuned against a fixed question set) | Lowest cosine similarity a chunk needs |
+| `DocumentKnowledge:HybridSearch` | true | Keyword (FTS5) search as well as similarity, merged with Reciprocal Rank Fusion; false = similarity only |
+| `DocumentKnowledge:KeywordAssistMinScore` | 0.55 (0–1; above `MinScore` acts as `MinScore`) | Lowest similarity at which a keyword match of ordinary words may be used; an exact-identifier match, or any match when the message cannot be embedded, needs none |
+| `DocumentKnowledge:CandidateCount` | 20 (1–100, ≥ `TopK`) | Chunks each ranking contributes to the fusion |
+| `DocumentKnowledge:RrfK` | 60 (1–1000) | k of Reciprocal Rank Fusion: score 1 / (k + rank) |
 | `DocumentKnowledge:MaxChunkCharacters` | 1500 (300–6000) | Longest chunk before a section is split |
 | `DocumentKnowledge:MaxContextCharacters` | 4000 (≥ `MaxChunkCharacters`) | Most document text passed to the model per message |
 | `DocumentKnowledge:RescanMinutes` | 5 (≥ 1) | Minutes between checks of the documents folder |

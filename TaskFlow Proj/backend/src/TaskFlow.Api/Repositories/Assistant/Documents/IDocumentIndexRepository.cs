@@ -20,6 +20,10 @@ public interface IDocumentIndexRepository : IBaseRepository<DocumentSource>
     /// <summary>Stages the deletion of the sources with these paths; their chunks are deleted with them.</summary>
     Task RemoveByPathsAsync(IReadOnlyCollection<string> relativePaths, CancellationToken cancellationToken = default);
 
+    /// <summary>The ids of the chunks matching an FTS5 query, best first by bm25 with heading matches weighted double: at
+    /// most <paramref name="limit"/>. The query must already be safe FTS5 syntax (see <c>KeywordQuery</c>).</summary>
+    Task<IReadOnlyList<int>> SearchKeywordAsync(string ftsQuery, int limit, CancellationToken cancellationToken = default);
+
     /// <summary>Every stored chunk with its document, for loading the in-memory search index.</summary>
     IAsyncEnumerable<DocumentChunkRow> StreamChunksAsync(CancellationToken cancellationToken = default);
 }

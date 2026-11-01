@@ -84,6 +84,11 @@ public class GeminiProvider : IChatModelProvider
             ["contents"] = contents
         };
 
+        if (ThinkingConfig(request.ModelName) is { } thinking)
+        {
+            body["generationConfig"] = new JsonObject { ["thinkingConfig"] = thinking };
+        }
+
         if (request.Tools.Count > 0)
         {
             body["tools"] = new JsonArray(new JsonObject
@@ -93,6 +98,29 @@ public class GeminiProvider : IChatModelProvider
         }
 
         return body;
+    }
+
+    /// <summary>Budget for Gemini 2.5 models, which take a token budget instead of a level. 512 is within the range every
+    /// 2.5 model accepts (Pro cannot turn thinking off, Flash-Lite needs at least 512).</summary>
+    public const int Gemini25ThinkingBudget = 512;
+
+    /// <summary>Keeps thinking short so an answer arrives well inside the timeout. Gemini 3 models take a
+    /// <c>thinkingLevel</c> and refuse a budget; Gemini 2.5 models take a <c>thinkingBudget</c> and refuse a level; older
+    /// and custom models do not think, so nothing is sent for them.</summary>
+    public static JsonObject? ThinkingConfig(string modelName)
+    {
+        var model = modelName.Trim().ToLowerInvariant();
+        if (model.StartsWith("gemini-3", StringComparison.Ordinal))
+        {
+            return new JsonObject { ["thinkingLevel"] = "low" };
+        }
+
+        if (model.StartsWith("gemini-2.5", StringComparison.Ordinal))
+        {
+            return new JsonObject { ["thinkingBudget"] = Gemini25ThinkingBudget };
+        }
+
+        return null;
     }
 
     /// <summary>Gemini rejects a function whose parameter schema is an object with no properties, so a tool that takes
