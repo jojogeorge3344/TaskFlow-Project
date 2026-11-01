@@ -90,16 +90,27 @@
           [attr.aria-invalid]="showError('assignedToUserId')"
           aria-describedby="task-assignee-error"
         >
-          <option [ngValue]="null">{{ usersLoading() ? 'Loading employees…' : 'Select an employee…' }}</option>
-          @for (user of assigneeOptions(); track user.id) {
-            <option [ngValue]="user.id">{{ user.fullName }} ({{ user.employeeCode || user.username }})</option>
+          <option [ngValue]="null">
+            @switch (candidatesState()) {
+              @case ('idle') { Select a project first… }
+              @case ('loading') { Loading the project's team… }
+              @default { Select an employee… }
+            }
+          </option>
+          @for (candidate of candidates(); track candidate.userId) {
+            <option [ngValue]="candidate.userId" [attr.data-candidate]="candidate.userId">{{ candidateLabel(candidate) }}</option>
           }
         </select>
+        @if (assigneeNotice(); as notice) {
+          <span
+            [class]="notice.kind === 'warning' ? 'tf-field__error' : 'tf-field__hint'"
+            [attr.role]="notice.kind === 'warning' ? 'alert' : null"
+            data-assignee-notice
+            >{{ notice.message }}</span
+          >
+        }
         @if (showError('assignedToUserId')) {
           <span id="task-assignee-error" class="tf-field__error" data-error="assignedToUserId">Select the employee to assign.</span>
-        }
-        @if (usersError()) {
-          <span class="tf-field__error">Could not load employees. Reload the page to try again.</span>
         }
       </div>
 
@@ -168,7 +179,9 @@
     <fieldset class="task-form__group">
       <legend>Additional recipients</legend>
       <p class="tf-field__hint">The assigned employee is always notified. Pick anyone else who should follow this task.</p>
-      @if (recipientOptions().length === 0) {
+      @if (usersError()) {
+        <span class="tf-field__error">Could not load employees. Reload the page to try again.</span>
+      } @else if (recipientOptions().length === 0) {
         <p class="tf-field__hint">{{ usersLoading() ? 'Loading people…' : 'No other active users.' }}</p>
       } @else {
         <ul class="recipient-list">

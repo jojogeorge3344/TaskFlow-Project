@@ -2663,8 +2663,9 @@ instruction, like text from tools.
 **Sources.** When the context is `Found`, every chunk passed to the model becomes an `AssistantSourceDto(Document, Section,
 Path)` (document title, heading path, relative file path), one per document section (de-duplicated by path and section).
 They are returned in `AssistantMessageDto.Sources` and stored in `AssistantMessageMeta.Sources` inside `MetaJson`, so a
-reloaded conversation shows them again; messages stored earlier load with an empty list. Fixed tool replies (refusals,
-prepared actions), the empty-answer text and transient notices carry no sources.
+reloaded conversation keeps them; messages stored earlier load with an empty list. Fixed tool replies (refusals,
+prepared actions), the empty-answer text and transient notices carry no sources. Sources are recorded but not displayed:
+the TFA panel shows no Sources row under answers, for any role (OpenSpec change `tfa-hide-answer-sources`).
 
 Entities: `AssistantConversation` (latest by id is active), `AssistantMessage` (`Role`: `AssistantMessageRole` User,
 Assistant, Tool). Conversations are kept indefinitely (no retention job).
@@ -2840,7 +2841,7 @@ sequenceDiagram
 | `TfaPanelComponent` | Floating TFA button and panel, provider notice (once per provider), feed, failure card, voice wiring; mounted by `ShellComponent` only with `assistant.chat`. No route and no menu entry |
 | `TfaHeaderComponent` | Title, New chat, Close, model selector |
 | `TfaComposerComponent` | Message box, Send, starter suggestions, mic and hands-free toggle |
-| `TfaMessageComponent` | Text, refusal, notice, ranked tasks, screen links, embedded action card, and "Sources" chips (document title + last heading; tooltip with the full heading path and the file path) |
+| `TfaMessageComponent` | Text, refusal, notice, ranked tasks, screen links, embedded action card. Document sources carried by a message are not displayed |
 | `TfaActionCardComponent` | Confirm / Edit / Cancel, mail edit form, status labels (not gated by `assistant.actions.confirm`, §14.5) |
 | `AssistantService` (Angular) | All `/api/v1/assistant` calls; signals for panel, providers, messages, failure; provider list refreshed every 60 s (`PROVIDER_REFRESH_MS`) |
 | `AddAiModelComponent` (Settings → TFA Settings → Add AI model) | Provider, model name (placeholder from `MODEL_ID_EXAMPLES`: `gemini-3.8-flash`, `gpt-4o-mini`, `llama3.2:3b`; the `modelId` validator refuses whitespace), API key or Ollama address, Test connection. For Gemini a hint links to Google AI Studio (`https://aistudio.google.com/apikey`). Calls `AiProviderAdminService.addModel()`. TFA Settings has no document index card (§16.8) |

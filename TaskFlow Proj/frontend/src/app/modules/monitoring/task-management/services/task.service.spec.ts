@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { ActivityEntry, CreateTaskRequest, PagedResult, TaskCard, TaskListItem, TaskComment, TaskDetails, TaskRecipient, UpdateTaskRequest } from '../models/task.model';
+import { ActivityEntry, AssigneeCandidate, CreateTaskRequest, PagedResult, TaskCard, TaskListItem, TaskComment, TaskDetails, TaskRecipient, UpdateTaskRequest } from '../models/task.model';
 import { TaskService } from './task.service';
 
 describe('TaskService', () => {
@@ -73,6 +73,18 @@ describe('TaskService', () => {
     expect(request.request.method).toBe('GET');
     request.flush([{ userId: 3, fullName: 'Joe' }]);
     expect(result).toEqual([{ userId: 3, fullName: 'Joe' }]);
+  });
+
+  it('loads the assignee candidates for a project', () => {
+    let result: AssigneeCandidate[] | undefined;
+    const candidate: AssigneeCandidate = { userId: 3, fullName: 'Joe', employeeCode: 'E3', activeTasks: 1, overdueTasks: 0, onTimeRate: null };
+
+    service.getAssigneeCandidates(5).subscribe((value) => (result = value));
+
+    const request = http.expectOne('/api/v1/tasks/assignee-candidates?projectId=5');
+    expect(request.request.method).toBe('GET');
+    request.flush([candidate]);
+    expect(result).toEqual([candidate]);
   });
 
   it('creates a task', () => {

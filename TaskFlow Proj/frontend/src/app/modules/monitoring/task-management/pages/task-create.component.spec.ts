@@ -1,16 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { ReminderSettings } from '../../../settings/models/settings.model';
-import { TaskDetails } from '../models/task.model';
+import { AssigneeCandidate, TaskDetails } from '../models/task.model';
 import { User } from '../../../management/employee-management/models/user.model';
 import { ApplicationSettingsService } from '../../../settings/application-settings/services/application-settings.service';
 import { ProjectService } from '../../../management/project-management/services/project.service';
 import { ReminderSettingsService } from '../../../settings/reminder-settings/services/reminder-settings.service';
 import { UserService } from '../../../management/employee-management/services/user.service';
 import { ToastService } from '../../../../shared/services/toast.service';
-import { TaskCreateComponent, toLocalInput } from './task-create.component';
+import { TaskCreateComponent, candidateLabel, toLocalInput } from './task-create.component';
 import { TaskService } from '../services/task.service';
 import { NO_ALLOCATIONS, withProject } from '../../../../shared/testing/users';
 
@@ -52,7 +52,18 @@ describe('TaskCreateComponent', () => {
 
   const projects = [{ id: 5, name: 'Apollo', createdAt: '2026-09-01T00:00:00Z', employeeCount: 2, managers: [] }];
 
+  function candidate(overrides: Partial<AssigneeCandidate>): AssigneeCandidate {
+    return { userId: 3, fullName: 'Joe Thomas', employeeCode: 'EMP-003', activeTasks: 1, overdueTasks: 0, onTimeRate: null, ...overrides };
+  }
+
+  /** Apollo's team in the server's pick order: Ann is the least loaded. */
+  const team: AssigneeCandidate[] = [
+    candidate({ userId: 4, fullName: 'Ann Varghese', employeeCode: 'EMP-004', activeTasks: 1 }),
+    candidate({ userId: 3, activeTasks: 3, overdueTasks: 1 })
+  ];
+
   let createSpy: jasmine.Spy;
+  let candidatesSpy: jasmine.Spy;
   let getByIdSpy: jasmine.Spy;
   let getAllSpy: jasmine.Spy;
   let getSettingsSpy: jasmine.Spy;
@@ -66,7 +77,7 @@ describe('TaskCreateComponent', () => {
       providers: [
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
-        { provide: TaskService, useValue: { create: createSpy, getById: getByIdSpy } },
+        { provide: TaskService, useValue: { create: createSpy, getById: getByIdSpy, getAssigneeCandidates: candidatesSpy } },
         { provide: UserService, useValue: { getAll: getAllSpy } },
         { provide: ProjectService, useValue: { getAll: () => of(projects) } },
         { provide: ReminderSettingsService, useValue: { get: getSettingsSpy } },
@@ -119,6 +130,7 @@ describe('TaskCreateComponent', () => {
       .createSpy('get')
       .and.returnValue(of({ name: 'TaskFlow', timezone: 'UTC', defaultPriority: 'Medium', inAppNotificationsEnabled: true }));
     createSpy = jasmine.createSpy('create');
+    candidatesSpy = jasmine.createSpy('getAssigneeCandidates').and.returnValue(of(team));
     getByIdSpy = jasmine.createSpy('getById');
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
   });
@@ -195,12 +207,45 @@ describe('TaskCreateComponent', () => {
       expect(request.assignedToUserId).toBe(3);
     });
 
-    it('leaves the assignee empty when the original is no longer eligible', () => {
+    it('keeps the copied assignee over the least-loaded team member', () => {
+      getByIdSpy.and.returnValue(of(source));
+      const fixture = create({ copyFrom: '42' });
+
+      expect(candidatesSpy).toHaveBeenCalledWith(5);
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(3);
+      expect(el(fixture).querySelector('[data-assignee-notice]')).toBeNull();
+    });
+
+    it('picks the least-loaded team member when the original is no longer on the team, and says so', () => {
+      getByIdSpy.and.returnValue(of({ ...source, assignedToUserId: 99, assignedToName: 'Gone Away' }));
+      const fixture = create({ copyFrom: '42' });
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(4);
+      const copyNotice = el(fixture).querySelector('[data-copy-notice]')?.textContent;
+      expect(copyNotice).toContain('Gone Away is no longer on this project');
+      expect(copyNotice).toContain('least-loaded team member was selected');
+    });
+
+    it('leaves the assignee empty when the original is gone and the project has no team', () => {
+      candidatesSpy.and.returnValue(of([]));
       getByIdSpy.and.returnValue(of({ ...source, assignedToUserId: 99, assignedToName: 'Gone Away' }));
       const fixture = create({ copyFrom: '42' });
 
       expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBeNull();
       expect(el(fixture).querySelector('[data-copy-notice]')?.textContent).toContain('can no longer be assigned');
+    });
+
+    it('applies the copied assignee when the team for a URL project arrived first', () => {
+      const source$ = new Subject<TaskDetails>();
+      getByIdSpy.and.returnValue(source$);
+      const fixture = create({ copyFrom: '42', projectId: '5' });
+      // The team is in, but the copy is still loading, so nobody is auto-picked yet.
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBeNull();
+
+      source$.next(source);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(3);
     });
 
     it('opens an empty form with a message when the source cannot be loaded', () => {
@@ -219,12 +264,160 @@ describe('TaskCreateComponent', () => {
     });
   });
 
-  it('loads active users and offers only employees as assignees', () => {
-    const fixture = create();
+  describe('assignee from the chosen project\'s team', () => {
+    function notice(fixture: ComponentFixture<TaskCreateComponent>): string | null {
+      return el(fixture).querySelector('[data-assignee-notice]')?.textContent?.trim() ?? null;
+    }
+
+    function options(fixture: ComponentFixture<TaskCreateComponent>): string[] {
+      return Array.from(el(fixture).querySelectorAll('#task-assignee option')).map((option) => option.textContent?.trim() ?? '');
+    }
+
+    function choose(fixture: ComponentFixture<TaskCreateComponent>, projectId: number | null): void {
+      fixture.componentInstance.form.controls.projectId.setValue(projectId);
+      fixture.detectChanges();
+    }
+
+    it('offers nobody and asks for a project until one is chosen', () => {
+      const fixture = create();
+
+      expect(candidatesSpy).not.toHaveBeenCalled();
+      expect(options(fixture)).toEqual(['Select a project first…']);
+      expect(notice(fixture)).toBeNull();
+    });
+
+    it("lists only the project's team, each with their current workload", () => {
+      const fixture = create();
+
+      choose(fixture, 5);
+
+      expect(candidatesSpy).toHaveBeenCalledOnceWith(5);
+      expect(options(fixture)).toEqual([
+        'Select an employee…',
+        'Ann Varghese (EMP-004) - 1 active',
+        'Joe Thomas (EMP-003) - 3 active - 1 overdue'
+      ]);
+    });
+
+    it('selects the least-loaded team member and says why', () => {
+      const fixture = create();
+
+      choose(fixture, 5);
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(4);
+      expect(notice(fixture)).toBe("Auto-selected: fewest active tasks on this project's team (1 active).");
+    });
+
+    it('lets the user choose someone else, keeps that choice and hides the auto-selected line', () => {
+      const fixture = create();
+      choose(fixture, 5);
+
+      fixture.componentInstance.form.controls.assignedToUserId.setValue(3);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(3);
+      expect(notice(fixture)).toBeNull();
+      expect(candidatesSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('fetches the team again whenever the project changes and re-picks', () => {
+      candidatesSpy.and.callFake((projectId: number) =>
+        of(projectId === 5 ? team : [candidate({ userId: 7, fullName: 'Ravi Nair', employeeCode: 'EMP-007', activeTasks: 0 })])
+      );
+      const fixture = create();
+
+      choose(fixture, 5);
+      fixture.componentInstance.form.controls.assignedToUserId.setValue(3);
+      choose(fixture, 6);
+
+      expect(candidatesSpy.calls.allArgs()).toEqual([[5], [6]]);
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(7);
+      expect(options(fixture)).toEqual(['Select an employee…', 'Ravi Nair (EMP-007) - 0 active']);
+    });
+
+    it('fetches again even when switching back to a project seen before', () => {
+      const fixture = create();
+
+      choose(fixture, 5);
+      choose(fixture, null);
+      choose(fixture, 5);
+
+      expect(candidatesSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('ignores a reply for a project that is no longer chosen', () => {
+      const first = new Subject<AssigneeCandidate[]>();
+      const second = new Subject<AssigneeCandidate[]>();
+      candidatesSpy.and.callFake((projectId: number) => (projectId === 5 ? first : second));
+      const fixture = create();
+
+      choose(fixture, 5);
+      choose(fixture, 6);
+      second.next([candidate({ userId: 7, fullName: 'Ravi Nair', activeTasks: 0 })]);
+      first.next(team);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(7);
+      expect(fixture.componentInstance.candidates().map((entry) => entry.userId)).toEqual([7]);
+    });
+
+    it('shows a loading placeholder while the team is on its way', () => {
+      candidatesSpy.and.returnValue(new Subject<AssigneeCandidate[]>());
+      const fixture = create();
+
+      choose(fixture, 5);
+
+      expect(options(fixture)).toEqual(["Loading the project's team…"]);
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBeNull();
+    });
+
+    it('says when nobody is mapped to the project and leaves the assignee empty', () => {
+      candidatesSpy.and.returnValue(of([]));
+      const fixture = create();
+
+      choose(fixture, 5);
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBeNull();
+      expect(notice(fixture)).toBe('No employees are mapped to this project.');
+    });
+
+    it('says when the team could not be loaded and leaves the assignee empty', () => {
+      candidatesSpy.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const fixture = create();
+
+      choose(fixture, 5);
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBeNull();
+      expect(notice(fixture)).toBe("This project's team could not be loaded.");
+      expect(el(fixture).querySelector('form')).toBeTruthy();
+    });
+
+    it('recovers on the next project change after a failed load', () => {
+      candidatesSpy.and.returnValues(throwError(() => new HttpErrorResponse({ status: 500 })), of(team));
+      const fixture = create();
+
+      choose(fixture, 5);
+      choose(fixture, 6);
+
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(4);
+    });
+
+    it('applies the pick for a project given in the URL', () => {
+      const fixture = create({ projectId: '5' });
+
+      expect(candidatesSpy).toHaveBeenCalledWith(5);
+      expect(fixture.componentInstance.form.getRawValue().assignedToUserId).toBe(4);
+    });
+
+    it('labels a candidate without a code or overdue tasks plainly', () => {
+      expect(candidateLabel(candidate({ fullName: 'Lee', employeeCode: null, activeTasks: 0, overdueTasks: 0 }))).toBe('Lee - 0 active');
+    });
+  });
+
+  it('loads active users for the recipients', () => {
+    create();
 
     expect(getAllSpy).toHaveBeenCalledWith({ isActive: true });
-    const options = Array.from(el(fixture).querySelectorAll('#task-assignee option')).map((option) => option.textContent?.trim());
-    expect(options).toEqual(['Select an employee…', 'Joe Thomas (EMP-003)', 'Ann Varghese (EMP-004)']);
   });
 
   it('pre-fills the reminder fields from the configured defaults', () => {

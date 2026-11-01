@@ -3,7 +3,7 @@ using TaskFlow.Api.Repositories.Base;
 
 namespace TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
 
-/// <summary>What the Employee Workload screen reads.</summary>
+/// <summary>What the Employee Workload screen (and Create Task's assignee candidates) reads.</summary>
 public interface IWorkloadRepository : IBaseRepository<User>
 {
     /// <summary>Active users whose role does not hold <paramref name="viewAllPermissionKey"/>, optionally only those on a
