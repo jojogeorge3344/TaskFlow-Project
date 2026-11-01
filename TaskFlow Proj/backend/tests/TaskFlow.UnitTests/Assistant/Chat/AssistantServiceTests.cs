@@ -228,7 +228,8 @@ public class AssistantServiceTests
 
         await h.Service.SendAsync(AssistantServiceHarness.Caller(h.Asha), new SendAssistantMessageRequest("hi", null));
 
-        Assert.Equal(AiApiType.Ollama, h.Gateway.Calls.Single().Kind);
+        // Google Gemini is listed first, so it is the default when the user has not chosen one.
+        Assert.Equal(AiApiType.Gemini, h.Gateway.Calls.Single().Kind);
     }
 
     [Fact]

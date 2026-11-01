@@ -192,7 +192,7 @@ Shared mechanisms are in the overall LLD. Applied here:
 | Runtime | `AiProviderRuntime(ProviderId, ApiType, Name, IsLocal, ModelName, BaseUrl, ApiKey)` (v1.5) | `Integrations/Ai/Providers/AiProviderRuntime.cs` | What one call needs, key decrypted; id 0 = a new provider not created yet |
 | Failure types | `ProviderFailureException` (`ApiType`, `Kind`, `RetryAfter`, `HttpStatus`, `ProviderReason` v1.2; v1.5: `ProviderId`, `ProviderName`, `IsLocal` set by `For(runtime)`), `ProviderNotConfiguredException` (v1.5: `ProviderId`, `ProviderName`) | `Integrations/Ai/Providers/ProviderFailure.cs` | Classified provider failure |
 | Messages | `ProviderFailureMessages` | `Services/Assistant/Chat/ProviderFailureMessages.cs` | Fixed user messages per failure kind, naming the provider (v1.5: `For(name, local, apiType, kind, retryAfter)`) |
-| Options | `AiProviderOptions` | `Config/AiProviderOptions.cs` | `KeyRingPath`, `TimeoutSeconds`, `OllamaContextTokens` (v1.1) |
+| Options | `AiProviderOptions` | `Config/AiProviderOptions.cs` | `KeyRingPath`, `TimeoutSeconds`, `OllamaTimeoutSeconds`, `OllamaContextTokens` (v1.1), `GeminiApiKey` |
 | Seeder | `AiProviderSeeder` | `Persistence/Seeders/AiProviderSeeder.cs` | Missing built-in provider rows and built-in models keyed on them (v1.5); custom providers never touched |
 | Migration | `AddCustomAiProviders` | `Persistence/Migrations/20261101050239_AddCustomAiProviders.cs` | v1.5: provider columns, ids instead of kind, data mapped onto the built-in rows (5.5) |
 | Frontend page | `TfaSettingsComponent` | `tfa-settings/pages/tfa-settings.component.ts` | Page header + child component (no Document search card since v1.2) |
@@ -316,7 +316,7 @@ Endpoints of this sub-module (`AiProvidersController`): **7** (v1.4: `POST {kind
 
 | # | Method | Route | Permission / policy | Request | Response | Status codes |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/api/v1/assistant/providers/config` | `settings.ai.view` | – | `IReadOnlyList<AiProviderConfigDto>` (built-in providers in catalogue order Ollama, Gemini, OpenAI, then custom providers by name, v1.5) | 200, 401, 403 |
+| 1 | GET | `/api/v1/assistant/providers/config` | `settings.ai.view` | – | `IReadOnlyList<AiProviderConfigDto>` (built-in providers in catalogue order Gemini, OpenAI, Ollama, then custom providers by name, v1.5) | 200, 401, 403 |
 | 2 | PUT | `/api/v1/assistant/providers/config` | `settings.ai.edit` | `UpdateAiProvidersRequest` (v1.5: items carry `ProviderId`, replacing `Kind`; unknown id 404) | `IReadOnlyList<AiProviderConfigDto>` (kept for compatibility; not called by the screen since v1.4) | 200, 400, 401, 403, 404, 409 |
 | 3 | DELETE | `/api/v1/assistant/providers/{providerId}/models` | `settings.ai.model.remove` | route `providerId`, query `name` | `IReadOnlyList<AiProviderConfigDto>`; 400 for a built-in model ("A built-in model cannot be changed or removed.") or the model in use ("`name` is in use by TFA. Switch TFA to another model first, then delete it.") (v1.4); a custom provider left with no models is removed with its key (v1.5) | 200, 400, 401, 403, 404 |
 | 4 | POST | `/api/v1/assistant/providers/{providerId}/test` | `settings.ai.test` | route `providerId`, empty body or (v1.4) `AiModelChoiceRequest` `{ modelName }` | `AiProviderTestResultDto`: without a body the saved settings (`TestAsync`); with `modelName` that listed model with the saved key or address, even when the provider is switched off (`TestSavedModelAsync`) | 200, 400, 401, 403, 404 (unknown provider or model) |
@@ -434,7 +434,7 @@ logs) is in the Assistant LLD 4.1.3.
 
 **Service logic – `AiProviderConfigService.GetAdminConfigAsync`** (v1.5: every provider row, built-in and custom)
 1. `_configs.GetAllAsync()` (no tracking) and `_models.GetAllAsync()` (built-in first, then by `Id`).
-2. `ToDtos`: rows ordered built-in first in `AiProviderCatalog.All` order (`Ollama`, `Gemini`, `OpenAI`), then custom
+2. `ToDtos`: rows ordered built-in first in `AiProviderCatalog.All` order (`Gemini`, `OpenAI`, `Ollama`), then custom
    providers by `Name` (ignoring case); `ToDto(row, models of row.Id)`: chosen model = row's `ModelName` or
    `AiProviderCatalog.DefaultModel(row.ApiType)`, added to `Models` if missing; `BaseUrl` = row value or
    `DefaultOllamaBaseUrl` when `UsesAddress(row)` (Ollama or not built-in), else null; `RequiresKey(row)` = built-in and
@@ -765,7 +765,7 @@ sequenceDiagram
 | `AiProviderConfigRepository.GetAllAsync()` | All rows | `AsNoTracking` |
 | `AiProviderConfigRepository.GetAllForUpdateAsync()` | All rows, tracked `List` | Save |
 | `AiProviderConfigRepository.GetAsync(id)` | One row by id (v1.5; v1.4: `GetAsync(kind)`) | `AsNoTracking`; PK |
-| `AiProviderConfigRepository.GetBuiltInAsync(apiType)` (v1.5) | The built-in row of an API type (`IsBuiltIn && ApiType == apiType`) | Used by `DocumentEmbeddingEndpoint` for the built-in Ollama address |
+| `AiProviderConfigRepository.GetBuiltInAsync(apiType)` (v1.5) | The built-in row of an API type (`IsBuiltIn && ApiType == apiType`) | Used by `DocumentEmbeddingEndpoint` for the saved key of the built-in Google Gemini provider (`GetBuiltInAsync(Gemini)`, unprotected through `IAiKeyProtector`) |
 | `AiProviderConfigRepository.GetByNameAsync(name)` (v1.5) | A provider with that name, ignoring case | `IX_AiProviderConfigs_Name` (NOCASE); new-provider name check |
 | `AiModelRepository.GetAllAsync()` | All models | `AsNoTracking`, `OrderByDescending(IsBuiltIn).ThenBy(Id)` |
 | `AiModelRepository.IsKnownAsync(providerId, name)` | Stored or staged in this request; (v1.4) also the "listed" check for use, test, rename and (v1.5) the move target | `Set.Local` then `AnyAsync` |
@@ -967,9 +967,9 @@ _v1.0 – v1.4: `AiModels` matched `AiProviderConfigs` by the `Kind` value, with
 | Id | int (INTEGER) | No | PK | identity | Row id; the `providerId` of routes, DTOs and messages (v1.5) |
 | Name (v1.5) | string(40) (TEXT, `COLLATE NOCASE`) | No | Unique `IX_AiProviderConfigs_Name` | catalogue name for built-ins | `Ollama`, `Google Gemini`, `OpenAI GPT` or the custom provider's name; unique ignoring case |
 | ApiType (v1.5; renamed from `Kind`) | `AiApiType` as string(16) (TEXT) | No | – (v1.5: `IX_AiProviderConfigs_Kind` dropped) | – | `Ollama`, `Gemini`, `OpenAI` (OpenAI-compatible); a custom provider is `OpenAI` or `Ollama` |
-| Locality (v1.5) | string(8) (TEXT) | No | – | `Cloud` | `Local` or `Cloud`; drives the cloud notice |
+| Locality (v1.5) | string(8) (TEXT) | No | – | `Cloud` | `Local` or `Cloud`; picks the text of the TFA-window notice (Cloud or Local) |
 | IsBuiltIn (v1.5) | bool (INTEGER) | No | – | – | True for the three built-in rows (never removed); false for a custom provider |
-| IsEnabled | bool (INTEGER) | No | – | seeded (Ollama on for a fresh install) | Provider switched on |
+| IsEnabled | bool (INTEGER) | No | – | seeded (Gemini on for a fresh install with a configured key; otherwise all off) | Provider switched on |
 | ModelName | string(100) (TEXT) | No | – | `AiProviderCatalog.DefaultModel` | Chosen model |
 | BaseUrl | string(300) (TEXT) | Yes | – | `http://localhost:11434` for Ollama | Ollama and (v1.5) custom providers, required for custom; null for built-in Gemini and OpenAI |
 | EncryptedApiKey | string (TEXT) | Yes | – | null | Data Protection ciphertext; never returned |
@@ -1026,7 +1026,7 @@ current default. A provider an administrator set up keeps its model; Test connec
 
 | Job / algorithm | Trigger / schedule | Steps | Idempotency |
 |---|---|---|---|
-| `AiProviderSeeder.SeedAsync` | Every start-up (after the migrations), after `AccessControlSeeder`, before `DatabaseSeeder` | 0. (v1.5) `SeedProvidersAsync`: adds a missing built-in provider row per API type (`Name` and `Locality` from the catalogue, `IsBuiltIn = true`, model = default, Ollama `BaseUrl` = default, `IsEnabled` = Ollama and no user exists yet – fresh install, FR-TFAS-24), tracked so models can refer to it before it is saved. 1. Retires built-in models no longer in `BuiltInModels` (`IsBuiltIn = false`) and moves a switched-off built-in row with no key that names one to `DefaultModel` (v1.2). 2. Adds missing built-in models, keyed on the built-in row's `ProviderId` (v1.5). 3. Adds each saved `ModelName` not yet listed as a non-built-in model. Custom providers are never touched | Only inserts what is missing |
+| `AiProviderSeeder.SeedAsync` | Every start-up (after the migrations), after `AccessControlSeeder`, before `DatabaseSeeder` | 0. (v1.5) `SeedProvidersAsync`: adds a missing built-in provider row per API type (`Name` and `Locality` from the catalogue, `IsBuiltIn = true`, model = default, Ollama `BaseUrl` = default, `IsEnabled = false`), tracked so models can refer to it before it is saved; then `ApplyConfiguredGeminiKey`: when `AiProviders:GeminiApiKey` is set and the Gemini row has no key, stores it protected by `IAiKeyProtector` with `KeyLast4`, and switches Gemini on only when no user exists yet (fresh install) and no provider is on (FR-TFAS-24); a key saved in TFA Settings is never replaced, Ollama is never switched on and the key is never logged. 1. Retires built-in models no longer in `BuiltInModels` (`IsBuiltIn = false`) and moves a switched-off built-in row with no key that names one to `DefaultModel` (v1.2). 2. Adds missing built-in models, keyed on the built-in row's `ProviderId` (v1.5). 3. Adds each saved `ModelName` not yet listed as a non-built-in model. Custom providers are never touched | Only inserts what is missing |
 | `KeyRingProtectionCheck.Check` | Start-up on Windows (`Program.cs`) | Counts `key-*.xml` files with a plain `masterKey`; logs a warning with the fix, or an information line when it could not check | Read-only, never throws |
 | Duplicate-model recovery | On `UniqueConstraintException` during save | Detach staged duplicates, save again | Keeps the other request's row |
 
@@ -1044,7 +1044,7 @@ current default. A provider an administrator set up keeps its model; Test connec
 | Logging | Provider clients log nothing; gateway logs provider, failure kind and HTTP status only; the connection tester also logs `ProviderReason` (keys replaced by `[key]`, max 200 characters, v1.2) |
 | Provider reason exposure | Only in the Test connection result (`settings.ai.test`) and the warning log; never in chat replies (v1.2) |
 | Frontend | `permissionGuard` with `SettingsAiView` on `settings/tfa`, with `SettingsAiEdit` on `settings/tfa/models/new` and (v1.4) `settings/tfa/models/:providerId/:name/edit` (v1.5; was `:kind`) (the page also checks `SettingsAiTest`); menu item "TFA Settings"; in-component `canEdit`, `canTest`, `canAddModel`, `mayRemoveModel` (FR-TFAS-27) |
-| Cloud notice | Screen text explains that Gemini and OpenAI are cloud services that receive a user's question, related task details and matching TaskFlow document text (FR-TFAS-23); a custom provider's `Locality` (`Cloud`) gives it the same tag and the same TFA-window notice (v1.5, Assistant LLD) |
+| Cloud notice | Screen text explains that Gemini (the default) and OpenAI are cloud services that receive a user's question, related task details and matching TaskFlow document text, links Google AI Studio, and says that document search needs a Google Gemini API key and that document text is sent to Google (FR-TFAS-23); a custom provider's `Locality` (`Cloud`) gives it the same tag and the same TFA-window notice (v1.5, Assistant LLD) |
 | Document search (v1.1, removed in v1.2) | _Withdrawn._ No endpoint or screen exposes the index status; folder paths and indexing errors appear only in the server log |
 
 ---
@@ -1054,9 +1054,11 @@ current default. A provider an administrator set up keeps its model; Test connec
 | Key | Default | Purpose |
 |---|---|---|
 | `AiProviders:KeyRingPath` | `dp-keys` | Data Protection key-ring folder, relative to `Storage:Root` |
-| `AiProviders:TimeoutSeconds` | `60` | Timeout of one provider HTTP call |
+| `AiProviders:TimeoutSeconds` | `60` | Timeout of one provider HTTP call, including Gemini embedding calls |
+| `AiProviders:OllamaTimeoutSeconds` | `180` | Timeout of one Ollama chat call (not used for embeddings) |
+| `AiProviders:GeminiApiKey` | `<secret>` | Optional; set with `dotnet user-secrets set "AiProviders:GeminiApiKey" "<key>"` or `AiProviders__GeminiApiKey`; stored encrypted on the built-in Gemini row by `AiProviderSeeder` when that row has no key; never in `appsettings.json` |
 | `AiProviders:OllamaContextTokens` | `8192` | `options.num_ctx` sent with Ollama chat requests (v1.1) |
-| `DocumentKnowledge:*` | see Assistant LLD §8 | Documents folder, embedding model, `OllamaBaseUrl` (empty → the saved `BaseUrl` of the built-in Ollama provider, `GetBuiltInAsync(Ollama)`, v1.5; a custom Ollama provider is never used for embeddings), search and rescan settings; not shown on any screen since v1.2 |
+| `DocumentKnowledge:*` | see Assistant LLD §8 | Documents folder, embedding model (`gemini-embedding-2`), `EmbeddingDimensions` (768), search and rescan settings; embeddings use the saved key of the built-in Google Gemini provider (`GetBuiltInAsync(Gemini)`), whichever chat provider is selected; not shown on any screen since v1.2 |
 | `Storage:Root` | `""` | Root folder for the key ring and database |
 | API keys | `<secret>` | Entered on the screen, stored encrypted in `AiProviderConfigs.EncryptedApiKey`; never in `appsettings.json` |
 
@@ -1077,12 +1079,12 @@ current default. A provider an administrator set up keeps its model; Test connec
 | Custom provider endpoints (v1.5) | `TaskFlow.IntegrationTests/Settings/TfaSettings/CustomProviderEndpointsTests.cs` | Integration | `ACustomProviderIsCreatedOnAPassingTestAndAnswersTheTfaWindow` (create → use → chat through it with the fake provider → message stored with its provider id), `AnUnknownProviderIdIs404AndAGeminiTypeCustomProviderIsRefused` |
 | Model list endpoints (v1.4) | `TaskFlow.IntegrationTests/Settings/TfaSettings/AiModelListEndpointsTests.cs` | Integration | `UsingAListedModelSwitchesTfaAndAProviderWithoutAKeyIsRefused`, `UsingAModelNeedsEditPermission`, `TestingAListedModelSendsThatModelAndChangesNothing`, `EditingAnAddedModelRenamesItAndBuiltInOrInUseModelsAreRefused`, `EditingNeedsTestPermission` |
 | Connection tester | `TaskFlow.UnitTests/Settings/TfaSettings/ConnectionTest/AiProviderConnectionTesterTests.cs` | Unit | Candidate test; fixed message per refusal; key never logged; `AnUnclassifiedRefusalShowsTheProvidersStatusAndReason`, `ARetiredModelShowsWhichModelToUseInstead`, `TheSentKeyIsReplacedInTheShownReason`, `AKeyProblemKeepsTheFixedMessage` (v1.2) |
-| Seeder | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderSeederTests.cs` | Unit | Built-in models (Gemini default read from `AiProviderCatalog.DefaultModel`), Ollama on and cloud providers off on a fresh database, all off on an upgrade, idempotent, saved values never overwritten; retired built-ins become removable, a never-set-up Gemini row moves to the new default, a set-up one keeps its model, and a second run changes nothing (v1.2) |
+| Seeder | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderSeederTests.cs` | Unit | Built-in models (Gemini default read from `AiProviderCatalog.DefaultModel`), Gemini listed first; on a fresh database every provider off without a configured key and Gemini on with the key encrypted when one is configured; all off on an upgrade, an existing Ollama installation gets the key but keeps Ollama, a key saved in Settings is never replaced, a blank configured key is ignored, idempotent, saved values never overwritten; retired built-ins become removable, a never-set-up Gemini row moves to the new default, a set-up one keeps its model, and a second run changes nothing (v1.2) |
 | Key protection | `TaskFlow.UnitTests/Integrations/Ai/KeyProtection/AiKeyProtectorTests.cs`, `KeyRingProtectionCheckTests.cs` | Unit | Protect / unprotect round trip, purpose isolation, replaced key ring gives null; counting of unprotected key-ring files |
 | Provider clients | `TaskFlow.UnitTests/Integrations/Ai/Providers/ChatProviderTests.cs` | Unit | Ollama, Gemini and OpenAI requests, tool calls and failure classification; messages never contain the key; (v1.2) `GeminiMalformedModelNameIsModelUnavailableWithItsReason`, `GeminiOtherInvalidArgumentStaysUnexpected`, `TheProviderReasonHidesKeysAndTidiesSpaces`, `TheProviderReasonIsCutTo200Characters`; (v1.5) `OpenAiTextReplyAndBearerHeader` (built-in still calls `https://api.openai.com/v1/chat/completions`), `ACustomOpenAiCompatibleProviderIsCalledAtItsOwnAddress`, `ALocalServerWithoutAKeyGetsNoAuthorizationHeader`, `AServerThatRejectsToolsIsAskedAgainWithoutThem`, `RegistryResolvesEachKindAndRejectsUnknown` (by API type) |
 | Gateway | `TaskFlow.UnitTests/Assistant/ModelGateway/ProviderFailureHandlingTests.cs`, `ChatModelGatewayTests.cs` | Unit | Failure messages and retry time, no cross-provider fallback, per-user rate limit; (v1.5) `AFailureOfACustomProviderNamesItAndGoesToItsAddress` |
 | Endpoints | `TaskFlow.IntegrationTests/Settings/TfaSettings/AssistantProviderEndpointsTests.cs` | Integration | Non-administrators 403, 401, save without the key in any response or log, DPAPI key ring on Windows, invalid input 400, test-connection results, remove an added model only |
-| First run | `TaskFlow.IntegrationTests/Settings/TfaSettings/AiDefaultsOnFirstRunTests.cs` | Integration | Fresh database has the model list and Ollama ready; every signed-in user can use TFA on the first run |
+| First run | `TaskFlow.IntegrationTests/Settings/TfaSettings/AiDefaultsOnFirstRunTests.cs` | Integration | Fresh database has the model list with Gemini first; with a configured key Gemini is on, Ollama off and every signed-in user can use TFA on the first run; without one no provider is available |
 | SSRF | `TaskFlow.IntegrationTests/Integrations/Ai/ProviderRedirectTests.cs` | Integration | Redirects not followed |
 | Start-up warning | `TaskFlow.IntegrationTests/Common/KeyRingStartupWarningTests.cs` | Integration | Key-ring warning at start-up |
 | Support | `TaskFlow.IntegrationTests/TestSupport/ScriptedChatProvider.cs`, `CapturingLoggerProvider.cs` | Support | Fake provider, captured logs |
@@ -1116,7 +1118,7 @@ current default. A provider an administrator set up keeps its model; Test connec
 - `GetAdminConfigAsync` calls `Unprotect` up to twice per provider per request (`KeyReadable`, `IsConfigured`).
 - A lost or replaced key ring makes saved keys unreadable; they must be entered again (shown on the screen).
 - Document search (v1.2): no screen shows the index; an administrator learns about a missing folder, a missing
-  embedding model or a file that could not be indexed only from the API log warnings. Changes to documents reach TFA
+  or refused Google Gemini key, an unavailable embedding model or a file that could not be indexed only from the API log warnings. Changes to documents reach TFA
   within `RescanMinutes` (5); there is no way to force a run from the UI.
 - A saved model name from before v1.2 that contains spaces is not re-validated until the provider is saved again.
 - An existing database keeps the retired Gemini models (`gemini-2.0-flash` and others, historical) as administrator-added

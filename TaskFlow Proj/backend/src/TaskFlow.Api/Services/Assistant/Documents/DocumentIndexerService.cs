@@ -33,7 +33,7 @@ public class DocumentIndexerService : BackgroundService
         {
             Enabled = _options.Enabled,
             SourcePath = _options.ResolveSourcePath(environment.ContentRootPath),
-            EmbeddingModel = _options.EmbeddingModel.Trim()
+            EmbeddingModel = _options.IndexModel
         });
     }
 

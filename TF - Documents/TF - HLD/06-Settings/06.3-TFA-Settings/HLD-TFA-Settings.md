@@ -45,8 +45,8 @@ the TFA Assistant uses: provider configuration, protected storage of API keys, t
 with Use, Test, Edit and Delete actions, and an edit mode of the Add AI model screen), the connection test and the
 provider clients reached through the Assistant's model gateway. Since v1.4 providers are stored records identified by
 `providerId`: the three built-in providers (Google Gemini, OpenAI GPT, Ollama) and any number of custom providers that use
-the OpenAI-compatible or Ollama API. The saved address of the built-in Ollama provider also serves TFA's
-document embeddings. Class- and column-level detail is in the LLD. (v1.2: the v1.1 Document search card and its
+the OpenAI-compatible or Ollama API. Google Gemini is the default provider, and the API key saved for the built-in Google
+Gemini provider also serves TFA's document embeddings, whichever provider answers. Class- and column-level detail is in the LLD. (v1.2: the v1.1 Document search card and its
 re-index control were removed; TFA Settings has no view of the document index.)
 
 ### 1.2 Scope
@@ -103,8 +103,8 @@ flowchart LR
   TFAS -->|"test via gateway"| OA["OpenAI (HTTPS)"]
   TFAS -->|"test via gateway"| CU["Custom providers (OpenAI-compatible or Ollama, typed address)"]
   TFA["TFA Assistant"] -->|"configured providers, runtime by providerId"| TFAS
-  IDX["TFA document indexer (Assistant)"] -->|"reads built-in Ollama address"| TFAS
-  IDX -->|"embeddings at built-in Ollama address"| OL
+  IDX["TFA document indexer (Assistant)"] -->|"reads built-in Gemini key"| TFAS
+  IDX -->|"embeddings with the saved Gemini key"| GE
 ```
 
 ### 2.2 Actors & External Systems
@@ -113,12 +113,12 @@ flowchart LR
 |---|---|---|
 | Administrator; Custom role with `settings.ai.*` | View the model list; use, test, add, edit and delete models (v1.3) | HTTPS / JSON |
 | TFA Assistant (in process) | Reads which providers are configured and the runtime settings (model, address, decrypted key) | In-process service call |
-| Ollama | Local model server, no key | HTTP to the saved server address |
-| Google Gemini | Cloud model API, key in a request header | HTTPS / REST |
+| Ollama | Optional local model server for chat, no key | HTTP to the saved server address |
+| Google Gemini | Default cloud model API and the embedding service for document search, key in a request header | HTTPS / REST |
 | OpenAI | Cloud model API, bearer key | HTTPS / REST |
 | Custom provider (v1.4) | Any OpenAI-compatible chat API (for example Groq, Mistral, OpenRouter, LM Studio, vLLM) or an Ollama server at the administrator's address; bearer key only when one is saved | HTTP or HTTPS / REST |
 | Data Protection key ring | Encrypts and decrypts API keys | Local files |
-| TFA document indexer (in process) | Embeds through the saved address of the built-in Ollama provider (v1.4; a custom Ollama provider is chat-only) unless `DocumentKnowledge:OllamaBaseUrl` is set. TFA Settings no longer shows its status or wakes it (v1.2: card and **Re-index now** removed); it re-checks the folder on its own every `RescanMinutes` (5) | In-process service call |
+| TFA document indexer (in process) | Embeds with Google Gemini (`gemini-embedding-2`) using the API key saved for the built-in Google Gemini provider, read on every run and question, whichever chat provider is selected; no Ollama provider is used for embeddings. TFA Settings no longer shows its status or wakes it (v1.2: card and **Re-index now** removed); it re-checks the folder on its own every `RescanMinutes` (5) | In-process service call |
 
 ---
 
@@ -134,7 +134,7 @@ flowchart LR
 | Robust test | The connection test always returns a result message, never an error status (NFR-TFAS-04) |
 | Detect lost keys | Each read checks whether the stored key can still be decrypted (NFR-TFAS-05) |
 | Plain language | Provider failures are classified (not configured, invalid key, rate limited, timeout, unreachable, model unavailable) and mapped to fixed messages (NFR-TFAS-06). On Test connection only, an unexpected error or a missing model also shows the provider's own status and reason, keys masked (v1.2) |
-| Privacy | Cloud providers are tagged by their `Locality` (a custom provider by its **Runs** choice, v1.4); Ollama (local) is the default on a new installation; the screen says matching document text also goes to cloud providers (NFR-TFAS-07) |
+| Privacy | Cloud providers are tagged by their `Locality` (a custom provider by its **Runs** choice, v1.4); Google Gemini is the default; the screen says matching document text also goes to cloud providers, that document search needs a Google Gemini API key and that document text is sent to Google (NFR-TFAS-07) |
 | Upgrade safety (v1.4) | One data-preserving migration keeps keys, models, the saved model, the enabled flag and chat history (NFR-TFAS-13) |
 | Visible document search (withdrawn) | _Removed in v1.2._ (v1.1: card with folder, model, counts, last run, last error; re-index; 3-second polling.) Changed documents are re-processed by the indexer's rescan; problems are in the server log (TFA Assistant HLD) |
 
@@ -260,7 +260,7 @@ flowchart LR
 | TFA → TFAS | The connection test uses the Assistant's model gateway, so a passing test means chat will reach the provider |
 | ROLE → TFAS | Grants of `settings.ai.view`, `settings.ai.edit`, `settings.ai.test`, `settings.ai.model.remove`; edit, test and remove each require view |
 | TFAS → providers | One short chat request for a test; chat requests from the assistant use the same clients |
-| TFA document index → TFAS | The indexer reads the saved address of the built-in Ollama provider (`DocumentEmbeddingEndpoint`, `GetBuiltInAsync(Ollama)` since v1.4) for embeddings. (v1.2: TFA Settings no longer reads `DocumentIndexStatus` or requests a re-index) |
+| TFA document index → TFAS | The indexer reads the API key saved for the built-in Google Gemini provider (`DocumentEmbeddingEndpoint`, `GetBuiltInAsync(Gemini)`, decrypted through `IAiKeyProtector`) for embeddings. (v1.2: TFA Settings no longer reads `DocumentIndexStatus` or requests a re-index) |
 
 ---
 
@@ -294,8 +294,11 @@ foreign keys in v1.4._
 | `AssistantMessage` | TFA Assistant | Stores the answering provider's id (v1.4); the column becomes null when a custom provider is removed |
 
 ### 6.3 Data Flow
-1. First start seeds the built-in models and one row per provider; on a brand-new installation Ollama is switched on at
-   `http://localhost:11434`, cloud providers stay off without a key (FR-TFAS-24).
+1. First start seeds the built-in models and one row per provider (Google Gemini, OpenAI GPT, Ollama). A Gemini key supplied
+   in configuration (`AiProviders:GeminiApiKey`) is stored encrypted on a Gemini row that has no key; on a brand-new
+   installation Gemini is then switched on with `gemini-3.8-flash`. Without a configured key every provider stays off until
+   an administrator saves a key; Ollama is never switched on automatically, and a key saved in TFA Settings is never
+   overwritten (FR-TFAS-24).
 2. The screen reads all providers with their status, model lists and "key set / last four" – never the key.
 3. (v1.4) On upgrade the migration `AddCustomAiProviders` fills `Name`, `IsBuiltIn` and `Locality` on the existing rows,
    inserts any missing built-in row, and moves `AiModels` and `AssistantMessages` from the kind string to `ProviderId`;
@@ -328,7 +331,7 @@ foreign keys in v1.4._
 | Custom provider, Ollama (v1.4) | Outbound HTTP to the typed address, no key | Test and chat (not embeddings) | As for the built-in Ollama, naming the provider |
 | Data Protection key ring | Local | Encrypt/decrypt keys | Unreadable key → status "The saved key can no longer be read. Enter it again."; provider treated as not configured; a warning is logged |
 | TFA Assistant | Inbound (in process) | Configured providers and runtime | Not-configured provider is not offered |
-| TFA document indexer | Inbound (in process) | Reads the built-in Ollama provider's address for embeddings | v1.2: no status or re-index integration any more; indexing problems are logged by the TFA Assistant |
+| TFA document indexer | Inbound (in process) | Reads the built-in Google Gemini provider's saved key for embeddings | v1.2: no status or re-index integration any more; indexing problems are logged by the TFA Assistant |
 
 All provider calls share a timeout (`AiProviders:TimeoutSeconds`), do not follow redirects, and log provider, failure
 kind, HTTP status and (v1.2) the provider reason – at most 200 characters with the sent key and key-shaped tokens
@@ -534,7 +537,7 @@ file before deploying the backend and frontend together.
 | Secret handling | Keys encrypted with Data Protection (purpose `TaskFlow.AiProviderKeys`); write-only API; only "key set" and last four characters returned; key ring DPAPI-protected on Windows and checked at start-up (`KeyRingProtectionCheck`) |
 | SSRF | Server address must be http/https and not link-local or a cloud metadata host; `localhost` and private addresses allowed; since v1.4 the rule applies to every provider address, including custom providers; only `settings.ai.edit` + `settings.ai.test` holders can create a provider, and the address is called only for the test and chat; redirects not followed |
 | Transport | HTTPS from the browser; HTTPS to cloud providers; Ollama over the configured address |
-| Privacy | Screen explains that cloud providers receive the user's question, related task details and matching TaskFlow document text (FR-TFAS-23); a custom provider marked Cloud gets the same cloud notice in the TFA window, decided by its `locality` (v1.4) |
+| Privacy | Screen explains that cloud providers receive the user's question, related task details and matching TaskFlow document text (FR-TFAS-23); a custom provider marked Cloud gets the same cloud notice in the TFA window, decided by its `locality` (v1.4); a Local provider gets a notice that the message is sent to Google Gemini to search the documents and the reply is generated on this computer; the screen also says document search needs a Google Gemini API key and document text is sent to Google |
 | Custom provider key (v1.4) | Encrypted and write-only like a built-in key; the Authorization header is sent only when a key is saved |
 | Document search | v1.2: no endpoint or screen exposes the index any more (the v1.1 status and re-index endpoints answer 404), so folder paths and indexing errors appear only in the server log |
 | Provider reason | Shown only in the Test connection result (`settings.ai.test`, administrators by default) and in the warning log; the sent key and key-shaped tokens (`AIza…`, `sk-…`, `AQ.…`) are replaced by `[key]` and the text is cut to 200 characters; chat replies never include it (v1.2) |
@@ -556,11 +559,13 @@ the overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`, §10).
 
 TFA Settings runs inside the single `TaskFlow.Api` process. Deployment-relevant items: the key ring folder
 `AiProviders:KeyRingPath` (default `dp-keys`) under `Storage:Root` must stay with the database (and be backed up with it)
-or saved keys become unreadable; `AiProviders:TimeoutSeconds` (60) bounds each provider call; Ollama, when used, runs as a
-separate local service reachable at the saved address (default `http://localhost:11434`); cloud providers need outbound
-HTTPS. Document search (v1.1) also needs the embedding model on that Ollama server (`ollama pull nomic-embed-text`) and
-the documents folder readable by the API (`DocumentKnowledge:SourcePath`); since v1.2 a missing folder or model shows
-only as a warning in the API log. (v1.4) Upgrading runs the `AddCustomAiProviders` migration on start: stop the API and
+or saved keys become unreadable; `AiProviders:TimeoutSeconds` (60) bounds each cloud provider and Gemini embedding call
+(`AiProviders:OllamaTimeoutSeconds`, 180, each Ollama chat call); the optional Ollama, when used, runs as a separate local
+service reachable at the saved address (default `http://localhost:11434`); cloud providers need outbound HTTPS. A Gemini key
+can be supplied at install time with `dotnet user-secrets set "AiProviders:GeminiApiKey" "<key>"` or the environment
+variable `AiProviders__GeminiApiKey` (the AI setup scripts ask for it). Document search (v1.1) needs a saved Google Gemini
+API key, outbound HTTPS to Google and the documents folder readable by the API (`DocumentKnowledge:SourcePath`); since
+v1.2 a missing folder or key shows only as a warning in the API log. (v1.4) Upgrading runs the `AddCustomAiProviders` migration on start: stop the API and
 copy the SQLite file first, and deploy the backend and frontend together, because the provider routes changed; rollback is
 restoring the copied file and the previous build. A custom provider needs network access from the API to its address. Environments, hosting and backup are in the overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`, §11).
 
@@ -592,7 +597,7 @@ restoring the copied file and the previous build. A custom provider needs networ
 | D-TFAS-5 | Fine-grained permissions view / edit / test / remove model, each requiring view | One `settings.ai.manage` key (now legacy) | Lets an organization delegate testing without editing; legacy key still honoured |
 | D-TFAS-6 | Server-address validator blocks link-local and metadata hosts; no redirects | Allow any URL | Prevents SSRF towards cloud metadata services (BR-TFAS-06) |
 | D-TFAS-7 | "One active server" applied by the use and add actions (v1.3; v1.0 – v1.2: by the screen's save); the save request still stores each provider's own on/off | Enforce a single enabled provider in every API request | Switched-off providers keep their keys, models and addresses for a quick switch back |
-| D-TFAS-8 | Ollama on by default only on a brand-new installation | Always on; always off | Works out of the box locally without sending data to the cloud; upgrades are not changed silently |
+| D-TFAS-8 | Google Gemini switched on only on a brand-new installation and only when a Gemini key is configured; Ollama never switched on automatically | Ollama on by default; always off | Works out of the box with a free Google AI Studio key and gives document search its key; upgrades are not changed silently |
 | D-TFAS-9 | Models are data (`AiModel`), built-in ones seeded and read-only, added ones editable and removable when not in use (v1.3 wording) | Free-text model only | Keeps the list tidy and prevents changing or removing the model in use (BR-TFAS-04) |
 | D-TFAS-10 | _Withdrawn in v1.2 (replaced by D-TFAS-12)._ Document search status and re-index on TFA Settings, guarded by the existing `settings.ai.view` / `settings.ai.edit` keys | New permission keys; no UI (log only) | The administrators who set up Ollama also own the index; no catalogue change |
 | D-TFAS-11 | _Withdrawn in v1.2 (replaced by D-TFAS-12)._ Re-index is a request to the background indexer (202, no second run), and the card polls while running | Synchronous re-index in the request | A full first index takes minutes; the request must not time out or run twice |
@@ -609,7 +614,7 @@ restoring the copied file and the previous build. A custom provider needs networ
 | D-TFAS-22 | One OpenAI client for every OpenAI-compatible service: `runtime.BaseUrl ?? "https://api.openai.com/v1"` joined with `/chat/completions`, Authorization only with a key, one retry without tools on a 400 about tools (v1.4, decision 5) | A client per service | Most services accept the OpenAI chat format at their own address |
 | D-TFAS-23 | Adding a model is `POST /providers/models` with `providerId` or `newProvider`; the provider is created only when the test passes; an edit with another target is a move, tested on the target and saved in one step (v1.4, decision 6) | Create the provider first, then add models | A new provider has no id yet; nothing half-made is left after a failed test |
 | D-TFAS-24 | A custom provider with no models left is removed; built-in providers never are (v1.4, decision 7) | Keep empty providers; a separate delete-provider action | An enabled provider always has its saved model listed, so the provider in use cannot become empty; no extra screen |
-| D-TFAS-25 | The AI provider field is a text box with a datalist and a case-insensitive match; document embeddings stay on the built-in Ollama provider (v1.4, decisions 8 and 9) | A dropdown plus a separate "new provider" screen; embeddings through any Ollama provider | One field covers existing and new providers; the document index keeps one known embedding server |
+| D-TFAS-25 | The AI provider field is a text box with a datalist and a case-insensitive match; document embeddings use the key of the built-in Google Gemini provider (v1.4, decisions 8 and 9) | A dropdown plus a separate "new provider" screen; embeddings through any provider | One field covers existing and new providers; the document index keeps one known embedding service |
 
 ---
 
@@ -618,7 +623,7 @@ restoring the copied file and the previous build. A custom provider needs networ
 | Type | Description | Mitigation / owner |
 |---|---|---|
 | Risk | API key leaked (R-TFAS-01) | Encrypted at rest, write-only API, no logging – Jojo George |
-| Risk | Task data sent to a cloud provider without awareness (R-TFAS-02) | Cloud tag and explanation; Ollama default – Jojo George |
+| Risk | Task data sent to a cloud provider without awareness (R-TFAS-02) | Cloud tag and explanation; notice once per provider in the TFA window; optional local Ollama chat – Jojo George |
 | Risk | Cloud rate limit reached (R-TFAS-03) | Rate-limit message with retry time; switch model – Jojo George |
 | Risk | Key ring lost or unprotected, keys unreadable (R-TFAS-04) | Start-up warning; "enter it again" status; back up the key ring with the database – Jojo George |
 | Risk | Server address abused for SSRF (R-TFAS-05) | Address validator; no redirects – Jojo George |

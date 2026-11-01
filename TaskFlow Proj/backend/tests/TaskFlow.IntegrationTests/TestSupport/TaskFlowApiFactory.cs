@@ -76,8 +76,11 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
                 ["Seed:Enabled"] = "false",
                 // Tests drive the reminder engine directly; the background scheduler would add nondeterminism.
                 ["Reminders:SchedulerEnabled"] = "false",
-                // The document indexer would read the real documents folder and call Ollama; tests that need it switch it on.
+                // The document indexer would read the real documents folder and call Google Gemini; tests that need it switch it on.
                 ["DocumentKnowledge:Enabled"] = "false",
+                // A developer's own Gemini key in user secrets must never reach a test database (or Google); tests that want a
+                // configured key set one themselves.
+                ["AiProviders:GeminiApiKey"] = "",
                 ["Mail:AttachmentsPath"] = AttachmentsPath,
                 ["AiProviders:KeyRingPath"] = KeyRingPath,
                 // Most tests sign in without an authenticator app; the gate has its own tests that switch this on.

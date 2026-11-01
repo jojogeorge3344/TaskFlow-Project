@@ -46,10 +46,11 @@ export class AssistantService {
   /** Providers the user has acknowledged as Cloud providers, as a signal so the panel can show the notice. */
   private readonly acknowledged = signal<number[]>(readAcknowledged());
 
-  /** True when the selected provider is a Cloud one the user has not yet acknowledged. */
+  /** True when the user has not yet acknowledged where their messages go for the selected provider: to the provider itself
+   * for a Cloud one, and to Google Gemini for document search for a Local one (the reply is still generated locally). */
   readonly needsCloudNotice = computed(() => {
     const provider = this.selected();
-    return provider !== null && provider.locality === 'Cloud' && !this.acknowledged().includes(provider.providerId);
+    return provider !== null && !this.acknowledged().includes(provider.providerId);
   });
 
   private localId = 0;
@@ -129,8 +130,9 @@ export class AssistantService {
     return this.acknowledged().includes(providerId);
   }
 
-  /** Sends the message with the selected model. The first message to a Cloud provider is held until the user
-   * acknowledges that the message and related task details are sent to it. */
+  /** Sends the message with the selected model. The first message with a provider is held until the user acknowledges
+   * where it is sent: a Cloud provider receives the message and related task details, and with any provider the message
+   * is sent to Google Gemini to search the TaskFlow documents. */
   send(text: string): void {
     const trimmed = text.trim();
     const provider = this.selected();
@@ -138,7 +140,7 @@ export class AssistantService {
       return;
     }
 
-    if (provider.locality === 'Cloud' && !this.isAcknowledged(provider.providerId)) {
+    if (!this.isAcknowledged(provider.providerId)) {
       this.heldMessage.set(trimmed);
       return;
     }

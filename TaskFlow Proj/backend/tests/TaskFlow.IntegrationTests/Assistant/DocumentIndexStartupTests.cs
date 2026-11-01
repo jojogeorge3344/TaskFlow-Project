@@ -18,9 +18,8 @@ public class MissingDocumentsFolderFactory : TaskFlowApiFactory
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["DocumentKnowledge:Enabled"] = "true",
-            ["DocumentKnowledge:SourcePath"] = MissingFolder,
-            // Nothing listens here, so an embedding call could never succeed.
-            ["DocumentKnowledge:OllamaBaseUrl"] = "http://127.0.0.1:9"
+            // No Gemini key is saved in the test database, so an embedding call could never be made.
+            ["DocumentKnowledge:SourcePath"] = MissingFolder
         }));
     }
 }

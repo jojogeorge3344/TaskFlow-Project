@@ -29,7 +29,7 @@
 Detailed design of TFA (TaskFlow Assistant) as built: the classes and files of the chat API (`/api/v1/assistant`), the
 conversation engine with its bounded tool loop, the provider abstraction for Ollama, Gemini and OpenAI, the 8
 model-callable tools, the pending-action lifecycle (prepare → confirm once), the document knowledge (indexing of the
-Markdown documents folder, local embeddings, retrieval before each model call, answer sources), the audit log and
+Markdown documents folder, Google Gemini embeddings, retrieval before each model call, answer sources), the audit log and
 per-user rate limit, the Angular TFA Panel and its voice input, the six TFA tables, configuration and tests. Every
 `FR-TFA-nn` of the FRD is traced to an endpoint or class and a test in §11.
 
@@ -79,7 +79,7 @@ TaskFlow.Api/
   Integrations/Ai/Providers/ (IChatModelProvider, ChatModelTypes, AiProviderRuntime, ProviderFailure, ProviderHttp,
                               OllamaProvider, GeminiProvider, OpenAiProvider)
   Integrations/Ai/Registry/ (IChatModelProviderRegistry, ChatModelProviderRegistry)
-  Integrations/Ai/Embeddings/ (IEmbeddingClient, OllamaEmbeddingClient, EmbeddingTypes: EmbeddingPurpose,
+  Integrations/Ai/Embeddings/ (IEmbeddingClient, GeminiEmbeddingClient, EmbeddingTypes: EmbeddingPurpose,
                                EmbeddingEndpoint, EmbeddingFailureKind, EmbeddingUnavailableException)
   Integrations/Ai/KeyProtection/ (IAiKeyProtector, AiKeyProtector, KeyRingProtectionCheck)
   Authorization/Assistant/IAssistantAuthorizer.cs, AssistantAuthorizer.cs
@@ -116,7 +116,7 @@ No route and no menu entry exist for TFA; the panel is part of the shell.
 |---|---|
 | Controller → Service → Repository only; `AssistantController` calls `IAssistantService`, `IAssistantActionService`, `IAiProviderConfigService` | `ArchitectureTests` |
 | Tools reach other modules only through their services (`ITaskService`, `IMailService`, `IProfileService`, `IEmployeeService`) | `ArchitectureTests` (layer rule); code review |
-| HTTP to AI providers and to the Ollama embedding API only from `Integrations/Ai/` | Folder rule (overall LLD) |
+| HTTP to AI providers and to the Google Gemini embedding API only from `Integrations/Ai/` | Folder rule (overall LLD) |
 | `DocumentIndexRepository` never saves; `DocumentIndexer` commits through `IUnitOfWork` | `ArchitectureTests` |
 | Frontend feature folders | `npm run check:structure` |
 
@@ -162,7 +162,7 @@ DI (`Config/ServiceRegistration.cs`): `DocumentKnowledgeOptions` bound to sectio
 eight `IAssistantTool` registrations,
 `IAssistantToolbox` → `AssistantToolbox`, `IAssistantAuditLog` → `AssistantAuditLog`, `IAssistantActionService` →
 `AssistantActionService` (also resolved as `IAssistantActionCards`), `IAssistantService` → `AssistantService`.
-`Config/IntegrationRegistration.cs`: typed `HttpClient` `OllamaEmbeddingClient` (AI timeout, `AllowAutoRedirect = false`,
+`Config/IntegrationRegistration.cs`: typed `HttpClient` `GeminiEmbeddingClient` (AI timeout `AiProviders:TimeoutSeconds`, `AllowAutoRedirect = false`,
 loggers removed) resolved as `IEmbeddingClient`. `Config/RepositoryRegistration.cs`: `IDocumentIndexRepository` →
 `DocumentIndexRepository` (scoped). (v1.2: the TFA Settings registration `IDocumentIndexService` → `DocumentIndexService`
 was removed; nothing else in DI changed for document knowledge.)
@@ -228,7 +228,7 @@ classDiagram
 | DTOs | `SendAssistantMessageRequest(Text, ProviderId)` (v1.3; was `Provider`), `AssistantConversationDto`, `AssistantReplyDto`, `AssistantMessageDto` (… `ProviderId`, `Provider` = the provider's name (v1.3), `Action`, `Sources`), `AssistantLinkDto`, `AssistantSourceDto(Document, Section, Path)`, `AssistantMessageMeta` (… `ActionId`, `Sources = null`), `PrioritisedTask`, `AssistantFailureDto(Kind, ProviderId, ProviderName, Message, RetryAfterSeconds, Alternatives)` (v1.3); `AiProviderOptionDto(ProviderId, DisplayName, ModelName, Locality)` (Settings) | `Dtos/Assistant/`; `Dtos/Settings/TfaSettings/AiProviderDtos.cs` | Contracts |
 | Entities | `AssistantConversation`, `AssistantMessage` (v1.3: `ProviderId`, `Provider` navigation) | `Models/Entities/` | Tables |
 | Frontend | `TfaPanelComponent` (`useProvider(providerId)`), `TfaHeaderComponent` (`chooseProvider(option)` → `selectProvider(option.providerId)`; `providerStyle(name)`: a colour per built-in provider name, `Custom` for any other; `providerInitial(name)`), `TfaComposerComponent` (`TFA_SUGGESTIONS`), `TfaMessageComponent` (`sources()` chips) | `modules/assistant/components/` | Panel, model selector, composer, messages, sources |
-| Frontend service | `AssistantService` (`open`, `close`, `toggle`, `loadProviders`, `loadConversation`, `selectProvider(providerId)`, `isAcknowledged(providerId)`, `send`, `acknowledgeCloud`, `retry`, `newChat`; `selected` = the remembered provider id when still configured, else the first available; `needsCloudNotice` = selected `locality === 'Cloud'` and not acknowledged, v1.3); `TFA_PROVIDER_KEY`, `TFA_CLOUD_ACK_KEY`, `PROVIDER_REFRESH_MS` | `modules/assistant/services/assistant.service.ts` | Signals, HTTP, browser settings |
+| Frontend service | `AssistantService` (`open`, `close`, `toggle`, `loadProviders`, `loadConversation`, `selectProvider(providerId)`, `isAcknowledged(providerId)`, `send`, `acknowledgeCloud`, `retry`, `newChat`; `selected` = the remembered provider id when still configured, else the first available; `needsCloudNotice` = a selected provider, Cloud or Local, not yet acknowledged; was Cloud only in v1.3); `TFA_PROVIDER_KEY`, `TFA_CLOUD_ACK_KEY`, `PROVIDER_REFRESH_MS` | `modules/assistant/services/assistant.service.ts` | Signals, HTTP, browser settings |
 
 **Class diagram**
 
@@ -342,7 +342,7 @@ classDiagram
    reverse to chronological.
 7. `IDocumentSearch.SearchAsync(text, previous user message from the history)` → `DocumentContext` (`Found` with
    `ScoredChunk`s, `NoMatch`, or `Unavailable` with reason `Preparing` / `CannotSearch`); runs before the model call and
-   never throws for an unavailable embedding server (4.1.3).
+   never throws when embeddings are unavailable (4.1.3).
 8. `AssistantPrompt.Build(userName, caller.Role, IAppClock.TodayLocalAsync, application name, documentContext)`;
    `userName` from `IAssistantDirectoryRepository.GetFullNameAsync`. `SourcesOf(documentContext)`: for `Found`, one
    `AssistantSourceDto(chunk.Title, chunk.HeadingPath, chunk.RelativePath)` per chunk, `DistinctBy (Path, Section)`;
@@ -703,9 +703,9 @@ row past `ExpiresAt` as `Expired` without writing it.
 | Indexer | `DocumentIndexer` (scoped): `RunAsync` → `DocumentIndexRun(Embedded, Skipped, Removed, Failed)`, `ReloadIndexAsync`; `ReloadEvery` 10 | `Services/Assistant/Documents/DocumentIndexer.cs` | Bring the stored index in step with the folder |
 | Background | `DocumentIndexerService : BackgroundService` (singleton + hosted): `RunOnceAsync()`, `StartDelay` 10 s (v1.2: `RequestReindex()` and its channel removed) | `Services/Assistant/Documents/DocumentIndexerService.cs` | Startup load, first run, periodic runs, single-run guard |
 | Status | `DocumentIndexStatus` (singleton, `Current`, `Update`); `DocumentIndexState` | `Services/Assistant/Documents/DocumentIndexStatus.cs` | Shared state for the indexer and `DocumentSearch` (Preparing / CannotSearch); no longer read by TFA Settings (v1.2) |
-| Endpoint | `DocumentEmbeddingEndpoint.ResolveAsync()` → `EmbeddingEndpoint(BaseUrl, Model)` | `Services/Assistant/Documents/DocumentEmbeddingEndpoint.cs` | `DocumentKnowledge:OllamaBaseUrl`, else saved Ollama `BaseUrl` (`IAiProviderConfigRepository`), else `AiProviderCatalog.DefaultOllamaBaseUrl` |
+| Endpoint | `DocumentEmbeddingEndpoint.ResolveAsync()` → `EmbeddingEndpoint(Model, Dimensions, ApiKey)` | `Services/Assistant/Documents/DocumentEmbeddingEndpoint.cs` | `DocumentKnowledge:EmbeddingModel` and `EmbeddingDimensions` with the key saved for the built-in Google Gemini provider (`IAiProviderConfigRepository.GetBuiltInAsync(Gemini)`, decrypted through `IAiKeyProtector`), whichever chat provider is selected; resolved on every run and every question; no readable key → `EmbeddingUnavailableException(MissingKey)` |
 | Rules | `MarkdownChunker.Chunk(markdown, fileName, maxChunkCharacters, excludedHeadings)` → `ChunkedDocument(Title, Chunks)`, `MarkdownChunk(Ordinal, HeadingPath, Text, EmbeddingText)`; `HeadingSeparator` " › ", `MinSectionCharacters` 200, `MaxHeadingPathLength` 1000; `EmbeddingVectors.ToBytes` / `FromBytes` | `Services/Assistant/Documents/Rules/` | Pure chunking; float32 little-endian (de)serialisation |
-| Integration | `IEmbeddingClient` / `OllamaEmbeddingClient.EmbedAsync(endpoint, inputs, purpose)`; `BatchSize` 16; `EmbeddingPurpose` (Document, Query); `EmbeddingFailureKind` (Unreachable, Timeout, ModelNotFound, Unexpected); `EmbeddingUnavailableException` | `Integrations/Ai/Embeddings/` | Ollama `/api/embed` |
+| Integration | `IEmbeddingClient` / `GeminiEmbeddingClient.EmbedAsync(endpoint, inputs, purpose)`; `BatchSize` 100; `Prefixed(input, purpose)`; `EmbeddingPurpose` (Document, Query); `EmbeddingFailureKind` (MissingKey, InvalidKey, RateLimited, Unreachable, Timeout, ModelNotFound, Unexpected); `EmbeddingUnavailableException` | `Integrations/Ai/Embeddings/` | Google Gemini `models/{model}:batchEmbedContents`, key in the `x-goog-api-key` header |
 | Repository | `IDocumentIndexRepository` / `DocumentIndexRepository` (: `BaseRepository<DocumentSource>`); `DocumentChunkRow` | `Repositories/Assistant/Documents/` | Stage source and chunk changes; stream chunks |
 | Options | `DocumentKnowledgeOptions` (section `DocumentKnowledge`, `ResolveSourcePath`, `Validate`), `DocumentKnowledgeOptionsValidation` | `Config/DocumentKnowledgeOptions.cs` | Settings, validated at startup |
 | Entities | `DocumentSource`, `DocumentChunk` | `Models/Entities/` | Tables (§5) |
@@ -740,7 +740,7 @@ classDiagram
     <<interface>>
     +EmbedAsync(endpoint, inputs, purpose)
   }
-  class OllamaEmbeddingClient
+  class GeminiEmbeddingClient
   class IDocumentIndexRepository {
     <<interface>>
   }
@@ -758,7 +758,7 @@ classDiagram
   DocumentIndexer --> IDocumentIndexRepository
   DocumentIndexer --> DocumentVectorIndex
   DocumentIndexer --> DocumentIndexStatus
-  OllamaEmbeddingClient ..|> IEmbeddingClient
+  GeminiEmbeddingClient ..|> IEmbeddingClient
 ```
 
 **API contracts:** no endpoint on `AssistantController` – retrieval runs inside `POST /api/v1/assistant/conversation/messages`
@@ -766,14 +766,20 @@ classDiagram
 `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` were removed and answer 404
 (`DocumentIndexEndpointsRemovedTests`).
 
-**Embedding request / response** (`OllamaEmbeddingClient`, not a TaskFlow API)
+**Embedding request / response** (`GeminiEmbeddingClient`, not a TaskFlow API)
 
 ```json
-// POST {baseUrl}/api/embed
-{ "model": "nomic-embed-text", "input": [ "search_query: what validations apply when creating a task?" ] }
+// POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents
+// header x-goog-api-key: <saved Gemini key> (never in the URL); up to 100 requests per call
+{ "requests": [ { "model": "models/gemini-embedding-2",
+    "content": { "parts": [ { "text": "task: search result | query: what validations apply when creating a task?" } ] },
+    "outputDimensionality": 768 } ] }
 // 200 OK
-{ "embeddings": [ [ 0.0123, -0.0456, … 768 values … ] ] }
+{ "embeddings": [ { "values": [ 0.0123, -0.0456, … 768 values … ] } ] }
 ```
+
+`gemini-embedding-2` does not accept `taskType`, so the task is put in the text: `task: search result | query: {text}`
+for questions and `title: none | text: {text}` for document chunks. Each returned vector is L2-normalised.
 
 **Service logic – `DocumentSearch.SearchAsync(message, previousUserMessage)`**
 1. `DocumentKnowledge:Enabled` false → `Unavailable(CannotSearch)`.
@@ -808,7 +814,8 @@ classDiagram
    folder was not found: {Folder}", no files (so every stored source is removed below).
 2. List `*.md` (extension case-insensitive) recursively; relative paths with `/`, ordered.
 3. For each file: SHA-256 hex of its bytes; stored source with the same hash and the same model → skipped. Otherwise chunk
-   it, embed all chunks (`Document` purpose), set `Title` (max 300), `ContentHash`, `EmbeddingModel`, `ChunkCount`,
+   it, embed all chunks (`Document` purpose), set `Title` (max 300), `ContentHash`, `EmbeddingModel` (`IndexModel` =
+   `<model>@<dimensions>`, e.g. `gemini-embedding-2@768`), `ChunkCount`,
    `IndexedAt`, `ReplaceChunksAsync` and `SaveChangesAsync` (old chunks deleted and new inserted in one save). Every 10
    embedded files → `ReloadIndexAsync`.
 4. `EmbeddingUnavailableException` → error = its message, error file = the file, warning log "TFA document indexing
@@ -839,7 +846,7 @@ sequenceDiagram
   participant S as AssistantService
   participant D as DocumentSearch
   participant P as DocumentEmbeddingEndpoint
-  participant E as OllamaEmbeddingClient
+  participant E as GeminiEmbeddingClient
   participant V as DocumentVectorIndex
   S->>D: SearchAsync(text, previous user message)
   D->>P: ResolveAsync
@@ -866,8 +873,8 @@ sequenceDiagram
 | Key | Rule |
 |---|---|
 | `SourcePath` | Required |
-| `EmbeddingModel` | Required, at most 100 characters |
-| `OllamaBaseUrl` | Empty, or an absolute http/https URL that is not a link-local or cloud metadata address |
+| `EmbeddingModel` | Required, at most 90 characters |
+| `EmbeddingDimensions` | 128–3072 |
 | `TopK` | 1–20 |
 | `MinScore` | 0–1 |
 | `MaxChunkCharacters` | 300–6000 |
@@ -878,8 +885,10 @@ sequenceDiagram
 
 | Case | Exception | Status |
 |---|---|---|
-| Ollama unreachable / timeout | `EmbeddingUnavailableException` (`Unreachable` / `Timeout`): "The Ollama server at {url} cannot be reached. Start Ollama and try again." / "… did not answer in time." | 200 – the message gets `UnavailableRule`; an indexing run stops |
-| Embedding model not installed | `EmbeddingUnavailableException` (`ModelNotFound`): "The embedding model '{model}' is not installed in Ollama. Run: ollama pull {model}" | 200 / run stops |
+| No Gemini key saved | `EmbeddingUnavailableException` (`MissingKey`): "No Google Gemini API key is saved. Save a Google Gemini API key in TFA Settings to enable document search." | 200 – the message gets `UnavailableRule`; an indexing run stops (unchanged files stay indexed; the next rescan continues) |
+| Key refused / rate limit | `EmbeddingUnavailableException` (`InvalidKey` / `RateLimited`) | 200 / run stops |
+| Google unreachable / timeout | `EmbeddingUnavailableException` (`Unreachable` / `Timeout`) | 200 / run stops |
+| Embedding model not available | `EmbeddingUnavailableException` (`ModelNotFound`): "The embedding model '{model}' is not available on Google Gemini. Check DocumentKnowledge:EmbeddingModel." | 200 / run stops |
 | Unexpected embedding reply | `EmbeddingUnavailableException` (`Unexpected`) | 200 / run stops |
 | One file fails | – (error recorded with the file; next file) | – |
 | Invalid `DocumentKnowledge` value | `OptionsValidationException` at startup | API does not start |
@@ -1151,7 +1160,7 @@ erDiagram
 | RelativePath | string(400) | No | `IX_DocumentSources_RelativePath` (unique) | – | Path under the documents folder, `/` separators |
 | Title | string(300) | No | – | – | First level-1 heading, else the file name |
 | ContentHash | string(64) | No | – | – | SHA-256 of the file bytes, lowercase hex |
-| EmbeddingModel | string(100) | No | – | – | Model the chunks were embedded with |
+| EmbeddingModel | string(100) | No | – | – | Model and vector size the chunks were embedded with (`<model>@<dimensions>`, e.g. `gemini-embedding-2@768`); a change to either re-embeds every document |
 | ChunkCount | int | No | – | – | Chunks stored for the file |
 | IndexedAt | DateTime | No | – | – | UTC |
 
@@ -1165,7 +1174,7 @@ erDiagram
 | HeadingPath | string(1000) | No | – | – | Headings joined with " › " |
 | Text | string | No | – | – | Section text given to the model |
 | Embedding | BLOB (`byte[]`) | No | – | – | L2-normalised vector, float32 little-endian |
-| Dimensions | int | No | – | – | Vector length (768 for `nomic-embed-text`) |
+| Dimensions | int | No | – | – | Vector length (`DocumentKnowledge:EmbeddingDimensions`, 768 by default) |
 
 Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModels` (`AiModel`) (TFA Settings); `Users`, `Roles`, `UserDepartments`,
 `DepartmentManagers` (directory lookups); `Tasks` through `ITaskService`.
@@ -1219,8 +1228,8 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | History window (`LoadHistoryAsync`) | Each message | 24 newest → drop notices → 12 → ≤ 6000 chars → chronological | Read only |
 | Secret screen (`SecretScreen`) | Each message; each tool result | Regex patterns: password phrases, `sk-`, `AIza`, `Bearer`, JWT, long mixed token | Pure function |
 | Ranking (`TaskPrioritiser.Rank`) | `prioritise_tasks` | Stage → local due date → priority desc → deadline → task code | Deterministic, provider-independent |
-| Document retrieval (`DocumentSearch.SearchAsync`) | Each message, before the model call | Query (if it finds nothing and is < 40 chars: again with the previous user message) → local embedding → dot product over the in-memory index → score ≥ `MinScore`, top `TopK`, ≤ `MaxContextCharacters` | Read only |
-| Document indexing (`DocumentIndexerService` → `DocumentIndexer.RunAsync`) | Startup: load stored index; 10 s after start; then every `RescanMinutes` (5) (v1.2: no manual trigger) | Hash each `.md` file → skip unchanged (hash and model) → chunk, embed in batches of 16, swap chunks in one save → remove deleted files → reload the vector index (every 10 embedded files and at the end) | Hash-based skip; one run at a time (`SemaphoreSlim`); a re-run converges to the folder |
+| Document retrieval (`DocumentSearch.SearchAsync`) | Each message, before the model call | Query (if it finds nothing and is < 40 chars: again with the previous user message) → Google Gemini embedding → dot product over the in-memory index → score ≥ `MinScore`, top `TopK`, ≤ `MaxContextCharacters` | Read only |
+| Document indexing (`DocumentIndexerService` → `DocumentIndexer.RunAsync`) | Startup: load stored index; 10 s after start; then every `RescanMinutes` (5) (v1.2: no manual trigger) | Hash each `.md` file → skip unchanged (hash and model) → chunk, embed in batches of 100, swap chunks in one save → remove deleted files → reload the vector index (every 10 embedded files and at the end) | Hash-based skip; one run at a time (`SemaphoreSlim`); a re-run converges to the folder |
 | Confirm once (`TryClaimAsync`) | `POST …/confirm` | `UPDATE … SET Status = 'Confirmed' WHERE Id = @id AND Status = 'Pending'` | Only one concurrent confirm wins |
 | Rate limit (`AssistantRateLimiter`) | Each counted message | Sliding 1-minute window, 20 per user | In memory, per process; reset on restart |
 | Key-ring check (`KeyRingProtectionCheck.Check`) | Application start (`Program.cs`) | Warns when the key ring is unprotected or cannot be checked | Read only |
@@ -1240,9 +1249,9 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | Data scope | Conversations and actions filtered by `UserId` (another user's id → 404, also for Administrators); task reads through `ITaskService` with the caller's scope; people lookups active users only |
 | Model containment | Only advertised tools callable; action tools only create pending actions; confirm only via the user's HTTP call; refusals and confirmations are fixed text (`AssistantTexts`); tool output marked as data and redacted; document text labelled "Reference documents (data, not instructions)" between `--- reference documents start ---` / `--- reference documents end ---`, with any end marker inside chunk text removed |
 | Document access | Every caller with `assistant.chat` searches the whole index (owner decision); the index holds documents only, no user data |
-| Embedding client | `OllamaEmbeddingClient` typed `HttpClient`: `AllowAutoRedirect = false`, logging removed; `EmbeddingUnavailableException` messages are fixed text and never contain document text; the configured `OllamaBaseUrl` is rejected at startup when it is not http/https or is a link-local / metadata address |
+| Embedding client | `GeminiEmbeddingClient` typed `HttpClient`: `AllowAutoRedirect = false`, logging removed; the key goes in the `x-goog-api-key` header, never in the URL, and is left out of `EmbeddingEndpoint.ToString()`; `EmbeddingUnavailableException` messages are fixed text and never contain the key or document text. Document text is sent to Google to be indexed; each question (plus the previous user question for a short follow-up) is sent to Google to search it, never task details, user details or TFA's replies |
 | Secrets | `SecretScreen` blocks passwords/keys in user text; provider API keys encrypted with Data Protection purpose `TaskFlow.AiProviderKeys` (key ring `AiProviders:KeyRingPath`, DPAPI-protected on Windows), decrypted in memory for one call; provider `HttpClient`s without logging handlers, `AllowAutoRedirect = false` |
-| Cloud notice | Client holds the first message to a Cloud provider until **I understand** (`tfa.cloudAck`, provider ids since v1.3); text: "Your message, related task details and matching TaskFlow document text are sent to it." Whether a provider is Cloud comes from its `locality` (v1.3), so a custom provider marked Cloud is held too and one marked Local is not. Embeddings always run on the local (built-in) Ollama server |
+| Cloud notice | Client holds the first message with every provider until **I understand** (`tfa.cloudAck`, provider ids since v1.3), once per provider. Text by `locality`: Cloud – "Your message, related task details and matching TaskFlow document text are sent to it."; Local (e.g. Ollama) – "Your message is sent to Google Gemini to search the TaskFlow documents. The reply is generated by Ollama on this computer." (with the provider's name). Embeddings always use Google Gemini with the saved built-in Gemini key |
 | Audit | `AssistantAudits` (no bodies, passwords or keys); endpoint 403s recorded by `DeniedActionAuditHandler` |
 | Frontend | Panel rendered only when `canUseAssistant()` (`Permissions.AssistantChat`); action buttons not gated by `assistant.actions.confirm` (§10) |
 
@@ -1253,20 +1262,20 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | Key | Default | Purpose |
 |---|---|---|
 | `AiProviders:KeyRingPath` | `dp-keys` (`appsettings.json`) | Data Protection key ring folder (relative to `Storage:Root`) |
-| `AiProviders:TimeoutSeconds` | `60` | `HttpClient.Timeout` of Gemini and OpenAI calls |
-| `AiProviders:OllamaTimeoutSeconds` | `180` | `HttpClient.Timeout` of Ollama chat and embedding calls |
+| `AiProviders:TimeoutSeconds` | `60` | `HttpClient.Timeout` of Gemini and OpenAI calls, including Gemini embedding calls |
+| `AiProviders:OllamaTimeoutSeconds` | `180` | `HttpClient.Timeout` of Ollama chat calls |
 | `AiProviders:OllamaContextTokens` | `8192` | `options.num_ctx` sent by `OllamaProvider` |
 | `DocumentKnowledge:Enabled` | `true` | Indexing and retrieval on/off (`false` in `TaskFlowApiFactory`) |
 | `DocumentKnowledge:SourcePath` | `../../../../TF - Documents` | Documents folder; relative to the API content root |
-| `DocumentKnowledge:EmbeddingModel` | `nomic-embed-text` | Ollama embedding model (max 100 characters) |
-| `DocumentKnowledge:OllamaBaseUrl` | `""` | Empty → saved Ollama `BaseUrl` → `http://localhost:11434` |
+| `DocumentKnowledge:EmbeddingModel` | `gemini-embedding-2` | Google Gemini embedding model (max 90 characters); changing it re-embeds every document |
+| `DocumentKnowledge:EmbeddingDimensions` | `768` (128–3072) | `outputDimensionality` of each vector; changing it re-embeds every document (an older index is re-embedded automatically on the first start) |
 | `DocumentKnowledge:TopK` | `4` (1–20) | Most chunks per message |
-| `DocumentKnowledge:MinScore` | `0.6` (0–1) | Minimum cosine similarity (tuned against a fixed question set) |
+| `DocumentKnowledge:MinScore` | `0.65` (0–1) | Minimum cosine similarity (tuned against a fixed question set) |
 | `DocumentKnowledge:MaxChunkCharacters` | `1500` (300–6000) | Section split size |
 | `DocumentKnowledge:MaxContextCharacters` | `4000` (≥ `MaxChunkCharacters`) | Document text per message |
 | `DocumentKnowledge:RescanMinutes` | `5` (≥ 1) | Folder check interval |
 | `DocumentKnowledge:ExcludedHeadings` | code defaults `Document Control`, `Revision History`, `Approvals` (not in `appsettings.json`) | Skipped sections; configured values are appended to the defaults |
-| Constants | `DocumentSearch.ShortFollowUpLength` 40, `OllamaEmbeddingClient.BatchSize` 16, `DocumentIndexer.ReloadEvery` 10, `DocumentIndexerService.StartDelay` 10 s, `MarkdownChunker.MinSectionCharacters` 200 | Document knowledge |
+| Constants | `DocumentSearch.ShortFollowUpLength` 40, `GeminiEmbeddingClient.BatchSize` 100, `DocumentIndexer.ReloadEvery` 10, `DocumentIndexerService.StartDelay` 10 s, `MarkdownChunker.MinSectionCharacters` 200 | Document knowledge |
 | `Storage:Root` | `""` | Base folder for the key ring |
 | `Application:Timezone` | `Asia/Kolkata` | Fallback time zone for "today" / overdue (`IAppClock`) |
 | `ConnectionStrings:Default` | `Data Source=taskflow.db` | SQLite database |
@@ -1299,7 +1308,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | Live data | `TaskFlow.UnitTests/Assistant/Chat/AssistantLiveDataTests.cs` | Unit | Overdue-tasks question uses the task tool even when documents match |
 | Document knowledge | `TaskFlow.UnitTests/Assistant/Documents/MarkdownChunkerTests.cs`, `DocumentIndexerTests.cs`, `DocumentIndexerServiceTests.cs`, `DocumentIndexRepositoryTests.cs`, `DocumentSearchTests.cs`, `DocumentVectorIndexTests.cs`, `DocumentKnowledgeOptionsTests.cs` (+ `DocumentIndexerHarness.cs`, `Fixtures/`) | Unit | Chunking, incremental indexing, single-run guard (`ARunWhileAnotherIsInProgressDoesNotStart`, v1.2; replaces the v1.1 concurrent `RequestReindex` tests), `WhenDisabledNothingRuns`, repository staging, search outcomes, ranking and budget, option validation |
 | Old document endpoints (v1.2) | `TaskFlow.IntegrationTests/Settings/TfaSettings/DocumentIndexEndpointsRemovedTests.cs` | Integration | `GET …/documents/status` and `POST …/documents/reindex` answer 404 (replaces the deleted `DocumentIndexEndpointsTests`) |
-| Embeddings | `TaskFlow.UnitTests/Integrations/Ai/Embeddings/OllamaEmbeddingClientTests.cs` | Unit | Request, prefixes, batches, normalisation, failure kinds |
+| Embeddings | `TaskFlow.UnitTests/Integrations/Ai/Embeddings/GeminiEmbeddingClientTests.cs` | Unit | Request (key in header, not URL), task prefixes, `outputDimensionality`, batches of 100, normalisation, failure kinds |
 | Migration | `TaskFlow.UnitTests/Persistence/DocumentIndexMigrationTests.cs` | Unit | Upgrade leaves existing tables and rows alone, cascade delete, unique path, downgrade |
 | Document answers | `TaskFlow.IntegrationTests/Assistant/DocumentAnswerEndpointsTests.cs`, `DocumentIndexStartupTests.cs` (`TestSupport/DocumentKnowledgeFactory.cs`) | Integration | Employee answer with sources kept after reload; API starts and answers with the indexer on and the folder missing |
 | Sources chips | `frontend/src/app/modules/assistant/components/tfa-message.component.spec.ts` | Frontend unit | Chips render for a message with sources, nothing without |
@@ -1365,7 +1374,7 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | FR-TFA-12 | `GET /api/v1/assistant/providers` (`AiProviderOptionDto.ProviderId`) · `IAiProviderConfigService.GetAvailableAsync` · `TfaHeaderComponent` (`chooseProvider`, `providerStyle`) · `AssistantService.selectProvider(providerId)` · `tfa.provider` | `ChatModelGatewayTests`, `AssistantProviderEndpointsTests`, `CustomProviderEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-13 | `AssistantService.SendAsync` (no provider) · `ProviderFailureMessages.NotConfigured` · panel empty state | `AssistantServiceTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-14 | `AssistantMessage.ProviderId` (v1.3; was `ProviderKind`) · `AssistantMessageDto.ProviderId`, `Provider` (name) | `AssistantServiceTests`, `CustomProviderEndpointsTests`, `CustomProvidersMigrationTests` |
-| FR-TFA-15 | `AssistantService.acknowledgeCloud` / `needsCloudNotice` by `locality` (Angular) · `tfa.cloudAck` | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-15 | `AssistantService.acknowledgeCloud` / `needsCloudNotice` for every provider, text by `locality` (Angular) · `tfa.cloudAck` | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-16 | `ChatModelGateway` (`For(runtime)`) · `ProviderFailureKind` · `AssistantFailureDto` (`ProviderId`, `ProviderName`) · `ProviderFailureMessages.For` · `AssistantService.retry` | `ProviderFailureHandlingTests`, `ChatModelGatewayTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-17 | `POST /api/v1/assistant/conversation/new` · `NewConversationAsync` | `AssistantEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-68 (v1.3) | `SendAssistantMessageRequest.ProviderId` · `AssistantService.dispatch(text, providerId)` · `readStoredId(TFA_PROVIDER_KEY)` (ignores a stored name) · `SendAsync` step 3 and 11 | `CustomProviderEndpointsTests`, `AssistantServiceTests`; `assistant.service.spec.ts` |

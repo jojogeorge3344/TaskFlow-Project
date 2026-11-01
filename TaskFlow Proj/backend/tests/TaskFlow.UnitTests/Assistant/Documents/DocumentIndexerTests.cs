@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Integrations.Ai.Embeddings;
 
 namespace TaskFlow.UnitTests.Assistant.Documents;
@@ -28,7 +29,7 @@ public class DocumentIndexerTests
         Assert.Equal(2, h.Index.Count);
         var status = h.Status.Current;
         Assert.Equal((2, 2, false, true, null), (status.FileCount, status.ChunkCount, status.IsRunning, status.FolderFound, status.LastError));
-        Assert.Equal("nomic-embed-text", status.EmbeddingModel);
+        Assert.Equal("gemini-embedding-2@768", status.EmbeddingModel);
         Assert.NotNull(status.LastIndexedAt);
     }
 
@@ -93,13 +94,13 @@ public class DocumentIndexerTests
         await h.RunAsync();
         h.Embeddings.Calls.Clear();
 
-        h.Options.EmbeddingModel = "mxbai-embed-large";
+        h.Options.EmbeddingModel = "gemini-embedding-next";
         var run = await h.RunAsync();
 
         Assert.Equal(2, run.Embedded);
-        Assert.All(h.Embeddings.Calls, call => Assert.Equal("mxbai-embed-large", call.Endpoint.Model));
-        Assert.All(await h.StoredChunksAsync(), row => Assert.Equal("mxbai-embed-large", row.EmbeddingModel));
-        Assert.Equal("mxbai-embed-large", h.Index.Model);
+        Assert.All(h.Embeddings.Calls, call => Assert.Equal("gemini-embedding-next", call.Endpoint.Model));
+        Assert.All(await h.StoredChunksAsync(), row => Assert.Equal("gemini-embedding-next@768", row.EmbeddingModel));
+        Assert.Equal("gemini-embedding-next@768", h.Index.Model);
     }
 
     [Fact]
@@ -128,7 +129,7 @@ public class DocumentIndexerTests
 
         h.Write("task.md", TaskDoc + " Edited.");
         h.Write("mail.md", MailDoc);
-        h.Embeddings.FailFor = _ => new EmbeddingUnavailableException(EmbeddingFailureKind.Unreachable, new EmbeddingEndpoint("http://localhost:11434", "nomic-embed-text"));
+        h.Embeddings.FailFor = _ => new EmbeddingUnavailableException(EmbeddingFailureKind.Unreachable, "gemini-embedding-2");
         var run = await h.RunAsync();
 
         Assert.Equal((0, 1), (run.Embedded, run.Failed));
@@ -155,35 +156,107 @@ public class DocumentIndexerTests
     }
 
     [Fact]
-    public async Task TheSavedOllamaAddressIsUsedWhenNoneIsConfigured()
+    public async Task TheSavedGeminiKeyModelAndSizeAreUsed()
     {
         await using var h = new DocumentIndexerHarness();
-        await using (var db = h.NewContext())
-        {
-            db.AiProviderConfigs.Add(new() { Name = "Ollama", Locality = "Local", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434/", UpdatedAt = DateTime.UtcNow });
-            await db.SaveChangesAsync();
-        }
-
         h.Write("task.md", TaskDoc);
+
         await h.RunAsync();
 
-        Assert.Equal("http://gpu-box:11434", h.Embeddings.Calls.Single().Endpoint.BaseUrl);
+        var endpoint = h.Embeddings.Calls.Single().Endpoint;
+        Assert.Equal(("gemini-embedding-2", 768, DocumentIndexerHarness.GeminiKey), (endpoint.Model, endpoint.Dimensions, endpoint.ApiKey));
     }
 
     [Fact]
-    public async Task TheConfiguredOllamaAddressWinsOverTheSavedOne()
+    public async Task ASizeChangeReEmbedsEverything()
     {
         await using var h = new DocumentIndexerHarness();
+        h.Write("task.md", TaskDoc);
+        await h.RunAsync();
+        h.Embeddings.Calls.Clear();
+
+        h.Options.EmbeddingDimensions = 1536;
+        var run = await h.RunAsync();
+
+        Assert.Equal(1, run.Embedded);
+        Assert.Equal(1536, h.Embeddings.Calls.Single().Endpoint.Dimensions);
+        Assert.Equal("gemini-embedding-2@1536", h.Index.Model);
+    }
+
+    [Fact]
+    public async Task AnOldLocalIndexIsReplacedByGeminiEmbeddings()
+    {
+        await using var h = new DocumentIndexerHarness();
+        h.Write("task.md", TaskDoc);
+        h.Write("mail.md", MailDoc);
+        await h.RunAsync();
         await using (var db = h.NewContext())
         {
-            db.AiProviderConfigs.Add(new() { Name = "Ollama", Locality = "Local", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434", UpdatedAt = DateTime.UtcNow });
-            await db.SaveChangesAsync();
+            await db.Database.ExecuteSqlRawAsync("UPDATE DocumentSources SET EmbeddingModel = 'nomic-embed-text'");
         }
 
-        h.Options.OllamaBaseUrl = "http://embed-box:11434";
+        h.Embeddings.Calls.Clear();
+        h.Index.Replace([], "nomic-embed-text");
+        var run = await h.RunAsync();
+
+        Assert.Equal(2, run.Embedded);
+        Assert.All(await h.StoredChunksAsync(), row => Assert.Equal("gemini-embedding-2@768", row.EmbeddingModel));
+        Assert.Equal("gemini-embedding-2@768", h.Index.Model);
+        Assert.Equal(2, h.Index.Count);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("not-decryptable")]
+    public async Task WithoutAUsableGeminiKeyNothingIsEmbeddedAndTheReasonIsKept(string? savedKey)
+    {
+        await using var h = new DocumentIndexerHarness();
+        await h.SetSavedGeminiKeyAsync(savedKey);
+        h.Write("task.md", TaskDoc);
+
+        var run = await h.RunAsync();
+
+        Assert.Equal((0, 1), (run.Embedded, run.Failed));
+        Assert.Empty(h.Embeddings.Calls);
+        Assert.Empty(await h.StoredChunksAsync());
+        Assert.Equal(0, h.Index.Count);
+        Assert.Contains("Google Gemini API key", h.Status.Current.LastError);
+    }
+
+    [Fact]
+    public async Task AKeySavedLaterIsUsedByTheNextRun()
+    {
+        await using var h = new DocumentIndexerHarness();
+        await h.SetSavedGeminiKeyAsync(null);
         h.Write("task.md", TaskDoc);
         await h.RunAsync();
 
-        Assert.Equal("http://embed-box:11434", h.Embeddings.Calls.Single().Endpoint.BaseUrl);
+        await h.SetSavedGeminiKeyAsync(FakeKeyProtector.Encrypted("saved-later"));
+        var run = await h.RunAsync();
+
+        Assert.Equal(1, run.Embedded);
+        Assert.Equal("saved-later", h.Embeddings.Calls.Single().Endpoint.ApiKey);
+    }
+
+    [Fact]
+    public async Task ARateLimitStopsTheRunAndTheNextRunContinues()
+    {
+        await using var h = new DocumentIndexerHarness();
+        h.Write("a-task.md", TaskDoc);
+        h.Write("b-mail.md", MailDoc);
+        h.Embeddings.FailFor = input => input.Contains("Compose") ? new EmbeddingUnavailableException(EmbeddingFailureKind.RateLimited, "gemini-embedding-2") : null;
+
+        var first = await h.RunAsync();
+
+        Assert.Equal((1, 1), (first.Embedded, first.Failed));
+        Assert.Contains("rate limit", h.Status.Current.LastError);
+        Assert.Equal(["a-task.md"], (await h.StoredChunksAsync()).Select(row => row.RelativePath).Distinct());
+
+        h.Embeddings.FailFor = _ => null;
+        h.Embeddings.Calls.Clear();
+        var second = await h.RunAsync();
+
+        Assert.Equal((1, 1), (second.Embedded, second.Skipped));
+        Assert.Equal(["a-task.md", "b-mail.md"], (await h.StoredChunksAsync()).Select(row => row.RelativePath).Distinct().Order(StringComparer.Ordinal));
     }
 }

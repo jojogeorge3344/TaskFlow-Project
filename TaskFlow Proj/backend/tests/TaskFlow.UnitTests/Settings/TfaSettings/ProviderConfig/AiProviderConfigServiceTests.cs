@@ -282,7 +282,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
         Assert.Equal(Id(AiApiType.Ollama), ollama.ProviderId);
         Assert.Equal("Ollama", ollama.DisplayName);
         Assert.Equal("Local", ollama.Locality);
-        Assert.Equal("http://localhost:11434", (await Service().GetAdminConfigAsync()).First().BaseUrl);
+        Assert.Equal("http://localhost:11434", (await Service().GetAdminConfigAsync()).Single(provider => provider.ApiType == AiApiType.Ollama).BaseUrl);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class AiProviderConfigServiceTests : IAsyncLifetime
 
         var ids = (await Service().GetAvailableAsync()).Select(option => option.ProviderId).ToList();
 
-        Assert.Equal([Id(AiApiType.Ollama), Id(AiApiType.Gemini)], ids);
+        Assert.Equal([Id(AiApiType.Gemini), Id(AiApiType.Ollama)], ids);
     }
 
     [Fact]

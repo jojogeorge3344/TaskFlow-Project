@@ -549,7 +549,7 @@ public class AiProviderConfigService : IAiProviderConfigService
         }
     }
 
-    /// <summary>Built-in providers first in catalog order (Ollama, Gemini, OpenAI), then custom ones by name.</summary>
+    /// <summary>Built-in providers first in catalog order (Gemini, OpenAI, Ollama), then custom ones by name.</summary>
     private IReadOnlyList<AiProviderConfigDto> ToDtos(IReadOnlyList<AiProviderConfig> rows, IReadOnlyList<AiModel> models) =>
         rows
             .OrderByDescending(row => row.IsBuiltIn)

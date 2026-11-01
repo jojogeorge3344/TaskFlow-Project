@@ -133,13 +133,14 @@ flowchart LR
   C["Custom-role user"] --> S
   P["Authenticator app on phone"] -. "6-digit codes" .-> S
   S --> O["Ollama local AI (optional)"]
-  S --> G["Gemini or OpenAI cloud AI (optional)"]
+  S --> G["Gemini (default, document search) or OpenAI cloud AI"]
   S --> B["Browser speech services (optional)"]
   S --> F["Data folder: database, attachments, key ring"]
 ```
 
 TaskFlow sends nothing by external e-mail or SMS (BR-23). The authenticator app works offline on the user's phone; the
-only outbound connections are to a cloud AI provider when an administrator chooses one.
+only outbound connections are to a cloud AI provider when an administrator chooses one, and to Google Gemini for TFA document search
+when a Gemini API key is saved.
 
 ### 2.3 Sub-module FRD Index
 
@@ -1252,7 +1253,7 @@ task change (it is logged).
 | NFR-08 | Every write is validated by the server and returns field messages; queries are safe against injection. | All forms |
 | NFR-09 | Another user's task, mail, notification or conversation is refused or reported as not found. | TASK, MAIL, NOTIF, TFA |
 | NFR-10 | AI provider keys and authenticator keys are encrypted with a key ring outside the database; only the last 4 characters of an AI key are shown. | TFA Settings, Security Setup (FR-AUTH-38) |
-| NFR-11 | Data stays on the server unless a cloud AI model is chosen; notice on first cloud use; local model is the default. | TFA, TFA Settings, Privacy Policy (FR-LEGAL-10) |
+| NFR-11 | Data stays on the server except what TFA sends to an AI provider; notice on first use of each provider; Google Gemini is the default chat provider and searches the documents (document text and questions are sent to Google). | TFA, TFA Settings, Privacy Policy (FR-LEGAL-10) |
 | NFR-12 | Every refused action shows a message; destructive actions and every TFA action ask for confirmation; menus show only permitted entries. | All screens (FR-AUTH-50) |
 | NFR-13 | Tasks, history, notifications and reminder history survive a restart. | TASK, NOTIF |
 | NFR-14 | Reminder engine: first run at start-up, then every 60 seconds; failed run logged; no duplicates. | Reminder engine |
@@ -1261,7 +1262,7 @@ task change (it is logged).
 | NFR-17 | All data in one data folder with a documented backup and restore; key ring backed up separately. | Operations, Privacy Policy |
 | NFR-18 | Keyboard use and readability. ⚠️ To be confirmed: accessibility target. | All screens |
 | NFR-19 | Every request logged without its content (method, path, status, time, user, trace id); refused authorisations and TFA outcomes recorded. | All modules |
-| NFR-20 | Works without the internet except for cloud AI providers. | Authentication (offline authenticator), NOTIF, MAIL, TFA |
+| NFR-20 | Works without the internet except for cloud AI providers and TFA document search (Google Gemini). | Authentication (offline authenticator), NOTIF, MAIL, TFA |
 
 ---
 

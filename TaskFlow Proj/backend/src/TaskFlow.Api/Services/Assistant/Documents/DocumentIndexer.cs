@@ -59,7 +59,7 @@ public class DocumentIndexer
         _logger = logger;
     }
 
-    private string Model => _options.EmbeddingModel.Trim();
+    private string Model => _options.IndexModel;
 
     public async Task<DocumentIndexRun> RunAsync(CancellationToken cancellationToken = default)
     {

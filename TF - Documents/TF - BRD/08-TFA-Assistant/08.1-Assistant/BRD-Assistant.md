@@ -86,10 +86,10 @@ Users who do not know a screen must search training material or ask a colleague.
 
 ### 1.4 Expected Benefits
 - Less training effort; answers for every role taken from the same documents the project is built from, with sources to check them.
-- No cost for document answers: the documents are searched on the local AI server (Ollama), with no paid service.
+- Low cost for document answers: the documents are searched with Google Gemini using a free Google AI Studio key (the free tier has rate limits).
 - Faster daily planning through the ranked work order.
 - Faster routine communication with mail drafts addressed to "my manager".
-- The organisation chooses where AI runs: a local model (nothing leaves the machine) or a cloud model.
+- The organisation chooses which AI writes the replies: a cloud model (Google Gemini by default, or OpenAI GPT) or the optional local model (Ollama); document search always uses Google Gemini.
 
 ---
 
@@ -124,7 +124,7 @@ Users who do not know a screen must search training material or ask a colleague.
 ## 3. Scope
 
 ### 3.1 In Scope
-- TFA Panel: conversation, model selector, cloud notice, new chat, provider failure handling.
+- TFA Panel: conversation, model selector, provider notice, new chat, provider failure handling.
 - Task answers: upcoming, due today, overdue, all open tasks; ranked "what to do first" list.
 - Action Cards: mail draft (editable), own profile update, role change; confirm and cancel.
 - Lookup and guidance: find a user, password guidance, "needs an administrator" guidance.
@@ -158,7 +158,7 @@ Users who do not know a screen must search training material or ask a colleague.
 | Step | Actor / System | Action | Result |
 |---|---|---|---|
 | 1 | User | Opens the panel and sends a question | Message held for checks |
-| 2 | System | Shows the cloud notice for the first message to a cloud provider | User clicks **I understand** or **Cancel** |
+| 2 | System | Shows the provider notice for the first message to each provider (cloud or local) | User clicks **I understand** or **Cancel** |
 | 3 | System | Checks length (1–2000) and screens for passwords or API keys | Unsafe message is neither sent nor stored |
 | 4 | System | Checks the 20-messages-per-minute limit | Over the limit → "too quickly" message |
 | 5 | System, AI provider | The system finds the TaskFlow document sections that match the question; the AI provider answers, using that text and up to 4 rounds of lookups (tasks, users) | Answer with sources, task links or a ranked list |
@@ -166,7 +166,7 @@ Users who do not know a screen must search training material or ask a colleague.
 
 ```mermaid
 flowchart LR
-  A["Send question"] --> B{"Cloud notice needed?"}
+  A["Send question"] --> B{"Provider notice needed?"}
   B -- Yes --> C["I understand"] --> D
   B -- No --> D{"Password or key?"}
   D -- Yes --> E["Safety notice, nothing kept"]
@@ -242,7 +242,7 @@ flowchart LR
 - No section matches, or the sections do not answer the question → TFA says the TaskFlow documents do not cover it.
 - The question is not about TaskFlow or the user's work (e.g. "What is the capital of France?") → TFA says it can only answer from the TaskFlow documents and the user's own work, and does not answer.
 - The question is about the user's own tasks, priorities, mail or profile → answered from live data as in 4.1, never from the documents.
-- The local AI server cannot be reached → TFA says the documents cannot be searched right now; task, mail and profile questions still work.
+- No Google Gemini API key is saved, or Google refuses the key, reaches its rate limit or cannot be reached → TFA says the documents cannot be searched right now; task, mail and profile questions still work.
 - The first indexing has not stored anything yet → TFA says the documents are still being prepared.
 
 ---
@@ -265,7 +265,7 @@ Let the user ask TFA questions and read its answers in a running conversation, f
 - Floating **TFA** button (bottom right) with voice hint.
 - Header: "TFA – TaskFlow Assistant", **New chat** (+), **Close** (×).
 - Model selector with **Local**/**Cloud** tag (menu opens only with 2 or more configured providers).
-- Cloud notice with **I understand** and **Cancel**.
+- Provider notice (cloud or local provider) with **I understand** and **Cancel**.
 - Conversation feed: messages, "Permission required" bubble, notices, numbered ranked task list with tags (Overdue, Today, Tomorrow, `n` days, Blocked), screen link buttons, **Sources** under answers that used the TaskFlow documents (v1.1), provider name under each answer.
 - Welcome bubble and four starter suggestions on an empty chat.
 - Message box "Ask TFA anything about TaskFlow…", microphone, **Send** (Enter sends, Shift+Enter new line).
@@ -285,7 +285,7 @@ Let the user ask TFA questions and read its answers in a running conversation, f
 | REQ-TFA-07 | The system shall rank the user's open assigned tasks: overdue first (longest overdue first), then due today, then nearest due date, higher priority first on the same day; completed and cancelled tasks excluded, blocked tasks tagged Blocked. | Must |
 | REQ-TFA-08 | The system shall show the top 5 ranked tasks (up to 10 on request), each linking to its task page, with the order calculated by the system and not by the AI. | Must |
 | REQ-TFA-09 | The system shall list only providers configured by an administrator in the model selector, and keep the conversation when the model is switched. | Must |
-| REQ-TFA-10 | The system shall ask for acknowledgement before the first message to each cloud provider in a browser, and remember it in that browser. | Must |
+| REQ-TFA-10 | The system shall ask for acknowledgement before the first message to each provider (cloud or local) in a browser, and remember it in that browser. | Must |
 | REQ-TFA-11 | The system shall save nothing when a provider fails and offer **Retry** and another configured provider. | Must |
 | REQ-TFA-12 | The system shall start a new conversation on **New chat**, keeping earlier messages stored but no longer using them as context. | Should |
 | REQ-TFA-13 | The system shall use at most the last 12 messages (about 6000 characters) of the current conversation as context, excluding notices. | Should |
@@ -311,6 +311,7 @@ Let the user ask TFA questions and read its answers in a running conversation, f
 | Provider unexpected error | "`{Provider}` returned an unexpected error. Please try again, or choose another model." The provider's own status and reason are not added in the chat; they are shown only on Test connection in TFA Settings (v1.2). |
 | Other failure | "TFA could not answer. Please try again." · "Could not start a new chat." |
 | Cloud notice | "`{Provider}` is a cloud provider. Your message, related task details and matching TaskFlow document text are sent to it." (v1.1) |
+| Local provider notice | "Your message is sent to Google Gemini to search the TaskFlow documents. The reply is generated by Ollama on this computer." |
 | No permission | "You do not have the required permission to perform this action. … Please contact your system administrator for assistance." |
 
 **Expected Result**
@@ -352,7 +353,8 @@ Answer questions about TaskFlow's features, screens, rules and design only from 
 | REQ-TFA-53 | The system shall let every user who may chat with TFA get answers from every indexed document, whatever their role. | Must |
 | REQ-TFA-54 | The system shall keep answering task, mail and profile questions when the documents cannot be searched, and shall tell the user that the documents cannot be searched right now, or are still being prepared while the first indexing has stored nothing. | Must |
 | REQ-TFA-55 | The system shall pick up documents that were added, changed or deleted in the documents folder without a restart, at the next automatic check (every 5 minutes by default), re-processing only changed documents (v1.2: the manual re-index was withdrawn). | Should |
-| REQ-TFA-56 | The system shall write a missing documents folder, an embedding model that cannot be reached (indexing stops) and a document that could not be indexed to the server log as warnings naming the folder or file, and shall offer no screen or endpoint for the document index status or for starting a re-index (v1.2). | Should |
+| REQ-TFA-56 | The system shall write a missing documents folder, document search that cannot use Google Gemini (no key saved, key refused, rate limit reached, Google unreachable or timed out; indexing stops, unchanged documents stay indexed and the next check continues) and a document that could not be indexed to the server log as warnings naming the folder or file, and shall offer no screen or endpoint for the document index status or for starting a re-index (v1.2). | Should |
+| REQ-TFA-57 | The system shall search the documents with Google Gemini using the API key saved for the built-in Google Gemini provider, whichever chat provider is selected (including Ollama), and shall use a newly saved key at the next automatic check without a restart. | Must |
 
 **Validations & Messages**
 
@@ -526,7 +528,7 @@ Global rules (authentication, permission-based access, Own/Team/Organization sco
 | BR-TFA-08 | Prepared actions expire after 10 minutes and run at most once. | SCREEN 3 |
 | BR-TFA-09 | Mail drafts follow the Mail rules; profile changes follow the My Profile rules; role changes follow Employee Management rules. | SCREEN 3 |
 | BR-TFA-10 | TFA never changes the requester's own role and never changes a password. | SCREEN 3 |
-| BR-TFA-11 | Only providers configured by an administrator can be used; cloud providers need the user's acknowledgement first. | SCREEN 1 |
+| BR-TFA-11 | Only providers configured by an administrator can be used; every provider (cloud or local) needs the user's acknowledgement first. | SCREEN 1 |
 | BR-TFA-12 | Each user may send at most 20 messages per minute. | SCREEN 5 |
 | BR-TFA-13 | Every action outcome is audited without message bodies, passwords or keys. | SCREEN 5 |
 | BR-TFA-14 | TaskFlow keeps no voice recording. | SCREEN 4 |
@@ -550,15 +552,15 @@ Global NFRs are in section 7 of the overall BRD. Sub-module specifics:
 |---|---|---|---|
 | NFR-TFA-01 | Security | Secret screen on every message before any provider call | 0 messages containing a detected password or key sent or stored |
 | NFR-TFA-02 | Security | Permission re-checked at confirm time | A permission removed after preparing makes the confirm fail |
-| NFR-TFA-03 | Privacy | A local provider option where nothing leaves the machine | Ollama selectable when configured |
+| NFR-TFA-03 | Privacy | An optional local chat provider whose replies are generated on the machine | Ollama selectable when configured; the message is still sent to Google Gemini to search the documents |
 | NFR-TFA-04 | Reliability | Provider failures lose nothing | Retry resends the same text; no partial messages stored |
 | NFR-TFA-05 | Reliability | Concurrent confirms are safe | Duplicate confirm never runs an action twice |
 | NFR-TFA-06 | Fair use | Per-user message limit | 20 messages per user per minute |
 | NFR-TFA-07 | Compatibility | Voice in browsers with speech recognition | Chrome and Edge; typing works in every supported browser |
 | NFR-TFA-08 | Usability | Every provider problem has a plain message and a next step | Each failure in SCREEN 1 offers Retry or another model |
-| NFR-TFA-09 | Privacy / cost | The documents are searched on the local AI server, at no cost, whichever chat model is chosen | Only the matching document sections reach a cloud chat provider, after the cloud notice |
+| NFR-TFA-09 | Privacy / cost | The documents are searched with Google Gemini (free Google AI Studio key), whichever chat model is chosen | Document text is sent to Google to be indexed; to search, only the question (and the previous question for a short follow-up) is sent to Google, never task details, user details or TFA's replies; only the matching document sections reach a cloud chat provider, after the notice |
 | NFR-TFA-10 | Freshness | Document changes reach TFA without a restart | Picked up at the next automatic check (default every 5 minutes; v1.2: the manual re-index was withdrawn) |
-| NFR-TFA-11 | Performance | Unchanged documents are not processed again | Measured on a laptop CPU: first full indexing of 89 documents about 28 minutes; later checks with no changes finish in seconds |
+| NFR-TFA-11 | Performance | Unchanged documents are not processed again | The first full indexing sends the document sections to Google in batches of up to 100; later checks with no changes finish in seconds |
 | NFR-TFA-12 | Reliability | TFA keeps working when the documents cannot be searched | Task, mail and profile questions are still answered; the user is told the documents cannot be searched |
 
 ---
@@ -573,7 +575,7 @@ Global NFRs are in section 7 of the overall BRD. Sub-module specifics:
 | Audit record | Action outcome | User, kind, outcome, time | No bodies, passwords or keys |
 | Help topics (19) | *Withdrawn in v1.1* (replaced by the document index) | – | – |
 | Document index (v1.1) | The searchable form of the TaskFlow documents | Document file path, title, section headings, section text, search vectors, when indexed | Rebuilt automatically from the documents folder; holds no user data |
-| Browser settings | Chosen model, cloud acknowledgement, hands-free off | Per browser | Not stored on the server |
+| Browser settings | Chosen model, provider acknowledgement, hands-free off | Per browser | Not stored on the server |
 
 ---
 
@@ -581,9 +583,9 @@ Global NFRs are in section 7 of the overall BRD. Sub-module specifics:
 
 | System / service | Purpose | Required? | Notes |
 |---|---|---|---|
-| Ollama (local AI) | Answers questions on the local machine; also searches the TaskFlow documents (free embedding model `nomic-embed-text`) whichever chat provider is chosen | One provider required; Ollama with `nomic-embed-text` required for document answers | "Ollama is not running…" when unreachable; documents "cannot be searched right now" without it |
+| Ollama (local AI) | Answers questions on the local machine (optional chat provider) | Optional | "Ollama is not running…" when unreachable; not used for document search |
 | TaskFlow documents folder (v1.1) | Source of the answers about TaskFlow | Required for document answers | Markdown files only; set in the server configuration; a missing folder is written to the server log (v1.2) |
-| Google Gemini (cloud AI) | Answers questions | Optional | Cloud notice; rate limit and key messages |
+| Google Gemini (cloud AI) | Answers questions (default chat provider); also searches the TaskFlow documents (embedding model `gemini-embedding-2`) whichever chat provider is chosen | One chat provider required; a Google Gemini API key (free from Google AI Studio) required for document answers | Cloud notice; rate limit and key messages; documents "cannot be searched right now" without a working key |
 | OpenAI GPT (cloud AI) | Answers questions | Optional | Cloud notice; rate limit and key messages |
 | Browser speech service | Speech to text and text to speech | Optional | Chrome, Edge; needs internet in some browsers |
 | TaskFlow Mail, My Profile, Employee Management, Task Management | Carry out actions and lookups | Required | Same rules as their own screens |
@@ -615,7 +617,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | Dependency | Application Settings for application name and time zone |
 | Assumption | The documents in the TaskFlow documents folder are kept current; TFA answers only as well as they are written (v1.1) |
 | Constraint | Only Markdown documents are used; PDF and Excel files are not read (v1.1) |
-| Dependency | Ollama running with the `nomic-embed-text` model pulled, for document answers (v1.1) |
+| Dependency | A Google Gemini API key saved in TFA Settings and access to Google, for document answers |
 
 ---
 
@@ -625,7 +627,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 |---|---|---|---|---|
 | R-TFA-01 | AI gives a wrong or invented answer | Medium | Medium | Answers about TaskFlow only from the documents, with sources; system-calculated ranking; footer warning |
 | R-TFA-02 | Prompt injection through task, comment or mail text | High | Low | Text treated as data; every action needs confirmation and a permission check |
-| R-TFA-03 | Company data (including matching document text, v1.1) sent to a cloud provider | High | Medium | Cloud notice names document text; documents searched locally; local Ollama option; secret screen |
+| R-TFA-03 | Company data (including matching document text, v1.1) sent to a cloud provider; document text sent to Google to be indexed | High | Medium | Provider notice names document text; only the question is sent to Google to search the documents; secret screen |
 | R-TFA-04 | Conversations kept indefinitely with no self-service delete | Medium | Medium | ⚠️ To be confirmed: retention period or "delete my history" |
 | R-TFA-05 | Provider quota exhausted by one user | Medium | Low | 20 messages per user per minute |
 | R-TFA-06 | Help text out of step with built screens (password guidance) | Low | High | ⚠️ To be confirmed: align texts with My Profile (the help topics were removed in v1.1; the fixed password guidance remains) |
@@ -642,7 +644,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | AC-TFA-02 | A 2001-character message is refused; "my password is Hunter2!" is neither sent nor stored. | SCREEN 1, REQ-TFA-04, REQ-TFA-05 |
 | AC-TFA-03 | "What are my upcoming tasks?" lists only tasks the user can open, using the application time zone for "today". | SCREEN 1, REQ-TFA-06, REQ-TFA-15, REQ-TFA-17 |
 | AC-TFA-04 | "What should I prioritise?" returns the same ranked top 5 with any model, with task links and tags. | SCREEN 1, REQ-TFA-07, REQ-TFA-08 |
-| AC-TFA-05 | Only configured providers appear; the first cloud message shows the notice (which mentions matching TaskFlow document text, v1.1); switching model keeps the conversation. | SCREEN 1, REQ-TFA-09, REQ-TFA-10 |
+| AC-TFA-05 | Only configured providers appear; the first message to each provider shows its notice (the cloud notice mentions matching TaskFlow document text, v1.1); switching model keeps the conversation. | SCREEN 1, REQ-TFA-09, REQ-TFA-10 |
 | AC-TFA-06 | A provider timeout shows Retry and another provider, and nothing is stored. | SCREEN 1, REQ-TFA-11 |
 | AC-TFA-07 | New chat empties the panel; earlier messages are not used as context; context and lookup limits are respected. | SCREEN 1, REQ-TFA-12, REQ-TFA-13, REQ-TFA-14 |
 | AC-TFA-08 | *Superseded in v1.1 by AC-TFA-18 – AC-TFA-22.* (Was: an Employee asking how to create a task gets "who can do it" only; an Administrator gets steps and a link; an unknown topic gets "no information".) | – |
@@ -659,7 +661,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | AC-TFA-19 | A question the documents do not cover gets "the documents do not cover it"; "What is the capital of France?" is declined. | SCREEN 2, REQ-TFA-48, REQ-TFA-49 |
 | AC-TFA-20 | "Which of my tasks are overdue?" is answered from the user's own tasks even when document sections matched; an instruction written inside a document is not followed. | SCREEN 2, REQ-TFA-51, REQ-TFA-52 |
 | AC-TFA-21 | An Employee asking how the reminder scheduler works gets the answer from the technical documents; after reloading, earlier answers still show their sources. | SCREEN 2, REQ-TFA-50, REQ-TFA-53 |
-| AC-TFA-22 | With Ollama stopped, a documentation question gets "the documents cannot be searched right now" while task questions still work; an edited document is reflected after the next check without a restart. | SCREEN 2, REQ-TFA-54, REQ-TFA-55 |
+| AC-TFA-22 | With no Google Gemini API key saved, a documentation question gets "the documents cannot be searched right now" while task questions still work; an edited document is reflected after the next check without a restart. | SCREEN 2, REQ-TFA-54, REQ-TFA-55 |
 | AC-TFA-23 | With the documents folder missing, the server log has a warning naming the folder and TFA says the documents cannot be searched right now; TFA Settings shows no Document search card, and `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` answer 404 (v1.2). | SCREEN 2, REQ-TFA-56 |
 
 ---
@@ -675,7 +677,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | OBJ-TFA-04 | BR-TFA-01, BR-TFA-10 | SCREEN 3 | REQ-TFA-23, REQ-TFA-30, REQ-TFA-31, REQ-TFA-33, REQ-TFA-34, REQ-TFA-35 | AC-TFA-10, AC-TFA-12, AC-TFA-13 |
 | OBJ-TFA-04 | BR-TFA-03 | SCREEN 1 | REQ-TFA-04, REQ-TFA-05, REQ-TFA-15 | AC-TFA-02, AC-TFA-03 |
 | OBJ-TFA-04 | BR-TFA-12, BR-TFA-13 | SCREEN 5 | REQ-TFA-42, REQ-TFA-43, REQ-TFA-44, REQ-TFA-45 | AC-TFA-16, AC-TFA-17 |
-| OBJ-TFA-05 | BR-TFA-07, BR-TFA-15, BR-TFA-16 | SCREEN 2 | REQ-TFA-46, REQ-TFA-47, REQ-TFA-48, REQ-TFA-49, REQ-TFA-50, REQ-TFA-51, REQ-TFA-52, REQ-TFA-53, REQ-TFA-54, REQ-TFA-55, REQ-TFA-56 (v1.1; REQ-TFA-18 – REQ-TFA-21 superseded; REQ-TFA-56 v1.2) | AC-TFA-18, AC-TFA-19, AC-TFA-20, AC-TFA-21, AC-TFA-22, AC-TFA-23 |
+| OBJ-TFA-05 | BR-TFA-07, BR-TFA-15, BR-TFA-16 | SCREEN 2 | REQ-TFA-46, REQ-TFA-47, REQ-TFA-48, REQ-TFA-49, REQ-TFA-50, REQ-TFA-51, REQ-TFA-52, REQ-TFA-53, REQ-TFA-54, REQ-TFA-55, REQ-TFA-56, REQ-TFA-57 (v1.1; REQ-TFA-18 – REQ-TFA-21 superseded; REQ-TFA-56 v1.2) | AC-TFA-18, AC-TFA-19, AC-TFA-20, AC-TFA-21, AC-TFA-22, AC-TFA-23 |
 | OBJ-TFA-06 | BR-TFA-14 | SCREEN 4 | REQ-TFA-36, REQ-TFA-37, REQ-TFA-38, REQ-TFA-39, REQ-TFA-40, REQ-TFA-41 | AC-TFA-14, AC-TFA-15 |
 
 ---
@@ -686,7 +688,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 |---|---|---|
 | 1 | TFA panel, actions, help, safeguards and voice source code | Repository |
 | 2 | Conversation, message, pending-action and audit data structures | Database migrations |
-| 3 | Document search over the TaskFlow documents folder (v1.1; replaces the 19 built-in help topics) | Source code, database migration and AI setup scripts that also install `nomic-embed-text` |
+| 3 | Document search over the TaskFlow documents folder (v1.1; replaces the 19 built-in help topics) | Source code, database migration and AI setup scripts that ask for and check the Google Gemini API key |
 | 4 | BRD, FRD, HLD, LLD for TFA | Markdown |
 | 5 | Automated tests for chat, task ranking, actions, document answers and sources, document indexing, provider failures and the secret screen | Test projects and results |
 
@@ -697,7 +699,7 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | Term | Meaning |
 |---|---|
 | TFA | TaskFlow Assistant, the built-in AI assistant |
-| AI provider | The service that writes TFA's answers: Ollama (local), Google Gemini or OpenAI GPT (cloud) |
+| AI provider | The service that writes TFA's answers: Google Gemini (default) or OpenAI GPT (cloud), or Ollama (local, optional) |
 | Action Card | A card in the chat showing a prepared action that runs only on Confirm |
 | Pending action | A prepared action waiting for confirmation; expires after 10 minutes |
 | Work order | The system-ranked list of the user's open tasks |

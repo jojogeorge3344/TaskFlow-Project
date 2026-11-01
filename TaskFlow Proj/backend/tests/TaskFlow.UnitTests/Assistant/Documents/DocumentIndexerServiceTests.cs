@@ -49,6 +49,7 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
         services.AddScoped<IAiProviderConfigRepository, AiProviderConfigRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IEmbeddingClient>(_embeddings);
+        services.AddSingleton<TaskFlow.Api.Integrations.Ai.KeyProtection.IAiKeyProtector, FakeKeyProtector>();
         services.AddSingleton<IHostEnvironment>(new HostingEnvironment { ContentRootPath = Path.GetTempPath() });
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
@@ -62,7 +63,14 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
         services.AddScoped<DocumentEmbeddingEndpoint>();
         services.AddScoped<DocumentIndexer>();
         _provider = services.BuildServiceProvider();
-        _provider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+        var db = _provider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+        db.AiProviderConfigs.Add(new TaskFlow.Api.Models.Entities.AiProviderConfig
+        {
+            Name = "Google Gemini", Locality = "Cloud", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Gemini,
+            ModelName = "gemini-3.8-flash", EncryptedApiKey = FakeKeyProtector.Encrypted("test-gemini-key"), UpdatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
         _scopes = new CountingScopeFactory(_provider.GetRequiredService<IServiceScopeFactory>());
     }
 
@@ -125,7 +133,7 @@ public sealed class DocumentIndexerServiceTests : IAsyncDisposable
         await service.StopAsync(CancellationToken.None);
 
         Assert.Empty(_embeddings.Calls);
-        Assert.Equal("nomic-embed-text", index.Model);
+        Assert.Equal("gemini-embedding-2@768", index.Model);
     }
 
     [Fact]

@@ -12,9 +12,16 @@
       </div>
       <p>
         These are the models TFA can answer with. <strong>Use this model</strong> switches TFA to it; add a model, or change one
-        you added, on the Add AI model screen. <strong>Ollama</strong> runs on your own server and is free. <strong>Google Gemini</strong>
-        has a free tier with limits. <strong>OpenAI GPT has no free tier</strong>: it only works with a paid API key. Gemini and OpenAI
-        are cloud services: a user's question, related task details and matching TaskFlow document text are sent to them.
+        you added, on the Add AI model screen. <strong>Google Gemini</strong> is the default and has a free tier with limits; get a free
+        key in <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
+        <strong>Ollama</strong> is optional: it runs on your own server and is free. <strong>OpenAI GPT has no free tier</strong>: it
+        only works with a paid API key. Gemini and OpenAI are cloud services: a user's question, related task details and matching
+        TaskFlow document text are sent to them.
+      </p>
+      <p data-help="document-search">
+        <strong>Document search needs a Google Gemini API key</strong>, whichever model answers. TaskFlow document text is sent to
+        Google to be indexed, and each question is sent to Google to search it. Without a saved Gemini key, TFA cannot answer from the
+        documents. On the free tier, Google may use what is sent to improve its products.
       </p>
     </header>
 

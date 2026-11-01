@@ -82,10 +82,10 @@ Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custo
 
 | Provider | Model / default | Notes |
 |---|---|---|
-| Ollama (local, free) | `llama3.2:3b` at `http://localhost:11434` | Installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; on by default for new installations |
-| Google Gemini | `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite` (built-in list in `AiProviderCatalog.cs`) | Cloud; free tier with rate limits; key from Google AI Studio, entered in TFA Settings |
+| Google Gemini (default) | `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite` (built-in list in `AiProviderCatalog.cs`) | Cloud; free tier with rate limits; free key from Google AI Studio. On by default for a new installation when the key is set with user secrets (see [Free Google Gemini key](#free-google-gemini-key-default)) |
 | OpenAI GPT | Built-in model list in `AiProviderCatalog.cs` | Cloud; paid API key |
-| Ollama embeddings (local, free) | `nomic-embed-text` (768 dimensions) | Embeds the `TF - Documents` Markdown files so TFA can answer from them; always local, whichever chat model is used; installed by the same setup scripts |
+| Ollama (local, free, optional) | `llama3.2:3b` at `http://localhost:11434` | Chat only; installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; off until an administrator turns it on |
+| Gemini embeddings (free tier) | `gemini-embedding-2` (768 dimensions) | Embeds the `TF - Documents` Markdown files so TFA can answer from them; always Gemini, whichever chat model is used; uses the Gemini key saved in TFA Settings |
 
 ### AI-assisted and spec-driven development
 
@@ -187,7 +187,7 @@ TaskFlow Project/
 │   └── Permission Requirement/                  permission documents (Excel and PDF)
 ├── .claude/skills/           Claude Code skills (OpenSpec, documentation writers, tdd-sync, code review)
 ├── openspec/                 OpenSpec planning workspace (changes and specs)
-├── scripts/                  setup-ai.ps1 / setup-ai.sh (local AI setup), openspec-update.ps1
+├── scripts/                  setup-ai.ps1 / setup-ai.sh (Gemini key, optional Ollama), openspec-update.ps1
 └── TaskFlow Proj/
     ├── backend/              TaskFlow.sln, src/TaskFlow.Api, tests/ (UnitTests, IntegrationTests)
     ├── frontend/             Angular 19 workspace (src/app/modules/…)
@@ -206,7 +206,8 @@ TaskFlow Project/
 - **.NET 10 SDK** (`dotnet --list-sdks` shows 10.0.x)
 - **Node.js 22 LTS** (recommended; Angular 19 supports `^18.19.1 || ^20.11.1 || ^22.0.0`)
 - Optional: **Visual Studio 2022 17.8+ / 2026** with the *ASP.NET and web development* workload, for F5 debugging
-- Optional: **Ollama**, for the free local AI assistant (see [Free local AI in one command](#free-local-ai-in-one-command-ollama))
+- A free **Google Gemini API key** for the TFA assistant (see [Free Google Gemini key](#free-google-gemini-key-default))
+- Optional: **Ollama**, to answer TFA chats with a local model (see [Optional local chat model](#optional-local-chat-model-ollama))
 
 ### Run the application
 
@@ -231,12 +232,15 @@ Trust the development certificate once with `dotnet dev-certs https --trust`. On
 data folder and the database and applies all migrations. In Development it also creates the three demo accounts listed under
 [Data folder and first sign-in](#data-folder-and-first-sign-in).
 
-### Optional: free local AI for TFA
+### Free Google Gemini for TFA (do this before the first start)
 
 ```powershell
-.\scripts\setup-ai.ps1        # Windows
-./scripts/setup-ai.sh         # macOS / Linux
+cd "TaskFlow Proj/backend/src/TaskFlow.Api"
+dotnet user-secrets set "AiProviders:GeminiApiKey" "<your key from https://aistudio.google.com/apikey>"
 ```
+
+The setup scripts (`.\scripts\setup-ai.ps1` on Windows, `./scripts/setup-ai.sh` on macOS / Linux) ask for the key and run
+this for you.
 
 ---
 
@@ -450,23 +454,31 @@ Questions about TaskFlow's features, screens, rules and design are answered **on
 question, TFA says so instead of guessing, and it does not answer general-knowledge questions. Questions about your own
 tasks, priorities, mail and profile still use your live data.
 
-- **How it works.** The files are split into sections by heading, embedded with the free local Ollama model
-  `nomic-embed-text` and stored in the database (tables `DocumentSources` and `DocumentChunks`). For each message TFA
+- **How it works.** The files are split into sections by heading, embedded with Google Gemini's `gemini-embedding-2`
+  (free tier) and stored in the database (tables `DocumentSources` and `DocumentChunks`). For each message TFA
   finds the most similar sections and gives them to the chat model as reference text. This happens before the model is
   called, so it works with every model, including small local ones that cannot call tools.
 - **Sources.** An answer that used the documents shows the sections under it as chips (document and heading; hover for
   the full heading path and file). They are shown again when the conversation is reloaded.
 - **Keeping up to date.** The API indexes the folder when it starts and checks it every 5 minutes. Only files whose
   content changed are embedded again, and deleted files are removed, so editing a document updates TFA's answers
-  without a restart. The first index of the whole folder takes a while on a laptop CPU (about 30 minutes for 89 files
-  and 3,300 sections); TFA answers from what is already indexed meanwhile, and later checks take seconds.
+  without a restart. Up to 100 sections are embedded per request. On the free tier the first index of the whole folder
+  is spread over several checks: when Google's rate limit is reached, indexing stops and the next check continues with
+  the files still missing. In a test on 2026-11-01 the first check embedded 21 of the 169 files (228 sections) before the
+  limit, so expect the full first index to take about an hour; TFA answers from what is already indexed meanwhile, and
+  later checks only embed changed files.
 - **No admin screen.** There is no settings card or endpoint for the index. Indexing problems are written to the API
-  log as warnings: the documents folder was not found, indexing stopped because the embedding model is not available
-  (for example `nomic-embed-text` not pulled or Ollama not running), or a file could not be indexed (with its path). To
-  index at once instead of waiting for the next check, restart the API.
-- **Without Ollama** TFA still answers questions about your own work, and says the documents cannot be searched right
-  now. Embeddings always run on Ollama, even when the chat model is Gemini or OpenAI; with a cloud chat model, the
-  matching document text is sent to that provider with your message (the Cloud notice says so).
+  log as warnings: the documents folder was not found, indexing stopped (no Gemini key saved, the key was refused, the
+  rate limit was reached or Google could not be reached), or a file could not be indexed (with its path). To index at
+  once instead of waiting for the next check, restart the API.
+- **A Gemini key is needed.** Embeddings always use the Google Gemini key saved in TFA Settings, even when the chat model
+  is Ollama or OpenAI. Without a key TFA still answers questions about your own work, and says the documents cannot be
+  searched right now. A key saved in TFA Settings is used at the next check, with no restart.
+- **What is sent to Google.** Document text is sent to Google to be indexed, and each question (with the previous
+  question for a short follow-up such as "and for managers?") is sent to Google to search it, never task details or
+  TFA's replies. The TFA window tells every user this once, also when the chat model is Ollama. With a cloud chat model,
+  the matching document text is also sent to that provider with your message. On Gemini's free tier, Google may use
+  what is sent to improve its products.
 - **Every role** can get answers from every document. PDF and Excel files are not read (the PDFs are copies of the
   Markdown files or of the permission spreadsheets).
 
@@ -477,14 +489,14 @@ Settings, in the `DocumentKnowledge` section of `appsettings.json` (or environme
 |---|---|---|
 | `Enabled` | `true` | `false` switches indexing and document answers off |
 | `SourcePath` | `../../../../TF - Documents` | The documents folder. A relative path resolves against the API project folder (`TaskFlow Proj/backend/src/TaskFlow.Api`), so the default is the workspace's `TF - Documents` |
-| `EmbeddingModel` | `nomic-embed-text` | Changing it re-embeds every document |
-| `OllamaBaseUrl` | empty | The Ollama server for embeddings; empty uses the Ollama address saved in TFA Settings, then `http://localhost:11434` |
-| `TopK` / `MinScore` | `4` / `0.6` | At most this many sections, each at least this similar, are given to the model |
+| `EmbeddingModel` | `gemini-embedding-2` | The Google Gemini embedding model. Changing it re-embeds every document |
+| `EmbeddingDimensions` | `768` | Length of each embedding vector (128 to 3072). Changing it re-embeds every document |
+| `TopK` / `MinScore` | `4` / `0.65` | At most this many sections, each at least this similar, are given to the model |
 | `MaxChunkCharacters` / `MaxContextCharacters` | `1500` / `4000` | Section size before splitting, and the most document text per message |
 | `RescanMinutes` | `5` | How often the folder is checked |
 
-Calls to Ollama (chat and embeddings) may take up to `AiProviders:OllamaTimeoutSeconds` (default `180`): a small model on
-a laptop CPU can need over a minute to read a prompt with reference documents. Gemini and OpenAI keep
+Ollama chat calls may take up to `AiProviders:OllamaTimeoutSeconds` (default `180`): a small model on a laptop CPU can
+need over a minute to read a prompt with reference documents. Gemini (chat and embeddings) and OpenAI keep
 `AiProviders:TimeoutSeconds` (default `60`).
 
 **Known limitation of small local models.** With `llama3.2:3b` the right document sections reach the model, but it
@@ -503,7 +515,7 @@ department. If there is none, or more than one, TFA asks you to choose.
 
 Open **Settings → TFA Settings** (Administrator only).
 
-- The **Model** dropdown lists the models kept in the database, grouped by server (Ollama, Google Gemini, OpenAI GPT).
+- The **Model** dropdown lists the models kept in the database, grouped by server (Google Gemini, OpenAI GPT, Ollama).
   To add one that is not in the list, click **Add AI model**. On that screen choose the provider, type the model name
   and its API key (or, for Ollama, an optional server address) and click **Test connection**. The model name is the
   provider's model ID, without spaces (the box shows an example: `gemini-3.8-flash`, `gpt-4o-mini` or `llama3.2:3b`).
@@ -524,44 +536,67 @@ Open **Settings → TFA Settings** (Administrator only).
   instead of a retired one. Only Test connection shows this; TFA users in the chat get the plain message.
 
 **First run.** The database is created, migrated and filled the first time the API starts, on any machine, with no
-manual step. For TFA that means the list of models (Ollama, Gemini and OpenAI models) and one row per provider:
-**Ollama is switched on** with `llama3.2:3b` at `http://localhost:11434`, and Gemini and OpenAI are off with no key. So
-TFA works as soon as Ollama and the model are installed (see the setup script below), and nothing has to be configured.
-This applies to a brand-new installation only. An installation that already has users keeps all three providers off
-until an administrator turns one on in TFA Settings.
+manual step. For TFA that means the list of models (Gemini, OpenAI and Ollama models) and one row per provider, with
+Google Gemini listed first. When a Gemini key is set in configuration (`AiProviders:GeminiApiKey`, from user secrets or
+the `AiProviders__GeminiApiKey` environment variable), it is stored encrypted on the Gemini row and **Gemini is switched
+on** with `gemini-3.8-flash`, so TFA and document search work on the first run. Without that key every provider is off
+until an administrator saves a key in TFA Settings. Ollama and OpenAI start off.
+Only a brand-new installation gets Gemini switched on. An installation that already has users keeps the provider an
+administrator chose; a configured key is still stored on its Gemini row if that row has no key, so document search works.
+The configured key never replaces a key saved in TFA Settings. To stop it being applied again after you clear the key in
+Settings, remove the user secret.
 Starting again never overwrites what an administrator saved. The built-in model names are in `AiProviderCatalog.cs`
 (`BuiltInModels`): add a name there to have it offered on every new installation. A model added in Settings is kept
 in that installation's database only.
 
-**API keys are never in the code or in git.** They are typed in Settings, encrypted, and kept in the database only, so
-each installation enters its own.
+**API keys are never in the code or in git.** They are typed in Settings, or set once with user secrets on a developer's
+machine, encrypted, and kept in the database only, so each installation enters its own.
 
 | Model | Cost | Where it runs | Setup |
 |---|---|---|---|
-| **Ollama** | Free | On your own server: nothing leaves it | Run the setup script below (installs Ollama and the `llama3.2:3b` model), and keep the address `http://localhost:11434` |
-| **Google Gemini** | Free tier, with rate limits | Google's cloud | Create a key in Google AI Studio (https://aistudio.google.com/apikey). Then use **Add AI model** (provider Google Gemini, model `gemini-3.8-flash`, paste the key, Test connection), or pick `gemini-3.8-flash` in the Model list, paste the key and save |
+| **Google Gemini** (default) | Free tier, with rate limits | Google's cloud | See [Free Google Gemini key](#free-google-gemini-key-default) below. Also needed for document search |
 | **OpenAI GPT** | **No free tier**: needs a paid key | OpenAI's cloud | Paste a paid API key |
+| **Ollama** (optional) | Free | Chat on your own server; document search still uses Gemini | Run the setup script below with `-WithOllama` / `--with-ollama`, and keep the address `http://localhost:11434` |
 
-#### Free local AI in one command (Ollama)
+#### Free Google Gemini key (default)
 
-The model itself is not stored in this repository (it is about 2 GB). A setup script downloads it instead. After
-cloning, run it once from the repository root:
+1. Sign in at https://aistudio.google.com/apikey with a Google account and click **Create API key**. No card is needed.
+2. Before the first start, store it for the API project (it is kept outside the repository, in your user profile):
+
+   ```powershell
+   cd "TaskFlow Proj/backend/src/TaskFlow.Api"
+   dotnet user-secrets set "AiProviders:GeminiApiKey" "<your key>"
+   ```
+
+   Or set the environment variable `AiProviders__GeminiApiKey`. On a database that already exists, paste the key in
+   **Settings → TFA Settings** instead (Add AI model, provider Google Gemini, model `gemini-3.8-flash`, Test connection).
+3. Start the API. Gemini is switched on and the documents are indexed with it.
+
+The free tier has per-minute and per-day request limits; when one is reached, TFA says the provider is busy and document
+indexing continues at the next check. On the free tier Google may use prompts and documents to improve its products; a
+paid key, or Ollama for chat, limits what is shared, but document search always uses Google.
+
+#### Optional local chat model (Ollama)
+
+Ollama is optional: it answers TFA chats on your own machine, while document search keeps using Gemini. The model is not
+stored in this repository (it is about 2 GB). After cloning, run the setup script once from the repository root:
 
 ```powershell
 # Windows (PowerShell)
-.\scripts\setup-ai.ps1
+.\scripts\setup-ai.ps1 -WithOllama
 ```
 
 ```bash
 # macOS / Linux
-./scripts/setup-ai.sh
+./scripts/setup-ai.sh --with-ollama
 ```
 
-The script installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on Linux after
-you confirm), starts the Ollama server, downloads `llama3.2:3b` and the document embedding model `nomic-embed-text`
-(about 275 MB) if they are not already there, and checks that both answer. It is safe to run again. To use a different model, pass its name: `.\scripts\setup-ai.ps1 -Model llama3.1:8b`
-or `./scripts/setup-ai.sh llama3.1:8b`. A larger model answers better but needs more memory (`llama3.1:8b` wants about
-8 GB free).
+The script first asks for the Gemini key (add `-SkipGemini` / `--skip-gemini` if it is already set). With `-WithOllama` /
+`--with-ollama` it then installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on
+Linux after you confirm), starts the Ollama server, downloads `llama3.2:3b` if it is not already there, and checks that it
+answers. No embedding model is downloaded: document search uses Gemini. It is safe to run again. To use a different model,
+pass its name: `.\scripts\setup-ai.ps1 -WithOllama -Model llama3.1:8b` or `./scripts/setup-ai.sh --with-ollama --model llama3.1:8b`.
+A larger model answers better but needs more memory (`llama3.1:8b` wants about 8 GB free).
 
 Then, as an Administrator, open **Settings → TFA Settings**, choose **Ollama**, check the
 model name matches what you installed (`llama3.2:3b` by default), and click **Test connection**. If Test connection says
@@ -570,7 +605,7 @@ the model is not available, the name in Settings is not one of the models Ollama
 The TFA window offers the model the administrator chose in TFA Settings. If more than one model is available (for example
 an older installation that has several switched on), users switch from the selector in the TFA header without closing the
 chat. Cloud models are marked
-**Cloud**, and a user is told once that their message, related task details and matching TaskFlow document text are sent to that provider. TFA never
+**Cloud**, and a user is told once that their message, related task details and matching TaskFlow document text are sent to that provider; with Ollama, a user is told once that their message is sent to Google Gemini to search the documents. TFA never
 switches model by itself: if a model fails (rate limit, wrong key, Ollama not running, model not installed), the chat
 explains what happened and the user chooses another one.
 

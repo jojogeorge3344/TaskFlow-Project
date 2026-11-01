@@ -23,6 +23,12 @@ public sealed class DocumentSearchTests : IAsyncDisposable
         _connection.Open();
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
         _db.Database.EnsureCreated();
+        _db.AiProviderConfigs.Add(new TaskFlow.Api.Models.Entities.AiProviderConfig
+        {
+            Name = "Google Gemini", Locality = "Cloud", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Gemini,
+            ModelName = "gemini-3.8-flash", EncryptedApiKey = FakeKeyProtector.Encrypted("test-gemini-key"), UpdatedAt = DateTime.UtcNow
+        });
+        _db.SaveChanges();
         _status.Update(state => state with { LastIndexedAt = DateTime.UtcNow });
     }
 
@@ -35,13 +41,13 @@ public sealed class DocumentSearchTests : IAsyncDisposable
     private DocumentSearch Search()
     {
         var options = Microsoft.Extensions.Options.Options.Create(_options);
-        return new DocumentSearch(_index, _status, _embeddings, new DocumentEmbeddingEndpoint(new AiProviderConfigRepository(_db), options), options, NullLogger<DocumentSearch>.Instance);
+        return new DocumentSearch(_index, _status, _embeddings, new DocumentEmbeddingEndpoint(new AiProviderConfigRepository(_db), new FakeKeyProtector(), options), options, NullLogger<DocumentSearch>.Instance);
     }
 
     private void Load(params (string Heading, string Text)[] chunks) =>
         _index.Replace(
             chunks.Select((chunk, index) => new IndexedChunk(index + 1, "FRD.md", "FRD", chunk.Heading, chunk.Text, FakeEmbeddingClient.Vector(chunk.Text))).ToList(),
-            "nomic-embed-text");
+            _options.IndexModel);
 
     [Fact]
     public async Task MatchingChunksAreFound()
@@ -54,7 +60,7 @@ public sealed class DocumentSearchTests : IAsyncDisposable
         Assert.Equal(["Reminders"], context.Chunks.Select(chunk => chunk.Chunk.HeadingPath));
         var call = Assert.Single(_embeddings.Calls);
         Assert.Equal(EmbeddingPurpose.Query, call.Purpose);
-        Assert.Equal("nomic-embed-text", call.Endpoint.Model);
+        Assert.Equal(("gemini-embedding-2", 768, "test-gemini-key"), (call.Endpoint.Model, call.Endpoint.Dimensions, call.Endpoint.ApiKey));
     }
 
     [Fact]
@@ -72,7 +78,32 @@ public sealed class DocumentSearchTests : IAsyncDisposable
     public async Task AnUnreachableEmbeddingServerIsUnavailable()
     {
         Load(("Mail", "Compose mail screen."));
-        _embeddings.FailFor = _ => new EmbeddingUnavailableException(EmbeddingFailureKind.Unreachable, new EmbeddingEndpoint("http://localhost:11434", "nomic-embed-text"));
+        _embeddings.FailFor = _ => new EmbeddingUnavailableException(EmbeddingFailureKind.Unreachable, "gemini-embedding-2");
+
+        var context = await Search().SearchAsync("how do I send mail?", null);
+
+        Assert.Equal((DocumentContextKind.Unavailable, DocumentUnavailableReason.CannotSearch), (context.Kind, context.Reason));
+    }
+
+    [Fact]
+    public async Task NoSavedGeminiKeyIsUnavailableAndNothingIsSent()
+    {
+        Load(("Mail", "Compose mail screen."));
+        var gemini = await _db.AiProviderConfigs.SingleAsync();
+        gemini.EncryptedApiKey = null;
+        await _db.SaveChangesAsync();
+
+        var context = await Search().SearchAsync("how do I send mail?", null);
+
+        Assert.Equal((DocumentContextKind.Unavailable, DocumentUnavailableReason.CannotSearch), (context.Kind, context.Reason));
+        Assert.Empty(_embeddings.Calls);
+    }
+
+    [Fact]
+    public async Task AGeminiRateLimitIsUnavailable()
+    {
+        Load(("Mail", "Compose mail screen."));
+        _embeddings.FailFor = _ => new EmbeddingUnavailableException(EmbeddingFailureKind.RateLimited, "gemini-embedding-2");
 
         var context = await Search().SearchAsync("how do I send mail?", null);
 
@@ -108,7 +139,7 @@ public sealed class DocumentSearchTests : IAsyncDisposable
     public async Task AnIndexOfAnotherModelIsNotSearched()
     {
         Load(("Mail", "Compose mail screen."));
-        _options.EmbeddingModel = "mxbai-embed-large";
+        _options.EmbeddingModel = "gemini-embedding-next";
 
         var context = await Search().SearchAsync("how do I send mail?", null);
 

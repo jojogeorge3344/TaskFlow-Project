@@ -48,6 +48,8 @@ public class DocumentKnowledgeOptionsTests
     [InlineData(nameof(DocumentKnowledgeOptions.MaxChunkCharacters), 299)]
     [InlineData(nameof(DocumentKnowledgeOptions.MaxChunkCharacters), 6001)]
     [InlineData(nameof(DocumentKnowledgeOptions.RescanMinutes), 0)]
+    [InlineData(nameof(DocumentKnowledgeOptions.EmbeddingDimensions), 127)]
+    [InlineData(nameof(DocumentKnowledgeOptions.EmbeddingDimensions), 3073)]
     public void AnOutOfRangeValueIsRejectedByName(string key, double value)
     {
         var options = new DocumentKnowledgeOptions();
@@ -59,21 +61,20 @@ public class DocumentKnowledgeOptionsTests
         Assert.Contains(problems, problem => problem.Contains($"DocumentKnowledge:{key}"));
     }
 
-    [Theory]
-    [InlineData("not a url")]
-    [InlineData("ftp://localhost:11434")]
-    [InlineData("http://169.254.169.254")]
-    public void AnUnsafeOllamaAddressIsRejected(string url)
+    [Fact]
+    public void TheDefaultEmbeddingIsGeminiAndTheStoredModelNamesItsSize()
     {
-        var problems = new DocumentKnowledgeOptions { OllamaBaseUrl = url }.Validate();
+        var options = new DocumentKnowledgeOptions();
 
-        Assert.Contains(problems, problem => problem.Contains("DocumentKnowledge:OllamaBaseUrl"));
+        Assert.Equal(("gemini-embedding-2", 768, "gemini-embedding-2@768"), (options.EmbeddingModel, options.EmbeddingDimensions, options.IndexModel));
     }
 
     [Fact]
-    public void ALocalOllamaAddressIsAccepted()
+    public void ATooLongEmbeddingModelIsRejected()
     {
-        Assert.Empty(new DocumentKnowledgeOptions { OllamaBaseUrl = "http://localhost:11434" }.Validate());
+        var problems = new DocumentKnowledgeOptions { EmbeddingModel = new string('m', 91) }.Validate();
+
+        Assert.Contains(problems, problem => problem.Contains("DocumentKnowledge:EmbeddingModel"));
     }
 
     [Fact]

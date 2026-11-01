@@ -93,6 +93,16 @@ describe('AiProviderSettingsComponent', () => {
     http.expectNone(CONFIG_URL);
   });
 
+  it('says Gemini is the default and that document search needs a Gemini key and sends document text to Google', async () => {
+    await create();
+
+    const section = el().querySelector('[data-section="ai-assistant"]')!;
+    expect(section.textContent).toContain('Google Gemini is the default');
+    const help = section.querySelector('[data-help="document-search"]')!;
+    expect(help.textContent).toContain('Document search needs a Google Gemini API key');
+    expect(help.textContent).toContain('sent to Google');
+  });
+
   it('lists every model read-only, grouped by provider, with no dropdown, field or Save button', async () => {
     await create();
 

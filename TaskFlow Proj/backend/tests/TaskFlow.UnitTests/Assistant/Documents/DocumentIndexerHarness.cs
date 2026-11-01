@@ -71,6 +71,23 @@ internal sealed class DocumentIndexerHarness : IAsyncDisposable
         _connection.Open();
         using var db = NewContext();
         db.Database.EnsureCreated();
+        db.AiProviderConfigs.Add(new TaskFlow.Api.Models.Entities.AiProviderConfig
+        {
+            Name = "Google Gemini", Locality = "Cloud", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Gemini,
+            ModelName = "gemini-3.8-flash", EncryptedApiKey = FakeKeyProtector.Encrypted(GeminiKey), UpdatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
+    }
+
+    public const string GeminiKey = "test-gemini-key";
+
+    /// <summary>Replaces the saved Gemini key: null removes it, a value without the fake prefix cannot be decrypted.</summary>
+    public async Task SetSavedGeminiKeyAsync(string? encryptedKey)
+    {
+        await using var db = NewContext();
+        var row = await db.AiProviderConfigs.SingleAsync(config => config.ApiType == TaskFlow.Api.Models.Enums.AiApiType.Gemini);
+        row.EncryptedApiKey = encryptedKey;
+        await db.SaveChangesAsync();
     }
 
     public string Folder { get; } = Path.Combine(Path.GetTempPath(), $"taskflow-docs-{Guid.NewGuid():N}");
@@ -104,7 +121,7 @@ internal sealed class DocumentIndexerHarness : IAsyncDisposable
             new DocumentIndexRepository(db),
             new UnitOfWork(db),
             Embeddings,
-            new DocumentEmbeddingEndpoint(new AiProviderConfigRepository(db), options),
+            new DocumentEmbeddingEndpoint(new AiProviderConfigRepository(db), new FakeKeyProtector(), options),
             Index,
             Status,
             options,

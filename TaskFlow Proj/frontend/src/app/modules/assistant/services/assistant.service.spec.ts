@@ -58,7 +58,8 @@ describe('AssistantService', () => {
 
   beforeEach(() => {
     localStorage.removeItem(TFA_PROVIDER_KEY);
-    localStorage.removeItem(TFA_CLOUD_ACK_KEY);
+    // Ollama's notice (messages go to Google Gemini for document search) is already acknowledged, so most tests send at once.
+    localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify([ollama.providerId]));
     user.set(null);
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: { currentUser: user.asReadonly() } }]
@@ -272,10 +273,23 @@ describe('AssistantService', () => {
     expect(fresh.needsCloudNotice()).toBeTrue();
   });
 
-  it('never holds a message for a Local provider', () => {
+  it('holds the first message with a Local provider too, because it is sent to Google Gemini for document search', () => {
+    localStorage.removeItem(TFA_CLOUD_ACK_KEY);
+    const fresh = TestBed.runInInjectionContext(() => new AssistantService());
+    fresh.providers.set([ollama, gemini]);
+    fresh.selectProvider(ollama.providerId);
+
+    expect(fresh.needsCloudNotice()).toBeTrue();
+    fresh.send('hello');
+    expect(fresh.heldMessage()).toBe('hello');
+    http.expectNone('/api/v1/assistant/conversation/messages');
+  });
+
+  it("sends a Local provider's messages at once after its notice was acknowledged", () => {
     signIn();
     flushStartup();
 
+    expect(service.needsCloudNotice()).toBeFalse();
     service.send('hello');
 
     expect(service.heldMessage()).toBeNull();

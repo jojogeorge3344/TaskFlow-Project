@@ -1,6 +1,6 @@
 namespace TaskFlow.Api.Integrations.Ai.Embeddings;
 
-/// <summary>Turns text into embedding vectors on a local Ollama server.</summary>
+/// <summary>Turns text into embedding vectors with Google Gemini.</summary>
 public interface IEmbeddingClient
 {
     /// <summary>One L2-normalised vector per input, in input order.</summary>

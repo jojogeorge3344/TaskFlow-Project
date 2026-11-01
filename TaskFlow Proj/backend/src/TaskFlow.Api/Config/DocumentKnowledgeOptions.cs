@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using TaskFlow.Api.Dtos.Settings.TfaSettings.Validators;
 
 namespace TaskFlow.Api.Config;
 
@@ -23,17 +22,22 @@ public class DocumentKnowledgeOptions
     /// (<c>backend/src/TaskFlow.Api</c>), so the default is the workspace's <c>TF - Documents</c> folder.</summary>
     public string SourcePath { get; set; } = "../../../../TF - Documents";
 
-    /// <summary>The Ollama embedding model. Changing it re-embeds every document.</summary>
-    public string EmbeddingModel { get; set; } = "nomic-embed-text";
+    /// <summary>The Google Gemini embedding model. Changing it re-embeds every document.</summary>
+    public string EmbeddingModel { get; set; } = "gemini-embedding-2";
 
-    /// <summary>The Ollama server for embeddings. Empty means the saved Ollama provider address, then the default.</summary>
-    public string? OllamaBaseUrl { get; set; }
+    /// <summary>The length of each embedding vector Gemini returns (<c>outputDimensionality</c>). Changing it re-embeds
+    /// every document.</summary>
+    public int EmbeddingDimensions { get; set; } = 768;
+
+    /// <summary>The model and vector size as stored with each document, so a change to either re-embeds everything.</summary>
+    public string IndexModel => $"{EmbeddingModel.Trim()}@{EmbeddingDimensions}";
 
     /// <summary>The most chunks passed to the model for one message.</summary>
     public int TopK { get; set; } = 4;
 
-    /// <summary>The lowest cosine similarity a chunk needs to be passed to the model.</summary>
-    public double MinScore { get; set; } = 0.6;
+    /// <summary>The lowest cosine similarity a chunk needs to be passed to the model. 0.65 was measured with gemini-embedding-2
+    /// at 768 dimensions: covered questions scored 0.73 to 0.84 against the right section, unrelated ones at most 0.56.</summary>
+    public double MinScore { get; set; } = 0.65;
 
     /// <summary>The longest chunk, in characters, before a section is split.</summary>
     public int MaxChunkCharacters { get; set; } = 1500;
@@ -62,16 +66,14 @@ public class DocumentKnowledgeOptions
             problems.Add("DocumentKnowledge:SourcePath is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(EmbeddingModel) || EmbeddingModel.Length > 100)
+        if (string.IsNullOrWhiteSpace(EmbeddingModel) || EmbeddingModel.Trim().Length > 90)
         {
-            problems.Add("DocumentKnowledge:EmbeddingModel is required and at most 100 characters.");
+            problems.Add("DocumentKnowledge:EmbeddingModel is required and at most 90 characters.");
         }
 
-        if (!string.IsNullOrWhiteSpace(OllamaBaseUrl)
-            && !(Uri.TryCreate(OllamaBaseUrl.Trim(), UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"
-                 && !UpdateAiProviderRequestValidator.IsMetadataHost(uri)))
+        if (EmbeddingDimensions is < 128 or > 3072)
         {
-            problems.Add("DocumentKnowledge:OllamaBaseUrl must be an http or https URL, and not a link-local or cloud metadata address.");
+            problems.Add("DocumentKnowledge:EmbeddingDimensions must be between 128 and 3072.");
         }
 
         if (TopK is < 1 or > 20)

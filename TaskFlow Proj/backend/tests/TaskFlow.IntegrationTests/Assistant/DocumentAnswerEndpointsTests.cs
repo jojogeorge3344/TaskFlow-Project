@@ -52,7 +52,8 @@ public class DocumentAnswerEndpointsTests : IClassFixture<DocumentKnowledgeFacto
             providers = new object[]
             {
                 new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
-                new { providerId = _factory.ProviderId(AiApiType.Gemini), isEnabled = false, modelName = "gemini-2.0-flash" },
+                // Document search embeds with Gemini, so its key is saved even though Ollama answers the chat.
+                new { providerId = _factory.ProviderId(AiApiType.Gemini), isEnabled = false, modelName = "gemini-2.0-flash", apiKey = "AIzaSyIntegrationKey0002" },
                 new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = false, modelName = "gpt-4o-mini" }
             }
         }));

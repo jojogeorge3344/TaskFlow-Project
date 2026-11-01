@@ -8,7 +8,8 @@ public static class AiProviderCatalog
     public const string Local = "Local";
     public const string Cloud = "Cloud";
 
-    public static IReadOnlyList<AiApiType> All { get; } = [AiApiType.Ollama, AiApiType.Gemini, AiApiType.OpenAI];
+    /// <summary>The built-in providers in the order they are listed. Google Gemini is first because it is the default.</summary>
+    public static IReadOnlyList<AiApiType> All { get; } = [AiApiType.Gemini, AiApiType.OpenAI, AiApiType.Ollama];
 
     public static string DisplayName(AiApiType kind) => kind switch
     {

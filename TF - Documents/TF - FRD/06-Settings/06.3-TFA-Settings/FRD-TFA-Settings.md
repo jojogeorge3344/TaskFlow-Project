@@ -61,7 +61,7 @@ removing an emptied custom provider; the upgrade of the existing providers to bu
 Out of scope (BRD §3.2): the TFA chat window (TFA Assistant FRD); usage or cost tracking; installing models on the
 Ollama server; a separate key per model and hiding built-in models (v1.4); a custom provider using the Google Gemini
 API, renaming a provider or changing its API type, listing a provider's models from its API, and document search through
-a custom Ollama provider (v1.5); choosing the documents folder, embedding model or
+a custom provider (v1.5; document search always uses the built-in Google Gemini provider's key); choosing the documents folder, embedding model or
 search settings on the screen (server configuration `DocumentKnowledge`); uploading documents; PDF and Excel documents;
 a screen or endpoint for the document index status or for starting a re-index (removed in v1.2 – the server builds the
 index at start-up, re-checks the folder every `RescanMinutes` (default 5) and logs indexing problems as warnings).
@@ -82,7 +82,7 @@ Developer, tester, reviewer and product owner of TaskFlow.
 | Term | Meaning |
 |---|---|
 | TFA | TaskFlow Assistant, the AI chat assistant inside TaskFlow |
-| Provider / server | A built-in provider – Ollama (local), Google Gemini or OpenAI GPT (cloud) – or (v1.5) a custom provider |
+| Provider / server | A built-in provider – Google Gemini (default) or OpenAI GPT (cloud), or Ollama (local, optional) – or (v1.5) a custom provider |
 | Built-in provider | Google Gemini, OpenAI GPT or Ollama; shipped with TaskFlow, never removed (v1.5) |
 | Custom provider | A provider added by typing a new name on Add AI model, with API type OpenAI-compatible or Ollama, its own server address, Local or Cloud, and an optional key; removed when its last model is deleted or moved away (v1.5) |
 | API type | The client TaskFlow uses for a provider: OpenAI-compatible (chat completions at the provider's address), Google Gemini or Ollama (v1.5) |
@@ -96,7 +96,7 @@ Developer, tester, reviewer and product owner of TaskFlow.
 | Configured provider | Switched on, has a model, and has an address (Ollama, custom provider) or a readable key (built-in Gemini and OpenAI) |
 | Connection test | One short request ("Reply with OK.") to check that the provider answers |
 | Document search | TFA's index of the Markdown documents in the documents folder, used to answer questions about TaskFlow; built and kept current by the server, not shown on this screen since v1.2 |
-| Embedding model | Ollama model (`nomic-embed-text` by default) that turns document text into vectors |
+| Embedding model | Google Gemini model (`gemini-embedding-2` by default, 768 dimensions by default) that turns document text into vectors, using the key saved for the built-in Google Gemini provider |
 | Chunk | One section of a document as stored in the index |
 | Indexing run | One check of the documents folder, at start-up and then every `RescanMinutes` (default 5): changed files are re-embedded, deleted ones removed |
 | Provider's reason | The provider's own HTTP status and error text, shortened to 200 characters with any API key replaced by `[key]`, added to a failed connection test (v1.2) |
@@ -120,12 +120,12 @@ flowchart LR
   U1["Administrator"] --> S["TFA Settings"]
   U2["Custom role with settings.ai.view"] --> S
   S -- "saved configuration" --> T["TFA Assistant"]
-  S -- "test request" --> O["Ollama (local)"]
   S -- "test request" --> G["Google Gemini (cloud)"]
   S -- "test request" --> P["OpenAI GPT (cloud)"]
+  S -- "test request" --> O["Ollama (local, optional)"]
   S -- "test request" --> C["Custom providers (OpenAI-compatible or Ollama API)"]
   T -- "document search (no screen)" --> D["TFA document index"]
-  D -- "embeddings (built-in Ollama)" --> O
+  D -- "embeddings (built-in Gemini key)" --> G
   T --> O
   T --> G
   T --> P
@@ -182,10 +182,10 @@ flowchart LR
 | Element | Type | Description | Mandatory | Visible to |
 |---|---|---|:---:|---|
 | **TFA settings** | Page title | – | – | `settings.ai.view` |
-| **AI models** (v1.4; was **Model and server**) | Section heading + explanation | **Use this model** switches TFA to a model; a model is added, or one you added is changed, on the Add AI model screen. Ollama runs on your own server and is free; Google Gemini has a free tier with limits; OpenAI GPT has no free tier; Gemini and OpenAI are cloud services, so a user's question, related task details and matching TaskFlow document text are sent to them (v1.5: the same applies to a custom provider marked Cloud) | – | `settings.ai.view` |
+| **AI models** (v1.4; was **Model and server**) | Section heading + explanation | **Use this model** switches TFA to a model; a model is added, or one you added is changed, on the Add AI model screen. Google Gemini is the default and has a free tier with limits (link to Google AI Studio); OpenAI GPT has no free tier; Ollama runs on your own server and is free; Gemini and OpenAI are cloud services, so a user's question, related task details and matching TaskFlow document text are sent to them (v1.5: the same applies to a custom provider marked Cloud); "Document search needs a Google Gemini API key", and document text is sent to Google | – | `settings.ai.view` |
 | **Add AI model** | Button next to the section heading | Opens the Add AI model screen (`/settings/tfa/models/new`) | – | `settings.ai.edit` + `settings.ai.test` |
 | Usage line | Text | "TFA uses **`model`** on **`Provider`**."; when no model is in use: "TFA has no model in use yet. Choose **Use this model** on a model below." | – | `settings.ai.view` |
-| Provider group (v1.4) | Card per provider | Provider name and **Local** / **Cloud** tag, followed by one row per model (built-in first, then added ones); groups in the order Ollama, Google Gemini, OpenAI GPT, then custom providers by name (v1.5) | – | `settings.ai.view` |
+| Provider group (v1.4) | Card per provider | Provider name and **Local** / **Cloud** tag, followed by one row per model (built-in first, then added ones); groups in the order Google Gemini, OpenAI GPT, Ollama, then custom providers by name (v1.5) | – | `settings.ai.view` |
 | Model row (v1.4) | Read-only row | Model ID; "`Provider` · Local" or "`Provider` · Cloud"; key status "Key saved, ends …`last4`", "No key saved" or "The saved key can no longer be read" (built-in Gemini and OpenAI) or the server address (Ollama, default `http://localhost:11434`; custom provider, followed by " · key ends …`last4`" when a key is saved, v1.5); **Built-in** or **Added by you** (every custom-provider model is **Added by you**, v1.5); **In use** badge on the model TFA uses; for a cloud provider without a readable key the hint "No key saved for `Provider` yet. Add it on the Add AI model screen." At phone width the row is a stacked card | – | `settings.ai.view` |
 | **Use this model** (v1.4) | Button on each row not in use | Makes that model the one TFA uses ("Switching…" while it runs); disabled with the no-key hint as tooltip when a cloud provider has no readable key | – | `settings.ai.edit` |
 | **Test connection** (v1.4: per row) | Button + result on the row | Tests that row's model with the saved key or address ("Testing…" while it runs); nothing is saved | – | `settings.ai.test` |
@@ -232,7 +232,7 @@ flowchart LR
 
 | ID | Requirement | Priority | Permission | BRD trace |
 |---|---|---|---|---|
-| FR-TFAS-01 | The system shall support three API types – OpenAI-compatible, Google Gemini and Ollama – with the built-in providers Ollama (local, no API key), Google Gemini and OpenAI GPT (cloud, API key needed), plus any number of custom providers of type OpenAI-compatible or Ollama (v1.5; v1.0 – v1.4: exactly three providers). | Must | `settings.ai.view` | REQ-TFAS-01 |
+| FR-TFAS-01 | The system shall support three API types – OpenAI-compatible, Google Gemini and Ollama – with the built-in providers, in the order Google Gemini and OpenAI GPT (cloud, API key needed) and Ollama (local, no API key, optional), plus any number of custom providers of type OpenAI-compatible or Ollama (v1.5; v1.0 – v1.4: exactly three providers). | Must | `settings.ai.view` | REQ-TFAS-01 |
 | FR-TFAS-02 | The system shall show one group per provider with its name and a **Local** or **Cloud** tag, listing its models, and shall mark the model TFA uses now with **In use** (v1.4; v1.0 – v1.3: a card for the selected provider with the status **In use**, **Ready to use**, **Needs an API key** or **Not configured**). | Must | `settings.ai.view` | REQ-TFAS-02 |
 | FR-TFAS-03 | The system shall offer the built-in models Ollama `llama3.2:3b`, `llama3.2:1b`, `llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`; Gemini `gemini-3.8-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite` (v1.2; they replace the retired `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro`; saved settings that still name an old model keep it, and Test connection reports it); OpenAI `gpt-4o-mini`, `gpt-4o`, `gpt-4.1-mini`, grouped by provider, the first of each group being that provider's default. | Must | `settings.ai.view` | REQ-TFAS-03 |
 | FR-TFAS-04 | _Withdrawn in v1.4 – the Model and Server drop-downs were removed; the model is chosen with **Use this model** (FR-TFAS-41)._ (v1.0: The system shall select the matching server when a model is chosen, and the provider's model when a server is chosen, and update the usage line accordingly.) | – | – | REQ-TFAS-04 (withdrawn) |
@@ -255,7 +255,7 @@ flowchart LR
 | FR-TFAS-21 | The system shall refuse to delete a built-in model ("A built-in model cannot be changed or removed.", v1.4), the model TFA uses ("`model` is in use by TFA. Switch TFA to another model first, then delete it.", v1.4; replaces "That model is the one saved for its server. …") or an unknown model ("That model is not in the list."). | Must | `settings.ai.model.remove` | REQ-TFAS-19, BR-TFAS-04, BR-TFAS-12 |
 | FR-TFAS-22 | The system shall show "The saved key can no longer be read. Enter it again." and treat the cloud provider as not configured when a saved key can no longer be read. | Should | `settings.ai.view` | REQ-TFAS-20 |
 | FR-TFAS-23 | The system shall explain on the screen that Gemini and OpenAI are cloud services that receive the user's question, related task details and matching TaskFlow document text; a custom provider marked Cloud is tagged **Cloud** and treated the same (v1.5). | Should | `settings.ai.view` | REQ-TFAS-21 |
-| FR-TFAS-24 | The system shall, on a brand-new installation, switch Ollama on at `http://localhost:11434` and leave both cloud providers off without a key; on an upgraded installation it shall leave TFA off until an administrator turns a provider on. | Should | – (system) | REQ-TFAS-22 |
+| FR-TFAS-24 | The system shall, on a brand-new installation with a Google Gemini API key in the server configuration (`AiProviders:GeminiApiKey`, set with `dotnet user-secrets set "AiProviders:GeminiApiKey" "<key>"` or the environment variable `AiProviders__GeminiApiKey`), store the key protected on the Google Gemini provider (last four characters shown) and switch Google Gemini on with `gemini-3.8-flash`; without a configured key every provider shall stay off until an administrator saves a key. Ollama shall never be switched on automatically. On an existing installation it shall keep whichever provider an administrator enabled, and store the configured key on Google Gemini only when that provider has no key; a key saved in TFA Settings shall never be overwritten by the configured key. | Should | – (system) | REQ-TFAS-22 |
 | FR-TFAS-25 | The system shall control viewing, using, editing, testing and model removal by `settings.ai.view`, `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove`, refuse each action on the server without its permission, and hide **Use this model** (edit), **Test connection** (test), **Add AI model** and **Edit** (edit and test) and **Delete** (model removal) from users without the matching permission (v1.4). | Must | `settings.ai.*` | REQ-TFAS-23, BR-TFAS-07 |
 | FR-TFAS-26 | The system shall allow `settings.ai.edit`, `settings.ai.test` and `settings.ai.model.remove` to be held only together with `settings.ai.view`. | Must | – (Role Configuration) | BR-TFAS-07 |
 | FR-TFAS-27 | The system shall hide the **TFA Settings** menu item from users without `settings.ai.view` and return them to their dashboard when they open `/settings/tfa`. | Must | `settings.ai.view` | REQ-TFAS-24 |
@@ -271,7 +271,7 @@ flowchart LR
 | FR-TFAS-37 | The system shall refuse a model name that is not a model ID for the chosen provider – on the Add AI model screen and its edit mode (before any test is sent, v1.4) and in a save request (for a switched-on provider, or a name that differs from the saved one) – both on the screen and on the server. For Google Gemini a model ID is lowercase letters, digits, dots and hyphens, starting with a letter or digit, and a leading `models/` is removed before the check and before saving (v1.3); the message is "A Google Gemini model name is its model ID: lowercase letters, digits, dots and hyphens, for example gemini-3.8-flash. The name you gave your key in Google AI Studio is not a model ID." For OpenAI GPT and Ollama only whitespace is refused, with "A model name is the provider's model ID, without spaces or @, for example gpt-4o-mini." (or `llama3.2:3b`). Since v1.5 the rule follows the provider's API type: custom OpenAI-compatible and Ollama providers refuse only whitespace, so IDs such as `meta-llama/Llama-3.3-70B-Instruct` and `llama3.2:3b` are accepted. There is no allow-list of model names; Test connection checks that the model exists. The Add AI model screen shall show an example model ID for the chosen provider and, for Google Gemini, say that the key is created in Google AI Studio (aistudio.google.com/apikey), without judging a key by its prefix. | Must | `settings.ai.edit` | REQ-TFAS-33, BR-TFAS-11 |
 | FR-TFAS-38 | The system shall report a Google Gemini answer HTTP 400 `INVALID_ARGUMENT` whose message mentions the model name (for example "unexpected model name format") as an invalid model ID (failure kind `InvalidModelName`, v1.3: "Google Gemini did not accept the configured model name as a model ID. Ask an administrator to set a valid model ID, for example gemini-3.8-flash, or choose another model."), not as model not available or an unexpected error; a 404 `NOT_FOUND` stays "The configured model is not available on Google Gemini. …"; a 400 about the API key (for example "API key not valid") shall still be reported as "Google Gemini did not accept the API key. …". | Should | `settings.ai.test` | REQ-TFAS-34 |
 | FR-TFAS-39 | The system shall, when a connection test (on TFA Settings or on Add AI model) fails with an unexpected error or model not available, add the provider's own status and reason to the message as "`Provider` said: HTTP `status` - `reason`" (for example "Google Gemini said: HTTP 404 - NOT_FOUND: This model models/gemini-2.0-flash is no longer available … use models/gemini-3.8-flash"); the reason shall be at most 200 characters with any API key replaced by `[key]`. TFA chat replies to users shall keep the plain message without the reason, and the server log warning for the failed test shall include the same reason. | Should | `settings.ai.test` | REQ-TFAS-35 |
-| FR-TFAS-40 | The system shall show on TFA Settings every model of every provider as a read-only list grouped by provider (Ollama, Google Gemini, OpenAI GPT, then custom providers by name, v1.5), each row with the model ID, "`Provider` · Local" or "`Provider` · Cloud", the provider's key status ("Key saved, ends …1234", "No key saved", "The saved key can no longer be read") or for Ollama and custom providers its server address (a custom provider adds " · key ends …1234" when a key is saved, v1.5), **Built-in** or **Added by you**, and an **In use** badge on exactly the model saved on the enabled provider; above the list the line "TFA uses `model` on `Provider`."; no Model or Server drop-down, key or address input, or Save button; at phone width each row shall be a stacked card with the same details and actions, without horizontal scrolling (v1.4). | Must | `settings.ai.view` | REQ-TFAS-36, BR-TFAS-14 |
+| FR-TFAS-40 | The system shall show on TFA Settings every model of every provider as a read-only list grouped by provider (Google Gemini, OpenAI GPT, Ollama, then custom providers by name, v1.5), each row with the model ID, "`Provider` · Local" or "`Provider` · Cloud", the provider's key status ("Key saved, ends …1234", "No key saved", "The saved key can no longer be read") or for Ollama and custom providers its server address (a custom provider adds " · key ends …1234" when a key is saved, v1.5), **Built-in** or **Added by you**, and an **In use** badge on exactly the model saved on the enabled provider; above the list the line "TFA uses `model` on `Provider`."; no Model or Server drop-down, key or address input, or Save button; at phone width each row shall be a stacked card with the same details and actions, without horizontal scrolling (v1.4). | Must | `settings.ai.view` | REQ-TFAS-36, BR-TFAS-14 |
 | FR-TFAS-41 | The system shall show **Use this model** on each row not in use to users holding `settings.ai.edit`; a click shall make that provider and model the ones TFA uses in one step, switch the other providers off without deleting their keys or models, refresh the list and show the toast "`model` on `Provider` is now in use". For a cloud provider without a readable key the button shall be disabled with the hint "No key saved for `Provider` yet. Add it on the Add AI model screen.", and the server shall refuse such a request (400) with the same text and change nothing; an unknown model shall be refused (404 "That model is not in the list.") (v1.4). | Must | `settings.ai.edit` | REQ-TFAS-37, BR-TFAS-02 |
 | FR-TFAS-42 | The system shall show **Test connection** on every row to users holding `settings.ai.test`; it shall send one short request to that row's provider with that row's model and the saved key or address, also when the provider is switched off, save nothing, leave the model in use unchanged, and show the result on that row with the same messages as Add AI model (FR-TFAS-17, FR-TFAS-39); a cloud provider without a readable key gives "No key saved for `Provider` yet. Add it on the Add AI model screen." (v1.4). | Must | `settings.ai.test` | REQ-TFAS-38 |
 | FR-TFAS-43 | The system shall show no **Edit** or **Delete** on built-in models (they keep **Use this model** and **Test connection**), and refuse a request to edit or delete one with "A built-in model cannot be changed or removed." (400) (v1.4). | Must | `settings.ai.edit` / `settings.ai.model.remove` | REQ-TFAS-39, BR-TFAS-04 |
@@ -346,8 +346,8 @@ flowchart TD
 _Withdrawn in v1.2 – the Document search card was removed; indexing problems go to the server log._ The server builds
 the document index at start-up and re-checks the folder every `RescanMinutes` (default 5), re-embedding only changed
 files; there is no screen or endpoint to view the index status or start a run (`GET api/v1/assistant/documents/status`
-and `POST api/v1/assistant/documents/reindex` now answer 404). A missing documents folder, an embedding model that
-cannot be reached (the run stops) and a file that could not be indexed are written to the server log as warnings naming
+and `POST api/v1/assistant/documents/reindex` now answer 404). A missing documents folder, a Google Gemini embedding
+failure (no key saved, key refused, rate limit, unreachable or timeout; the run stops) and a file that could not be indexed are written to the server log as warnings naming
 the folder or file. TFA tells users when the documents cannot be searched right now or are still being prepared
 (FRD-Assistant).
 
@@ -470,7 +470,7 @@ control, server-side validation, secure handling of credentials – original BRD
 | Settings saved (v1.0 – v1.3) | – | _Withdrawn in v1.4 – the screen has no Save button._ |
 | Provider switched | TFA users | TFA window offers only the configured provider |
 | Automatic indexing run finished | TFA users | TFA answers from the updated documents (no message) |
-| Indexing problem (folder not found, embedding model unavailable, file not indexed) (v1.2) | Server operator | Server log warning naming the folder or file |
+| Indexing problem (folder not found, no usable Google Gemini key or Google unavailable, file not indexed) (v1.2) | Server operator | Server log warning naming the folder or file |
 | Test failed | Server operator | Server log warning with the failure kind, HTTP status and the provider's reason (v1.2) |
 
 **Messages**
@@ -627,8 +627,8 @@ _Not applicable for this sub-module._
 
 | Type | Description | Owner |
 |---|---|---|
-| Assumption | The organization obtains its own Gemini or OpenAI key, or runs Ollama on its own server. | Jojo George |
-| Assumption | Models used with Ollama are installed on the Ollama server outside TaskFlow, including the embedding model `nomic-embed-text` for document search (the AI setup scripts pull it). | Jojo George |
+| Assumption | The organization obtains its own Gemini key (free from Google AI Studio, needed for document search) or OpenAI key, and optionally runs Ollama on its own server. | Jojo George |
+| Assumption | Models used with Ollama are installed on the Ollama server outside TaskFlow (the AI setup scripts install Ollama and the chat model only with `-WithOllama` / `--with-ollama`; they ask for the Gemini key, check it against Google and store it with user secrets). | Jojo George |
 | Resolved (v1.4) | Read-only screen for view-only users: TFA Settings has no inputs since v1.4. Test-only users: **Test connection** uses the saved key or address, so no save is needed. | Jojo George |
 | Open issue | ⚠️ To be confirmed: **Use this model** and adding a model switch the other providers off, but the save request kept for compatibility (no longer sent by the screen) still accepts more than one active provider; whether it should refuse that. | Jojo George |
 | Note | Checked against `ai-provider-settings.component.ts` (v1.4): a row is **In use** when its provider is enabled and the model is the provider's saved model; a row is ready for **Use this model** when the provider needs no key, or has a saved key that can still be read. The v1.0 – v1.3 card status (`statusText()`: In use, Ready to use, Needs an API key, Not configured) was removed. | Jojo George |
@@ -690,7 +690,7 @@ _Not applicable for this sub-module._
 | REQ-TFAS-32 (withdrawn in v1.2) | FR-TFAS-36 (withdrawn) | – | UC-TFAS-04 (withdrawn) | AC-TFAS-21 (withdrawn) |
 | BR-TFAS-08 (withdrawn in v1.2) | FR-TFAS-29, FR-TFAS-33 (withdrawn) | – | UC-TFAS-04 (withdrawn) | AC-TFAS-20 (withdrawn) |
 | BR-TFAS-09 (withdrawn in v1.2) | FR-TFAS-34 (withdrawn) | – | UC-TFAS-04 (withdrawn) | AC-TFAS-19 (withdrawn) |
-| BR-TFAS-10 | FRD-Assistant FR-TFA-58, FR-TFA-66 (embeddings always on Ollama) | TFA window | – | – |
+| BR-TFAS-10 | FRD-Assistant FR-TFA-58, FR-TFA-66 (embeddings always on Google Gemini with the built-in Gemini key, FR-TFA-69) | TFA window | – | – |
 | REQ-TFAS-33 | FR-TFAS-37 | TFA Settings, Add AI model | UC-TFAS-01 | AC-TFAS-22 |
 | REQ-TFAS-34 | FR-TFAS-38 | TFA Settings, Add AI model | UC-TFAS-02 | AC-TFAS-23 |
 | REQ-TFAS-35 | FR-TFAS-39 | TFA Settings, Add AI model | UC-TFAS-02 | AC-TFAS-24 |

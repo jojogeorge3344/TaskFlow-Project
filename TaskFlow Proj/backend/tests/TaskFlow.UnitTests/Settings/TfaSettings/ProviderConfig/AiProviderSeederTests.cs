@@ -24,7 +24,11 @@ public class AiProviderSeederTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
-    private AiProviderSeeder Seeder() => new(_harness.Db, TimeProvider.System);
+    private const string ConfiguredKey = "AIzaSyConfiguredKey0000WXYZ";
+
+    private AiProviderSeeder Seeder(string? configuredGeminiKey = null) =>
+        new(_harness.Db, TimeProvider.System, new AiKeyProtector(_provider),
+            Microsoft.Extensions.Options.Options.Create(new TaskFlow.Api.Config.AiProviderOptions { GeminiApiKey = configuredGeminiKey }));
 
     /// <summary>A built-in provider row as an older installation had it saved.</summary>
     private static AiProviderConfig BuiltIn(AiApiType apiType) => new()
@@ -53,25 +57,56 @@ public class AiProviderSeederTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AFreshDatabaseGetsOllamaOnAndTheCloudProvidersOffWithoutAKey()
+    public async Task AFreshDatabaseWithoutAConfiguredKeyGetsEveryProviderOffAndNoKey()
     {
         await Seeder().SeedAsync();
 
         var rows = await _harness.Db.AiProviderConfigs.ToListAsync();
         Assert.Equal(3, rows.Count);
+        Assert.All(rows, row => Assert.False(row.IsEnabled));
+        Assert.All(rows, row => Assert.Null(row.EncryptedApiKey));
+        Assert.Empty(await Service().GetAvailableAsync());
 
         var ollama = rows.Single(row => row.ApiType == AiApiType.Ollama);
-        Assert.True(ollama.IsEnabled);
         Assert.Equal("llama3.2:3b", ollama.ModelName);
         Assert.Equal("http://localhost:11434", ollama.BaseUrl);
-
         foreach (var cloud in rows.Where(row => row.ApiType != AiApiType.Ollama))
         {
-            Assert.False(cloud.IsEnabled);
-            Assert.Null(cloud.EncryptedApiKey);
             Assert.Null(cloud.BaseUrl);
             Assert.Equal(AiProviderCatalog.DefaultModel(cloud.ApiType), cloud.ModelName);
         }
+    }
+
+    [Fact]
+    public async Task AFreshDatabaseWithAConfiguredKeyGetsGeminiOnWithTheKeyEncrypted()
+    {
+        await Seeder(ConfiguredKey).SeedAsync();
+
+        var rows = await _harness.Db.AiProviderConfigs.ToListAsync();
+        var gemini = rows.Single(row => row.ApiType == AiApiType.Gemini);
+        Assert.True(gemini.IsEnabled);
+        Assert.Equal(AiProviderCatalog.DefaultModel(AiApiType.Gemini), gemini.ModelName);
+        Assert.NotNull(gemini.EncryptedApiKey);
+        Assert.DoesNotContain(ConfiguredKey, gemini.EncryptedApiKey);
+        Assert.Equal(ConfiguredKey, new AiKeyProtector(_provider).Unprotect(gemini.EncryptedApiKey!));
+        Assert.Equal("WXYZ", gemini.KeyLast4);
+        Assert.All(rows.Where(row => row.ApiType != AiApiType.Gemini), row => Assert.False(row.IsEnabled));
+    }
+
+    [Fact]
+    public async Task TfaIsAvailableOnTheFirstRunWithGeminiWhenAKeyIsConfigured()
+    {
+        await Seeder(ConfiguredKey).SeedAsync();
+
+        var available = Assert.Single(await Service().GetAvailableAsync());
+        Assert.Equal("Google Gemini", available.DisplayName);
+        Assert.Equal(AiProviderCatalog.DefaultModel(AiApiType.Gemini), available.ModelName);
+    }
+
+    [Fact]
+    public void GeminiIsListedFirst()
+    {
+        Assert.Equal(AiApiType.Gemini, AiProviderCatalog.All[0]);
     }
 
     [Fact]
@@ -88,15 +123,74 @@ public class AiProviderSeederTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TfaIsAvailableOnTheFirstRunBecauseOllamaIsSeededOn()
+    public async Task AnExistingOllamaInstallationGetsTheKeyButKeepsOllama()
+    {
+        _harness.AddUser("existing-admin");
+        var ollama = BuiltIn(AiApiType.Ollama);
+        ollama.IsEnabled = true;
+        ollama.ModelName = "llama3.2:3b";
+        ollama.BaseUrl = "http://localhost:11434";
+        _harness.Db.AiProviderConfigs.Add(ollama);
+        await _harness.Db.SaveChangesAsync();
+
+        await Seeder(ConfiguredKey).SeedAsync();
+
+        var rows = await _harness.Db.AiProviderConfigs.ToListAsync();
+        Assert.True(rows.Single(row => row.ApiType == AiApiType.Ollama).IsEnabled);
+        var gemini = rows.Single(row => row.ApiType == AiApiType.Gemini);
+        Assert.False(gemini.IsEnabled);
+        Assert.NotNull(gemini.EncryptedApiKey);
+    }
+
+    [Fact]
+    public async Task AKeySavedInSettingsIsNeverReplacedByTheConfiguredOne()
     {
         await Seeder().SeedAsync();
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini);
+        var saved = new AiKeyProtector(_provider).Protect("AIzaSySavedInSettings1234");
+        gemini.EncryptedApiKey = saved;
+        gemini.KeyLast4 = "1234";
+        await _harness.Db.SaveChangesAsync();
 
-        var available = await Service().GetAvailableAsync();
+        await Seeder(ConfiguredKey).SeedAsync();
 
-        var ollama = Assert.Single(available);
-        Assert.Equal("Ollama", ollama.DisplayName);
-        Assert.Equal("llama3.2:3b", ollama.ModelName);
+        var after = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.ApiType == AiApiType.Gemini);
+        Assert.Equal((saved, "1234"), (after.EncryptedApiKey, after.KeyLast4));
+    }
+
+    [Fact]
+    public async Task GeminiSwitchedOffByAnAdministratorStaysOff()
+    {
+        await Seeder(ConfiguredKey).SeedAsync();
+        _harness.AddUser("admin");
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini);
+        gemini.IsEnabled = false;
+        await _harness.Db.SaveChangesAsync();
+
+        await Seeder(ConfiguredKey).SeedAsync();
+
+        Assert.False((await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.ApiType == AiApiType.Gemini)).IsEnabled);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ABlankConfiguredKeyIsIgnored(string? configured)
+    {
+        await Seeder(configured).SeedAsync();
+
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini);
+        Assert.Null(gemini.EncryptedApiKey);
+        Assert.False(gemini.IsEnabled);
+    }
+
+    [Fact]
+    public void TheSeederCannotLogTheKeyBecauseItHasNoLogger()
+    {
+        Assert.All(
+            typeof(AiProviderSeeder).GetConstructors().SelectMany(constructor => constructor.GetParameters()),
+            parameter => Assert.False(typeof(Microsoft.Extensions.Logging.ILogger).IsAssignableFrom(parameter.ParameterType)));
     }
 
     [Fact]

@@ -43,7 +43,7 @@ public class DocumentSearch : IDocumentSearch
             return DocumentContext.Unavailable(DocumentUnavailableReason.CannotSearch);
         }
 
-        if (_index.Count == 0 || _index.Model != _options.EmbeddingModel.Trim())
+        if (_index.Count == 0 || _index.Model != _options.IndexModel)
         {
             var status = _status.Current;
             return DocumentContext.Unavailable(status.IsRunning || status.LastIndexedAt is null

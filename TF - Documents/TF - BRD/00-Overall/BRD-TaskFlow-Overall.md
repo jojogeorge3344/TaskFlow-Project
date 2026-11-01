@@ -811,7 +811,7 @@ Global rules that apply to every module. Sub-module BRDs add their own rules (`B
 | NFR-08 | Security | All input is validated by the server and database queries are safe against injection. | Every write is validated; invalid input returns field messages. |
 | NFR-09 | Security | Protection against unauthorised record access. | Another user's task, mail, notification or conversation is refused or reported as not found. |
 | NFR-10 | Security | Secrets are protected. | AI provider keys and authenticator keys encrypted with a key ring kept outside the database; only the last 4 characters of a key are ever shown. |
-| NFR-11 | Privacy | Data stays on the organisation's server unless a cloud AI model is chosen. | Users see a notice the first time a cloud model is used; the local model is the default. |
+| NFR-11 | Privacy | Data stays on the organisation's server except what TFA sends to an AI provider. | Users see a notice the first time each AI provider is used; Google Gemini (cloud) is the default chat provider and searches the TaskFlow documents, so document text and questions are sent to Google. |
 | NFR-12 | Usability | Clear, consistent screens for users with basic computer knowledge. | Every refused action shows a message; destructive actions and every TFA action ask for confirmation; menus show only what the user may use. |
 | NFR-13 | Reliability | Tasks, history, notifications and reminder history are stored permanently. | Data survives a restart of the application. |
 | NFR-14 | Reliability | The reminder engine resumes after a restart without duplicates. | First run at start-up, then every 60 seconds; a failed run is logged and the next run continues; no reminder delivered twice. |
@@ -820,7 +820,7 @@ Global rules that apply to every module. Sub-module BRDs add their own rules (`B
 | NFR-17 | Backup & Recovery | All stored data lives in one data folder with a documented backup and restore procedure. | Database and mail attachments backed up together; encryption key ring backed up separately. |
 | NFR-18 | Accessibility | Screens can be used with the keyboard and are readable. | ⚠️ To be confirmed: no accessibility target has been defined. |
 | NFR-19 | Observability | Every request is logged without its content. | Method, path, status, time, user and trace id; refused authorisations and TFA action outcomes are recorded. |
-| NFR-20 | Offline operation | TaskFlow works without the internet. | Notifications, Mail and the local AI model need no external service; only cloud AI providers need the internet. |
+| NFR-20 | Offline operation | TaskFlow works without the internet. | Notifications, Mail and the optional local AI chat model (Ollama) need no external service; cloud AI providers and TFA document search (Google Gemini) need the internet. |
 
 ---
 
@@ -851,8 +851,9 @@ Global rules that apply to every module. Sub-module BRDs add their own rules (`B
 | System / service | Purpose | Required? | Notes |
 |---|---|---|---|
 | Authenticator app (for example Google Authenticator, Microsoft Authenticator, Authy) | Two-step verification codes and account recovery | Required for every user | Works offline on the user's phone; lost phone → backup codes or administrator MFA reset |
-| Ollama (local AI server) | TFA answers on the organisation's own server | Optional | On by default for new installations; nothing leaves the server. Without it TFA shows a provider message and the rest of TaskFlow works |
-| Google Gemini, OpenAI GPT (cloud AI) | Alternative TFA models | Optional | Need an API key entered in TFA Settings and the internet; questions and task details are sent to the provider |
+| Google Gemini (cloud AI) | Default TFA model and TFA document search | Optional (required for document search) | Needs an API key (free from Google AI Studio) entered in TFA Settings or in the server configuration, and the internet; switched on for a new installation only when a key is configured; questions, task details and document text are sent to Google |
+| OpenAI GPT (cloud AI) | Alternative TFA model | Optional | Needs an API key entered in TFA Settings and the internet; questions and task details are sent to the provider |
+| Ollama (local AI server) | Optional TFA chat model on the organisation's own server | Optional | Never switched on automatically; replies are generated on the server, but questions are still sent to Google Gemini for document search. Without it TFA shows a provider message and the rest of TaskFlow works |
 | Browser speech recognition and speech output | TFA voice input and read-aloud | Optional | Chrome or Edge; no audio is stored by TaskFlow |
 | Local file storage (data folder) | Database, mail attachments, encryption key ring | Required | Created at start-up; the application stops with a clear message if it cannot write there |
 | External e-mail (SMTP) | – | Not used | Original Screen 14 superseded by internal Mail |
@@ -885,7 +886,7 @@ Details: [BRD-Reports](../05-Reports/05.1-Reports/BRD-Reports.md), [BRD-Dashboar
 | Database | SQLite through Entity Framework Core 10 | Single file, easy to back up, schema created automatically |
 | Authentication | Token-based sessions with a renewal cookie; password hashing; time-based authenticator codes | Secure sessions and mandatory two-step verification |
 | Scheduled reminders | Background service inside the application | No external scheduler; resumes after restart |
-| AI assistant | Ollama (local) by default; Google Gemini or OpenAI GPT optional | Free local option; cloud by choice |
+| AI assistant | Google Gemini by default (also used for document search); OpenAI GPT or Ollama (local) optional | Free API key from Google AI Studio; local chat by choice |
 | Testing | xUnit unit and integration tests; Jasmine and Karma for the frontend | Automated checks of rules, endpoints and structure |
 
 **Change from original BRD:** The original recommended Python Flask, Bootstrap, SQLAlchemy, APScheduler, SMTP and Pytest.
@@ -905,7 +906,7 @@ SQLite and Chart.js are kept; the rest was replaced by the stack above, and SMTP
 | Constraint | All stored data lives in one data folder (default `C:\TaskFlow` on Windows). |
 | Constraint | Every email address uses the `@taskflow.com` domain. |
 | Dependency | Authenticator app on each user's phone. |
-| Dependency | Optional: Ollama for the local assistant; internet and an API key for cloud AI providers. |
+| Dependency | Internet and an API key for cloud AI providers (a Google Gemini key also enables TFA document search); optional: Ollama for a local chat model. |
 
 ---
 
@@ -916,7 +917,7 @@ SQLite and Chart.js are kept; the rest was replaced by the stack above, and SMTP
 | R-01 | Reminders run twice if more than one server instance is started. | Medium | Low | Database prevents duplicate reminders; single instance assumed. |
 | R-02 | Loss of the encryption key ring. | High | Low | Back up the key ring separately; otherwise AI keys must be re-entered and every user needs an MFA reset. |
 | R-03 | A user loses phone and backup codes. | Medium | Medium | Administrator MFA reset ends sessions and lets the user set up again. |
-| R-04 | Task details leave the server when a cloud AI model is used. | Medium | Medium | Local model is the default; notice on first cloud use; passwords and keys are blocked in chat. |
+| R-04 | Task details leave the server when a cloud AI model is used; document text and questions are sent to Google for document search. | Medium | Medium | Notice on first use of each provider; only the question is sent to Google to search the documents; Ollama available as a local chat option; passwords and keys are blocked in chat. |
 | R-05 | Wrong "due today" or "overdue" because of different timezones. | Medium | Low | One application timezone on the server; unknown timezone falls back to UTC so reminders never stop. |
 | R-06 | Password guessing at sign-in, which has no attempt limit. | Medium | Low | Code step required for every account; ⚠️ To be confirmed whether a password attempt limit is needed. |
 | R-07 | Upgrades that change data irreversibly (for example email domain change). | High | Low | Back up before every upgrade. |
