@@ -1,6 +1,8 @@
 using TaskFlow.Api.Services.Reports;
 using TaskFlow.Api.Repositories.Monitoring.EmployeeWorkload;
 using TaskFlow.Api.Services.Monitoring.EmployeeWorkload;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.AssigneeCandidates;
+using TaskFlow.Api.Repositories.Management.ProjectManagement.Projects;
 using TaskFlow.Api.Repositories.Settings.ApplicationSettings;
 using TaskFlow.Api.Config;
 using Microsoft.Data.Sqlite;
@@ -26,12 +28,14 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
         SqliteConnection connection,
         AppDbContext db,
         WorkloadService workload,
+        AssigneeCandidateService assigneeCandidates,
         ReportService reports,
         FakeTimeProvider clock)
     {
         _connection = connection;
         Db = db;
         Workload = workload;
+        AssigneeCandidates = assigneeCandidates;
         Reports = reports;
         Clock = clock;
     }
@@ -39,6 +43,8 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
     public AppDbContext Db { get; }
 
     public WorkloadService Workload { get; }
+
+    public AssigneeCandidateService AssigneeCandidates { get; }
 
     public ReportService Reports { get; }
 
@@ -64,6 +70,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             connection,
             db,
             new WorkloadService(new WorkloadRepository(db), appClock),
+            new AssigneeCandidateService(new WorkloadRepository(db), new ProjectRepository(db), appClock),
             new ReportService(new TaskFlow.Api.Repositories.Reports.ReportRepository(db), appClock),
             clock);
     }
@@ -87,7 +94,8 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
         bool isActive = true,
         string role = SystemRoles.Employee,
         int? projectId = null,
-        string? fullName = null)
+        string? fullName = null,
+        int allocationPercent = 100)
     {
         var user = new User
         {
@@ -103,7 +111,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
 
         Db.Users.Add(user);
         Db.SaveChanges();
-        TestMemberships.Allocate(Db, user, projectId);
+        TestMemberships.Allocate(Db, user, projectId, allocationPercent);
 
         return user;
     }
@@ -114,7 +122,8 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
         TaskStatus status,
         TaskPriority priority = TaskPriority.Medium,
         int? createdByUserId = null,
-        bool isDeleted = false)
+        bool isDeleted = false,
+        DateTime? completedAt = null)
     {
         var task = new TaskEntity
         {
@@ -127,6 +136,7 @@ internal sealed class WorkloadReportHarness : IAsyncDisposable
             Deadline = deadline,
             EstimatedHours = 1,
             Status = status,
+            CompletedAt = completedAt,
             CreatedAt = Clock.UtcNow.UtcDateTime,
             UpdatedAt = Clock.UtcNow.UtcDateTime,
             IsDeleted = isDeleted

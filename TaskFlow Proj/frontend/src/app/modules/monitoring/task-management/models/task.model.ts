@@ -25,6 +25,18 @@ export interface TaskRecipient {
   fullName: string;
 }
 
+/** A member of the chosen project's team who can take a new task (Screen 8), with their current load across every
+ * project. The server sends them in pick order: the first is the default assignee. `onTimeRate` is the share (0 to 1) of
+ * their completed tasks finished by the deadline, or null when they have completed none. */
+export interface AssigneeCandidate {
+  userId: number;
+  fullName: string;
+  employeeCode: string | null;
+  activeTasks: number;
+  overdueTasks: number;
+  onTimeRate: number | null;
+}
+
 export interface TaskDetails {
   id: number;
   taskCode: string;

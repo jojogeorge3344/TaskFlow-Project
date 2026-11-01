@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Draft
+> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.4  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > **Based on:** BRD-Assistant.md v1.2
@@ -20,6 +20,7 @@
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`), traced to BRD-Assistant v1.1. 4.1.2 becomes "Answers from TaskFlow Documents": FR-TFA-25 – FR-TFA-28 superseded by FR-TFA-57 – FR-TFA-66; UC-TFA-04 rewritten; cloud notice text (FR-TFA-15 element, M-TFA-03) and side effects updated; sources added to the conversation feed; messages M-TFA-10 – M-TFA-12, data, NFR-TFA-09 – NFR-TFA-12, open issues and traceability updated. |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` (revised, design D13 and D14), traced to BRD-Assistant v1.2. The Document search card and **Re-index now** on TFA Settings and the endpoints `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` were removed: FR-TFA-66 no longer mentions a manual re-index; FR-TFA-67 added (indexing problems written to the server log as warnings naming the folder or file; no index screen or endpoint), traced to REQ-TFA-56; related documents, scope and traceability updated. FR-TFA-16 and the "Other provider error" message state that chat replies keep the plain message; the provider's own status and reason appear only on Test connection in TFA Settings. |
 | 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-custom-ai-providers` (traced to FRD-TFA-Settings v1.5). Providers are identified by id, so a **custom provider** (OpenAI-compatible or Ollama API, added in TFA Settings) is offered in the model selector like a built-in one: FR-TFA-12 (selector lists built-in and custom providers by id), FR-TFA-13, FR-TFA-14 (answer shows the provider's name; the message stores the provider id), FR-TFA-15 (cloud notice by the provider's Local/Cloud setting, custom Cloud providers included), FR-TFA-16 (failure names the provider and carries its id) reworded; added FR-TFA-68 (the chat request sends the provider id; a choice remembered by name before providers had ids is ignored). Definitions, context diagram, model selector and failure card elements, workflow 5.3, data and traceability updated. Everything else unchanged. |
+| 1.4 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-hide-answer-sources`. traced to BRD-Assistant v1.3. Sources are no longer displayed under answers, for any role; they are still attached to the reply and stored. Updated §1, the glossary, the conversation feed, UC-TFA-01, the Sources element, FR-TFA-61 and UC-TFA-04. |
 
 ### Related Documents
 
@@ -40,10 +41,10 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
-This FRD specifies the detailed, testable behaviour of TFA (TaskFlow Assistant): the chat panel on every signed-in screen, task answers and the ranked work order, answers about TaskFlow taken only from the TaskFlow documents with their sources, Action Cards that run only after confirmation, voice input, and the background safeguards (message limit and action audit). It turns every `REQ-TFA-nn` and `BR-TFA-nn` of the TFA BRD into functional requirements `FR-TFA-nn`.
+This FRD specifies the detailed, testable behaviour of TFA (TaskFlow Assistant): the chat panel on every signed-in screen, task answers and the ranked work order, answers about TaskFlow taken only from the TaskFlow documents, Action Cards that run only after confirmation, voice input, and the background safeguards (message limit and action audit). It turns every `REQ-TFA-nn` and `BR-TFA-nn` of the TFA BRD into functional requirements `FR-TFA-nn`.
 
 ### 1.2 Scope
-**In scope:** TFA Panel (conversation, model selector, provider notice, new chat, provider failures); task answers and ranked list; Action Cards for mail drafts, own-profile changes and role changes; user lookup, password guidance, administrator guidance; answers about TaskFlow from the Markdown documents in the TaskFlow documents folder, with sources; secret screen, 20-messages-per-minute limit, action audit; voice input in Chrome and Edge.
+**In scope:** TFA Panel (conversation, model selector, provider notice, new chat, provider failures); task answers and ranked list; Action Cards for mail drafts, own-profile changes and role changes; user lookup, password guidance, administrator guidance; answers about TaskFlow from the Markdown documents in the TaskFlow documents folder (sources recorded, not shown); secret screen, 20-messages-per-minute limit, action audit; voice input in Chrome and Edge.
 
 **Out of scope** (BRD §3.2): AI provider, model and API key setup (TFA Settings); a screen or endpoint for the document index status or for starting a re-index (removed in v1.2; indexing problems go to the server log); PDF and Excel documents, uploading documents, limiting documents by role; creating, editing or reassigning tasks through TFA; password changes through TFA; a screen to view the audit log; deleting one's own conversation history.
 
@@ -66,7 +67,7 @@ Developer and tester of TaskFlow, reviewers, and the product owner (Jojo George)
 | Lookup | A read TFA makes while answering (own tasks, user directory) |
 | TaskFlow documents | The Markdown files (BRD, FRD, HLD, LLD, TDD, screen specifications) in the documents folder TFA answers from |
 | Document section | A part of a document under one heading; the unit TFA finds and cites |
-| Source | Document name and section heading shown under an answer that was given document text |
+| Source | Document name and section heading recorded with an answer that was given document text; not displayed (v1.4) |
 | Action Card | Card in the conversation showing a prepared action that runs only on the user's Confirm click |
 | Pending action | Prepared action waiting for Confirm or Cancel; expires 10 minutes after it is created |
 | Work order | System-ranked list of the user's open assigned tasks |
@@ -150,7 +151,7 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 | Model selector | Menu | Chosen provider and model with **Local**/**Cloud** tag; menu opens only with 2 or more configured providers; lists built-in and custom providers, each chosen by its provider id; the badge has a colour per built-in provider and a shared "Custom" colour for custom providers (v1.3) | – | Users with `assistant.chat` |
 | Cloud notice | Inline notice | "`{Provider}` is a cloud provider. Your message, related task details and matching TaskFlow document text are sent to it." with **I understand**, **Cancel**; shown for every provider marked Cloud, custom providers included (v1.3) | – | Users with `assistant.chat` |
 | Local provider notice | Inline notice | "Your message is sent to Google Gemini to search the TaskFlow documents. The reply is generated by Ollama on this computer." with **I understand**, **Cancel**; shown for a provider marked Local | – | Users with `assistant.chat` |
-| Conversation feed | List | User messages, TFA answers with provider name (e.g. "TFA · Gemini"), "Permission required" bubble, notices, numbered ranked task list with tags, screen link buttons, **Sources** chips (4.1.2), Action Cards | – | Users with `assistant.chat` |
+| Conversation feed | List | User messages, TFA answers with provider name (e.g. "TFA · Gemini"), "Permission required" bubble, notices, numbered ranked task list with tags, screen link buttons, Action Cards | – | Users with `assistant.chat` |
 | Welcome bubble + suggestions | Text + chips | "Hi, I'm TFA. I can explain how TaskFlow works, tell you what is coming up and what to do first, and draft mail for you to review."; *What are my upcoming tasks?*, *What should I prioritise?*, *How do I change a task status?*, *Send a mail to my manager* | – | Users with `assistant.chat` (empty chat only) |
 | Message box | Text area | "Ask TFA anything about TaskFlow…"; Enter sends, Shift+Enter new line | Yes (to send) | Users with `assistant.chat` |
 | Microphone, Send | Buttons | Dictate (4.1.4); send the message | – | Users with `assistant.chat` |
@@ -194,7 +195,7 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 | Actor | Any user with `assistant.chat` |
 | Preconditions | Signed in; at least one provider configured |
 | Trigger | Opens the panel, types a question (or clicks a suggestion) and presses **Send** |
-| Main flow | 1. System loads providers and the latest conversation. 2. User sends a message. 3. If the chosen provider is not yet acknowledged, its notice (cloud or local) is shown; user clicks **I understand**. 4. System checks length (1–2000) and the secret screen. 5. System checks the 20-per-minute limit (FR-TFA-53). 6. System finds the matching TaskFlow document sections (FR-TFA-58); TFA answers using them and up to 4 rounds of lookups. 7. System saves the question and answer and shows them with task links, ranked list, screen links or sources. |
+| Main flow | 1. System loads providers and the latest conversation. 2. User sends a message. 3. If the chosen provider is not yet acknowledged, its notice (cloud or local) is shown; user clicks **I understand**. 4. System checks length (1–2000) and the secret screen. 5. System checks the 20-per-minute limit (FR-TFA-53). 6. System finds the matching TaskFlow document sections (FR-TFA-58); TFA answers using them and up to 4 rounds of lookups. 7. System saves the question and answer and shows them with task links, ranked list or screen links. |
 | Alternate flows | A1: **Cancel** on the provider notice → text returned to the box, nothing sent. A2: user switches model → same conversation continues. |
 | Exceptions | E1: length outside 1–2000 → "A message must be between 1 and 2000 characters.". E2: password/key detected → safety notice, nothing sent or stored. E3: over the limit → "You are sending messages too quickly. Please wait about `{n}` seconds and try again.". E4: provider failure → plain message, **Retry**, **Use** `{other provider}`, nothing saved. E5: no provider → "TFA is not available yet. An administrator needs to configure an AI provider." E6: no answer → "I could not come up with an answer. Please try again, or ask in a different way." |
 | Postconditions | Question and answer stored in the user's own conversation |
@@ -291,7 +292,7 @@ flowchart LR
 | Element | Type | Description | Mandatory | Visible to |
 |---|---|---|:---:|---|
 | Answer | Text | TFA's answer, written only from the matching document sections | – | Users with `assistant.chat` |
-| Sources | Label + chips | "Sources", then one chip per document section given to TFA: the document title and the section's last heading; the tooltip shows the full heading path and the document's file path | – | Users with `assistant.chat` (answers that were given document text) |
+| Sources | – | Not displayed (v1.4). Sources are recorded with the answer only | – | – |
 
 **Functional requirements**
 
@@ -305,7 +306,7 @@ flowchart LR
 | FR-TFA-58 | The system shall, for every message that passes the chat checks, find the best-matching document sections before the AI model is called – at most 5 sections, each at least as similar to the message as the configured minimum, and at most 4000 characters of text in total (the best section is always kept) – so that this works with every provider and with models that cannot use lookups. A message shorter than 40 characters that matches nothing on its own is matched again together with the user's previous message. | Must | `assistant.chat` | REQ-TFA-47 |
 | FR-TFA-59 | The system shall instruct TFA to answer questions about TaskFlow only from the sections it was given and, when they do not contain the answer, to say that the TaskFlow documents do not cover it; when no section matches, TFA is told that no document matched and says the same. TFA shall never answer such questions from general knowledge or invent screens, rules or features. | Must | `assistant.chat` | REQ-TFA-48, BR-TFA-07 |
 | FR-TFA-60 | The system shall instruct TFA to answer only questions about TaskFlow and the user's work in it, and to decline anything else (such as general knowledge) by saying it can only answer from the TaskFlow documents and the user's own work in TaskFlow. | Must | `assistant.chat` | REQ-TFA-49 |
-| FR-TFA-61 | The system shall attach to an answer that was given document text one source per document section (document title, section heading path, file path), without duplicates, show them as **Sources** chips under the answer, and keep them with the stored message so they are shown again after a reload. Fixed replies (refusals, prepared actions), the "no answer" text and notices carry no sources; messages stored before v1.1 show none. | Should | `assistant.chat` | REQ-TFA-50 |
+| FR-TFA-61 | The system shall attach to an answer that was given document text one source per document section (document title, section heading path, file path), without duplicates, and keep them with the stored message after a reload. The TFA panel shall not display them, for any role (v1.4). Fixed replies (refusals, prepared actions), the "no answer" text and notices carry no sources; messages stored before v1.1 show none. | Should | `assistant.chat` | REQ-TFA-50 |
 | FR-TFA-62 | The system shall answer questions about the user's own tasks, priorities, mail and profile with the live-data lookups of 4.1.1 and 4.1.3, never from the document text, even when document sections were found for the message. | Must | `assistant.chat` | REQ-TFA-51, BR-TFA-16 |
 | FR-TFA-63 | The system shall pass document text to TFA marked as data, between fixed start and end markers that the document text cannot close early, and TFA shall not follow instructions written in it. | Must | `assistant.chat` | REQ-TFA-52, BR-TFA-16 |
 | FR-TFA-64 | The system shall search every indexed document for every user with `assistant.chat`, whatever their role. | Must | `assistant.chat` | REQ-TFA-53, BR-TFA-15 |
@@ -321,7 +322,7 @@ flowchart LR
 | Actor | Any user with `assistant.chat` |
 | Preconditions | Signed in; provider available; documents indexed |
 | Trigger | Asks, e.g., "What validations apply when creating a task?" |
-| Main flow | 1. System checks the message as in UC-TFA-01. 2. System finds the best-matching document sections. 3. TFA answers only from them. 4. System shows the answer with its **Sources** and stores both. |
+| Main flow | 1. System checks the message as in UC-TFA-01. 2. System finds the best-matching document sections. 3. TFA answers only from them. 4. System shows the answer and stores it with its sources, which are not displayed. |
 | Alternate flows | A1: short follow-up ("and for managers?") → matched together with the previous question. A2: question about the user's own tasks → answered from live data (UC-TFA-01, UC-TFA-02). |
 | Exceptions | E1: no section matches, or the sections do not answer it → TFA says the TaskFlow documents do not cover it. E2: question not about TaskFlow → TFA declines. E3: documents cannot be searched → TFA says so; live-data questions still work. E4: first indexing not finished and nothing stored → TFA says the documents are still being prepared. |
 | Postconditions | Question and answer, with sources, stored in the user's own conversation |
@@ -334,7 +335,7 @@ flowchart LR
   D -- No --> E["Documents do not cover it"]
   D -- Yes --> F{"Sections answer it?"}
   F -- No --> E
-  F -- Yes --> G["Answer with Sources"]
+  F -- Yes --> G["Answer from documents"]
 ```
 
 **Field validations:** _Not applicable – the chat field rules of 4.1.1 apply._
@@ -357,7 +358,7 @@ flowchart LR
 | Not about TaskFlow | TFA says it can only answer from the TaskFlow documents and the user's own work in TaskFlow (wording by the AI model) |
 | Documents cannot be searched | TFA says the TaskFlow documents cannot be searched right now (wording by the AI model) |
 | First indexing not finished | TFA says the TaskFlow documents are still being prepared (wording by the AI model) |
-| Sources | "Sources" followed by one chip per document section |
+| Sources | Not displayed (v1.4) |
 
 #### 4.1.3 Screen: Action Card (inside the TFA Panel)
 

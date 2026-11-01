@@ -38,7 +38,8 @@ public class WorkloadRepository : BaseRepository<User>, IWorkloadRepository
                 user.ProjectAllocations
                     .OrderBy(a => a.Project.Name)
                     .Select(a => new ProjectAllocationDto(a.ProjectId, a.Project.Name, a.PositionId, a.Position.Name, a.AllocationPercent))
-                    .ToList()))
+                    .ToList(),
+                user.EmployeeCode))
             .ToListAsync(cancellationToken);
     }
 
@@ -57,6 +58,7 @@ public class WorkloadRepository : BaseRepository<User>, IWorkloadRepository
                     (task.Priority == TaskPriority.High || task.Priority == TaskPriority.Critical)),
                 group.Count(task =>
                     task.Deadline < now && task.Status != TaskStatus.Completed && task.Status != TaskStatus.Cancelled),
-                group.Count(task => task.Status == TaskStatus.Completed)))
+                group.Count(task => task.Status == TaskStatus.Completed),
+                group.Count(task => task.Status == TaskStatus.Completed && task.CompletedAt != null && task.CompletedAt <= task.Deadline)))
             .ToListAsync(cancellationToken);
 }

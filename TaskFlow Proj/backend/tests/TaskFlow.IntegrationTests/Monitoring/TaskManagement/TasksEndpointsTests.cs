@@ -614,6 +614,75 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(1, document.RootElement.GetProperty("items").GetArrayLength());
     }
 
+    [Fact]
+    public async Task GetAssigneeCandidates_AsManager_ReturnsTeamInPickOrder()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-cand-mgr", SystemRoles.Manager);
+        var projectId = await SeedProjectAsync("Candidates project");
+        var busy = await SeedUserAsync("tek-cand-busy");
+        var free = await SeedUserAsync("tek-cand-free");
+        var outsider = await SeedUserAsync("tek-cand-out");
+        await AllocateAsync(busy.Id, projectId);
+        await AllocateAsync(free.Id, projectId);
+        await CreateTaskAsync("Busy one", busy.Id, manager.Id);
+        await CreateTaskAsync("Busy two", busy.Id, manager.Id, deadline: DateTime.UtcNow.AddDays(-1));
+        await CreateTaskAsync("Outsider", outsider.Id, manager.Id);
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            $"/api/v1/tasks/assignee-candidates?projectId={projectId}", manager.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var rows = document.RootElement.EnumerateArray().ToList();
+        Assert.Equal(new[] { free.Id, busy.Id }, rows.Select(row => row.GetProperty("userId").GetInt32()));
+        Assert.Equal(0, rows[0].GetProperty("activeTasks").GetInt32());
+        Assert.Equal(2, rows[1].GetProperty("activeTasks").GetInt32());
+        Assert.Equal(1, rows[1].GetProperty("overdueTasks").GetInt32());
+        Assert.Equal(JsonValueKind.Null, rows[1].GetProperty("onTimeRate").ValueKind);
+    }
+
+    [Fact]
+    public async Task GetAssigneeCandidates_ProjectWithoutTeam_ReturnsEmptyList()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-cand-mgr2", SystemRoles.Manager);
+        var projectId = await SeedProjectAsync("Candidates empty project");
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            $"/api/v1/tasks/assignee-candidates?projectId={projectId}", manager.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Equal(0, document.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task GetAssigneeCandidates_UnknownProject_Returns404()
+    {
+        var client = _factory.CreateClient();
+        var manager = await SeedAndLoginAsync(client, "tek-cand-mgr3", SystemRoles.Manager);
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            "/api/v1/tasks/assignee-candidates?projectId=987654", manager.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAssigneeCandidates_WithoutTaskCreatePermission_IsForbidden()
+    {
+        var client = _factory.CreateClient();
+        var projectId = await SeedProjectAsync("Candidates forbidden project");
+        var token = await LoginAsync(client, "tek-cand-emp", SystemRoles.Employee);
+
+        var response = await SendWithTokenAsync(client, HttpMethod.Get,
+            $"/api/v1/tasks/assignee-candidates?projectId={projectId}", token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private async Task<string> LoginAsync(HttpClient client, string username, string role)
     {
         const string password = "P@ssw0rd!";
@@ -657,6 +726,14 @@ public class TasksEndpointsTests : IClassFixture<TaskFlowApiFactory>
         db.Projects.Add(project);
         await db.SaveChangesAsync();
         return project.Id;
+    }
+
+    private async Task AllocateAsync(int userId, int projectId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.UserProjectAllocations.Add(new TaskFlow.Api.Models.Entities.UserProjectAllocation { UserId = userId, ProjectId = projectId, AllocationPercent = 100, PositionId = 1 });
+        await db.SaveChangesAsync();
     }
 
     private async Task<int> GetUserIdAsync(string username)
