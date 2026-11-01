@@ -2,7 +2,7 @@
 
 Operating instructions for AI assistants and automation contributors working in this
 repository. Read this before making changes. For product context, see `project.md`; for the
-authoritative design, see `../Artifacts/TDD-TaskFlow.md`.
+authoritative design, see `../TF - Documents/TF - TDD/TDD-TaskFlow.md`.
 
 ---
 
@@ -20,10 +20,8 @@ assumption. When something is ambiguous or would change scope, ask before acting
 TaskFlow Proj/
 ├─ backend/                        # .NET solution
 │  ├─ TaskFlow.sln
-│  ├─ src/TaskFlow.Api/            # controllers, middleware, DI, Program.cs
-│  ├─ src/TaskFlow.Application/    # services, DTOs, validators, interfaces
-│  ├─ src/TaskFlow.Domain/         # entities, enums, business rules
-│  ├─ src/TaskFlow.Infrastructure/ # EF Core, migrations, SMTP, scheduler
+│  ├─ src/TaskFlow.Api/            # one project, layer-first: Controllers, Services, Repositories,
+│  │                                 #   Dtos, Models, Integrations, Middleware, Config, Common, Persistence
 │  └─ tests/                       # unit + integration
 ├─ frontend/                       # Angular 19 workspace (Angular CLI, standalone)
 │  ├─ proxy.conf.json              # dev proxy: /api/*  →  https://localhost:7055
@@ -38,9 +36,12 @@ Planning material lives **outside** this folder, at the workspace root:
 
 | Path | Contents | Treat as |
 |---|---|---|
-| `../Requirements/BRD for Task management.docx` | Business requirements | Source of truth for *what* |
-| `../Requirements/screens wise feature/01..20*.md` | Per-screen specs | Source of truth for UI behaviour |
-| `../Artifacts/TDD-TaskFlow.md` | Technical design | Source of truth for *how* |
+| `../TF - Documents/TF - BRD/` | Approved BRD set v1.0 (overall + 16 sub-modules, signed off 31-Oct-2026) | Source of truth for *what* |
+| `../TF - Documents/TF - FRD/` | Functional requirements and use cases per sub-module | Source of truth for behaviour, validations and messages |
+| `../TF - Documents/TF - HLD/`, `../TF - Documents/TF - LLD/` | High- and low-level design per sub-module | Design reference per sub-module |
+| `../TF - Documents/TF - TDD/TDD-TaskFlow.md` | Technical design (whole system) | Source of truth for *how* |
+| `../TF - Documents/Screens Wise Feature Development Plan/01..20*.md` | Per-screen specs | Original UI plan (absorbed by the BRD set) |
+| `../TF - Documents/Permission Requirement/` | Permission documents per role | Must match `PermissionCatalog.cs` |
 | `../openspec/` | OpenSpec workspace (changes, specs) | Planning workflow |
 
 Do **not** edit files under `.opencode/` (tooling/skills) as part of feature work.
@@ -64,7 +65,7 @@ the SPA. (Run `npm install` in `frontend/` first.)
 |---|---|---|
 | Build backend | `dotnet build` | `backend/` |
 | Run API | `dotnet run --project src/TaskFlow.Api` | `backend/` |
-| Apply migrations | `dotnet ef database update --project src/TaskFlow.Infrastructure --startup-project src/TaskFlow.Api` | `backend/` |
+| Apply migrations | `dotnet ef database update --project src/TaskFlow.Api` | `backend/` |
 | Backend tests | `dotnet test` | `backend/` |
 | Install frontend deps | `npm install` | `frontend/` |
 | Run frontend | `npm start` | `frontend/` |
@@ -79,9 +80,12 @@ If you cannot find the right command, ask.
 ## 4. Hard Rules
 
 **Architecture**
-- Respect layer direction: `Api → Application → Domain`; `Infrastructure → Application/Domain`.
-  Never reference a higher layer from a lower one.
-- Controllers stay thin; business rules live in Application services; pure rules in Domain.
+- Respect the layer flow: Controller → Service → Repository → database, each through the interface of the layer
+  below. Only `Persistence` and `Repositories` touch `AppDbContext`; repositories never save (services commit through
+  `IUnitOfWork`). `ArchitectureTests` enforces this; see the "Backend structure" section of the workspace README.
+- Controllers stay thin; business rules live in services (pure rules in `Services/<Module>/Rules` or `Common/Rules`).
+- Put new code in the module folder of every layer it touches (`Controllers/<Module>/<SubModule>`, same path under
+  `Services`, `Repositories`, `Dtos`), with the namespace matching the folder.
 
 **Data**
 - All timestamps stored in **UTC**. Convert only at the boundary using `Application.Timezone`.
@@ -125,8 +129,8 @@ If you cannot find the right command, ask.
 
 ## 6. Recording Decisions
 
-- Changes to *what the system must do* → OpenSpec specs / the BRD.
-- Changes to *how it is built* → TDD (`../Artifacts/TDD-TaskFlow.md`) and/or OpenSpec design.
+- Changes to *what the system must do* → OpenSpec specs / the sub-module BRD (approved: record a new version) and its FRD.
+- Changes to *how it is built* → TDD (`../TF - Documents/TF - TDD/TDD-TaskFlow.md`), the sub-module HLD/LLD and/or OpenSpec design.
 - Changes to stack, structure, or conventions → update `project.md` in the same change.
 
 Keep `project.md`, `agent.md`, the TDD, and OpenSpec specs in sync; do not duplicate facts

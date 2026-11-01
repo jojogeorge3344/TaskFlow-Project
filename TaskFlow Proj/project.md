@@ -1,11 +1,11 @@
 # TaskFlow — Project Overview
 
 **TaskFlow – Intelligent Task Allocation & Tracking System**
-MCA Academic Mini Project · Designed 2026-10-11
+Personal Project (Skill Development) · Designed 2026-10-11
 
 This document is the entry point for the codebase: what TaskFlow is, how it is built,
 where everything lives, and the conventions that keep it consistent. The authoritative
-design lives in `../Artifacts/TDD-TaskFlow.md`; this file is a condensed, actionable
+design lives in `../TF - Documents/TF - TDD/TDD-TaskFlow.md`; this file is a condensed, actionable
 mirror of it.
 
 ---
@@ -48,7 +48,9 @@ calendar integration, email-token password reset.
 | Web framework | ASP.NET Core Web API | REST/JSON endpoints |
 | ORM | Entity Framework Core (Code-First) | Data access, migrations |
 | Database | SQLite | Single-file persistent store |
-| Scheduler | `BackgroundService` | Deadline reminders (~1 min tick) |
+| Scheduler | `BackgroundService` | Deadline reminders (~1 min tick); TFA document indexing (startup + every 5 min) |
+| TFA embeddings | Ollama `nomic-embed-text` via `/api/embed` (local, free) | Embeds the `TF - Documents` Markdown files and each TFA question |
+| TFA document index | SQLite tables `DocumentSources` / `DocumentChunks` + in-memory brute-force cosine search | Retrieval for document answers; no vector database or extension |
 | Validation | FluentValidation | Server-side input validation |
 | Auth | JWT bearer + `PasswordHasher<T>` (PBKDF2) | Tokens, RBAC |
 | Logging | Serilog | Structured logs |
@@ -69,9 +71,9 @@ Full rationale and the BRD→stack mapping are in TDD §4.
 ┌──────────────────────────┐   HTTPS / JSON   ┌──────────────────────────────────┐
 │  Angular SPA (browser)   │ ◄──────────────► │  ASP.NET Core Web API (.NET)     │
 │  standalone components   │   Bearer JWT     │  Controllers (thin)              │
-│  route guards, services  │                  │  Application services/validators │
-│  custom CSS, Chart.js    │                  │  Domain entities/rules           │
-└──────────────────────────┘                  │  Infrastructure (EF Core, SMTP)  │
+│  route guards, services  │                  │  Services (business rules)       │
+│  custom CSS, Chart.js    │                  │  Repositories (data access)      │
+└──────────────────────────┘                  │  Integrations (AI, JWT, storage) │
                                               │  ┌────────────────────────────┐  │
                                               │  │ ReminderSchedulerService   │  │
                                               │  │ (BackgroundService ~1 min) │  │
@@ -86,7 +88,8 @@ Full rationale and the BRD→stack mapping are in TDD §4.
 
 **Request lifecycle:**
 `HTTP → CORS/HTTPS → JWT auth → role/resource authorization → Controller → Service
-(validation + business rules) → EF Core → SQLite → DTO → JSON`.
+(business rules) → Repository → EF Core → SQLite → DTO → JSON`; request validation runs in a global filter and errors
+become ProblemDetails in `GlobalExceptionHandler`.
 
 **Key decisions**
 
@@ -108,10 +111,9 @@ TaskFlow Proj/
 ├─ backend/
 │  ├─ TaskFlow.sln
 │  ├─ src/
-│  │  ├─ TaskFlow.Api/            # ASP.NET Core Web API (host; SpaProxy launches the SPA)
-│  │  ├─ TaskFlow.Application/    # services, DTOs, validators, interfaces
-│  │  ├─ TaskFlow.Domain/         # entities, enums, pure business rules
-│  │  └─ TaskFlow.Infrastructure/ # EF Core DbContext, migrations, email, scheduler
+│  │  └─ TaskFlow.Api/            # ASP.NET Core Web API (host; SpaProxy launches the SPA), layer-first:
+│  │                                  #   Controllers, Services, Repositories, Dtos, Models, Integrations,
+│  │                                  #   Middleware, Filters, Config, Common, Persistence
 │  └─ tests/
 │     ├─ TaskFlow.UnitTests/
 │     └─ TaskFlow.IntegrationTests/
@@ -136,15 +138,18 @@ TaskFlow Proj/
 > `dotnet run` on the API auto-launches the Angular dev server (`npm start`) and redirects the
 > browser to it — no `.esproj` and no multiple-startup configuration is required.
 
-**Backend layer dependency direction:** `Api → Application → Domain`;
-`Infrastructure → Application/Domain`. No layer skips a layer.
+**Backend layer flow:** Controller → Service → Repository → database. Each layer calls only the one below it, through
+its interface, and every layer uses the same module tree (`Controllers/<Module>/<SubModule>`, the same path under
+`Services`, `Repositories` and `Dtos`). `tests/TaskFlow.UnitTests/ArchitectureTests.cs` enforces the rules.
 
-| Project | Contains | Depends on |
+| Folder | Contains | May call |
 |---|---|---|
-| `TaskFlow.Domain` | Entities, enums, business rules | — |
-| `TaskFlow.Application` | Services, DTOs, validators, mapping | Domain |
-| `TaskFlow.Infrastructure` | `AppDbContext`, migrations, SMTP, scheduler | Application, Domain |
-| `TaskFlow.Api` | Controllers, auth, middleware, DI | Application, Infrastructure |
+| `Controllers` | HTTP routing, binding, status codes | Services |
+| `Services` | Business rules, use cases | Repositories, Integrations |
+| `Repositories` | EF Core queries and changes (no saving) | Persistence |
+| `Integrations` | AI providers, JWT, TOTP, key protection, file storage | — |
+| `Dtos` / `Models` | Requests, responses, validators / entities, enums | — |
+| `Persistence` | `AppDbContext`, migrations, seeders | — |
 
 > The authoritative reference for the backend/frontend design is TDD §5–§6 and §12.
 
@@ -214,7 +219,7 @@ server (`npm start`) once the API is up, then redirects the browser to it
 
 ```
 dotnet build
-dotnet ef database update --project src/TaskFlow.Infrastructure --startup-project src/TaskFlow.Api
+dotnet ef database update --project src/TaskFlow.Api
 dotnet run --project src/TaskFlow.Api
 ```
 
@@ -234,8 +239,8 @@ the API runs behind HTTPS.
 "sample data for demonstration" deliverable.
 
 Configuration sources: `appsettings.json` (non-secret defaults), environment
-variables/user-secrets (JWT key, SMTP password), and the `application_settings` table
-(runtime-editable, non-secret). See TDD §16.
+variables/user-secrets (JWT signing key), and the `ApplicationSettings` table
+(runtime-editable, non-secret). See TDD §18.
 
 ---
 
@@ -265,7 +270,12 @@ variables/user-secrets (JWT key, SMTP password), and the `application_settings` 
 
 | Document | Location |
 |---|---|
-| Technical Design Document | `../Artifacts/TDD-TaskFlow.md` |
-| Business Requirements (BRD v1.0) | `../Requirements/BRD for Task management.docx` |
-| Screen specs 01–20 | `../Requirements/screens wise feature/` |
+| Business Requirements – approved BRD set v1.0 (overall + 16 sub-modules) | `../TF - Documents/TF - BRD/` |
+| Functional Requirements – FRD set | `../TF - Documents/TF - FRD/` |
+| High-Level Design – HLD set | `../TF - Documents/TF - HLD/` |
+| Low-Level Design – LLD set | `../TF - Documents/TF - LLD/` |
+| Technical Design Document | `../TF - Documents/TF - TDD/TDD-TaskFlow.md` |
+| Screen specs 01–20 | `../TF - Documents/Screens Wise Feature Development Plan/` |
+| Permission documents | `../TF - Documents/Permission Requirement/` |
+| Workflow docs (application / technical) | `../TF - Documents/TFWorkflow/`, `../TF - Documents/TFTechnicalWorkflow/` |
 | OpenSpec workspace | `../openspec/` |

@@ -1,0 +1,126 @@
+@if (visible()) {
+  <section class="ai-settings" data-section="ai-assistant" aria-labelledby="ai-settings-title">
+    <header class="ai-settings__head">
+      <div class="ai-settings__head-row">
+        <h2 id="ai-settings-title">AI models</h2>
+        @if (canAddModel()) {
+          <a class="tf-btn tf-btn--primary" data-action="add-model" routerLink="/settings/tfa/models/new">
+            <tf-icon name="plus" />
+            Add AI model
+          </a>
+        }
+      </div>
+      <p>
+        These are the models TFA can answer with. <strong>Use this model</strong> switches TFA to it; add a model, or change one
+        you added, on the Add AI model screen. <strong>Google Gemini</strong> is the default and has a free tier with limits; get a free
+        key in <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
+        <strong>Ollama</strong> is optional: it runs on your own server and is free. <strong>OpenAI GPT has no free tier</strong>: it
+        only works with a paid API key. Gemini and OpenAI are cloud services: a user's question, related task details and matching
+        TaskFlow document text are sent to them.
+      </p>
+      <p data-help="document-search">
+        <strong>Document search needs a Google Gemini API key</strong>, whichever model answers. TaskFlow document text is sent to
+        Google to be indexed, and each question is sent to Google to search it. Without a saved Gemini key, TFA cannot answer from the
+        documents. On the free tier, Google may use what is sent to improve its products.
+      </p>
+    </header>
+
+    @if (loadError()) {
+      <div class="tf-alert" role="alert">
+        <tf-icon name="alert" />
+        <span>{{ loadError() }}</span>
+        <button type="button" class="tf-btn tf-btn--ghost" data-action="retry-ai" (click)="load()">Retry</button>
+      </div>
+    } @else if (loading()) {
+      <div class="tf-card ai-settings__card" aria-busy="true">
+        <span class="tf-skeleton ai-settings__skeleton"></span>
+        <span class="tf-skeleton ai-settings__skeleton"></span>
+      </div>
+    } @else {
+      @if (actionError()) {
+        <div class="tf-alert" role="alert" data-error="ai-action">
+          <tf-icon name="alert" />
+          <span>{{ actionError() }}</span>
+        </div>
+      }
+
+      <p class="ai-settings__using" data-using>
+        @if (inUse(); as current) {
+          TFA uses <strong>{{ current.model }}</strong> on <strong>{{ current.provider.displayName }}</strong>.
+        } @else {
+          TFA has no model in use yet. Choose <strong>Use this model</strong> on a model below.
+        }
+      </p>
+
+      @for (group of groups(); track group.provider.providerId) {
+        <section class="tf-card ai-settings__group" [attr.data-provider]="group.provider.providerId" [attr.data-custom]="!group.provider.isBuiltIn" [attr.aria-label]="group.provider.displayName">
+          <div class="ai-settings__title">
+            <h3>{{ group.provider.displayName }}</h3>
+            <span class="ai-settings__pill" [class.ai-settings__pill--local]="group.provider.locality === 'Local'"
+              [class.ai-settings__pill--cloud]="group.provider.locality === 'Cloud'">
+              {{ group.provider.locality }}
+            </span>
+          </div>
+
+          <ul class="ai-settings__rows">
+            @for (row of group.rows; track row.model) {
+              <li class="ai-settings__row" [class.is-in-use]="row.inUse" [attr.data-model]="row.model">
+                <div class="ai-settings__details">
+                  <span class="ai-settings__model">{{ row.model }}</span>
+                  <span class="ai-settings__meta">
+                    <span data-detail="provider">{{ row.provider.displayName }} · {{ row.provider.locality }}</span>
+                    <span data-detail="key">{{ keyText(row.provider) }}</span>
+                    <span data-detail="origin">{{ row.added ? 'Added by you' : 'Built-in' }}</span>
+                  </span>
+                </div>
+
+                <div class="ai-settings__status-cell">
+                  @if (row.inUse) {
+                    <span class="ai-settings__badge" data-status="in-use"><tf-icon name="check" /> In use</span>
+                  } @else if (!row.ready) {
+                    <span class="ai-settings__hint" data-hint="no-key">{{ noKeyHint(row.provider) }}</span>
+                  }
+                </div>
+
+                <div class="ai-settings__actions">
+                  @if (canEdit() && !row.inUse) {
+                    <button type="button" class="tf-btn tf-btn--primary ai-settings__small" data-action="use-model"
+                      [disabled]="!row.ready || busy() === rowKey(row)" [title]="row.ready ? '' : noKeyHint(row.provider)"
+                      (click)="use(row)">
+                      {{ busy() === rowKey(row) ? 'Switching…' : 'Use this model' }}
+                    </button>
+                  }
+                  @if (canTest()) {
+                    <button type="button" class="tf-btn tf-btn--ghost ai-settings__small" data-action="test-model" (click)="test(row)">
+                      {{ testing() === rowKey(row) ? 'Testing…' : 'Test connection' }}
+                    </button>
+                  }
+                  @if (row.added && canAddModel()) {
+                    <button type="button" class="tf-btn tf-btn--ghost ai-settings__small" data-action="edit-model" (click)="edit(row)">
+                      <tf-icon name="edit" /> Edit
+                    </button>
+                  }
+                  @if (row.added && mayRemoveModel()) {
+                    <button type="button" class="tf-btn tf-btn--ghost ai-settings__small ai-settings__danger" data-action="delete-model"
+                      [disabled]="busy() === rowKey(row)" (click)="remove(row)">
+                      <tf-icon name="trash" /> Delete
+                    </button>
+                  }
+                </div>
+
+                @if (results()[rowKey(row)]; as result) {
+                  <span class="ai-settings__result" [class.is-ok]="result.ok" [attr.data-result]="result.ok ? 'ok' : (result.failureKind ?? 'failed')" role="status">
+                    <tf-icon [name]="result.ok ? 'check' : 'alert'" />
+                    {{ result.message }}
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+
+    <tf-confirm-dialog />
+  </section>
+}

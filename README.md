@@ -1,4 +1,282 @@
-# TaskFlow
+# TaskFlow – Intelligent Task Allocation & Tracking System
+
+> Personal Project · Skill Development (2026)
+> **Author:** Jojo George · jojogeorge3344@gmail.com
+> © 2026 Jojo George. All rights reserved.
+
+TaskFlow is a web application that helps an organization **allocate work to employees, track progress and never miss a
+deadline**. Managers create and assign tasks, employees update and discuss them, and a background reminder engine notifies
+the assignee and selected recipients as deadlines approach and pass. Administrators manage people, departments, projects,
+roles and settings. Everyone gets dashboards, workload views, activity history and reports scoped to their role. The
+built-in AI assistant, **TFA**, answers questions, suggests priorities and drafts mail, and it can also be used by voice.
+
+---
+
+## Contents
+
+1. [Features](#features)
+2. [Technologies](#technologies)
+3. [Architecture](#architecture)
+4. [Repository layout](#repository-layout)
+5. [Getting started](#getting-started)
+6. [Running the tests](#running-the-tests)
+7. [Documentation](#documentation)
+8. [Data folder and first sign-in](#data-folder-and-first-sign-in)
+9. [Roles and permissions](#roles-and-permissions)
+10. [Mail](#mail)
+11. [Two-step verification (authenticator app)](#two-step-verification-authenticator-app)
+12. [TFA, the AI assistant](#tfa-the-ai-assistant)
+13. [Backend structure](#backend-structure)
+14. [Frontend structure](#frontend-structure)
+15. [Copyright](#copyright)
+
+---
+
+## Features
+
+| Module | What it covers |
+|---|---|
+| **Authentication** | Sign-in with email or username, mandatory two-step verification (authenticator app and backup codes), password recovery with an authenticator code, JWT access and refresh-token sessions |
+| **Dashboard** | Role-specific dashboards for Administrator, Manager and Employee, with summary cards, charts, filters, and drill-down into the matching tasks |
+| **Management** | Employee management (accounts, roles, activation), department management and project management (teams, positions, allocations) |
+| **Monitoring** | Task management (create, assign, update status, reassign, recipients), comments and activity history, Kanban board, employee workload |
+| **Communication** | In-app notification center, automatic deadline reminders, and internal mail (folders, drafts, attachments, search) |
+| **Reports** | Task summary report with filters and CSV export |
+| **Profile** | My profile, change password, self-service two-step verification |
+| **Settings** | Application settings, reminder settings, role configuration (custom roles from a fixed permission catalog) and TFA (AI provider) settings |
+| **TFA Assistant** | AI chat assistant that follows your role's permissions, with confirm-before-acting actions, help topics, an audit log, rate limits and hands-free voice |
+| **Legal** | Copyright notice, terms of use, privacy policy, disclaimer and licences, plus an ownership footer on every screen |
+
+Roles: **Administrator**, **Manager**, **Employee** (system roles), plus **custom roles** built from the permission catalog.
+
+---
+
+## Technologies
+
+### Application stack
+
+| Layer | Technology | Version |
+|---|---|---|
+| Backend runtime | .NET (target framework `net10.0`) | 10 |
+| Web API | ASP.NET Core Web API | 10 |
+| Data access | Entity Framework Core (+ SQLite provider, Design tools) | 10.0.12 |
+| Database | SQLite (`taskflow.db`) | 3.x (via EF Core provider) |
+| Validation | FluentValidation (+ DependencyInjectionExtensions) | 12.2.0 |
+| Authentication | Microsoft.AspNetCore.Authentication.JwtBearer · System.IdentityModel.Tokens.Jwt | 10.0.12 · 8.23.0 |
+| API description | Microsoft.AspNetCore.OpenApi | 10.0.8 |
+| Dev integration | Microsoft.AspNetCore.SpaProxy (starting the API also launches the Angular dev server) | 10.0.12 |
+| Background jobs | `BackgroundService` reminder engine (`ReminderSchedulerService`) | built-in |
+| Password hashing / MFA | ASP.NET Core `PasswordHasher<T>` (PBKDF2) · TOTP authenticator codes · DPAPI key ring | built-in |
+| Frontend framework | Angular (standalone components) + Angular CLI | 19.2 |
+| Language | TypeScript | 5.7 |
+| Reactive library | RxJS | 7.8 |
+| Charts | Chart.js · ng2-charts | 4.6 · 8.0 |
+| Drag and drop | Angular CDK | 19.2 |
+| QR codes (MFA setup) | qrcode | 1.5 |
+| Styling | Custom CSS design tokens and `.tf-*` primitives (no CSS framework) | – |
+| Backend tests | xUnit (`TaskFlow.UnitTests` – including the `Architecture/` rules – and `TaskFlow.IntegrationTests`) | – |
+| Frontend tests | Jasmine 5.6 · Karma 6.4 · folder-structure check (`npm run check:structure`) | – |
+| Runtime tools | Node.js (22 LTS recommended) · .NET 10 SDK | – |
+
+### AI inside the application (TFA assistant)
+
+| Provider | Model / default | Notes |
+|---|---|---|
+| Google Gemini (default) | `gemini-3.8-flash` (default), `gemini-3.5-flash`, `gemini-3.5-flash-lite` (built-in list in `AiProviderCatalog.cs`) | Cloud; free tier with rate limits; free key from Google AI Studio. On by default for a new installation when the key is set with user secrets (see [Free Google Gemini key](#free-google-gemini-key-default)) |
+| OpenAI GPT | Built-in model list in `AiProviderCatalog.cs` | Cloud; paid API key |
+| Ollama (local, free, optional) | `llama3.2:3b` at `http://localhost:11434` | Chat only; installed by `scripts/setup-ai.ps1` / `setup-ai.sh`; off until an administrator turns it on |
+| Gemini embeddings (free tier) | `gemini-embedding-2` (768 dimensions) | Embeds the `TF - Documents` Markdown files so TFA can answer from them; always Gemini, whichever chat model is used; uses the Gemini key saved in TFA Settings |
+
+### AI-assisted and spec-driven development
+
+| Tool | Version | Used for |
+|---|---|---|
+| **Claude** (Anthropic) | Claude Opus 5.5 (documentation and TDD sync) | Requirements analysis, design, code generation and review, documentation |
+| **Claude Code** | 2.1.292 | AI coding agent in the repository; runs the project skills and `/opsx` commands |
+| **OpenCode** (with `@opencode-ai/plugin`) | plugin 1.19.0 | Second AI coding agent; reads the same `.claude/skills` |
+| **OpenSpec** (spec-driven development CLI) | 1.14.1 | Every feature is planned as a change with proposal → design → specs → tasks before it is built (`openspec/changes/`, 38 changes) |
+| Git · GitHub · GitHub CLI (`gh`) | – | Version control, branches, pull requests and PR reviews |
+
+### Claude Code skills, commands and plugins
+
+| Name | Type | Purpose |
+|---|---|---|
+| `openspec-propose`, `openspec-explore`, `openspec-apply-change`, `openspec-update-change`, `openspec-sync-specs`, `openspec-archive-change` | OpenSpec skills (`/opsx:propose`, `/opsx:explore`, `/opsx:apply`, `/opsx:update`, `/opsx:sync`, `/opsx:archive`) | Spec-driven workflow: propose, explore, implement, update, sync and archive changes |
+| `requirements-to-markdown` | Custom skill | Converts BRD/requirement DOCX or PDF into faithful Markdown |
+| `brd-writer` | Custom skill | Writes a Business Requirements Document (overall or per sub-module) from a fixed template |
+| `frd-writer` | Custom skill | Writes a Functional Requirements Document with use cases, validations, permissions and traceability |
+| `hld-writer` | Custom skill | Writes a High-Level Design: context, components, data, flows, security, deployment, decisions |
+| `lld-writer` | Custom skill | Writes a Low-Level Design: classes, endpoints, DTOs, tables, sequence diagrams, FR → code → test |
+| `module-docs` | Custom skill | Generates the module-wise Application and Technical workflow documents (MD + PDF) |
+| `tdd-sync` | Custom skill | Keeps the TDD in sync with the code (fact extraction + verification scripts) |
+| `commit-pr-review` | Custom skill | Branch, commit, push, open a PR and post a consolidated code review |
+| `manual-code-review` | Custom skill | Reviews a GitHub pull request and posts one findings comment |
+| `code-review-resolved` | Custom skill | Verifies fixes on a reviewed PR and posts a "Resolved Items" comment |
+| `@opencode-ai/plugin` | OpenCode plugin | Lets OpenCode use the shared skills and commands |
+| `scripts/openspec-update.ps1` | Helper script | Runs `openspec update` without duplicating skills |
+
+### Documentation set
+
+All project documents are in **`TF - Documents/`**. The BRD, FRD, HLD and LLD sets share one folder layout: `00-Overall`, then one
+folder per module with one sub-folder per sub-module (16 in total), each holding the Markdown file and its PDF.
+
+| Document | What it covers | Location | Formats | Status |
+|---|---|---|---|---|
+| **BRD** – Business Requirements Document (overall + 16 sub-modules) | Business goals, roles, scope, workflows, screen requirements, business rules, NFRs, acceptance criteria | `TF - Documents/TF - BRD/` | Markdown, PDF | **Approved v1.0** – signed off 31-Oct-2026 |
+| **FRD** – Functional Requirements Document (overall + 16) | Functional requirements, use cases, validations, messages, permissions, traceability to the BRD | `TF - Documents/TF - FRD/` | Markdown, PDF | Available (v1.0, draft) |
+| **HLD** – High-Level Design (overall + 16) | Context, architecture, components, data, key flows, security, deployment, design decisions | `TF - Documents/TF - HLD/` | Markdown, PDF | Available (v1.0, draft) |
+| **LLD** – Low-Level Design (overall + 16) | Classes and files, every API endpoint, DTOs, validators, database tables, sequence diagrams, FR → code → test | `TF - Documents/TF - LLD/` | Markdown, PDF | Available (v1.0, draft) |
+| **TDD** – Technical Design Document | Whole-system technical design synced to the code; reference documents and traceability map (§1.5, §1.6) | `TF - Documents/TF - TDD/TDD-TaskFlow.md` / `.pdf` | Markdown, PDF | Available (v2.3) |
+| **Development Plan** | Screen-by-screen feature plan (20 screens) | `TF - Documents/Screens Wise Feature Development Plan/` | Markdown | Available |
+| **Permission documents** | All permissions with purpose; Administrator, Manager and Employee permissions module-, sub-module- and screen-wise | `TF - Documents/Permission Requirement/Permissions in Excel/` and `Permissions in PDF/` | Excel, PDF | Available |
+| **Workflow docs** | Application and technical workflow per module and child module (10 modules) | `TF - Documents/TFWorkflow/` and `TF - Documents/TFTechnicalWorkflow/` | Markdown, PDF | Available |
+| **Specs** | Spec-driven change records: proposal, design, delta specs and tasks per feature | `openspec/changes/` (38 changes) | Markdown, HTML mockups | Available |
+| Original BRD | First requirement statement (20 screens); superseded by the approved BRD set | Retired – no longer in the repository; its content lives on in the BRD set and the Development Plan | DOCX | Superseded |
+| README / project.md / agent.md | Setup, operations, structure rules, contributor rules | repository root and `TaskFlow Proj/` | Markdown | Available |
+
+### Documentation formats and tooling
+
+| Format | Used for |
+|---|---|
+| **Markdown (`.md`)** | Source of truth for the BRD, FRD, HLD, LLD, TDD, workflow documents, specs and READMEs; diagrams written in Mermaid |
+| **DOCX (`.docx`)** | Original BRD (v1.0, superseded by the Markdown BRD set and retired from the repository) |
+| **PDF (`.pdf`)** | Print/share copy next to every Markdown document (BRD, FRD, HLD, LLD, TDD, workflow docs, permission documents), with rendered diagrams and the copyright footer |
+| **Excel (`.xlsx`)** | Permission documents (all permissions; Administrator, Manager, Employee) |
+| HTML | UI mockups inside OpenSpec changes |
+
+PDFs are generated from the Markdown with Mermaid CLI (diagrams), Pandoc (HTML) and Chromium (print to PDF).
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────┐   HTTPS / JSON   ┌──────────────────────────────────┐
+│  Angular SPA (browser)   │ ◄──────────────► │  ASP.NET Core Web API (.NET 10)  │
+│  modules, guards,        │   Bearer JWT     │  Controllers  (HTTP only)        │
+│  services, Chart.js      │                  │  Services     (business rules)   │
+└──────────────────────────┘                  │  Repositories (data access)      │
+                                              │  Integrations (AI, JWT, storage) │
+                                              │  Reminder engine (background)    │
+                                              └───────────────┬──────────────────┘
+                                                              │ EF Core
+                                                              ▼
+                                                  ┌───────────────────────┐
+                                                  │ SQLite  (taskflow.db) │
+                                                  └───────────────────────┘
+```
+
+The backend follows **Clean Architecture with the Repository pattern**: a request flows
+**Controller → Service → Repository → database**, and each layer calls only the one below it, through its interface.
+The rules are enforced by automated architecture tests (see [Backend structure](#backend-structure)).
+
+---
+
+## Repository layout
+
+```
+TaskFlow Project/
+├── README.md                 this file
+├── TF - Documents/
+│   ├── TF - BRD/             approved BRD set (00-Overall + 16 sub-modules, MD + PDF)
+│   ├── TF - FRD/             FRD set, same layout
+│   ├── TF - HLD/             HLD set, same layout
+│   ├── TF - LLD/             LLD set, same layout
+│   ├── TF - TDD/             TDD-TaskFlow.md / .pdf
+│   ├── Screens Wise Feature Development Plan/   the 20 screen-wise requirement files
+│   └── Permission Requirement/                  permission documents (Excel and PDF)
+├── .claude/skills/           Claude Code skills (OpenSpec, documentation writers, tdd-sync, code review)
+├── openspec/                 OpenSpec planning workspace (changes and specs)
+├── scripts/                  setup-ai.ps1 / setup-ai.sh (Gemini key, optional Ollama), openspec-update.ps1
+└── TaskFlow Proj/
+    ├── backend/              TaskFlow.sln, src/TaskFlow.Api, tests/ (UnitTests, IntegrationTests)
+    ├── frontend/             Angular 19 workspace (src/app/modules/…)
+    ├── TFWorkflow/           functional (application) workflow docs, in MD and PDF
+    ├── TFTechnicalWorkflow/  technical workflow docs, in MD and PDF
+    ├── project.md            project overview for developers
+    └── agent.md              rules for AI and automation contributors
+```
+
+---
+
+## Getting started
+
+### Prerequisites
+
+- **.NET 10 SDK** (`dotnet --list-sdks` shows 10.0.x)
+- **Node.js 22 LTS** (recommended; Angular 19 supports `^18.19.1 || ^20.11.1 || ^22.0.0`)
+- Optional: **Visual Studio 2022 17.8+ / 2026** with the *ASP.NET and web development* workload, for F5 debugging
+- A free **Google Gemini API key** for the TFA assistant (see [Free Google Gemini key](#free-google-gemini-key-default))
+- Optional: **Ollama**, to answer TFA chats with a local model (see [Optional local chat model](#optional-local-chat-model-ollama))
+
+### Run the application
+
+```powershell
+# 1. Install frontend packages (first time only)
+cd "TaskFlow Proj/frontend"
+npm install
+
+# 2. Start the API. It also starts the Angular dev server.
+cd ../backend
+dotnet run --project src/TaskFlow.Api
+```
+
+Or open `TaskFlow Proj/backend/TaskFlow.sln` in Visual Studio and press **F5**.
+
+| What | Address |
+|---|---|
+| Web application | `http://localhost:4200` |
+| API | `https://localhost:7055` (the SPA calls it through `/api/*`) |
+
+Trust the development certificate once with `dotnet dev-certs https --trust`. On the first start the API creates the
+data folder and the database and applies all migrations. In Development it also creates the three demo accounts listed under
+[Data folder and first sign-in](#data-folder-and-first-sign-in).
+
+### Free Google Gemini for TFA (do this before the first start)
+
+```powershell
+cd "TaskFlow Proj/backend/src/TaskFlow.Api"
+dotnet user-secrets set "AiProviders:GeminiApiKey" "<your key from https://aistudio.google.com/apikey>"
+```
+
+The setup scripts (`.\scripts\setup-ai.ps1` on Windows, `./scripts/setup-ai.sh` on macOS / Linux) ask for the key and run
+this for you.
+
+---
+
+## Running the tests
+
+| Tests | Command | Folder |
+|---|---|---|
+| Backend unit and integration tests (including architecture rules) | `dotnet test` | `TaskFlow Proj/backend` |
+| Frontend folder-structure check and unit tests | `npm test` | `TaskFlow Proj/frontend` |
+| Frontend folder-structure check only | `npm run check:structure` | `TaskFlow Proj/frontend` |
+
+---
+
+## Documentation
+
+| Document | Location |
+|---|---|
+| Business Requirements – approved BRD set (overall + 16 sub-modules) | `TF - Documents/TF - BRD/` (start with `00-Overall/BRD-TaskFlow-Overall.md`) |
+| Functional Requirements – FRD set | `TF - Documents/TF - FRD/` |
+| High-Level Design – HLD set | `TF - Documents/TF - HLD/` |
+| Low-Level Design – LLD set | `TF - Documents/TF - LLD/` |
+| Technical Design Document | `TF - Documents/TF - TDD/TDD-TaskFlow.md` |
+| Screen-wise requirements (01–20) | `TF - Documents/Screens Wise Feature Development Plan/` |
+| Permission documents (all permissions; Administrator, Manager, Employee) | `TF - Documents/Permission Requirement/` |
+| **Application workflow, per module and child module** (purpose, screens, who can see and use each feature, permissions, step-by-step flows) | `TF - Documents/TFWorkflow/App WF in MD` and `App WF in PDF` |
+| **Technical workflow, per module and child module** (endpoints, services, repositories, database, security, tests, known gaps) | `TF - Documents/TFTechnicalWorkflow/Tech WF in MD` and `Tech WF in PDF` |
+| Developer overview / contributor rules | `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md` |
+
+Each BRD, FRD, HLD and LLD sub-module uses the same folder and file stem, for example
+`TF - Documents/TF - BRD/02-TaskFlow-Monitoring/02.3-Board/BRD-Board.md` and `TF - Documents/TF - LLD/02-TaskFlow-Monitoring/02.3-Board/LLD-Board.md`.
+TDD §1.6 maps every sub-module to its documents, its original BRD screens and its TDD sections.
+
+The workflow docs have one folder per module (`01-Auth` … `10-Legal`). In each folder, `NN.0-<Module>-Overview` comes
+first, followed by one document per child module (for example `03-Management/03.1-Employee-Management`).
+
+---
 
 ## Data folder and first sign-in
 
@@ -147,14 +425,15 @@ only as hashes. Nothing secret is logged.
 ## TFA, the AI assistant
 
 TFA is a chat assistant in a small panel on the right of every signed-in screen. Open it with the **TFA** button, by
-typing, or by saying **"Hey TF assistant"**. It answers how-to questions about TaskFlow, tells you what is upcoming or overdue,
+typing, or by saying **"Hey TF assistant"**. It answers questions about TaskFlow from the project documents, tells you what is upcoming or overdue,
 suggests what to work on first, and drafts mail for you to review. Replies are written, in the same window.
 
 ### What TFA can do
 
 | Ask | What happens |
 |---|---|
-| "How do I change a task's status?" | Answered from the written help for your role, with a link to the screen |
+| "What validations apply when creating a task?" | Answered only from the TaskFlow documents (`TF - Documents`), with the document sections it used shown as **Sources** under the answer |
+| "How do I change a task's status?" | The same: how-to questions are answered from the BRD, FRD and screen documents |
 | "What are my upcoming tasks?" | Your open tasks, from the same data and access rules as the Task List |
 | "What should I prioritise?" | The system ranks your tasks (overdue first, then due today, then by deadline and priority). The model only explains the order, so every model gives the same one |
 | "Send a mail to my manager about TF-102" | A draft appears with **Send mail / Edit / Cancel**. Nothing is sent until you click **Send mail** |
@@ -168,6 +447,67 @@ role, and that also needs a confirmation. TFA does not change your own role even
 **Passwords never go through chat.** TFA explains the steps and links to **My Profile**. A message that looks like it
 contains a password or an API key is not sent to any model and is not stored.
 
+### Answers from the TaskFlow documents
+
+Questions about TaskFlow's features, screens, rules and design are answered **only** from the Markdown files in
+`TF - Documents` (the BRD, FRD, HLD and LLD sets, the TDD and the screen specs). When the documents do not cover a
+question, TFA says so instead of guessing, and it does not answer general-knowledge questions. Questions about your own
+tasks, priorities, mail and profile still use your live data.
+
+- **How it works.** The files are split into sections by heading, embedded with Google Gemini's `gemini-embedding-2`
+  (free tier) and stored in the database (tables `DocumentSources` and `DocumentChunks`). For each message TFA
+  finds the most similar sections and gives them to the chat model as reference text. This happens before the model is
+  called, so it works with every model, including small local ones that cannot call tools.
+- **Sources.** An answer that used the documents shows the sections under it as chips (document and heading; hover for
+  the full heading path and file). They are shown again when the conversation is reloaded.
+- **Keeping up to date.** The API indexes the folder when it starts and checks it every 5 minutes. Only files whose
+  content changed are embedded again, and deleted files are removed, so editing a document updates TFA's answers
+  without a restart. Up to 100 sections are embedded per request. On the free tier the first index of the whole folder
+  is spread over several checks: when Google's rate limit is reached, indexing stops and the next check continues with
+  the files still missing. In a test on 2026-11-01 the first check embedded 21 of the 169 files (228 sections) before the
+  limit, so expect the full first index to take about an hour; TFA answers from what is already indexed meanwhile, and
+  later checks only embed changed files.
+- **No admin screen.** There is no settings card or endpoint for the index. Indexing problems are written to the API
+  log as warnings: the documents folder was not found, indexing stopped (no Gemini key saved, the key was refused, the
+  rate limit was reached or Google could not be reached), or a file could not be indexed (with its path). To index at
+  once instead of waiting for the next check, restart the API.
+- **A Gemini key is needed.** Embeddings always use the Google Gemini key saved in TFA Settings, even when the chat model
+  is Ollama or OpenAI. Without a key TFA still answers questions about your own work, and says the documents cannot be
+  searched right now. A key saved in TFA Settings is used at the next check, with no restart.
+- **What is sent to Google.** Document text is sent to Google to be indexed, and each question (with the previous
+  question for a short follow-up such as "and for managers?") is sent to Google to search it, never task details or
+  TFA's replies. The TFA window tells every user this once, also when the chat model is Ollama. With a cloud chat model,
+  the matching document text is also sent to that provider with your message. On Gemini's free tier, Google may use
+  what is sent to improve its products.
+- **Every role** can get answers from every document. PDF and Excel files are not read (the PDFs are copies of the
+  Markdown files or of the permission spreadsheets).
+
+Settings, in the `DocumentKnowledge` section of `appsettings.json` (or environment variables such as
+`DocumentKnowledge__SourcePath`):
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `Enabled` | `true` | `false` switches indexing and document answers off |
+| `SourcePath` | `../../../../TF - Documents` | The documents folder. A relative path resolves against the API project folder (`TaskFlow Proj/backend/src/TaskFlow.Api`), so the default is the workspace's `TF - Documents` |
+| `EmbeddingModel` | `gemini-embedding-2` | The Google Gemini embedding model. Changing it re-embeds every document |
+| `EmbeddingDimensions` | `768` | Length of each embedding vector (128 to 3072). Changing it re-embeds every document |
+| `TopK` / `MinScore` | `4` / `0.65` | At most this many sections, each at least this similar, are given to the model |
+| `MaxChunkCharacters` / `MaxContextCharacters` | `1500` / `4000` | Section size before splitting, and the most document text per message |
+| `RescanMinutes` | `5` | How often the folder is checked |
+
+Ollama chat calls may take up to `AiProviders:OllamaTimeoutSeconds` (default `180`): a small model on a laptop CPU can
+need over a minute to read a prompt with reference documents. Gemini (chat and embeddings) and OpenAI keep
+`AiProviders:TimeoutSeconds` (default `60`).
+
+**Known limitation of small local models.** With `llama3.2:3b` the right document sections reach the model, but it
+sometimes picks a wrong tool for a documentation question (for example offering a profile update when asked what TFA
+can do), or sends the user to an administrator for something the documents simply do not cover. `llama3.1:8b` or Gemini
+answer better. The measured results are in `openspec/changes/tfa-document-rag/verification.md`.
+
+The chat model's context window for Ollama is set by `AiProviders:OllamaContextTokens` (default `8192`), so the
+reference text is not cut off. In a container, mount the documents folder and point `DocumentKnowledge__SourcePath` at
+it, for example `-v "/path/to/TF - Documents:/docs:ro" -e DocumentKnowledge__SourcePath=/docs`.
+
 **"My manager"** is the creator of the task, when that is someone else. Otherwise it is the single Manager in your
 department. If there is none, or more than one, TFA asks you to choose.
 
@@ -175,8 +515,12 @@ department. If there is none, or more than one, TFA asks you to choose.
 
 Open **Settings → TFA Settings** (Administrator only).
 
-- The **Model** dropdown lists the models kept in the database, grouped by server (Ollama, Google Gemini, OpenAI GPT).
-  Choose **Add new model…** to type one that is not in the list: it is saved to the database and offered from then on.
+- The **Model** dropdown lists the models kept in the database, grouped by server (Google Gemini, OpenAI GPT, Ollama).
+  To add one that is not in the list, click **Add AI model**. On that screen choose the provider, type the model name
+  and its API key (or, for Ollama, an optional server address) and click **Test connection**. The model name is the
+  provider's model ID, without spaces (the box shows an example: `gemini-3.8-flash`, `gpt-4o-mini` or `llama3.2:3b`).
+  Only when the test works
+  is the model saved, made the one TFA uses, and you are taken back to TFA Settings; a failed test saves nothing.
   A model you added can be taken out again with **Remove this model from the list** (not the built-in ones, and not the
   one saved for its server).
 - The **Server** dropdown lists where each model runs: your Ollama address, or Google's or OpenAI's server. The two
@@ -186,47 +530,73 @@ Open **Settings → TFA Settings** (Administrator only).
   models and keys stay stored. With one model there is nothing to switch to, so the TFA window just shows it.
 - Below them are only the fields of the chosen server: the **server address** for Ollama, the **API key** for Gemini and
   OpenAI, and **Test connection**. Test connection is always available: unsaved changes are saved first.
-- Click **Save TFA settings**, then **Test connection**.
+- Click **Save TFA settings**, then **Test connection**. When the model is not available or the provider returns an
+  error TaskFlow does not recognise, the test result adds the provider's own reason, for example
+  "Google Gemini said: HTTP 404 - …" (keys replaced by `[key]`, at most 200 characters). Google names the model to use
+  instead of a retired one. Only Test connection shows this; TFA users in the chat get the plain message.
 
 **First run.** The database is created, migrated and filled the first time the API starts, on any machine, with no
-manual step. For TFA that means the list of models (Ollama, Gemini and OpenAI models) and one row per provider:
-**Ollama is switched on** with `llama3.2:3b` at `http://localhost:11434`, and Gemini and OpenAI are off with no key. So
-TFA works as soon as Ollama and the model are installed (see the setup script below), and nothing has to be configured.
-This applies to a brand-new installation only. An installation that already has users keeps all three providers off
-until an administrator turns one on in TFA Settings.
+manual step. For TFA that means the list of models (Gemini, OpenAI and Ollama models) and one row per provider, with
+Google Gemini listed first. When a Gemini key is set in configuration (`AiProviders:GeminiApiKey`, from user secrets or
+the `AiProviders__GeminiApiKey` environment variable), it is stored encrypted on the Gemini row and **Gemini is switched
+on** with `gemini-3.8-flash`, so TFA and document search work on the first run. Without that key every provider is off
+until an administrator saves a key in TFA Settings. Ollama and OpenAI start off.
+Only a brand-new installation gets Gemini switched on. An installation that already has users keeps the provider an
+administrator chose; a configured key is still stored on its Gemini row if that row has no key, so document search works.
+The configured key never replaces a key saved in TFA Settings. To stop it being applied again after you clear the key in
+Settings, remove the user secret.
 Starting again never overwrites what an administrator saved. The built-in model names are in `AiProviderCatalog.cs`
 (`BuiltInModels`): add a name there to have it offered on every new installation. A model added in Settings is kept
 in that installation's database only.
 
-**API keys are never in the code or in git.** They are typed in Settings, encrypted, and kept in the database only, so
-each installation enters its own.
+**API keys are never in the code or in git.** They are typed in Settings, or set once with user secrets on a developer's
+machine, encrypted, and kept in the database only, so each installation enters its own.
 
 | Model | Cost | Where it runs | Setup |
 |---|---|---|---|
-| **Ollama** | Free | On your own server: nothing leaves it | Run the setup script below (installs Ollama and the `llama3.2:3b` model), and keep the address `http://localhost:11434` |
-| **Google Gemini** | Free tier, with rate limits | Google's cloud | Create a key in Google AI Studio and paste it |
+| **Google Gemini** (default) | Free tier, with rate limits | Google's cloud | See [Free Google Gemini key](#free-google-gemini-key-default) below. Also needed for document search |
 | **OpenAI GPT** | **No free tier**: needs a paid key | OpenAI's cloud | Paste a paid API key |
+| **Ollama** (optional) | Free | Chat on your own server; document search still uses Gemini | Run the setup script below with `-WithOllama` / `--with-ollama`, and keep the address `http://localhost:11434` |
 
-#### Free local AI in one command (Ollama)
+#### Free Google Gemini key (default)
 
-The model itself is not stored in this repository (it is about 2 GB). A setup script downloads it instead. After
-cloning, run it once from the repository root:
+1. Sign in at https://aistudio.google.com/apikey with a Google account and click **Create API key**. No card is needed.
+2. Before the first start, store it for the API project (it is kept outside the repository, in your user profile):
+
+   ```powershell
+   cd "TaskFlow Proj/backend/src/TaskFlow.Api"
+   dotnet user-secrets set "AiProviders:GeminiApiKey" "<your key>"
+   ```
+
+   Or set the environment variable `AiProviders__GeminiApiKey`. On a database that already exists, paste the key in
+   **Settings → TFA Settings** instead (Add AI model, provider Google Gemini, model `gemini-3.8-flash`, Test connection).
+3. Start the API. Gemini is switched on and the documents are indexed with it.
+
+The free tier has per-minute and per-day request limits; when one is reached, TFA says the provider is busy and document
+indexing continues at the next check. On the free tier Google may use prompts and documents to improve its products; a
+paid key, or Ollama for chat, limits what is shared, but document search always uses Google.
+
+#### Optional local chat model (Ollama)
+
+Ollama is optional: it answers TFA chats on your own machine, while document search keeps using Gemini. The model is not
+stored in this repository (it is about 2 GB). After cloning, run the setup script once from the repository root:
 
 ```powershell
 # Windows (PowerShell)
-.\scripts\setup-ai.ps1
+.\scripts\setup-ai.ps1 -WithOllama
 ```
 
 ```bash
 # macOS / Linux
-./scripts/setup-ai.sh
+./scripts/setup-ai.sh --with-ollama
 ```
 
-The script installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on Linux after
-you confirm), starts the Ollama server, downloads `llama3.2:3b` if it is not already there, and checks that the model
-answers. It is safe to run again. To use a different model, pass its name: `.\scripts\setup-ai.ps1 -Model llama3.1:8b`
-or `./scripts/setup-ai.sh llama3.1:8b`. A larger model answers better but needs more memory (`llama3.1:8b` wants about
-8 GB free).
+The script first asks for the Gemini key (add `-SkipGemini` / `--skip-gemini` if it is already set). With `-WithOllama` /
+`--with-ollama` it then installs Ollama if it is missing (winget on Windows, Homebrew on macOS, the official installer on
+Linux after you confirm), starts the Ollama server, downloads `llama3.2:3b` if it is not already there, and checks that it
+answers. No embedding model is downloaded: document search uses Gemini. It is safe to run again. To use a different model,
+pass its name: `.\scripts\setup-ai.ps1 -WithOllama -Model llama3.1:8b` or `./scripts/setup-ai.sh --with-ollama --model llama3.1:8b`.
+A larger model answers better but needs more memory (`llama3.1:8b` wants about 8 GB free).
 
 Then, as an Administrator, open **Settings → TFA Settings**, choose **Ollama**, check the
 model name matches what you installed (`llama3.2:3b` by default), and click **Test connection**. If Test connection says
@@ -235,7 +605,7 @@ the model is not available, the name in Settings is not one of the models Ollama
 The TFA window offers the model the administrator chose in TFA Settings. If more than one model is available (for example
 an older installation that has several switched on), users switch from the selector in the TFA header without closing the
 chat. Cloud models are marked
-**Cloud**, and a user is told once that their message and related task details are sent to that provider. TFA never
+**Cloud**, and a user is told once that their message, related task details and matching TaskFlow document text are sent to that provider; with Ollama, a user is told once that their message is sent to Google Gemini to search the documents. TFA never
 switches model by itself: if a model fails (rate limit, wrong key, Ollama not running, model not installed), the chat
 explains what happened and the user chooses another one.
 
@@ -278,3 +648,107 @@ The browser asks for microphone permission the first time. After a page reload i
 page listen again; the TFA button then says "Click anywhere on the page to turn "Hey TF assistant" back on". A microphone
 error stops voice for that visit only and is never saved as your choice, so the next visit tries again. Voice uses the
 browser's speech recognition and speech output, and Chrome processes the audio on Google's servers. Typing always works.
+
+## Backend structure
+
+The API is one project, `TaskFlow Proj/backend/src/TaskFlow.Api`, organised by layer first. Every layer uses the same
+module tree, which follows the permission catalogue (the modules on the Roles screen):
+
+```
+TaskFlow.Api/
+  Controllers/<Module>/                    HTTP only: routing, model binding, status codes (no sub-module folders)
+  Services/<Module>/<SubModule>/[<Pair>/]  I<Name>Service.cs + <Name>Service.cs, one pair per folder (rules in Rules/)
+  Repositories/<Module>/<SubModule>/[<Pair>/]
+                                           I<Name>Repository.cs + <Name>Repository.cs over EF Core, one pair per folder;
+                                           IBaseRepository, BaseRepository, IUnitOfWork and UnitOfWork in Base/
+  Dtos/<Module>/<SubModule>/               requests, responses, Validators/
+  Models/Entities/  Models/Enums/          database entities and enums
+  Integrations/<Area>/<Pair>/              AI providers, JWT, TOTP, key protection, file storage (interface beside class)
+  Middleware/  Filters/  Authorization/    exception handling, request logging, session validation, MFA gate,
+                                           request validation, permission policies
+  Config/                                  DI registration per layer, options classes
+  Common/                                  exceptions, security keys and policies, shared rules
+  Persistence/                             AppDbContext, migrations, seeders
+```
+
+Modules: `Auth` (`Mfa`, `PasswordRecovery`), `Dashboard` (`Analytics`), `Monitoring` (`TaskManagement` with
+`Discussion` and `Activity`, `Board` (frontend only), `EmployeeWorkload`), `Management` (`EmployeeManagement` with `Allocations`,
+`ProjectManagement` with `Positions`, `DepartmentManagement`), `Communication` (`Mail` with `Attachments`,
+`Notification` with `Reminders`), `Reports`, `Settings` (`ApplicationSettings`, `ReminderSettings`, `RoleConfiguration`,
+`TfaSettings`), `Profile` and `Assistant`.
+
+Layer rules, checked by `tests/TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` on every test run:
+
+- A request flows Controller → Service → Repository → database, and a layer only calls the one below it, through its
+  interface. Controllers never reach repositories, integrations or EF Core.
+- Only `Persistence`, `Repositories` and the startup code touch `AppDbContext`. Repositories never return `IQueryable`
+  and never save: the service that owns the use case commits through `IUnitOfWork`.
+- Controllers never take or return entities, never validate requests themselves (the global `ValidationFilter` runs the
+  FluentValidation validators) and never catch exceptions. Services throw `AppException` subclasses
+  (`BusinessRuleException` 400, `ForbiddenException` 403, `NotFoundException` 404, `ConflictException` 409,
+  `RateLimitedException` 429), and `GlobalExceptionHandler` turns them into ProblemDetails.
+- Each file's namespace matches its folder, each layer folder holds only module paths, classes are named for their
+  layer (`*Controller`, `*Service`, `*Repository`) and there are no empty folders.
+- Controllers sit directly in their top-level module folder (`Controllers/Auth/PasswordRecoveryController.cs`).
+- Every interface has a file of its own named after it, in the same folder as the class that implements it
+  (`Services/Profile/IProfileService.cs` next to `Services/Profile/ProfileService.cs`). There is no `Interfaces` folder,
+  and an interface file declares nothing but its interface: the records it uses each have a file of their own beside it.
+  `Authorization/` follows the same rule (`Authorization/Assistant/`, `TaskAccess/`, `Policies/`, `Auditing/`).
+- Every service and repository has a folder of its own. When a module has more than one, or also has sub-modules, each
+  pair gets a named folder: `Services/Auth/Login/` (`IAuthService`, `AuthService`), `Services/Auth/Sessions/`,
+  `Services/Auth/Mfa/`. A folder holds either code or sub-folders, never both; a module's shared `Rules/` folder and the
+  assistant's `Knowledge/` help topics are the only exceptions. Folders are named for what they hold, never after a
+  type, so a folder never hides a type name (`Tasks/`, not `Task/`).
+
+The test projects (`tests/TaskFlow.UnitTests`, `tests/TaskFlow.IntegrationTests`) use the same folders as the code
+they test, for example `Auth/Login/AuthServiceLoginTests.cs`, with namespaces that match. Tests that belong to no module sit in
+`Architecture/`, `Common/`, `Persistence/` or `Integrations/`. Fixtures and fakes shared across modules are in
+`TestSupport/`, which `GlobalUsings.cs` imports everywhere.
+
+## Frontend structure
+
+The Angular app, `TaskFlow Proj/frontend/src/app`, uses the same module and sub-module tree as the backend, in
+kebab-case (`Management/EmployeeManagement` -> `modules/management/employee-management`):
+
+```
+src/app/
+  modules/<module>/<sub-module>/     one folder per backend module; auth and legal are frontend-only (they run before sign-in)
+    pages/                           routed screens (*.component.ts/html/css)
+    components/                      non-routed pieces of the screens
+    services/                        API services (*.service.ts) for that module's endpoints
+    models/                          the module's types (*.model.ts)
+    utils/                           pure helpers used only by that module
+  modules/<module>/<module>.routes.ts  the module's routes, loaded by routes/app.routes.ts with loadChildren
+  shared/                            code used by two or more modules: components/, directives/, services/, utils/,
+                                     auth/ (guards, interceptor, auth service, token store, permission keys), testing/
+  layouts/                           the app shell, its navigation and the theme menu
+  routes/                            the root route table
+  config/                            app providers, the API base URL and its interceptor
+src/assets/                          static files (favicon)
+```
+
+Modules: `auth` (`login`, `account-recovery`, `security-setup`), `legal`, `dashboard` (`analytics`), `monitoring`
+(`task-management` with `discussion` and `activity`, `board`, `employee-workload`), `management` (`employee-management`,
+`project-management` with `positions`, `department-management`), `communication` (`mail`, `notification`), `reports`,
+`settings` (`application-settings`, `reminder-settings`, `role-configuration`, `tfa-settings`), `profile` and `assistant`.
+
+Placement rules, checked by `npm run check:structure` (also the first step of `npm test`):
+
+- A file sits in the layer folder for its kind; only `<module>.routes.ts` sits directly in a module folder.
+- An API service lives in the module whose endpoints it calls, even when other modules import it.
+- A component's or service's own types go in a `<name>.model.ts` beside it; types shared by a module go in its `models/`.
+- Code moves to `shared/` only when two or more modules, or the app shell, use it. Spec files sit next to the file they test.
+- A route's `loadComponent` target is always in a `pages/` folder.
+- There are no empty folders, and the old `core/` and `features/` folders are gone.
+
+
+---
+
+## Copyright
+
+© 2026 Jojo George (jojogeorge3344@gmail.com). All rights reserved.
+
+TaskFlow, its source code, screens and documentation are the work of the author, built as a personal project to
+develop and demonstrate software engineering skills. Unauthorized copying, distribution or modification of this software or its documentation, in whole or in part,
+is prohibited without the author's written permission. Third-party libraries remain under their own licences (see the
+**Licences** page in the application).

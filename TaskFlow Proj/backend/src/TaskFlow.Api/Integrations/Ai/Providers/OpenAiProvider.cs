@@ -1,0 +1,174 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
+using TaskFlow.Api.Models.Enums;
+
+namespace TaskFlow.Api.Integrations.Ai.Providers;
+
+/// <summary>OpenAI-compatible chat completions: built-in OpenAI GPT (no free tier; a paid key is needed) at its fixed
+/// address, and every custom OpenAI-compatible provider (Groq, Mistral, OpenRouter, LM Studio, vLLM, …) at the address an
+/// administrator gave, which includes the version path as those services print it (for example
+/// <c>https://api.groq.com/openai/v1</c>). The key is optional: a local server may need none.</summary>
+public class OpenAiProvider : IChatModelProvider
+{
+    public const string DefaultAddress = "https://api.openai.com/v1";
+
+    private readonly HttpClient _client;
+
+    public OpenAiProvider(HttpClient client)
+    {
+        _client = client;
+    }
+
+    public AiApiType ApiType => AiApiType.OpenAI;
+
+    public async Task<ChatModelResult> CompleteAsync(AiProviderRuntime runtime, ChatModelRequest request, CancellationToken cancellationToken = default)
+    {
+        var url = $"{(runtime.BaseUrl ?? DefaultAddress).TrimEnd('/')}/chat/completions";
+        var (response, body) = await SendAsync(runtime, url, BuildBody(request, includeTools: true), cancellationToken);
+
+        // Some OpenAI-compatible servers reject tool definitions for models without tool support: ask once more without
+        // them, on the same provider, so the model still answers in plain text.
+        if (!response.IsSuccessStatusCode && request.Tools.Count > 0 && response.StatusCode == HttpStatusCode.BadRequest && MentionsTools(body))
+        {
+            (response, body) = await SendAsync(runtime, url, BuildBody(request, includeTools: false), cancellationToken);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw Classify(response, body, runtime.ApiKey);
+        }
+
+        return Parse(body);
+    }
+
+    private Task<(HttpResponseMessage Response, string Body)> SendAsync(
+        AiProviderRuntime runtime,
+        string url,
+        JsonObject body,
+        CancellationToken cancellationToken)
+    {
+        var httpRequest = ProviderHttp.Json(HttpMethod.Post, url, body);
+        if (!string.IsNullOrEmpty(runtime.ApiKey))
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", runtime.ApiKey);
+        }
+
+        return ProviderHttp.SendAsync(_client, ApiType, httpRequest, cancellationToken);
+    }
+
+    private static bool MentionsTools(string body) =>
+        body.Contains("tool", StringComparison.OrdinalIgnoreCase) || body.Contains("function", StringComparison.OrdinalIgnoreCase);
+
+    private static JsonObject BuildBody(ChatModelRequest request, bool includeTools)
+    {
+        var messages = new JsonArray { new JsonObject { ["role"] = "system", ["content"] = request.SystemPrompt } };
+        foreach (var message in request.Messages)
+        {
+            switch (message.Role)
+            {
+                case AssistantMessageRole.User:
+                    messages.Add(new JsonObject { ["role"] = "user", ["content"] = message.Content });
+                    break;
+                case AssistantMessageRole.Assistant:
+                    var assistant = new JsonObject
+                    {
+                        ["role"] = "assistant",
+                        ["content"] = string.IsNullOrEmpty(message.Content) ? null : message.Content
+                    };
+                    if (message.ToolCalls is { Count: > 0 } calls)
+                    {
+                        assistant["tool_calls"] = new JsonArray(calls.Select(call => (JsonNode)new JsonObject
+                        {
+                            ["id"] = call.Id,
+                            ["type"] = "function",
+                            ["function"] = new JsonObject { ["name"] = call.Name, ["arguments"] = call.ArgumentsJson }
+                        }).ToArray());
+                    }
+
+                    messages.Add(assistant);
+                    break;
+                case AssistantMessageRole.Tool:
+                    messages.Add(new JsonObject { ["role"] = "tool", ["tool_call_id"] = message.ToolCallId, ["content"] = message.Content });
+                    break;
+            }
+        }
+
+        var body = new JsonObject { ["model"] = request.ModelName, ["messages"] = messages };
+        if (includeTools && request.Tools.Count > 0)
+        {
+            body["tools"] = new JsonArray(request.Tools.Select(tool => (JsonNode)new JsonObject
+            {
+                ["type"] = "function",
+                ["function"] = new JsonObject
+                {
+                    ["name"] = tool.Name,
+                    ["description"] = tool.Description,
+                    ["parameters"] = ProviderHttp.ParseSchema(tool.ParametersJsonSchema)
+                }
+            }).ToArray());
+        }
+
+        return body;
+    }
+
+    private ChatModelResult Parse(string body)
+    {
+        var root = ProviderHttp.ParseOrFail(ApiType, body);
+        var message = root["choices"]?[0]?["message"];
+        var text = message?["content"]?.GetValue<string>();
+
+        var calls = new List<ChatToolCall>();
+        if (message?["tool_calls"] is JsonArray toolCalls)
+        {
+            foreach (var call in toolCalls)
+            {
+                var name = call?["function"]?["name"]?.GetValue<string>();
+                var id = call?["id"]?.GetValue<string>();
+                if (name is null || id is null)
+                {
+                    continue;
+                }
+
+                calls.Add(new ChatToolCall(id, name, ProviderHttp.ArgumentsToJson(call!["function"]!["arguments"])));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(text) && calls.Count == 0)
+        {
+            throw new ProviderFailureException(ApiType, ProviderFailureKind.Unexpected);
+        }
+
+        return new ChatModelResult(string.IsNullOrWhiteSpace(text) ? null : text, calls);
+    }
+
+    private ProviderFailureException Classify(HttpResponseMessage response, string body, string? apiKey)
+    {
+        var code = string.Empty;
+        var message = string.Empty;
+        try
+        {
+            var error = JsonNode.Parse(body)?["error"];
+            code = error?["code"]?.ToString() ?? string.Empty;
+            message = error?["message"]?.ToString() ?? string.Empty;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON: classify by status code alone.
+        }
+
+        var kind = true switch
+        {
+            _ when response.StatusCode == HttpStatusCode.TooManyRequests || code is "insufficient_quota" or "rate_limit_exceeded"
+                => ProviderFailureKind.RateLimited,
+            _ when response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden || code == "invalid_api_key"
+                => ProviderFailureKind.InvalidKey,
+            _ when response.StatusCode == HttpStatusCode.NotFound || code == "model_not_found" => ProviderFailureKind.ModelUnavailable,
+            _ => ProviderFailureKind.Unexpected
+        };
+
+        return new ProviderFailureException(
+            ApiType, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            providerReason: ProviderHttp.Reason(code, message, apiKey));
+    }
+}
