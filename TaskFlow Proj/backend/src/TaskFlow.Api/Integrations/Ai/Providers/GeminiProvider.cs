@@ -53,10 +53,18 @@ public class GeminiProvider : IChatModelProvider
 
                     foreach (var call in message.ToolCalls ?? [])
                     {
-                        parts.Add(new JsonObject
+                        var part = new JsonObject
                         {
                             ["functionCall"] = new JsonObject { ["name"] = call.Name, ["args"] = ProviderHttp.ArgumentsToNode(call.ArgumentsJson) }
-                        });
+                        };
+
+                        // Gemini 3 validates that every function call of the current turn comes back with its signature.
+                        if (!string.IsNullOrEmpty(call.ThoughtSignature))
+                        {
+                            part["thoughtSignature"] = call.ThoughtSignature;
+                        }
+
+                        parts.Add(part);
                     }
 
                     if (parts.Count > 0)
@@ -155,7 +163,11 @@ public class GeminiProvider : IChatModelProvider
             }
             else if (part?["functionCall"] is JsonObject call && call["name"]?.GetValue<string>() is { } name)
             {
-                calls.Add(new ChatToolCall($"call_{calls.Count + 1}_{Guid.NewGuid():N}"[..20], name, ProviderHttp.ArgumentsToJson(call["args"])));
+                calls.Add(new ChatToolCall(
+                    $"call_{calls.Count + 1}_{Guid.NewGuid():N}"[..20],
+                    name,
+                    ProviderHttp.ArgumentsToJson(call["args"]),
+                    part!["thoughtSignature"]?.GetValue<string>()));
             }
         }
 

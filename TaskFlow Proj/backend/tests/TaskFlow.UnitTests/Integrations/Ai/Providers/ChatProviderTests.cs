@@ -259,6 +259,42 @@ public class ChatProviderTests
     }
 
     [Fact]
+    public async Task GeminiSendsAToolCallsThoughtSignatureBackInTheNextRound()
+    {
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"functionCall":{"name":"prioritise_tasks","args":{}},"thoughtSignature":"sig-abc"}]}}]}""")
+            .Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"done"}]}}]}""");
+        var provider = new GeminiProvider(new HttpClient(handler));
+
+        var first = await provider.CompleteAsync(GeminiRuntime, Request(User("plan my day")));
+        var call = Assert.Single(first.ToolCalls);
+        Assert.Equal("sig-abc", call.ThoughtSignature);
+
+        await provider.CompleteAsync(GeminiRuntime, Request(
+            User("plan my day"),
+            new ChatMessage(AssistantMessageRole.Assistant, string.Empty, first.ToolCalls),
+            new ChatMessage(AssistantMessageRole.Tool, "[]", ToolCallId: call.Id, ToolName: call.Name)));
+
+        var sent = JsonNode.Parse(handler.Sent[1].Body)!["contents"]![1]!["parts"]![0]!;
+        Assert.Equal("prioritise_tasks", sent["functionCall"]!["name"]!.GetValue<string>());
+        Assert.Equal("sig-abc", sent["thoughtSignature"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task GeminiSendsNoThoughtSignatureWhenTheCallHadNone()
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""");
+        var provider = new GeminiProvider(new HttpClient(handler));
+
+        await provider.CompleteAsync(GeminiRuntime, Request(
+            User("hi"),
+            new ChatMessage(AssistantMessageRole.Assistant, string.Empty, [new ChatToolCall("c1", "prioritise_tasks", "{}")]),
+            new ChatMessage(AssistantMessageRole.Tool, "[]", ToolCallId: "c1", ToolName: "prioritise_tasks")));
+
+        Assert.Null(JsonNode.Parse(handler.Sent[0].Body)!["contents"]![1]!["parts"]![0]!["thoughtSignature"]);
+    }
+
+    [Fact]
     public async Task GeminiSendsNoThinkingConfigForAModelThatDoesNotThink()
     {
         var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}""");
