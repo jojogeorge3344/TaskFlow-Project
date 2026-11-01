@@ -1,23 +1,24 @@
 import { TaskPriority, TaskStatus } from '../../monitoring/task-management/models/task.model';
 
-/** The AI providers TFA can use. Ollama runs locally; Gemini and OpenAI are cloud services. */
-export type AiProviderKind = 'Ollama' | 'Gemini' | 'OpenAI';
+/** How TaskFlow talks to a provider. Google Gemini, OpenAI GPT and Ollama are built in; a custom provider uses the
+ * OpenAI-compatible ('OpenAI') or Ollama API at its own address. */
+export type AiApiType = 'Ollama' | 'Gemini' | 'OpenAI';
 export type AiLocality = 'Local' | 'Cloud';
-
-export const AI_PROVIDER_KINDS: AiProviderKind[] = ['Ollama', 'Gemini', 'OpenAI'];
 
 /** A provider a user can choose in the model selector. Only configured providers are listed. */
 export interface AiProviderOption {
-  kind: AiProviderKind;
+  providerId: number;
   displayName: string;
   modelName: string;
   locality: AiLocality;
 }
 
-/** The administrator's view of one provider. The API key is never included. */
+/** The administrator's view of one provider, built-in or custom. The API key is never included. */
 export interface AiProviderConfig {
-  kind: AiProviderKind;
+  providerId: number;
   displayName: string;
+  apiType: AiApiType;
+  isBuiltIn: boolean;
   locality: AiLocality;
   requiresKey: boolean;
   isEnabled: boolean;
@@ -36,7 +37,7 @@ export interface AiProviderConfig {
 
 /** One provider's changes. An empty `apiKey` keeps the stored key; `clearKey` removes it. */
 export interface UpdateAiProvider {
-  kind: AiProviderKind;
+  providerId: number;
   isEnabled: boolean;
   modelName: string;
   baseUrl?: string | null;
@@ -50,12 +51,40 @@ export type ProviderFailureKind =
   | 'Timeout'
   | 'Unreachable'
   | 'ModelUnavailable'
-  | 'Unexpected';
+  | 'Unexpected'
+  | 'InvalidModelName';
 
 export interface AiProviderTestResult {
   ok: boolean;
   message: string;
   failureKind: ProviderFailureKind | null;
+}
+
+/** A provider typed on the Add or Edit AI model screen that does not exist yet; created only when the test passes. */
+export interface NewAiProvider {
+  name: string;
+  /** 'OpenAI' (OpenAI-compatible) or 'Ollama'. */
+  apiType: AiApiType;
+  baseUrl: string;
+  locality: AiLocality;
+}
+
+/** A model to add from the Add AI model page, or the body of an edit. The provider is `providerId` (an existing one) or
+ * `newProvider`; on an edit, neither keeps the model's provider. An empty `apiKey` uses the provider's saved key;
+ * `baseUrl` is an existing Ollama provider's address. */
+export interface AddAiModelRequest {
+  modelName: string;
+  apiKey?: string | null;
+  baseUrl?: string | null;
+  /** Edit only: removes the provider's key without a test, and without other changes. */
+  clearKey?: boolean;
+  providerId?: number | null;
+  newProvider?: NewAiProvider | null;
+}
+
+/** The outcome of adding a model: when `ok` is false nothing was saved and `providers` is null. */
+export interface AddAiModelResult extends AiProviderTestResult {
+  providers: AiProviderConfig[] | null;
 }
 
 export type AssistantMessageKind = 'Text' | 'Refusal' | 'Notice';
@@ -65,6 +94,13 @@ export type AssistantActionStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Exp
 export interface AssistantLink {
   label: string;
   route: string;
+}
+
+/** A document section TFA was given for an answer: the document title, the section heading path and the file path. */
+export interface AssistantSource {
+  document: string;
+  section: string;
+  path: string;
 }
 
 export interface AssistantRankedTask {
@@ -104,10 +140,14 @@ export interface AssistantMessage {
   content: string;
   kind: AssistantMessageKind;
   createdAt: string;
-  provider: AiProviderKind | null;
+  providerId: number | null;
+  /** The name of the provider that answered; null for the user's own messages. */
+  provider: string | null;
   links: AssistantLink[];
   rankedTasks: AssistantRankedTask[];
   action: AssistantPendingAction | null;
+  /** The document sections given to TFA for this answer; empty when it did not use the documents. */
+  sources: AssistantSource[];
   /** Client only: a message shown before the server has answered. */
   local?: boolean;
   /** Client only: a problem shown in the chat that did not come from the model. */
@@ -122,7 +162,8 @@ export interface AssistantConversation {
 /** A provider problem, already worded for the user. */
 export interface AssistantFailure {
   kind: ProviderFailureKind;
-  provider: AiProviderKind;
+  providerId: number;
+  providerName: string;
   message: string;
   retryAfterSeconds: number | null;
   alternatives: AiProviderOption[];

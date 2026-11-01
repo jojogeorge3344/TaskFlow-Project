@@ -20,6 +20,7 @@ using TaskFlow.Api.Repositories.Settings.TfaSettings.ProviderConfig;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Actions;
 using TaskFlow.Api.Services.Assistant.Chat;
+using TaskFlow.Api.Services.Assistant.Documents;
 using TaskFlow.Api.Services.Assistant.ModelGateway;
 using TaskFlow.Api.Services.Assistant.RateLimits;
 using TaskFlow.Api.Services.Assistant.Toolbox;
@@ -29,15 +30,19 @@ using TaskFlow.Api.Services.Settings.TfaSettings.ProviderConfig;
 namespace TaskFlow.UnitTests.Assistant.Chat;
 
 /// <summary>A gateway that answers from a script and records every request, so tests see exactly what each provider
-/// was sent.</summary>
+/// was sent. Calls arrive by provider id; the script and the record use the built-in provider's API type.</summary>
 internal sealed class ScriptedGateway : IChatModelGateway
 {
-    public Func<AiProviderKind, ChatModelRequest, ChatModelResult> Handler { get; set; } = (_, _) => ChatModelResult.FromText("OK");
+    public Func<AiApiType, ChatModelRequest, ChatModelResult> Handler { get; set; } = (_, _) => ChatModelResult.FromText("OK");
 
-    public List<(AiProviderKind Kind, ChatModelRequest Request)> Calls { get; } = [];
+    public List<(AiApiType Kind, ChatModelRequest Request)> Calls { get; } = [];
 
-    public Task<ChatModelResult> CompleteAsync(AiProviderKind kind, ChatModelRequest request, CancellationToken cancellationToken = default)
+    /// <summary>Which built-in provider each id is.</summary>
+    public IReadOnlyDictionary<int, AiApiType> Types { get; set; } = new Dictionary<int, AiApiType>();
+
+    public Task<ChatModelResult> CompleteAsync(int providerId, ChatModelRequest request, CancellationToken cancellationToken = default)
     {
+        var kind = Types[providerId];
         // The caller's list is mutated between rounds, so keep a snapshot of what was sent.
         Calls.Add((kind, request with { Messages = request.Messages.ToList() }));
         return Task.FromResult(Handler(kind, request));
@@ -60,6 +65,24 @@ internal sealed class ScriptedToolbox : IAssistantToolbox
         Executed.Add(call);
         return Task.FromResult(Handler(call));
     }
+}
+
+/// <summary>A document search that returns a scripted context and records what it was asked.</summary>
+internal sealed class ScriptedDocumentSearch : IDocumentSearch
+{
+    public DocumentContext Result { get; set; } = DocumentContext.NoMatch;
+
+    public List<(string Message, string? Previous)> Searches { get; } = [];
+
+    public Task<DocumentContext> SearchAsync(string message, string? previousUserMessage, CancellationToken cancellationToken = default)
+    {
+        Searches.Add((message, previousUserMessage));
+        return Task.FromResult(Result);
+    }
+
+    public static DocumentContext Found(params (string Title, string Heading, string Text)[] chunks) =>
+        DocumentContext.Found(chunks.Select((chunk, index) => new ScoredChunk(
+            new IndexedChunk(index + 1, $"{chunk.Title}.md", chunk.Title, chunk.Heading, chunk.Text, [1f]), 0.9)).ToList());
 }
 
 internal sealed class NoCards : IAssistantActionCards
@@ -86,15 +109,21 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
     public AiProviderConfigService Config { get; }
     public AssistantRateLimiter RateLimiter { get; set; }
     public ScriptedGateway Gateway { get; } = new();
+
+    /// <summary>The id of each built-in provider, by API type.</summary>
+    public IReadOnlyDictionary<AiApiType, int> ProviderIds { get; private set; } = new Dictionary<AiApiType, int>();
     public ScriptedToolbox Toolbox { get; } = new();
+    public ScriptedDocumentSearch Documents { get; } = new();
 
     public static async Task<AssistantServiceHarness> CreateAsync()
     {
         var harness = new AssistantServiceHarness();
+        harness.ProviderIds = await AiTestProviders.SeedBuiltInsAsync(harness.Tracking.Db);
+        harness.Gateway.Types = harness.ProviderIds.ToDictionary(pair => pair.Value, pair => pair.Key);
         await harness.Config.SaveAsync(1, new UpdateAiProvidersRequest(
         [
-            new UpdateAiProviderRequest(AiProviderKind.Ollama, true, "llama3.1:8b", "http://localhost:11434", null, null),
-            new UpdateAiProviderRequest(AiProviderKind.Gemini, true, "gemini-2.0-flash", null, "AIzaSyExampleKey1234", null)
+            new UpdateAiProviderRequest(harness.ProviderIds[AiApiType.Ollama], true, "llama3.1:8b", "http://localhost:11434", null, null),
+            new UpdateAiProviderRequest(harness.ProviderIds[AiApiType.Gemini], true, "gemini-2.0-flash", null, "AIzaSyExampleKey1234", null)
         ]));
         return harness;
     }
@@ -111,6 +140,7 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
             RateLimiter,
             Toolbox,
             new NoCards(),
+            Documents,
             new ApplicationSettingsService(new ApplicationSettingsRepository(Tracking.Db), new UnitOfWork(Tracking.Db), TimeProvider.System, Options.Create(new ApplicationOptions())),
             Tracking.Clock,
             TimeProvider.System);
@@ -123,8 +153,8 @@ internal sealed class AssistantServiceHarness : IAsyncDisposable
             ],
             "test")));
 
-    public Task<AssistantReplyDto> SendAsync(User user, string text, AiProviderKind provider = AiProviderKind.Ollama) =>
-        Service.SendAsync(Caller(user), new SendAssistantMessageRequest(text, provider));
+    public Task<AssistantReplyDto> SendAsync(User user, string text, AiApiType provider = AiApiType.Ollama) =>
+        Service.SendAsync(Caller(user), new SendAssistantMessageRequest(text, ProviderIds[provider]));
 
     public ValueTask DisposeAsync() => Tracking.DisposeAsync();
 }

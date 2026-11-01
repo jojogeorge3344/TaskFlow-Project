@@ -25,7 +25,11 @@ public class ChatModelGatewayTests : IAsyncLifetime
     private readonly EphemeralDataProtectionProvider _dataProtection = new();
     private readonly CapturingLogger<ChatModelGateway> _logger = new();
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    private IReadOnlyDictionary<AiApiType, int> _ids = new Dictionary<AiApiType, int>();
+
+    public async Task InitializeAsync() => _ids = await AiTestProviders.SeedBuiltInsAsync(_harness.Db);
+
+    private int Id(AiApiType apiType) => _ids[apiType];
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
@@ -39,14 +43,14 @@ public class ChatModelGatewayTests : IAsyncLifetime
 
     private Task SaveOpenAi(string key = Key, string model = "gpt-4o-mini") =>
         Config().SaveAsync(1, new UpdateAiProvidersRequest(
-            [new UpdateAiProviderRequest(AiProviderKind.OpenAI, true, model, null, key, null)]));
+            [new UpdateAiProviderRequest(Id(AiApiType.OpenAI), true, model, null, key, null)]));
 
     [Fact]
     public async Task ANotConfiguredProviderSendsNothing()
     {
         var handler = new FakeHttpHandler();
 
-        await Assert.ThrowsAsync<ProviderNotConfiguredException>(() => Gateway(handler).CompleteAsync(AiProviderKind.OpenAI, Request()));
+        await Assert.ThrowsAsync<ProviderNotConfiguredException>(() => Gateway(handler).CompleteAsync(Id(AiApiType.OpenAI), Request()));
 
         Assert.Empty(handler.Sent);
     }
@@ -59,7 +63,7 @@ public class ChatModelGatewayTests : IAsyncLifetime
             HttpStatusCode.Unauthorized,
             "{\"error\":{\"code\":\"invalid_api_key\",\"message\":\"Incorrect API key provided: " + Key + ". You asked: " + Prompt + "\"}}");
 
-        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => Gateway(handler).CompleteAsync(AiProviderKind.OpenAI, Request()));
+        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => Gateway(handler).CompleteAsync(Id(AiApiType.OpenAI), Request()));
 
         Assert.Equal(ProviderFailureKind.InvalidKey, failure.Kind);
         var log = Assert.Single(_logger.Messages);
@@ -80,9 +84,9 @@ public class ChatModelGatewayTests : IAsyncLifetime
             .Reply(HttpStatusCode.OK, """{"choices":[{"message":{"content":"two"}}]}""");
         var gateway = Gateway(handler);
 
-        await gateway.CompleteAsync(AiProviderKind.OpenAI, Request());
+        await gateway.CompleteAsync(Id(AiApiType.OpenAI), Request());
         await SaveOpenAi("sk-second-key-2222");
-        await gateway.CompleteAsync(AiProviderKind.OpenAI, Request());
+        await gateway.CompleteAsync(Id(AiApiType.OpenAI), Request());
 
         Assert.Equal("sk-first-key-1111", handler.Sent[0].Request.Headers.Authorization!.Parameter);
         Assert.Equal("sk-second-key-2222", handler.Sent[1].Request.Headers.Authorization!.Parameter);
@@ -94,8 +98,29 @@ public class ChatModelGatewayTests : IAsyncLifetime
         await SaveOpenAi(model: "gpt-4o");
         var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"choices":[{"message":{"content":"ok"}}]}""");
 
-        await Gateway(handler).CompleteAsync(AiProviderKind.OpenAI, Request());
+        await Gateway(handler).CompleteAsync(Id(AiApiType.OpenAI), Request());
 
         Assert.Contains("\"model\":\"gpt-4o\"", handler.Sent[0].Body);
+    }
+
+    [Fact]
+    public async Task AFailureOfACustomProviderNamesItAndGoesToItsAddress()
+    {
+        _harness.Db.AiProviderConfigs.Add(new TaskFlow.Api.Models.Entities.AiProviderConfig
+        {
+            Name = "Groq", ApiType = AiApiType.OpenAI, Locality = "Cloud", IsEnabled = true, ModelName = "llama-3.3-70b-versatile",
+            BaseUrl = "https://api.groq.com/openai/v1", UpdatedAt = DateTime.UtcNow
+        });
+        await _harness.Db.SaveChangesAsync();
+        var groqId = _harness.Db.AiProviderConfigs.Single(row => row.Name == "Groq").Id;
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.TooManyRequests, """{"error":{"code":"rate_limit_exceeded","message":"slow down"}}""");
+
+        var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => Gateway(handler).CompleteAsync(groqId, Request()));
+
+        Assert.Equal("https://api.groq.com/openai/v1/chat/completions", handler.Sent.Single().Request.RequestUri!.ToString());
+        Assert.Equal(groqId, failure.ProviderId);
+        Assert.Equal("Groq", failure.ProviderName);
+        Assert.StartsWith("Groq's free limit or rate limit has been reached.", TaskFlow.Api.Services.Assistant.Chat.ProviderFailureMessages.For(failure));
+        Assert.Contains("Groq", Assert.Single(_logger.Messages));
     }
 }

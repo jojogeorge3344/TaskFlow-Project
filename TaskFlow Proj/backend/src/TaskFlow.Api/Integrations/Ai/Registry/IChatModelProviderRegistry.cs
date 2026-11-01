@@ -5,5 +5,5 @@ namespace TaskFlow.Api.Integrations.Ai.Registry;
 
 public interface IChatModelProviderRegistry
 {
-    IChatModelProvider Get(AiProviderKind kind);
+    IChatModelProvider Get(AiApiType kind);
 }

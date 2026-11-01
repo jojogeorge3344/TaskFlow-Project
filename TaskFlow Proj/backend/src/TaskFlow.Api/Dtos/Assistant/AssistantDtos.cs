@@ -14,6 +14,10 @@ public enum AssistantMessageKind
 
 public record AssistantLinkDto(string Label, string Route);
 
+/// <summary>A document section that was given to the model for an answer: the document's title, the section's heading path
+/// and the file's path under the documents folder.</summary>
+public record AssistantSourceDto(string Document, string Section, string Path);
+
 /// <summary>A pending action as shown in the panel, built from the stored payload and never from model text.</summary>
 public record AssistantActionFieldDto(string Label, string Value);
 
@@ -33,24 +37,27 @@ public record AssistantMessageDto(
     string Content,
     AssistantMessageKind Kind,
     DateTime CreatedAt,
-    AiProviderKind? Provider,
+    int? ProviderId,
+    string? Provider,
     IReadOnlyList<AssistantLinkDto> Links,
     IReadOnlyList<PrioritisedTask> RankedTasks,
-    AssistantPendingActionDto? Action);
+    AssistantPendingActionDto? Action,
+    IReadOnlyList<AssistantSourceDto> Sources);
 
 public record AssistantConversationDto(int? ConversationId, IReadOnlyList<AssistantMessageDto> Messages);
 
 /// <summary>The result of sending a message: the messages to append, or a classified provider failure.</summary>
 public record AssistantReplyDto(IReadOnlyList<AssistantMessageDto> Messages, AssistantFailureDto? Failure);
 
-public record SendAssistantMessageRequest(string? Text, AiProviderKind? Provider);
+public record SendAssistantMessageRequest(string? Text, int? ProviderId);
 
 /// <summary>What is stored in <c>AssistantMessage.MetaJson</c> so the panel can redraw a message after a reload.</summary>
 public record AssistantMessageMeta(
     AssistantMessageKind Kind,
     IReadOnlyList<AssistantLinkDto>? Links,
     IReadOnlyList<PrioritisedTask>? RankedTasks,
-    Guid? ActionId);
+    Guid? ActionId,
+    IReadOnlyList<AssistantSourceDto>? Sources = null);
 
 /// <summary>One open task in the order TFA recommends.</summary>
 public record PrioritisedTask(

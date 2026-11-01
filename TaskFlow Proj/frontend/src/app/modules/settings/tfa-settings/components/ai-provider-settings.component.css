@@ -6,12 +6,21 @@
   display: flex;
   flex-direction: column;
   gap: var(--tf-space-4);
-  max-width: 48rem;
+  max-width: 60rem;
 }
 
 .ai-settings__head h2 {
-  margin: 0 0 var(--tf-space-1);
+  margin: 0;
   font-size: 1.125rem;
+}
+
+.ai-settings__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  margin-bottom: var(--tf-space-1);
 }
 
 .ai-settings__head p {
@@ -30,6 +39,21 @@
 .ai-settings__skeleton {
   display: block;
   height: 2.5rem;
+}
+
+.ai-settings__using {
+  margin: 0;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-radius: var(--tf-radius-md, 0.5rem);
+  background: var(--tf-primary-soft, var(--tf-surface-alt));
+  font-size: 0.875rem;
+}
+
+.ai-settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-4) var(--tf-space-5);
 }
 
 .ai-settings__title {
@@ -63,49 +87,95 @@
   color: var(--tf-primary);
 }
 
-.ai-settings__status {
-  margin-left: auto;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--tf-muted);
-}
-
-.ai-settings__status.is-ready {
-  color: var(--tf-success);
-}
-
-.ai-settings__toggle {
+.ai-settings__rows {
   display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Desktop: model and details | status | actions on one line; the test result wraps below. */
+.ai-settings__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'details status actions'
+    'result result result';
   align-items: center;
-  gap: var(--tf-space-2);
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.ai-settings__toggle input {
-  width: 1.125rem;
-  height: 1.125rem;
-  accent-color: var(--tf-primary);
-}
-
-.ai-settings__small {
-  align-self: flex-start;
-  margin-top: var(--tf-space-1);
-}
-
-.ai-settings__test {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--tf-space-3);
-  padding-top: var(--tf-space-3);
+  column-gap: var(--tf-space-3);
+  padding: var(--tf-space-3) 0;
   border-top: 1px solid var(--tf-border);
 }
 
+.ai-settings__row.is-in-use {
+  background: linear-gradient(90deg, var(--tf-success-soft), transparent 60%);
+}
+
+.ai-settings__details {
+  grid-area: details;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.ai-settings__model {
+  font-family: var(--tf-font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ai-settings__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--tf-space-3);
+  color: var(--tf-muted);
+  font-size: 0.75rem;
+}
+
+.ai-settings__status-cell {
+  grid-area: status;
+  max-width: 16rem;
+}
+
+.ai-settings__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tf-success);
+}
+
+.ai-settings__hint {
+  font-size: 0.75rem;
+  color: var(--tf-muted);
+}
+
+.ai-settings__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--tf-space-2);
+}
+
+.ai-settings__small {
+  padding-block: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.ai-settings__danger {
+  color: var(--tf-danger);
+}
+
 .ai-settings__result {
+  grid-area: result;
   display: inline-flex;
   align-items: center;
   gap: var(--tf-space-2);
+  margin-top: var(--tf-space-2);
   font-size: 0.8125rem;
   color: var(--tf-warning);
 }
@@ -114,24 +184,27 @@
   color: var(--tf-success);
 }
 
-.ai-settings__pickers {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--tf-space-3);
-}
+/* Phone width: each row is a stacked card with the same details and actions. */
+@media (max-width: 40rem) {
+  .ai-settings__group {
+    padding: var(--tf-space-3);
+  }
 
-.ai-settings__picker {
-  max-width: 28rem;
-}
+  .ai-settings__row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'details'
+      'status'
+      'actions'
+      'result';
+    row-gap: var(--tf-space-2);
+  }
 
-.ai-settings__linked {
-  margin-top: calc(var(--tf-space-2) * -1);
-}
+  .ai-settings__status-cell {
+    max-width: none;
+  }
 
-.ai-settings__using {
-  margin: 0;
-  padding: var(--tf-space-3) var(--tf-space-4);
-  border-radius: var(--tf-radius-md, 0.5rem);
-  background: var(--tf-primary-soft, var(--tf-surface-alt));
-  font-size: 0.875rem;
+  .ai-settings__actions {
+    justify-content: flex-start;
+  }
 }

@@ -24,6 +24,20 @@ export const SETTINGS_ROUTES: Routes = [
     loadComponent: () => import('./tfa-settings/pages/tfa-settings.component').then((m) => m.TfaSettingsComponent)
   },
   {
+    // Also needs settings.ai.test: the guard passes on any one listed key, so the page checks the second itself.
+    path: 'settings/tfa/models/new',
+    canActivate: [permissionGuard],
+    data: { permissions: [Permissions.SettingsAiEdit] },
+    loadComponent: () => import('./tfa-settings/pages/add-ai-model.component').then((m) => m.AddAiModelComponent)
+  },
+  {
+    // Edit mode of the Add AI model page; like adding, it also needs settings.ai.test, which the page checks.
+    path: 'settings/tfa/models/:providerId/:name/edit',
+    canActivate: [permissionGuard],
+    data: { permissions: [Permissions.SettingsAiEdit] },
+    loadComponent: () => import('./tfa-settings/pages/add-ai-model.component').then((m) => m.AddAiModelComponent)
+  },
+  {
     path: 'settings/permissions',
     canActivate: [permissionGuard],
     data: { permissions: [Permissions.RolesManage] },

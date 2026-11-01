@@ -16,7 +16,7 @@ API design.
 |---|---|
 | BRD (`TF - Documents/TF - BRD/**/BRD-*.md`, or a BRD `.docx` converted with `requirements-to-markdown`) | Objectives, roles, screens, business rules, acceptance criteria – every BRD item must be traced |
 | Development plan (`TF - Documents/Screens Wise Feature Development Plan/`) | Screen elements and functional points |
-| For an existing system – Application workflow docs (`TaskFlow Proj/TFWorkflow/App WF in MD/<NN-Module>/`) | Verified screens, functionalities, who can see/use them, permission keys, step-by-step flows, messages |
+| For an existing system – Application workflow docs (`TF - Documents/TFWorkflow/App WF in MD/<NN-Module>/`) | Verified screens, functionalities, who can see/use them, permission keys, step-by-step flows, messages |
 | For an existing system – permission catalogue (`.../Common/Security/PermissionCatalog.cs`) and the permission documents `TF - Documents/Permission Requirement/Permissions in Excel/*.xlsx` | Role × permission matrix (§3.2) |
 | For an existing system – frontend routes and validators (`frontend/src/app/modules/*/*.routes.ts`, `Dtos/**/Validators`) | Routes, field rules and real error messages |
 

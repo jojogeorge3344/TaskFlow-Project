@@ -61,7 +61,7 @@ documents from the application.
 | Password-only login | Password + mandatory TOTP two-step verification, 10 backup codes, self-service recovery with an authenticator code (D-09) |
 | Screen 14 SMTP e-mail notifications | **Superseded** by internal Mail; reminders optionally copied into the Inbox (D-10) |
 | Five task statuses | Six statuses (**In QA** added); overdue derived, never stored (D-05) |
-| Not in original | Projects/positions/allocations, departments with managers, TFA assistant (Ollama/Gemini/OpenAI), Legal pages, single data folder `C:\TaskFlow` (D-11, D-12, D-14) |
+| Not in original | Projects/positions/allocations, departments with managers, TFA assistant (Gemini/OpenAI/optional Ollama), Legal pages, single data folder `C:\TaskFlow` (D-11, D-12, D-14) |
 
 ### 1.3 Audience
 Developer and maintainer of TaskFlow (Jojo George), reviewers and technical leads checking the design against the BRD
@@ -99,7 +99,7 @@ flowchart LR
   PH["Authenticator app (phone, offline)"] -. "6-digit code typed by user" .-> U
   SYS --> DF[("Data folder C:\TaskFlow")]
   SYS -->|"HTTP, local"| OL["Ollama (local AI, optional)"]
-  SYS -->|"HTTPS, internet"| GE["Google Gemini (optional)"]
+  SYS -->|"HTTPS, internet"| GE["Google Gemini (default AI, document search)"]
   SYS -->|"HTTPS, internet"| OA["OpenAI (optional)"]
   U -. "voice input" .-> BS["Browser Web Speech API (optional)"]
 ```
@@ -117,8 +117,8 @@ its code. The only outbound connections are to the AI provider an administrator 
 | Employee | Own tasks, status, hours, comments, board, Mail, notifications, profile, TFA | HTTPS |
 | Custom-role user | Whatever an administrator granted from the catalogue | HTTPS |
 | Authenticator app | Generates TOTP codes from the key shown at Security Setup (QR code) | None (offline, user types the code) |
-| Ollama | Local chat model for TFA (default on a new install: `llama3.2:3b` at `http://localhost:11434`) | HTTP / REST |
-| Google Gemini | Cloud chat model for TFA, when enabled | HTTPS / REST, API key |
+| Ollama | Optional local chat model for TFA (`llama3.2:3b` at `http://localhost:11434`; never enabled automatically) | HTTP / REST |
+| Google Gemini | Default cloud chat model for TFA (enabled on a new install when a key is configured) and the embedding model for TFA's document search | HTTPS / REST, API key |
 | OpenAI | Cloud chat model for TFA, when enabled | HTTPS / REST, API key |
 | Browser Web Speech API | Voice input for the TFA panel (Chrome, Edge) | In-browser |
 | Operator | Installs, configures, backs up the data folder | File system, configuration, environment variables |
@@ -187,7 +187,7 @@ flowchart TB
   SVC --> INT
   REPO -->|EF Core| DB[("SQLite taskflow.db")]
   INT --> FS[("mail-attachments, dp-keys")]
-  INT --> AI["Ollama / Gemini / OpenAI"]
+  INT --> AI["Gemini / OpenAI / Ollama"]
 ```
 
 ### 4.3 Layers & Responsibilities
@@ -378,8 +378,8 @@ Who may edit settings is decided by permissions (section 9), not by the data mod
 
 | Integration | Direction | Purpose | Failure behaviour |
 |---|---|---|---|
-| Ollama (`OllamaProvider`) | Outbound HTTP to a local server (default `http://localhost:11434`) | TFA chat model, no internet needed; default provider on a new install | Timeout `AiProviders:TimeoutSeconds` (60 s); failure classified (`ProviderFailureKind`: RateLimited, InvalidKey, Timeout, Unreachable, ModelUnavailable, Unexpected) and shown as a friendly message; no automatic switch to another provider |
-| Google Gemini (`GeminiProvider`) | Outbound HTTPS | Cloud chat model when enabled in TFA Settings | Same classification; key decrypted in memory for one call only; user sees a notice the first time a cloud model is used |
+| Ollama (`OllamaProvider`) | Outbound HTTP to a local server (default `http://localhost:11434`) | Optional TFA chat model, no internet needed for the reply (document search still uses Gemini); never enabled automatically | Timeout `AiProviders:OllamaTimeoutSeconds` (180 s); failure classified (`ProviderFailureKind`: RateLimited, InvalidKey, Timeout, Unreachable, ModelUnavailable, Unexpected) and shown as a friendly message; no automatic switch to another provider |
+| Google Gemini (`GeminiProvider`, `GeminiEmbeddingClient`) | Outbound HTTPS | Default cloud chat model (enabled on a new install when `AiProviders:GeminiApiKey` is configured, otherwise by an administrator in TFA Settings); `gemini-embedding-2` embeddings for TFA's document search with the saved Gemini key, whatever chat provider is selected | Timeout 60 s; same classification; key decrypted in memory for one call only; users see a notice once per provider. Without a usable key document search stops (warning logged) and TFA still answers live-data questions |
 | OpenAI (`OpenAiProvider`) | Outbound HTTPS | Cloud chat model when enabled | Same as Gemini |
 | AI connection test | Outbound, on demand from TFA Settings | Verify server address, model and key before saving | Result shown to the administrator; settings not changed |
 | Authenticator app | None (user types the code) | TOTP codes (SHA1, 6 digits, 30 s) | Lost phone → backup code at sign-in, or administrator MFA reset |
@@ -642,9 +642,9 @@ values for the other environments. The develop target is on Render (`config/api-
 | Performance | Paged lists (tasks and notifications 20 per page, max 100; Mail 25); totals computed by server queries; async EF Core; reminder pass pre-reads delivered reminders before writing; CSV export capped at 50,000 rows | NFR-01 – NFR-03 |
 | Scalability | Single instance by design: in-memory limiters, uncoordinated scheduler (duplicates still blocked by the database); SQLite single writer with short transactions | R-01, R-08 |
 | Reliability | All data in SQLite; stateless reminder engine at start-up and every 60 s; failed pass logged, next tick retries; one transaction per reminder delivery; migrations and seeders on every start | NFR-13, NFR-14 |
-| Availability | Works offline (internal Mail and notifications, local Ollama); AI outage affects only TFA, with a clear message | NFR-20 |
+| Availability | Works offline (internal Mail and notifications; the optional Ollama chat provider, though document search needs Google Gemini); AI outage affects only TFA, with a clear message | NFR-20 |
 | Security | Section 9 | NFR-04 – NFR-10 |
-| Privacy | Local model default; first-use notice for cloud models; secrets blocked in chat; no external e-mail | NFR-11 |
+| Privacy | Notice once per provider saying what is sent where (document text and questions go to Google for document search); optional local chat model; secrets blocked in chat; no external e-mail | NFR-11 |
 | Usability | Permission-driven menus; ProblemDetails messages; confirmation for destructive actions and TFA actions | NFR-12 |
 | Maintainability | Layer-first, module sub-folders; `ArchitectureTests` and `npm run check:structure`; pure rule classes (`TaskStatusTransitions`, `ReminderCalculator`) unit-tested; DI per layer in `Config/` | NFR-15 |
 | Compatibility | Modern desktop browsers, responsive layout; voice input Chrome/Edge; backend on Windows, Linux, macOS (DPAPI only on Windows) | NFR-16 |
@@ -668,7 +668,7 @@ values for the other environments. The develop target is on Render (`config/api-
 | D-08 | Permission-based authorization from a fixed catalogue; read-only system roles, custom roles; policy per key | Fixed role checks in code | Fine-grained, configurable access; every checkbox enforced by the server |
 | D-09 | Mandatory TOTP MFA enforced server-side by `MfaSetupGateMiddleware`; recovery with an authenticator code only | Optional MFA; e-mail/SMS codes; admin-set passwords | No external messaging needed; the SPA cannot bypass the gate; stolen password alone is useless |
 | D-10 | Internal Mail instead of SMTP; reminders optionally copied into the Inbox | SMTP e-mail (original Screen 14) | Works offline, no mail credentials to store, nothing leaves TaskFlow (BR-23) |
-| D-11 | Pluggable AI providers (Ollama, Gemini, OpenAI) behind `ChatModelGateway`; confirm-before-act with server-side permission re-check | Single hard-wired cloud provider; assistant acting directly | Free local default; the model never decides access; every action audited |
+| D-11 | Pluggable AI providers (Gemini default, OpenAI, optional Ollama) behind `ChatModelGateway`; confirm-before-act with server-side permission re-check | Single hard-wired cloud provider; assistant acting directly | Free-tier default and a free local option; the model never decides access; every action audited |
 | D-12 | All local state in one data folder; secrets encrypted with the Data Protection key ring (DPAPI on Windows), key ring backed up separately | Secrets in configuration or plain columns; data spread over the solution folder | Simple backup and move; a copied database alone cannot read keys or generate MFA codes |
 | D-13 | One application timezone (`Application.Timezone`, default `Asia/Kolkata`, fallback UTC) through `AppClock` | Per-user timezones; server local time | "Due today" and "overdue" are the same for everyone and for the reminder engine (BR-17) |
 | D-14 | Legal documents and footer are static SPA content from one owner record, public, no API | Documents stored in the database and editable | Identical, always-available ownership statement; nothing to secure or migrate (BR-29) |
@@ -684,7 +684,7 @@ values for the other environments. The develop target is on Render (`config/api-
 | Risk | R-01 | Reminders run twice if more than one API instance is started | Unique `ReminderHistory` index blocks duplicates; single instance documented – Jojo George |
 | Risk | R-02 | Loss of the `dp-keys` key ring | Back it up separately; otherwise AI keys re-entered and every user needs an MFA reset |
 | Risk | R-03 | User loses phone and backup codes | Administrator MFA reset (`employees.mfa.reset`) ends sessions and forces new setup |
-| Risk | R-04 | Task details leave the server when a cloud AI model is used | Local model default; first-use notice; `SecretScreen`; Legal texts state it |
+| Risk | R-04 | Task details leave the server when a cloud AI model is used; document text and questions are sent to Google for document search | Notice once per provider; optional local chat model; `SecretScreen`; Legal texts state it |
 | Risk | R-05 | Wrong "due today" / "overdue" from timezone mistakes | One application timezone; unknown timezone falls back to UTC (D-13) |
 | Risk | R-06 | Password guessing at sign-in (no attempt limit on the password step) | Code step required for every account; ⚠️ To be confirmed whether a password limit is needed |
 | Risk | R-07 | Irreversible migrations (e.g. email domain normalisation) | Back up before every upgrade |

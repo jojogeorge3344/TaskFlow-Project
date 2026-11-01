@@ -20,7 +20,7 @@ records the difference in a **Deviations from BRD** section. Never invent an end
 | Tests | `TaskFlow Proj/backend/tests/` (TaskFlow.UnitTests, TaskFlow.IntegrationTests) |
 | Frontend | `TaskFlow Proj/frontend/src/app/` (modules/, shared/, layouts/, routes/, config/) |
 | Permissions (source of truth) | `.../Common/Security/PermissionKeys.cs`, `PermissionCatalog.cs`, `SystemRoles.cs` |
-| Module docs (rich, already verified) | `TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` and `TaskFlow Proj/TFWorkflow/App WF in MD/` |
+| Module docs (rich, already verified) | `TF - Documents/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/` and `TF - Documents/TFWorkflow/App WF in MD/` |
 | Requirements | Approved BRD set `TF - Documents/TF - BRD/` (start with `00-Overall/BRD-TaskFlow-Overall.md`: acceptance criteria `AC-01 – AC-26` in §14); screen specs `TF - Documents/Screens Wise Feature Development Plan/01..20-*.md` |
 | Design document set | `TF - Documents/TF - FRD/`, `TF - HLD/`, `TF - LLD/` (00-Overall + 16 sub-modules each; the HLD/LLD cite TDD sections by number) |
 | Other context | `README.md`, `TaskFlow Proj/project.md`, `TaskFlow Proj/agent.md`, permission documents `TF - Documents/Permission Requirement/` |

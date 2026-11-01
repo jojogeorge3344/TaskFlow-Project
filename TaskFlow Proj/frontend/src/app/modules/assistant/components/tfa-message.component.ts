@@ -1,6 +1,15 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AssistantMessage, AssistantRankedTask } from '../models/assistant.model';
+
+/** The separator the server uses between headings in a section path. */
+const HEADING_SEPARATOR = ' › ';
+
+export interface SourceChip {
+  key: string;
+  label: string;
+  title: string;
+}
 import { AssistantService } from '../services/assistant.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TfaActionCardComponent } from './tfa-action-card.component';
@@ -28,6 +37,19 @@ export class TfaMessageComponent {
     const message = this.message();
     return message.kind === 'Refusal' ? 'lock' : message.problem ? 'alert' : 'sparkles';
   });
+
+  /** One chip per document section: the document title and the section's own heading, with the full heading path
+   * and file as the tooltip. */
+  readonly sources = computed<SourceChip[]>(() =>
+    (this.message().sources ?? []).map((source) => {
+      const heading = source.section.split(HEADING_SEPARATOR).pop() ?? source.section;
+      return {
+        key: `${source.path}#${source.section}`,
+        label: heading && heading !== source.document ? `${source.document}${HEADING_SEPARATOR}${heading}` : source.document,
+        title: `${source.document}${HEADING_SEPARATOR}${source.section}\n${source.path}`
+      };
+    })
+  );
 
   stageLabel(task: AssistantRankedTask): string {
     if (task.isBlocked) {

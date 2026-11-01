@@ -55,7 +55,7 @@ public static class IntegrationRegistration
         // headers or bodies, so keys and prompts stay out of the logs. Redirects are not followed: the address an administrator
         // saved is the only one that is called, so a redirect cannot lead the server on to another (for example a cloud
         // metadata) address.
-        services.AddHttpClient<OllamaProvider>(ConfigureAiClient)
+        services.AddHttpClient<OllamaProvider>(ConfigureOllamaClient)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
         services.AddHttpClient<GeminiProvider>(ConfigureAiClient)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
@@ -65,6 +65,11 @@ public static class IntegrationRegistration
         services.AddTransient<TaskFlow.Api.Integrations.Ai.Providers.IChatModelProvider>(sp => sp.GetRequiredService<GeminiProvider>());
         services.AddTransient<TaskFlow.Api.Integrations.Ai.Providers.IChatModelProvider>(sp => sp.GetRequiredService<OpenAiProvider>());
         services.AddScoped<TaskFlow.Api.Integrations.Ai.Registry.IChatModelProviderRegistry, ChatModelProviderRegistry>();
+        // Document embeddings for TFA always run on Google Gemini, whichever chat provider is selected, with the saved Gemini key.
+        services.AddHttpClient<TaskFlow.Api.Integrations.Ai.Embeddings.GeminiEmbeddingClient>(ConfigureAiClient)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+        services.AddTransient<TaskFlow.Api.Integrations.Ai.Embeddings.IEmbeddingClient>(
+            sp => sp.GetRequiredService<TaskFlow.Api.Integrations.Ai.Embeddings.GeminiEmbeddingClient>());
         services.AddScoped<TaskFlow.Api.Services.Assistant.ModelGateway.IChatModelGateway, ChatModelGateway>();
 
         return services;
@@ -72,4 +77,7 @@ public static class IntegrationRegistration
 
     private static void ConfigureAiClient(IServiceProvider services, HttpClient client) =>
         client.Timeout = TimeSpan.FromSeconds(services.GetRequiredService<IOptions<AiProviderOptions>>().Value.TimeoutSeconds);
+
+    private static void ConfigureOllamaClient(IServiceProvider services, HttpClient client) =>
+        client.Timeout = TimeSpan.FromSeconds(services.GetRequiredService<IOptions<AiProviderOptions>>().Value.OllamaTimeoutSeconds);
 }

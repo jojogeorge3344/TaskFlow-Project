@@ -17,7 +17,7 @@ public class GeminiProvider : IChatModelProvider
         _client = client;
     }
 
-    public AiProviderKind Kind => AiProviderKind.Gemini;
+    public AiApiType ApiType => AiApiType.Gemini;
 
     public async Task<ChatModelResult> CompleteAsync(AiProviderRuntime runtime, ChatModelRequest request, CancellationToken cancellationToken = default)
     {
@@ -25,10 +25,10 @@ public class GeminiProvider : IChatModelProvider
         var httpRequest = ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request));
         httpRequest.Headers.Add("x-goog-api-key", runtime.ApiKey ?? string.Empty);
 
-        var (response, body) = await ProviderHttp.SendAsync(_client, Kind, httpRequest, cancellationToken);
+        var (response, body) = await ProviderHttp.SendAsync(_client, ApiType, httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw Classify(response, body);
+            throw Classify(response, body, runtime.ApiKey);
         }
 
         return Parse(body);
@@ -114,7 +114,7 @@ public class GeminiProvider : IChatModelProvider
 
     private ChatModelResult Parse(string body)
     {
-        var root = ProviderHttp.ParseOrFail(Kind, body);
+        var root = ProviderHttp.ParseOrFail(ApiType, body);
         var parts = root["candidates"]?[0]?["content"]?["parts"] as JsonArray;
 
         var text = new System.Text.StringBuilder();
@@ -133,13 +133,13 @@ public class GeminiProvider : IChatModelProvider
 
         if (text.Length == 0 && calls.Count == 0)
         {
-            throw new ProviderFailureException(Kind, ProviderFailureKind.Unexpected);
+            throw new ProviderFailureException(ApiType, ProviderFailureKind.Unexpected);
         }
 
         return new ChatModelResult(text.Length == 0 ? null : text.ToString(), calls);
     }
 
-    private ProviderFailureException Classify(HttpResponseMessage response, string body)
+    private ProviderFailureException Classify(HttpResponseMessage response, string body, string? apiKey)
     {
         var status = string.Empty;
         var message = string.Empty;
@@ -161,9 +161,15 @@ public class GeminiProvider : IChatModelProvider
                 => ProviderFailureKind.InvalidKey,
             _ when message.Contains("API key", StringComparison.OrdinalIgnoreCase) => ProviderFailureKind.InvalidKey,
             _ when response.StatusCode == HttpStatusCode.NotFound || status == "NOT_FOUND" => ProviderFailureKind.ModelUnavailable,
+            // A malformed model name comes back as 400 INVALID_ARGUMENT ("unexpected model name format"), not 404: the
+            // name is not a model ID at all, which needs a different fix from a model that does not exist.
+            _ when (response.StatusCode == HttpStatusCode.BadRequest || status == "INVALID_ARGUMENT")
+                   && message.Contains("model name", StringComparison.OrdinalIgnoreCase) => ProviderFailureKind.InvalidModelName,
             _ => ProviderFailureKind.Unexpected
         };
 
-        return new ProviderFailureException(Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode);
+        return new ProviderFailureException(
+            ApiType, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            providerReason: ProviderHttp.Reason(status, message, apiKey));
     }
 }

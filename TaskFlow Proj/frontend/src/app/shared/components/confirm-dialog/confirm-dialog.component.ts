@@ -30,7 +30,9 @@ import { ConfirmOptions } from './confirm-dialog.model';
           </div>
         </div>
         <div class="tf-modal__foot">
-          <button type="button" class="tf-btn tf-btn--ghost" data-action="cancel" (click)="cancel()">Cancel</button>
+          @if (!opts.notice) {
+            <button type="button" class="tf-btn tf-btn--ghost" data-action="cancel" (click)="cancel()">Cancel</button>
+          }
           <button
             type="button"
             class="tf-btn"

@@ -7,12 +7,12 @@ namespace TaskFlow.IntegrationTests.TestSupport;
 /// <see cref="Handler"/> to decide each reply and reads <see cref="Calls"/> to see what was sent.</summary>
 public sealed class ScriptedChatProvider : IChatModelProvider
 {
-    public ScriptedChatProvider(AiProviderKind kind)
+    public ScriptedChatProvider(AiApiType apiType)
     {
-        Kind = kind;
+        ApiType = apiType;
     }
 
-    public AiProviderKind Kind { get; }
+    public AiApiType ApiType { get; }
 
     public Func<AiProviderRuntime, ChatModelRequest, ChatModelResult> Handler { get; set; } =
         (_, _) => ChatModelResult.FromText("OK");

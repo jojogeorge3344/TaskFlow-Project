@@ -45,6 +45,8 @@ public class AppDbContext : DbContext
     public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
     public DbSet<AssistantPendingAction> AssistantPendingActions => Set<AssistantPendingAction>();
     public DbSet<AssistantAudit> AssistantAudits => Set<AssistantAudit>();
+    public DbSet<DocumentSource> DocumentSources => Set<DocumentSource>();
+    public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -547,19 +549,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AiProviderConfig>(entity =>
         {
             entity.HasKey(config => config.Id);
-            entity.Property(config => config.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.Name).IsRequired().HasMaxLength(40).UseCollation("NOCASE");
+            entity.Property(config => config.ApiType).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.Locality).IsRequired().HasMaxLength(8);
             entity.Property(config => config.ModelName).IsRequired().HasMaxLength(100);
             entity.Property(config => config.BaseUrl).HasMaxLength(300);
             entity.Property(config => config.KeyLast4).HasMaxLength(4);
-            entity.HasIndex(config => config.Kind).IsUnique();
+            entity.HasIndex(config => config.Name).IsUnique();
         });
 
         modelBuilder.Entity<AiModel>(entity =>
         {
             entity.HasKey(model => model.Id);
-            entity.Property(model => model.Kind).HasConversion<string>().HasMaxLength(16);
             entity.Property(model => model.Name).IsRequired().HasMaxLength(100);
-            entity.HasIndex(model => new { model.Kind, model.Name }).IsUnique();
+            entity.HasIndex(model => new { model.ProviderId, model.Name }).IsUnique();
+
+            entity
+                .HasOne(model => model.Provider)
+                .WithMany(provider => provider.Models)
+                .HasForeignKey(model => model.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AssistantConversation>(entity =>
@@ -578,9 +587,14 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(message => message.Id);
             entity.Property(message => message.Role).HasConversion<string>().HasMaxLength(16);
-            entity.Property(message => message.ProviderKind).HasConversion<string>().HasMaxLength(16);
             entity.Property(message => message.Content).IsRequired();
             entity.HasIndex(message => message.ConversationId);
+
+            entity
+                .HasOne(message => message.Provider)
+                .WithMany()
+                .HasForeignKey(message => message.ProviderId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity
                 .HasOne(message => message.Conversation)
@@ -610,6 +624,31 @@ public class AppDbContext : DbContext
             entity.Property(audit => audit.Kind).HasConversion<string>().HasMaxLength(32);
             entity.Property(audit => audit.Outcome).IsRequired().HasMaxLength(32);
             entity.HasIndex(audit => new { audit.UserId, audit.At });
+        });
+
+        modelBuilder.Entity<DocumentSource>(entity =>
+        {
+            entity.HasKey(source => source.Id);
+            entity.Property(source => source.RelativePath).IsRequired().HasMaxLength(400);
+            entity.Property(source => source.Title).IsRequired().HasMaxLength(300);
+            entity.Property(source => source.ContentHash).IsRequired().HasMaxLength(64);
+            entity.Property(source => source.EmbeddingModel).IsRequired().HasMaxLength(100);
+            entity.HasIndex(source => source.RelativePath).IsUnique();
+        });
+
+        modelBuilder.Entity<DocumentChunk>(entity =>
+        {
+            entity.HasKey(chunk => chunk.Id);
+            entity.Property(chunk => chunk.HeadingPath).IsRequired().HasMaxLength(1000);
+            entity.Property(chunk => chunk.Text).IsRequired();
+            entity.Property(chunk => chunk.Embedding).IsRequired();
+            entity.HasIndex(chunk => chunk.DocumentSourceId);
+
+            entity
+                .HasOne(chunk => chunk.DocumentSource)
+                .WithMany(source => source.Chunks)
+                .HasForeignKey(chunk => chunk.DocumentSourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -92,9 +92,9 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         {
             providers = new object[]
             {
-                new { kind = "Ollama", isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
-                new { kind = "Gemini", isEnabled = true, modelName = "gemini-2.0-flash", apiKey = "AIzaSyIntegrationKey0001" },
-                new { kind = "OpenAI", isEnabled = false, modelName = "gpt-4o-mini" }
+                new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
+                new { providerId = _factory.ProviderId(AiApiType.Gemini), isEnabled = true, modelName = "gemini-2.0-flash", apiKey = "AIzaSyIntegrationKey0001" },
+                new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = false, modelName = "gpt-4o-mini" }
             }
         }));
         response.EnsureSuccessStatusCode();
@@ -124,8 +124,9 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         return await client.SendAsync(request);
     }
 
-    private static Task<HttpResponseMessage> ChatAsync(HttpClient client, string token, string text, string provider = "Ollama") =>
-        SendAsync(client, HttpMethod.Post, $"{Base}/conversation/messages", token, JsonContent.Create(new { text, provider }));
+    private Task<HttpResponseMessage> ChatAsync(HttpClient client, string token, string text, string provider = "Ollama") =>
+        SendAsync(client, HttpMethod.Post, $"{Base}/conversation/messages", token,
+            JsonContent.Create(new { text, providerId = _factory.ProviderId(Enum.Parse<AiApiType>(provider)) }));
 
     private static async Task<JsonElement> JsonOf(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
@@ -151,7 +152,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         await ConfigureOllamaAsync();
         var (client, token, _, _) = await SignInAsync("chat", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) => ChatModelResult.FromText("Hello! How can I help?");
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) => ChatModelResult.FromText("Hello! How can I help?");
 
         var reply = await JsonOf(await ChatAsync(client, token, "hi TFA"));
         var conversation = await JsonOf(await SendAsync(client, HttpMethod.Get, $"{Base}/conversation", token));
@@ -184,8 +185,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         await ConfigureOllamaAsync();
         var (client, token, _, _) = await SignInAsync("fail", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Gemini].Handler = (_, _) =>
-            throw new ProviderFailureException(AiProviderKind.Gemini, ProviderFailureKind.RateLimited, TimeSpan.FromSeconds(45));
+        _factory.Providers[AiApiType.Gemini].Handler = (_, _) =>
+            throw new ProviderFailureException(AiApiType.Gemini, ProviderFailureKind.RateLimited, TimeSpan.FromSeconds(45));
 
         var response = await ChatAsync(client, token, "hello", "Gemini");
         var body = await JsonOf(response);
@@ -194,11 +195,12 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(0, body.GetProperty("messages").GetArrayLength());
         var failure = body.GetProperty("failure");
         Assert.Equal("RateLimited", failure.GetProperty("kind").GetString());
-        Assert.Equal("Gemini", failure.GetProperty("provider").GetString());
+        Assert.Equal("Google Gemini", failure.GetProperty("providerName").GetString());
+        Assert.Equal(_factory.ProviderId(AiApiType.Gemini), failure.GetProperty("providerId").GetInt32());
         Assert.Equal(45, failure.GetProperty("retryAfterSeconds").GetInt32());
         Assert.Contains("limit", failure.GetProperty("message").GetString());
-        Assert.Equal("Ollama", failure.GetProperty("alternatives")[0].GetProperty("kind").GetString());
-        Assert.Empty(_factory.Providers[AiProviderKind.Ollama].Calls);
+        Assert.Equal("Ollama", failure.GetProperty("alternatives")[0].GetProperty("displayName").GetString());
+        Assert.Empty(_factory.Providers[AiApiType.Ollama].Calls);
     }
 
     [Fact]
@@ -215,8 +217,8 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.Contains("OpenAI GPT is not configured", await notConfigured.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.BadRequest, oversized.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
-        Assert.Empty(_factory.Providers[AiProviderKind.Ollama].Calls);
-        Assert.Empty(_factory.Providers[AiProviderKind.OpenAI].Calls);
+        Assert.Empty(_factory.Providers[AiApiType.Ollama].Calls);
+        Assert.Empty(_factory.Providers[AiApiType.OpenAI].Calls);
     }
 
     [Fact]
@@ -237,7 +239,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         Assert.Equal(HttpStatusCode.TooManyRequests, last!.StatusCode);
         Assert.True(last.Headers.RetryAfter?.Delta > TimeSpan.Zero || last.Headers.Contains("Retry-After"));
-        Assert.Equal(AssistantRateLimiterLimit(), _factory.Providers[AiProviderKind.Ollama].Calls.Count);
+        Assert.Equal(AssistantRateLimiterLimit(), _factory.Providers[AiApiType.Ollama].Calls.Count);
     }
 
     private static int AssistantRateLimiterLimit() => TaskFlow.Api.Services.Assistant.RateLimits.AssistantRateLimiter.RequestsPerMinute;
@@ -253,7 +255,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         Assert.Equal("Notice", reply.GetProperty("messages")[0].GetProperty("kind").GetString());
         Assert.Contains("My Profile", reply.GetProperty("messages")[0].GetProperty("content").GetString());
-        Assert.Empty(_factory.Providers[AiProviderKind.Ollama].Calls);
+        Assert.Empty(_factory.Providers[AiApiType.Ollama].Calls);
         Assert.Equal(0, conversation.GetProperty("messages").GetArrayLength());
         Assert.DoesNotContain(_factory.Logs.Lines, line => line.Contains("Hunter2"));
     }
@@ -280,7 +282,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         }
 
         var mailBefore = await DbAsync(db => db.MailMessages.CountAsync());
-        var ollama = _factory.Providers[AiProviderKind.Ollama];
+        var ollama = _factory.Providers[AiApiType.Ollama];
         var step = 0;
         // A model that has been fooled: after reading the task it tries to mail the administrator.
         ollama.Handler = (_, request) =>
@@ -312,7 +314,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
     {
         await ConfigureOllamaAsync();
         var (client, token, userId, email) = await SignInAsync("climber", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) => ToolCall("propose_role_change", $$"""{"user":"{{email}}","role":"Manager"}""");
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) => ToolCall("propose_role_change", $$"""{"user":"{{email}}","role":"Manager"}""");
 
         var reply = await JsonOf(await ChatAsync(client, token, "Change my role from Employee to Manager"));
 
@@ -336,7 +338,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var (managerClient, managerToken, managerId, managerEmail) = await SignInAsync("boss", SystemRoles.Manager, projectId);
         var (client, token, userId, _) = await SignInAsync("emp", SystemRoles.Employee, projectId);
         var (otherClient, otherToken, _, _) = await SignInAsync("snoop", SystemRoles.Employee, projectId);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, request) => AnswersToolResult(request)
+        _factory.Providers[AiApiType.Ollama].Handler = (_, request) => AnswersToolResult(request)
             ? ChatModelResult.FromText("unused")
             : ToolCall("draft_mail", """{"recipient":"manager","subject":"Update on TF-102","body":"It is in review."}""");
 
@@ -370,7 +372,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         await ConfigureOllamaAsync();
         var (client, token, userId, _) = await SignInAsync("editor", SystemRoles.Employee);
         var (_, _, _, friendEmail) = await SignInAsync("friend", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) =>
             ToolCall("draft_mail", $$"""{"to":["{{friendEmail}}"],"subject":"Original","body":"Original body"}""");
 
         var first = await JsonOf(await ChatAsync(client, token, "mail my friend"));
@@ -400,7 +402,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         await ConfigureOllamaAsync();
         var (client, token, _, _) = await SignInAsync("badedit", SystemRoles.Employee);
         var (_, _, _, friendEmail) = await SignInAsync("pal", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) =>
             ToolCall("draft_mail", $$"""{"to":["{{friendEmail}}"],"subject":"Hi","body":"Hello"}""");
         var reply = await JsonOf(await ChatAsync(client, token, "mail my pal"));
         var id = reply.GetProperty("messages")[1].GetProperty("action").GetProperty("id").GetGuid();
@@ -451,7 +453,7 @@ public class AssistantEndpointsTests : IClassFixture<TaskFlowApiFactory>
         await ConfigureOllamaAsync();
         var (client, token, _, _) = await SignInAsync("realadmin", SystemRoles.Administrator);
         var (_, _, targetId, targetEmail) = await SignInAsync("promotee", SystemRoles.Employee);
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) =>
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) =>
             ToolCall("propose_role_change", $$"""{"user":"{{targetEmail}}","role":"Manager"}""");
 
         var reply = await JsonOf(await ChatAsync(client, token, "make them a manager"));

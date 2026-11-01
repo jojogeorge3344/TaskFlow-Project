@@ -8,8 +8,8 @@ import { AuthService } from '../../../shared/auth/auth.service';
 import { AiProviderOption, AssistantFailure, AssistantMessage, AssistantPendingAction } from '../models/assistant.model';
 import { AssistantService, TFA_CLOUD_ACK_KEY, TFA_PROVIDER_KEY } from './assistant.service';
 
-const ollama: AiProviderOption = { kind: 'Ollama', displayName: 'Ollama', modelName: 'llama3.1:8b', locality: 'Local' };
-const gemini: AiProviderOption = { kind: 'Gemini', displayName: 'Google Gemini', modelName: 'gemini-2.0-flash', locality: 'Cloud' };
+const ollama: AiProviderOption = { providerId: 1, displayName: 'Ollama', modelName: 'llama3.1:8b', locality: 'Local' };
+const gemini: AiProviderOption = { providerId: 2, displayName: 'Google Gemini', modelName: 'gemini-2.0-flash', locality: 'Cloud' };
 
 function message(id: number, role: 'User' | 'Assistant', content: string, extra: Partial<AssistantMessage> = {}): AssistantMessage {
   return {
@@ -18,10 +18,12 @@ function message(id: number, role: 'User' | 'Assistant', content: string, extra:
     content,
     kind: 'Text',
     createdAt: '2026-10-19T09:00:00Z',
+    providerId: role === 'Assistant' ? 1 : null,
     provider: role === 'Assistant' ? 'Ollama' : null,
     links: [],
     rankedTasks: [],
     action: null,
+    sources: [],
     ...extra
   };
 }
@@ -56,7 +58,8 @@ describe('AssistantService', () => {
 
   beforeEach(() => {
     localStorage.removeItem(TFA_PROVIDER_KEY);
-    localStorage.removeItem(TFA_CLOUD_ACK_KEY);
+    // Ollama's notice (messages go to Google Gemini for document search) is already acknowledged, so most tests send at once.
+    localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify([ollama.providerId]));
     user.set(null);
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AuthService, useValue: { currentUser: user.asReadonly() } }]
@@ -76,9 +79,9 @@ describe('AssistantService', () => {
     signIn();
     flushStartup([ollama, gemini], [message(1, 'User', 'hi'), message(2, 'Assistant', 'hello')]);
 
-    expect(service.providers().map((p) => p.kind)).toEqual(['Ollama', 'Gemini']);
+    expect(service.providers().map((p) => p.providerId)).toEqual([1, 2]);
     expect(service.messages().map((m) => m.content)).toEqual(['hi', 'hello']);
-    expect(service.selected()?.kind).toBe('Ollama');
+    expect(service.selected()?.providerId).toBe(1);
   });
 
   it('keeps the open panel and the conversation when the same user object is replaced, as a token refresh does', () => {
@@ -125,7 +128,7 @@ describe('AssistantService', () => {
     expect(service.messages()[0]).toEqual(jasmine.objectContaining({ content: 'what is due this week?', local: true }));
     const request = http.expectOne('/api/v1/assistant/conversation/messages');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ text: 'what is due this week?', provider: 'Ollama' });
+    expect(request.request.body).toEqual({ text: 'what is due this week?', providerId: 1 });
     request.flush({
       messages: [message(10, 'User', 'what is due this week?'), message(11, 'Assistant', 'Two tasks.')],
       failure: null
@@ -138,16 +141,16 @@ describe('AssistantService', () => {
   it('switches model mid-conversation without losing the conversation and remembers the choice', () => {
     signIn();
     flushStartup([ollama, gemini], [message(1, 'User', 'earlier'), message(2, 'Assistant', 'answer')]);
-    service.selectProvider('Gemini');
+    service.selectProvider(2);
     service.acknowledgeCloud();
     service.send('next question');
 
     const request = http.expectOne('/api/v1/assistant/conversation/messages');
-    expect(request.request.body).toEqual({ text: 'next question', provider: 'Gemini' });
-    request.flush({ messages: [message(3, 'User', 'next question'), message(4, 'Assistant', 'ok', { provider: 'Gemini' })], failure: null });
+    expect(request.request.body).toEqual({ text: 'next question', providerId: 2 });
+    request.flush({ messages: [message(3, 'User', 'next question'), message(4, 'Assistant', 'ok', { providerId: 2 })], failure: null });
 
     expect(service.messages().map((m) => m.content)).toEqual(['earlier', 'answer', 'next question', 'ok']);
-    expect(localStorage.getItem(TFA_PROVIDER_KEY)).toBe('Gemini');
+    expect(localStorage.getItem(TFA_PROVIDER_KEY)).toBe('2');
   });
 
   it('falls back to the first available provider when the remembered one is no longer configured', () => {
@@ -155,7 +158,7 @@ describe('AssistantService', () => {
     signIn();
     flushStartup([ollama]);
 
-    expect(service.selected()?.kind).toBe('Ollama');
+    expect(service.selected()?.providerId).toBe(1);
   });
 
   describe('keeping the provider list fresh', () => {
@@ -175,27 +178,27 @@ describe('AssistantService', () => {
       service.open();
       http.expectOne('/api/v1/assistant/providers').flush([ollama]);
 
-      expect(service.providers().map((p) => p.kind)).toEqual(['Ollama']);
+      expect(service.providers().map((p) => p.providerId)).toEqual([1]);
     });
 
     it('drops a provider an administrator has since disabled from the selector', () => {
       jasmine.clock().mockDate(new Date('2026-10-19T09:00:00Z'));
       signIn();
       flushStartup([ollama, gemini]);
-      service.selectProvider('Gemini');
-      expect(service.selected()?.kind).toBe('Gemini');
+      service.selectProvider(2);
+      expect(service.selected()?.providerId).toBe(2);
 
       jasmine.clock().mockDate(new Date('2026-10-19T09:05:00Z'));
       service.open();
       http.expectOne('/api/v1/assistant/providers').flush([ollama]);
 
-      expect(service.selected()?.kind).toBe('Ollama');
+      expect(service.selected()?.providerId).toBe(1);
     });
 
     it('reloads the list after a send is refused, for example because the provider is no longer configured', () => {
       signIn();
       flushStartup();
-      service.selectProvider('Gemini');
+      service.selectProvider(2);
       service.acknowledgeCloud();
 
       service.send('hello');
@@ -204,7 +207,7 @@ describe('AssistantService', () => {
         .flush({ detail: 'Google Gemini is not configured. Choose another model, or ask an administrator to set it up.' }, { status: 400, statusText: 'Bad Request' });
       http.expectOne('/api/v1/assistant/providers').flush([ollama]);
 
-      expect(service.selected()?.kind).toBe('Ollama');
+      expect(service.selected()?.providerId).toBe(1);
       expect(service.messages().at(-1)?.content).toContain('not configured');
     });
   });
@@ -221,7 +224,7 @@ describe('AssistantService', () => {
   it('holds the first message to a Cloud provider until the user acknowledges it, then asks once', () => {
     signIn();
     flushStartup();
-    service.selectProvider('Gemini');
+    service.selectProvider(2);
 
     service.send('summarise my tasks');
     http.expectNone('/api/v1/assistant/conversation/messages');
@@ -230,20 +233,63 @@ describe('AssistantService', () => {
 
     service.acknowledgeCloud();
     const first = http.expectOne('/api/v1/assistant/conversation/messages');
-    expect(first.request.body.provider).toBe('Gemini');
-    first.flush({ messages: [message(1, 'User', 'summarise my tasks'), message(2, 'Assistant', 'done', { provider: 'Gemini' })], failure: null });
+    expect(first.request.body.providerId).toBe(2);
+    first.flush({ messages: [message(1, 'User', 'summarise my tasks'), message(2, 'Assistant', 'done', { providerId: 2 })], failure: null });
     expect(service.heldMessage()).toBeNull();
-    expect(service.isAcknowledged('Gemini')).toBeTrue();
+    expect(service.isAcknowledged(2)).toBeTrue();
 
     service.send('and again');
     expect(service.heldMessage()).toBeNull();
     http.expectOne('/api/v1/assistant/conversation/messages').flush({ messages: [], failure: null });
   });
 
-  it('never holds a message for a Local provider', () => {
+  it('holds the first message to a custom Cloud provider too, and sends it with that provider\'s id', () => {
+    const groq: AiProviderOption = { providerId: 9, displayName: 'Groq', modelName: 'llama-3.3-70b-versatile', locality: 'Cloud' };
+    signIn();
+    flushStartup([ollama, groq]);
+    service.selectProvider(9);
+
+    expect(service.needsCloudNotice()).toBeTrue();
+    service.send('hello');
+    http.expectNone('/api/v1/assistant/conversation/messages');
+
+    service.acknowledgeCloud();
+    const request = http.expectOne('/api/v1/assistant/conversation/messages');
+    expect(request.request.body).toEqual({ text: 'hello', providerId: 9 });
+    request.flush({ messages: [], failure: null });
+    expect(localStorage.getItem(TFA_PROVIDER_KEY)).toBe('9');
+  });
+
+  it('ignores a provider remembered by name before providers had ids', () => {
+    localStorage.setItem(TFA_PROVIDER_KEY, 'Gemini');
+    localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify(['Gemini']));
+
+    // A new service reads the stored choice when it is created; nobody is signed in, so it sends nothing.
+    const fresh = TestBed.runInInjectionContext(() => new AssistantService());
+    fresh.providers.set([ollama, gemini]);
+
+    expect(fresh.selected()?.providerId).toBe(1);
+    fresh.selectProvider(2);
+    expect(fresh.needsCloudNotice()).toBeTrue();
+  });
+
+  it('holds the first message with a Local provider too, because it is sent to Google Gemini for document search', () => {
+    localStorage.removeItem(TFA_CLOUD_ACK_KEY);
+    const fresh = TestBed.runInInjectionContext(() => new AssistantService());
+    fresh.providers.set([ollama, gemini]);
+    fresh.selectProvider(ollama.providerId);
+
+    expect(fresh.needsCloudNotice()).toBeTrue();
+    fresh.send('hello');
+    expect(fresh.heldMessage()).toBe('hello');
+    http.expectNone('/api/v1/assistant/conversation/messages');
+  });
+
+  it("sends a Local provider's messages at once after its notice was acknowledged", () => {
     signIn();
     flushStartup();
 
+    expect(service.needsCloudNotice()).toBeFalse();
     service.send('hello');
 
     expect(service.heldMessage()).toBeNull();
@@ -253,7 +299,7 @@ describe('AssistantService', () => {
   it('lets the user take a held message back', () => {
     signIn();
     flushStartup();
-    service.selectProvider('Gemini');
+    service.selectProvider(2);
     service.send('hold me');
 
     expect(service.discardHeld()).toBe('hold me');
@@ -265,7 +311,8 @@ describe('AssistantService', () => {
     flushStartup();
     const failure: AssistantFailure = {
       kind: 'RateLimited',
-      provider: 'Ollama',
+      providerId: 1,
+      providerName: 'Ollama',
       message: 'Ollama is busy.',
       retryAfterSeconds: 30,
       alternatives: [gemini]
@@ -278,12 +325,12 @@ describe('AssistantService', () => {
     expect(service.failed()?.text).toBe('hello');
     expect(service.messages().map((m) => m.content)).toEqual(['hello']);
 
-    service.selectProvider('Gemini');
+    service.selectProvider(2);
     service.acknowledgeCloud();
     service.retry();
 
     const retry = http.expectOne('/api/v1/assistant/conversation/messages');
-    expect(retry.request.body).toEqual({ text: 'hello', provider: 'Gemini' });
+    expect(retry.request.body).toEqual({ text: 'hello', providerId: 2 });
     expect(service.failed()).toBeNull();
     expect(service.messages().filter((m) => m.content === 'hello').length).toBe(1);
     retry.flush({ messages: [message(1, 'User', 'hello'), message(2, 'Assistant', 'hi')], failure: null });

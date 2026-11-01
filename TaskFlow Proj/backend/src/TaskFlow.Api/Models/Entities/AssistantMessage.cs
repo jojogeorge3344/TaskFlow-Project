@@ -15,8 +15,9 @@ public class AssistantMessage
     /// list, or the pending action the message offers.</summary>
     public string? MetaJson { get; set; }
 
-    /// <summary>Which provider produced an assistant message.</summary>
-    public AiProviderKind? ProviderKind { get; set; }
+    /// <summary>Which provider produced an assistant message. Null for user messages, and after a custom provider was removed.</summary>
+    public int? ProviderId { get; set; }
+    public AiProviderConfig? Provider { get; set; }
 
     public DateTime CreatedAt { get; set; }
 }

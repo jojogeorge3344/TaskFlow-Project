@@ -35,6 +35,18 @@
       </div>
     }
 
+    @if (sources().length > 0) {
+      <div class="tfa-sources" data-sources aria-label="Sources">
+        <span class="tfa-sources__label">Sources</span>
+        @for (source of sources(); track source.key) {
+          <span class="tfa-source" [title]="source.title" data-source>
+            <tf-icon name="file" />
+            <span class="tfa-source__text">{{ source.label }}</span>
+          </span>
+        }
+      </div>
+    }
+
     @if (message().action; as action) {
       <app-tfa-action-card [action]="action" />
     }

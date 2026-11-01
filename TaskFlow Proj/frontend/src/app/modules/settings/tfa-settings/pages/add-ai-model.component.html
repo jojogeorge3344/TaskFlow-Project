@@ -1,0 +1,203 @@
+<section class="tf-page add-model" data-page="add-ai-model">
+  <header class="tf-page-header">
+    <div>
+      <a class="tf-btn tf-btn--ghost tf-back" data-action="back" [routerLink]="settingsUrl">
+        <tf-icon name="arrow" />
+        Back to TFA settings
+      </a>
+      @if (editing) {
+        <h1>Edit AI model</h1>
+        <p>Change the model name, enter a new key or server address, or type another provider to move the model there, and test the connection. The changes are saved only when the test works; the model TFA uses does not change.</p>
+      } @else {
+        <h1>Add AI model</h1>
+        <p>Type the AI provider (or a new name to add your own, such as Groq or a company server), enter the model name and its key or address, and test the connection. The model is saved and becomes the one TFA uses only when the test works.</p>
+      }
+    </div>
+  </header>
+
+  @if (loadError()) {
+    <div class="tf-alert" role="alert">
+      <tf-icon name="alert" />
+      <span>{{ loadError() }}</span>
+      <button type="button" class="tf-btn tf-btn--ghost" data-action="retry" (click)="load()">Retry</button>
+    </div>
+  } @else if (loading()) {
+    <div class="tf-card add-model__card" aria-busy="true">
+      <span class="tf-skeleton add-model__skeleton"></span>
+      <span class="tf-skeleton add-model__skeleton"></span>
+    </div>
+  } @else {
+    <form class="tf-card add-model__card" autocomplete="off" [formGroup]="form" (ngSubmit)="test()" (input)="clearResult()" novalidate>
+      <div class="tf-field">
+        <label for="add-model-provider">
+          AI provider <span class="add-model__required" aria-hidden="true">*</span>
+          @if (isNew()) {
+            <span class="add-model__tag" data-tag="new-provider">New provider</span>
+          }
+        </label>
+        <input id="add-model-provider" class="tf-input" formControlName="provider" data-field="provider" list="add-model-providers"
+          autocomplete="off" spellcheck="false" placeholder="For example Google Gemini, or a new name such as Groq"
+          [class.is-invalid]="form.controls.provider.invalid && form.controls.provider.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+        <datalist id="add-model-providers">
+          @for (provider of providers(); track provider.providerId) {
+            <option [value]="provider.displayName">{{ provider.locality }}</option>
+          }
+        </datalist>
+        @if (form.controls.provider.invalid && form.controls.provider.touched) {
+          <span class="tf-field__error" data-error="provider">Enter the AI provider.</span>
+        } @else if (form.errors?.['providerNameLength'] && form.controls.provider.touched) {
+          <span class="tf-field__error" data-error="provider">The provider name must be 2 to 40 characters.</span>
+        }
+        @if (moveTarget(); as target) {
+          <span class="tf-field__hint" data-hint="move">The model moves to {{ target }} when the test works.</span>
+        } @else if (isNew()) {
+          <span class="tf-field__hint" data-hint="new-provider">
+            A provider TaskFlow does not know yet. It is added when the test works. Most services (Groq, Mistral, OpenRouter,
+            LM Studio, vLLM) use the OpenAI-compatible API.
+          </span>
+        }
+      </div>
+
+      @if (isNew()) {
+        <div class="add-model__row">
+          <div class="tf-field">
+            <label for="add-model-api-type">API type <span class="add-model__required" aria-hidden="true">*</span></label>
+            <select id="add-model-api-type" class="tf-select" formControlName="apiType" data-field="apiType">
+              @for (option of customApiTypes; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="tf-field">
+            <label for="add-model-locality">Runs <span class="add-model__required" aria-hidden="true">*</span></label>
+            <select id="add-model-locality" class="tf-select" formControlName="locality" data-field="locality">
+              <option value="Cloud">Cloud: questions leave the organisation</option>
+              <option value="Local">Local: on your own server</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="tf-field">
+          <label for="add-model-url">Server address <span class="add-model__required" aria-hidden="true">*</span></label>
+          <input id="add-model-url" class="tf-input" autocomplete="off" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
+            [placeholder]="form.controls.apiType.value === 'Ollama' ? defaultOllamaUrl : 'For example https://api.groq.com/openai/v1'"
+            [class.is-invalid]="(form.errors?.['baseUrlRequired'] || form.controls.baseUrl.invalid) && form.controls.baseUrl.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+          @if (form.controls.baseUrl.invalid && form.controls.baseUrl.touched) {
+            <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
+          } @else if (form.errors?.['baseUrlRequired'] && form.controls.baseUrl.touched) {
+            <span class="tf-field__error" data-error="baseUrl">Enter the server address.</span>
+          }
+          <span class="tf-field__hint">The address the service gives for its API, including the version path (for example <code>/v1</code>).</span>
+        </div>
+      }
+
+      @if (apiType(); as type) {
+        <div class="tf-field">
+          <label for="add-model-name">Model name <span class="add-model__required" aria-hidden="true">*</span></label>
+          <input id="add-model-name" class="tf-input" autocomplete="off" formControlName="modelName" data-field="modelName" spellcheck="false"
+            [placeholder]="'For example ' + modelExamples[type]"
+            [class.is-invalid]="form.controls.modelName.invalid && form.controls.modelName.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+          @if (form.controls.modelName.hasError('modelId') && form.controls.modelName.touched) {
+            <span class="tf-field__error" data-error="modelName">
+              {{ modelIdMessages[type] }}
+            </span>
+          } @else if (form.controls.modelName.invalid && form.controls.modelName.touched) {
+            <span class="tf-field__error" data-error="modelName">Enter the model name (100 characters at most).</span>
+          }
+        </div>
+      }
+
+      @if (isNew()) {
+        @if (form.controls.apiType.value !== 'Ollama') {
+          <div class="tf-field">
+            <label for="add-model-key">API key <span class="add-model__optional">(optional)</span></label>
+            <input id="add-model-key" class="tf-input" type="password" autocomplete="new-password" spellcheck="false"
+              formControlName="apiKey" data-field="apiKey" placeholder="Paste the API key, if the service needs one"
+              [class.is-invalid]="form.controls.apiKey.invalid && form.controls.apiKey.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+            @if (form.controls.apiKey.invalid && form.controls.apiKey.touched) {
+              <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
+            }
+            <span class="tf-field__hint" data-hint="key">A local server may need no key. The key is stored encrypted and never shown again.</span>
+          </div>
+        }
+      }
+
+      @if (selected(); as provider) {
+        @if (usesAddress(provider)) {
+          <div class="tf-field">
+            <label for="add-model-url">Server address <span class="add-model__optional">(optional)</span></label>
+            <input id="add-model-url" class="tf-input" autocomplete="off" formControlName="baseUrl" data-field="baseUrl" spellcheck="false"
+              [placeholder]="provider.baseUrl || defaultOllamaUrl"
+              [class.is-invalid]="form.controls.baseUrl.invalid && form.controls.baseUrl.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+            @if (form.controls.baseUrl.invalid && form.controls.baseUrl.touched) {
+              <span class="tf-field__error" data-error="baseUrl">Enter a valid http or https address.</span>
+            }
+            <span class="tf-field__hint">
+              Leave it empty to use {{ provider.baseUrl || defaultOllamaUrl }}.
+              @if (provider.apiType === 'Ollama') {
+                Pull the model in Ollama first (for example <code>ollama pull phi3:mini</code>).
+              }
+            </span>
+          </div>
+        }
+
+        @if (takesKey(provider)) {
+          <div class="tf-field">
+            <label for="add-model-key">
+              API key
+              @if (provider.requiresKey && !hasUsableKey(provider)) {
+                <span class="add-model__required" aria-hidden="true">*</span>
+              } @else if (!provider.requiresKey) {
+                <span class="add-model__optional">(optional)</span>
+              }
+            </label>
+            <input id="add-model-key" class="tf-input" type="password" autocomplete="new-password" spellcheck="false"
+              formControlName="apiKey" data-field="apiKey"
+              [placeholder]="hasUsableKey(provider) ? '••••••••••••' : 'Paste the API key'"
+              [class.is-invalid]="(form.errors?.['apiKeyRequired'] || form.controls.apiKey.invalid) && form.controls.apiKey.touched" data-1p-ignore data-lpignore="true" data-bwignore="true" data-form-type="other" />
+            @if (form.controls.apiKey.invalid && form.controls.apiKey.touched) {
+              <span class="tf-field__error" data-error="apiKey">The key cannot contain spaces.</span>
+            } @else if (form.errors?.['apiKeyRequired'] && form.controls.apiKey.touched) {
+              <span class="tf-field__error" data-error="apiKey">Enter the API key.</span>
+            }
+            <span class="tf-field__hint" data-hint="key">{{ keyHint(provider) }}</span>
+            @if (editing && source()?.keySet && !moveTarget()) {
+              <button type="button" class="tf-btn tf-btn--ghost add-model__remove-key" data-action="remove-key"
+                [disabled]="removingKey()" (click)="removeKey()">
+                {{ removingKey() ? 'Removing…' : 'Remove the key' }}
+              </button>
+            }
+            @if (provider.apiType === 'Gemini') {
+              <span class="tf-field__hint" data-hint="key-source">
+                Create a Gemini key in Google AI Studio:
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>.
+              </span>
+            }
+          </div>
+        }
+      }
+
+      <div class="add-model__actions">
+        <button type="submit" class="tf-btn tf-btn--primary" data-action="test-connection" [disabled]="testing()">
+          {{ testing() ? 'Testing…' : (editing ? 'Test and save' : 'Test connection') }}
+        </button>
+        <a class="tf-btn tf-btn--ghost" data-action="cancel" [routerLink]="settingsUrl">Cancel</a>
+
+        @if (result(); as failed) {
+          <span class="add-model__result" [attr.data-result]="failed.failureKind ?? 'failed'" role="status">
+            <tf-icon name="alert" />
+            {{ failed.message }} Nothing was saved.
+          </span>
+        }
+        @if (requestError()) {
+          <span class="add-model__result" data-result="error" role="alert">
+            <tf-icon name="alert" />
+            {{ requestError() }}
+          </span>
+        }
+      </div>
+    </form>
+  }
+
+  <tf-confirm-dialog />
+</section>

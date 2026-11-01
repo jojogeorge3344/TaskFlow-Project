@@ -16,7 +16,7 @@ where it all runs. It does **not** list classes, methods, columns or every endpo
 | BRD / FRD | Scope, actors, quality goals, traceability (§15) |
 | Code facts – run `python "<tdd-sync-skill-dir>/scripts/extract_facts.py" "<workspace>/TaskFlow Proj" "<scratch>/facts.md"` (the `tdd-sync` skill) | Real packages and versions, modules, hosted services, integrations, data stores, routes |
 | `TF - Documents/TF - TDD/TDD-TaskFlow.md` §1–§5, §14–§19 | Architecture, decisions, security, configuration, deployment, backup |
-| Module overview docs (`TaskFlow Proj/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/NN.0-*-Overview.md`) | Module responsibilities and dependencies |
+| Module overview docs (`TF - Documents/TFTechnicalWorkflow/Tech WF in MD/<NN-Module>/NN.0-*-Overview.md`) | Module responsibilities and dependencies |
 | `README.md` | Data folder, setup, technologies |
 
 For a new system with no code yet, design from the BRD/FRD and mark choices as proposed.

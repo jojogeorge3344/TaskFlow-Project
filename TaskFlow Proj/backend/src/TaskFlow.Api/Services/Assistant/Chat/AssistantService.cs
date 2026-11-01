@@ -13,6 +13,7 @@ using TaskFlow.Api.Repositories.Assistant.People;
 using TaskFlow.Api.Repositories.Base;
 using TaskFlow.Api.Services.Assistant.Access;
 using TaskFlow.Api.Services.Assistant.Actions;
+using TaskFlow.Api.Services.Assistant.Documents;
 using TaskFlow.Api.Services.Assistant.ModelGateway;
 using TaskFlow.Api.Services.Assistant.RateLimits;
 using TaskFlow.Api.Services.Assistant.Toolbox;
@@ -41,6 +42,7 @@ public class AssistantService : IAssistantService
     private readonly IAssistantRateLimiter _rateLimiter;
     private readonly IAssistantToolbox _toolbox;
     private readonly IAssistantActionCards _actionCards;
+    private readonly IDocumentSearch _documents;
     private readonly IApplicationSettingsService _applicationSettings;
     private readonly IAppClock _clock;
     private readonly TimeProvider _timeProvider;
@@ -55,6 +57,7 @@ public class AssistantService : IAssistantService
         IAssistantRateLimiter rateLimiter,
         IAssistantToolbox toolbox,
         IAssistantActionCards actionCards,
+        IDocumentSearch documents,
         IApplicationSettingsService applicationSettings,
         IAppClock clock,
         TimeProvider timeProvider)
@@ -68,6 +71,7 @@ public class AssistantService : IAssistantService
         _rateLimiter = rateLimiter;
         _toolbox = toolbox;
         _actionCards = actionCards;
+        _documents = documents;
         _applicationSettings = applicationSettings;
         _clock = clock;
         _timeProvider = timeProvider;
@@ -110,13 +114,16 @@ public class AssistantService : IAssistantService
         }
 
         var available = await _providers.GetAvailableAsync(cancellationToken);
-        var provider = request.Provider ?? available.FirstOrDefault()?.Kind;
-        if (provider is not { } kind || available.All(option => option.Kind != kind))
+        var provider = request.ProviderId ?? available.FirstOrDefault()?.ProviderId;
+        if (provider is not { } providerId || available.All(option => option.ProviderId != providerId))
         {
-            throw new AssistantRequestException(
-                provider is { } missing
-                    ? ProviderFailureMessages.NotConfigured(missing)
-                    : "TFA is not available yet. An administrator needs to configure an AI provider.");
+            if (provider is not { } missing)
+            {
+                throw new AssistantRequestException("TFA is not available yet. An administrator needs to configure an AI provider.");
+            }
+
+            var name = (await _providers.GetAdminConfigAsync(cancellationToken)).FirstOrDefault(option => option.ProviderId == missing)?.DisplayName;
+            throw new AssistantRequestException(ProviderFailureMessages.NotConfigured(name ?? "That AI provider"));
         }
 
         if (_rateLimiter.TryAcquire(caller.UserId) is { } wait)
@@ -130,27 +137,36 @@ public class AssistantService : IAssistantService
         var history = await LoadHistoryAsync(conversation.Id, cancellationToken);
         var turn = new List<ChatMessage>(history) { new(AssistantMessageRole.User, text) };
 
+        // Retrieval runs here, once per message and before the model is called, so it works whatever the model and
+        // whether or not it can call tools (design D1).
+        var documents = await _documents.SearchAsync(
+            text,
+            history.LastOrDefault(message => message.Role == AssistantMessageRole.User)?.Content,
+            cancellationToken);
+
         var userName = await _directory.GetFullNameAsync(caller.UserId, cancellationToken) ?? "the user";
         var systemPrompt = AssistantPrompt.Build(
             userName,
             caller.Role,
             await _clock.TodayLocalAsync(cancellationToken),
-            (await _applicationSettings.GetAsync(cancellationToken)).Name);
+            (await _applicationSettings.GetAsync(cancellationToken)).Name,
+            documents);
 
         Answer answer;
         try
         {
-            answer = await RunTurnAsync(caller, conversation.Id, kind, systemPrompt, turn, cancellationToken);
+            answer = await RunTurnAsync(caller, conversation.Id, providerId, systemPrompt, turn, SourcesOf(documents), cancellationToken);
         }
         catch (ProviderFailureException failure)
         {
-            var alternatives = available.Where(option => option.Kind != failure.Provider).ToList();
+            var alternatives = available.Where(option => option.ProviderId != providerId).ToList();
             return new AssistantReplyDto(
                 [],
                 new AssistantFailureDto(
                     failure.Kind,
-                    failure.Provider,
-                    ProviderFailureMessages.For(failure.Provider, failure.Kind, failure.RetryAfter),
+                    providerId,
+                    failure.ProviderName,
+                    ProviderFailureMessages.For(failure),
                     failure.RetryAfter is { } retry ? (int)Math.Ceiling(retry.TotalSeconds) : null,
                     alternatives));
         }
@@ -168,9 +184,9 @@ public class AssistantService : IAssistantService
             ConversationId = conversation.Id,
             Role = AssistantMessageRole.Assistant,
             Content = answer.Text,
-            ProviderKind = kind,
+            ProviderId = providerId,
             MetaJson = JsonSerializer.Serialize(
-                new AssistantMessageMeta(answer.Kind, answer.Links, answer.RankedTasks, answer.ActionId),
+                new AssistantMessageMeta(answer.Kind, answer.Links, answer.RankedTasks, answer.ActionId, answer.Sources),
                 MetaJson),
             CreatedAt = now.AddMilliseconds(1)
         };
@@ -189,14 +205,26 @@ public class AssistantService : IAssistantService
         AssistantMessageKind Kind,
         IReadOnlyList<AssistantLinkDto> Links,
         IReadOnlyList<PrioritisedTask> RankedTasks,
-        Guid? ActionId);
+        Guid? ActionId,
+        IReadOnlyList<AssistantSourceDto> Sources);
+
+    /// <summary>Every chunk given to the model is a source (design D10): small models do not cite reliably, so no attempt
+    /// is made to work out which ones were used. One entry per document section.</summary>
+    private static IReadOnlyList<AssistantSourceDto> SourcesOf(DocumentContext documents) =>
+        documents.Kind != DocumentContextKind.Found
+            ? []
+            : documents.Chunks
+                .Select(scored => new AssistantSourceDto(scored.Chunk.Title, scored.Chunk.HeadingPath, scored.Chunk.RelativePath))
+                .DistinctBy(source => (source.Path, source.Section))
+                .ToList();
 
     private async Task<Answer> RunTurnAsync(
         AssistantCaller caller,
         int conversationId,
-        AiProviderKind kind,
+        int providerId,
         string systemPrompt,
         List<ChatMessage> messages,
+        IReadOnlyList<AssistantSourceDto> sources,
         CancellationToken cancellationToken)
     {
         var tools = await _toolbox.DefinitionsForAsync(caller, cancellationToken);
@@ -208,12 +236,13 @@ public class AssistantService : IAssistantService
         {
             // After the last allowed round the model is asked once more with no tools, so it must answer in words.
             var offered = round == AssistantRules.MaxToolRounds ? [] : tools;
-            var result = await _gateway.CompleteAsync(kind, new ChatModelRequest(systemPrompt, messages, offered, string.Empty), cancellationToken);
+            var result = await _gateway.CompleteAsync(providerId, new ChatModelRequest(systemPrompt, messages, offered, string.Empty), cancellationToken);
 
             if (result.ToolCalls.Count == 0)
             {
-                var text = string.IsNullOrWhiteSpace(result.Text) ? AssistantTexts.EmptyAnswer : result.Text.Trim();
-                return new Answer(text, AssistantMessageKind.Text, Distinct(links), ranked, actionId);
+                return string.IsNullOrWhiteSpace(result.Text)
+                    ? new Answer(AssistantTexts.EmptyAnswer, AssistantMessageKind.Text, Distinct(links), ranked, actionId, [])
+                    : new Answer(result.Text.Trim(), AssistantMessageKind.Text, Distinct(links), ranked, actionId, sources);
             }
 
             messages.Add(new ChatMessage(AssistantMessageRole.Assistant, result.Text ?? string.Empty, result.ToolCalls));
@@ -228,7 +257,7 @@ public class AssistantService : IAssistantService
                 if (outcome.FixedReply is { } fixedReply)
                 {
                     // A refusal or a prepared action ends the turn with exact text. The model is not asked to word it.
-                    return new Answer(fixedReply, outcome.FixedKind, Distinct(links), ranked, actionId);
+                    return new Answer(fixedReply, outcome.FixedKind, Distinct(links), ranked, actionId, []);
                 }
 
                 messages.Add(new ChatMessage(
@@ -239,7 +268,7 @@ public class AssistantService : IAssistantService
             }
         }
 
-        return new Answer(AssistantTexts.EmptyAnswer, AssistantMessageKind.Text, Distinct(links), ranked, actionId);
+        return new Answer(AssistantTexts.EmptyAnswer, AssistantMessageKind.Text, Distinct(links), ranked, actionId, []);
     }
 
     private static IReadOnlyList<AssistantLinkDto> Distinct(IEnumerable<AssistantLinkDto> links) =>
@@ -311,6 +340,9 @@ public class AssistantService : IAssistantService
         var cards = actionIds.Count == 0
             ? new Dictionary<Guid, AssistantPendingActionDto>()
             : (await _actionCards.GetCardsAsync(userId, actionIds, cancellationToken)).ToDictionary(pair => pair.Key, pair => pair.Value);
+        var providerNames = messages.Any(message => message.ProviderId is not null)
+            ? (await _providers.GetAdminConfigAsync(cancellationToken)).ToDictionary(provider => provider.ProviderId, provider => provider.DisplayName)
+            : [];
 
         return messages.Select(message =>
         {
@@ -322,13 +354,15 @@ public class AssistantService : IAssistantService
                 message.Content,
                 meta?.Kind ?? AssistantMessageKind.Text,
                 DateTime.SpecifyKind(message.CreatedAt, DateTimeKind.Utc),
-                message.ProviderKind,
+                message.ProviderId,
+                message.ProviderId is { } providerKey && providerNames.TryGetValue(providerKey, out var providerName) ? providerName : null,
                 meta?.Links ?? [],
                 meta?.RankedTasks ?? [],
-                card);
+                card,
+                meta?.Sources ?? []);
         }).ToList();
     }
 
     private AssistantMessageDto Transient(string content, AssistantMessageKind kind) =>
-        new(0, "Assistant", content, kind, UtcNow, null, [], [], null);
+        new(0, "Assistant", content, kind, UtcNow, null, null, [], [], null, []);
 }

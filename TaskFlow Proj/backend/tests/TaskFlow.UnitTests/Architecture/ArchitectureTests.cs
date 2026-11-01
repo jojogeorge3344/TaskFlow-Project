@@ -239,7 +239,7 @@ public class ArchitectureTests
     }
 
     /// <summary>A folder holds either code or sub-folders, never both, so nothing sits loose beside a sub-module. A module's
-    /// shared <c>Rules</c> folder and non-code folders (the assistant's help topics) are the exception.</summary>
+    /// shared <c>Rules</c> folder and non-code folders are the exception.</summary>
     [Fact]
     public void FoldersHoldEitherCodeOrSubFolders()
     {

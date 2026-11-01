@@ -7,7 +7,8 @@ namespace TaskFlow.Api.Models.Entities;
 public class AiModel
 {
     public int Id { get; set; }
-    public AiProviderKind Kind { get; set; }
+    public int ProviderId { get; set; }
+    public AiProviderConfig? Provider { get; set; }
     public string Name { get; set; } = string.Empty;
 
     /// <summary>True for a model that comes from the code, false for one the administrator added.</summary>

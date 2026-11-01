@@ -19,9 +19,13 @@ public class AiProviderConfigRepository : BaseRepository<AiProviderConfig>, IAiP
     public Task<List<AiProviderConfig>> GetAllForUpdateAsync(CancellationToken cancellationToken = default) =>
         Set.ToListAsync(cancellationToken);
 
-    public Task<AiProviderConfig?> GetAsync(AiProviderKind kind, CancellationToken cancellationToken = default) =>
-        Set.AsNoTracking().FirstOrDefaultAsync(config => config.Kind == kind, cancellationToken);
+    public Task<AiProviderConfig?> GetAsync(int id, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(config => config.Id == id, cancellationToken);
 
-    public Task<bool> UsesModelAsync(AiProviderKind kind, string modelName, CancellationToken cancellationToken = default) =>
-        Set.AnyAsync(config => config.Kind == kind && config.ModelName == modelName, cancellationToken);
+    public Task<AiProviderConfig?> GetBuiltInAsync(AiApiType apiType, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(config => config.IsBuiltIn && config.ApiType == apiType, cancellationToken);
+
+    // Name has the NOCASE collation, so this comparison ignores case in SQLite.
+    public Task<AiProviderConfig?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
+        Set.AsNoTracking().FirstOrDefaultAsync(config => config.Name == name, cancellationToken);
 }

@@ -1,6 +1,6 @@
 import { Component, ElementRef, HostListener, OnInit, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AiProviderKind, AssistantMessage } from '../models/assistant.model';
+import { AssistantMessage } from '../models/assistant.model';
 import { AuthService } from '../../../shared/auth/auth.service';
 import { AssistantService } from '../services/assistant.service';
 import { SpeakService } from '../services/speak.service';
@@ -131,8 +131,8 @@ export class TfaPanelComponent implements OnInit {
   }
 
   /** Retries the failed message with a model the user picks on the failure card. */
-  useProvider(kind: AiProviderKind): void {
-    this.assistant.selectProvider(kind);
+  useProvider(providerId: number): void {
+    this.assistant.selectProvider(providerId);
     this.assistant.retry();
   }
 

@@ -43,6 +43,17 @@ describe('ConfirmDialogComponent', () => {
     expect(button('confirm').classList).toContain('tf-btn--danger');
   });
 
+  it('shows only the confirm button for a notice, and resolves true when it is clicked', async () => {
+    const closed = fixture.componentInstance.open({ title: 'Model in use', message: 'Switch first.', confirmLabel: 'OK', notice: true });
+    fixture.detectChanges();
+
+    expect(button('cancel')).toBeNull();
+    expect(button('confirm').textContent).toContain('OK');
+    button('confirm').click();
+    expect(await closed).toBeTrue();
+    expect(dialog().open).toBeFalse();
+  });
+
   it('resolves true and closes when confirmed', async () => {
     const result = fixture.componentInstance.open(options);
     fixture.detectChanges();
