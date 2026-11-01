@@ -2,10 +2,10 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Document:** Low-Level Design (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
-> **Based on:** HLD-Assistant v1.2, FRD-Assistant v1.2, TDD v2.3 (§16)
+> **Based on:** HLD-Assistant v1.2, FRD-Assistant v1.3, TDD v2.3 (§16)
 > © 2026 Jojo George. All rights reserved.
 
 ---
@@ -17,6 +17,7 @@
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version: `AssistantController` (7 actions), chat engine, model gateway and providers, 9 tools, pending actions, help knowledge, audit and rate limit, voice input, 4 tables, tests and FR-TFA traceability |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Child module 08.1.3 Help Knowledge replaced by **Document Knowledge** (`MarkdownChunker`, `OllamaEmbeddingClient`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentVectorIndex`, `DocumentSearch`, `DocumentIndexRepository`); `search_help` / `SearchHelpTool`, `HelpKnowledgeBase`, `IHelpKnowledgeBase`, `HelpTopicDto`, the 19 `Knowledge/*.md` topics and their `EmbeddedResource` item removed (8 tools). `SendAsync` retrieves documents before the model call; `AssistantPrompt.Build` takes a `DocumentContext`; `AssistantSourceDto` sources on `AssistantMessageDto` and in `AssistantMessageMeta`; `OllamaProvider` sends `options.num_ctx`. Tables `DocumentSources`, `DocumentChunks` (migration `20261031134802_AddDocumentIndex`); `DocumentKnowledge` configuration; tests and FR-TFA-57 – FR-TFA-66 traceability. The status/re-index endpoints are in the TFA Settings LLD. |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` revised (design D13, D14). The administrator endpoints `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` (`DocumentIndexController`, `DocumentIndexService`, TFA Settings) and the Document search card were removed; `DocumentIndexerService.RequestReindex()` and its request channel removed (the service waits with `Task.Delay`; `RunOnceAsync` keeps the single-run guard). Indexing problems are logged as warnings; `DocumentIndexStatus` stays for `DocumentSearch`. Tests: `ARunWhileAnotherIsInProgressDoesNotStart` replaces the concurrent-request tests; `WhenDisabledNothingRuns`; `AChatFailureNeverShowsTheProvidersOwnReason`. Providers: `ProviderFailureException.ProviderReason` via `ProviderHttp.Reason` (never shown in chat), Gemini 400 model-name error → `ModelUnavailable`; Gemini default model `gemini-3.8-flash`. |
+| 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-custom-ai-providers`. TFA identifies providers by id, so a **custom provider** (OpenAI-compatible or Ollama API, created in TFA Settings) works in chat like a built-in one: `SendAssistantMessageRequest(Text, ProviderId)` replaces `Provider`; `AssistantMessageDto` carries `ProviderId` and `Provider` (the provider's name); `AssistantFailureDto` carries `ProviderId` and `ProviderName` (replacing the provider kind); `AiProviderOptionDto(ProviderId, DisplayName, ModelName, Locality)`; `AssistantMessages.ProviderKind` replaced by `ProviderId` (nullable FK to `AiProviderConfigs`, set null; migration `20261101050239_AddCustomAiProviders`, TFA Settings LLD); gateway `CompleteAsync(providerId, …)`. Frontend: the model selector and `AssistantService` send `providerId`, remember it in `tfa.provider` (a name stored before ids is ignored), and the cloud notice comes from `locality`, so a custom Cloud provider gets it too; the header badge is "Custom" for non-built-in names. Updated 1.2, inventory, API contracts and examples, `SendAsync` steps 3, 10 and 11, gateway text, validation, `AssistantMessages` table, indexes, enums, migrations, security, configuration, tests and FR-TFA-12 – FR-TFA-16, FR-TFA-68 traceability. Everything else unchanged. |
 
 **Related documents:** BRD (`../../../BRD/08-TFA-Assistant/08.1-Assistant/BRD-Assistant.md`) · FRD (`../../../FRD/08-TFA-Assistant/08.1-Assistant/FRD-Assistant.md`) · HLD (`../../../HLD/08-TFA-Assistant/08.1-Assistant/HLD-Assistant.md`) · Overall LLD (`../../00-Overall/LLD-TaskFlow-Overall.md`) · TFA Settings LLD (`../../06-Settings/06.3-TFA-Settings/LLD-TFA-Settings.md`) · TDD (`TF - Documents/TF - TDD/TDD-TaskFlow.md` §16)
 
@@ -38,7 +39,8 @@ per-user rate limit, the Angular TFA Panel and its voice input, the six TFA tabl
   **08.1.4 Audit Log and Rate Limits** (0 actions), **08.1.5 Voice Input** (frontend only).
   Total: **7 controller actions**, all on `AssistantController` (facts.md §3, rows `AssistantController`).
 - Out of scope: provider, model and API key configuration – `AiProvidersController`
-  (`/api/v1/assistant/providers/config`, `/api/v1/assistant/providers/{kind}/models`, `/api/v1/assistant/providers/{kind}/test`),
+  (`/api/v1/assistant/providers/config`, `/api/v1/assistant/providers/models`, `/api/v1/assistant/providers/{providerId}/models`,
+  `/api/v1/assistant/providers/{providerId}/test`; v1.3: by provider id, custom providers included),
   `IAiProviderConfigService`, tables `AiProviderConfigs`, `AiModels` (TFA Settings LLD). TFA only reads them.
 - Removed in v1.2: the document index status and re-index endpoints (`DocumentIndexController`,
   `/api/v1/assistant/documents/status`, `/api/v1/assistant/documents/reindex`, `IDocumentIndexService`) and the Document
@@ -217,16 +219,16 @@ classDiagram
 | Controller | `AssistantController.GetConversation`, `SendMessage`, `NewConversation`, `GetProviders` | `Controllers/Assistant/AssistantController.cs` | HTTP routing |
 | Service | `IAssistantService` / `AssistantService` (`GetConversationAsync`, `SendAsync`, `NewConversationAsync`; private `LoadHistoryAsync`, `RunTurnAsync`, `ToDtosAsync`) | `Services/Assistant/Chat/` | Conversation engine and tool loop |
 | Prompt / texts | `AssistantPrompt.Build(userName, role, today, applicationName, DocumentContext)` with `FoundRule`, `NoMatchRule`, `UnavailableRule`, `PreparingRule`, `DocumentsStart`, `DocumentsEnd`; `AssistantTexts` (`SecretBlocked`, `EmptyAnswer`, `ActionPrepared`, `PasswordGuidance`, `AdminGuidance`, `PermissionDenied`), `ProviderFailureMessages` (`For`, `NotConfigured`) | `Services/Assistant/Chat/` | Fixed texts |
-| Gateway | `IChatModelGateway` / `ChatModelGateway.CompleteAsync(kind, request)` | `Services/Assistant/ModelGateway/` | Runtime config + provider dispatch |
+| Gateway | `IChatModelGateway` / `ChatModelGateway.CompleteAsync(providerId, request)` (v1.3; was `kind`) | `Services/Assistant/ModelGateway/` | Runtime config + provider dispatch; attaches a failure to the provider with `ProviderFailureException.For(runtime)` |
 | Providers | `IChatModelProvider`; `OllamaProvider`, `GeminiProvider`, `OpenAiProvider`; `ChatModelTypes` (`ChatModelRequest`, `ChatModelResult`, `ChatToolDefinition`, `ChatToolCall`), `AiProviderRuntime`, `ProviderFailure`, `ProviderHttp` | `Integrations/Ai/Providers/` | HTTP to the AI provider, failure classification |
-| Registry | `IChatModelProviderRegistry` / `ChatModelProviderRegistry.Get(kind)` | `Integrations/Ai/Registry/` | Provider by `AiProviderKind` |
+| Registry | `IChatModelProviderRegistry` / `ChatModelProviderRegistry.Get(apiType)` | `Integrations/Ai/Registry/` | Client by `AiApiType` (v1.3; was `AiProviderKind`) |
 | Key protection | `IAiKeyProtector` / `AiKeyProtector`; `KeyRingProtectionCheck` | `Integrations/Ai/KeyProtection/` | Decrypt API key for one call; startup check |
 | Rules | `AssistantRules` (`MaxMessageLength` 2000, `HistoryMessages` 12, `HistoryCharacters` 6000, `MaxToolRounds` 4, `ConversationMessages` 100); `SecretScreen` (`ContainsSecret`, `Redact`, `RedactedText = "[hidden]"`) | `Services/Assistant/Rules/` | Limits and secret screening |
 | Repositories | `IAssistantConversationRepository` / `AssistantConversationRepository`; `IAssistantMessageRepository` / `AssistantMessageRepository`; `IAssistantDirectoryRepository.GetFullNameAsync` | `Repositories/Assistant/Conversations/`, `Messages/`, `People/` | Persistence |
-| DTOs | `SendAssistantMessageRequest(Text, Provider)`, `AssistantConversationDto`, `AssistantReplyDto`, `AssistantMessageDto` (… `Action`, `Sources`), `AssistantLinkDto`, `AssistantSourceDto(Document, Section, Path)`, `AssistantMessageMeta` (… `ActionId`, `Sources = null`), `PrioritisedTask`, `AssistantFailureDto`; `AiProviderOptionDto` (Settings) | `Dtos/Assistant/`; `Dtos/Settings/TfaSettings/AiProviderDtos.cs` | Contracts |
-| Entities | `AssistantConversation`, `AssistantMessage` | `Models/Entities/` | Tables |
-| Frontend | `TfaPanelComponent`, `TfaHeaderComponent`, `TfaComposerComponent` (`TFA_SUGGESTIONS`), `TfaMessageComponent` (`sources()` chips) | `modules/assistant/components/` | Panel, model selector, composer, messages, sources |
-| Frontend service | `AssistantService` (`open`, `close`, `toggle`, `loadProviders`, `loadConversation`, `selectProvider`, `isAcknowledged`, `send`, `acknowledgeCloud`, `retry`, `newChat`); `TFA_PROVIDER_KEY`, `TFA_CLOUD_ACK_KEY`, `PROVIDER_REFRESH_MS` | `modules/assistant/services/assistant.service.ts` | Signals, HTTP, browser settings |
+| DTOs | `SendAssistantMessageRequest(Text, ProviderId)` (v1.3; was `Provider`), `AssistantConversationDto`, `AssistantReplyDto`, `AssistantMessageDto` (… `ProviderId`, `Provider` = the provider's name (v1.3), `Action`, `Sources`), `AssistantLinkDto`, `AssistantSourceDto(Document, Section, Path)`, `AssistantMessageMeta` (… `ActionId`, `Sources = null`), `PrioritisedTask`, `AssistantFailureDto(Kind, ProviderId, ProviderName, Message, RetryAfterSeconds, Alternatives)` (v1.3); `AiProviderOptionDto(ProviderId, DisplayName, ModelName, Locality)` (Settings) | `Dtos/Assistant/`; `Dtos/Settings/TfaSettings/AiProviderDtos.cs` | Contracts |
+| Entities | `AssistantConversation`, `AssistantMessage` (v1.3: `ProviderId`, `Provider` navigation) | `Models/Entities/` | Tables |
+| Frontend | `TfaPanelComponent` (`useProvider(providerId)`), `TfaHeaderComponent` (`chooseProvider(option)` → `selectProvider(option.providerId)`; `providerStyle(name)`: a colour per built-in provider name, `Custom` for any other; `providerInitial(name)`), `TfaComposerComponent` (`TFA_SUGGESTIONS`), `TfaMessageComponent` (`sources()` chips) | `modules/assistant/components/` | Panel, model selector, composer, messages, sources |
+| Frontend service | `AssistantService` (`open`, `close`, `toggle`, `loadProviders`, `loadConversation`, `selectProvider(providerId)`, `isAcknowledged(providerId)`, `send`, `acknowledgeCloud`, `retry`, `newChat`; `selected` = the remembered provider id when still configured, else the first available; `needsCloudNotice` = selected `locality === 'Cloud'` and not acknowledged, v1.3); `TFA_PROVIDER_KEY`, `TFA_CLOUD_ACK_KEY`, `PROVIDER_REFRESH_MS` | `modules/assistant/services/assistant.service.ts` | Signals, HTTP, browser settings |
 
 **Class diagram**
 
@@ -246,7 +248,7 @@ classDiagram
     <<static>>
   }
   class ChatModelGateway {
-    +CompleteAsync(kind, request)
+    +CompleteAsync(providerId, request)
   }
   class ChatModelProviderRegistry
   class IChatModelProvider {
@@ -277,24 +279,24 @@ classDiagram
 | # | Method | Route | Permission / policy | Request | Response | Status codes |
 |---|---|---|---|---|---|---|
 | 1 | GET | `/api/v1/assistant/conversation` | `[Authorize]` + `perm:assistant.chat` | – | `AssistantConversationDto(ConversationId, Messages)` (newest 100) | 200, 401, 403 |
-| 2 | POST | `/api/v1/assistant/conversation/messages` | `[Authorize]` + `perm:assistant.chat` | `SendAssistantMessageRequest(Text, Provider)` | `AssistantReplyDto(Messages, Failure)` | 200 (incl. provider failure), 400, 401, 403, 429 |
+| 2 | POST | `/api/v1/assistant/conversation/messages` | `[Authorize]` + `perm:assistant.chat` | `SendAssistantMessageRequest(Text, ProviderId)` (v1.3; `ProviderId` is an `AiProviderConfigs.Id`, built-in or custom; was `Provider` kind) | `AssistantReplyDto(Messages, Failure)` | 200 (incl. provider failure), 400, 401, 403, 429 |
 | 3 | POST | `/api/v1/assistant/conversation/new` | `[Authorize]` + `perm:assistant.chat` | – | – | 204, 401, 403 |
-| 4 | GET | `/api/v1/assistant/providers` | `[Authorize]` + `perm:assistant.chat` | – | `IReadOnlyList<AiProviderOptionDto>` (kind, displayName, modelName, locality; no key data) | 200, 401, 403 |
+| 4 | GET | `/api/v1/assistant/providers` | `[Authorize]` + `perm:assistant.chat` | – | `IReadOnlyList<AiProviderOptionDto>` (providerId (v1.3; was kind), displayName, modelName, locality; configured built-in and custom providers; no key data) | 200, 401, 403 |
 
 **Request / response example**
 
 ```json
-// POST /api/v1/assistant/conversation/messages
-{ "text": "What should I prioritise?", "provider": "Gemini" }
+// POST /api/v1/assistant/conversation/messages   (v1.3; provider ids are examples: Ollama 1, Google Gemini 2, custom Groq 4)
+{ "text": "What should I prioritise?", "providerId": 2 }
 ```
 
 ```json
 // 200 OK – answered
 { "messages": [
-    { "id": 41, "role": "User", "content": "What should I prioritise?", "kind": "Text", "provider": null,
+    { "id": 41, "role": "User", "content": "What should I prioritise?", "kind": "Text", "providerId": null, "provider": null,
       "links": [], "rankedTasks": [], "action": null, "sources": [] },
     { "id": 42, "role": "Assistant", "content": "Start with TSK-12, it is 2 days overdue.", "kind": "Text",
-      "provider": "Gemini", "links": [ { "label": "TSK-12", "route": "/tasks/12" } ],
+      "providerId": 2, "provider": "Google Gemini", "links": [ { "label": "TSK-12", "route": "/tasks/12" } ],
       "rankedTasks": [ { "rank": 1, "taskId": 12, "taskCode": "TSK-12", "title": "Fix login", "priority": "High",
         "status": "InProgress", "deadline": "2026-10-29T12:30:00Z", "dueDate": "2026-10-29", "daysUntilDue": -2,
         "stage": "Overdue", "isBlocked": false } ], "action": null, "sources": [] } ],
@@ -303,7 +305,7 @@ classDiagram
 
 ```json
 // 200 OK – answered from the TaskFlow documents (assistant message only)
-{ "id": 44, "role": "Assistant", "content": "…", "kind": "Text", "provider": "Ollama", "links": [], "rankedTasks": [],
+{ "id": 44, "role": "Assistant", "content": "…", "kind": "Text", "providerId": 1, "provider": "Ollama", "links": [], "rankedTasks": [],
   "action": null,
   "sources": [ { "document": "<document title>", "section": "<heading> › <sub-heading>",
                  "path": "TF - FRD/02-TaskFlow-Monitoring/02.1-Task-Management/FRD-Task-Management.md" } ] }
@@ -312,9 +314,17 @@ classDiagram
 ```json
 // 200 OK – provider failure (nothing stored)
 { "messages": [],
-  "failure": { "kind": "RateLimited", "provider": "Gemini", "retryAfterSeconds": 30,
+  "failure": { "kind": "RateLimited", "providerId": 2, "providerName": "Google Gemini", "retryAfterSeconds": 30,
     "message": "Google Gemini's free limit or rate limit has been reached. Try again in about 30 seconds, or choose another model.",
-    "alternatives": [ { "kind": "Ollama", "displayName": "Ollama", "modelName": "llama3.2:3b", "locality": "Local" } ] } }
+    "alternatives": [ { "providerId": 1, "displayName": "Ollama", "modelName": "llama3.2:3b", "locality": "Local" } ] } }
+```
+
+```json
+// 200 OK – failure of a custom provider (v1.3)
+{ "messages": [],
+  "failure": { "kind": "InvalidKey", "providerId": 4, "providerName": "Groq", "retryAfterSeconds": null,
+    "message": "Groq did not accept the API key. Ask an administrator to check the key in TFA Settings, or choose another model.",
+    "alternatives": [] } }
 ```
 
 **Service logic – `SendAsync(caller, request)`**
@@ -322,9 +332,10 @@ classDiagram
 2. `SecretScreen.ContainsSecret(text)` (password phrase with a digit/symbol value, `sk-…`, `AIza…`, `Bearer …`, JWT,
    32+ character mixed token) → return one transient `Notice` message (`AssistantTexts.SecretBlocked`, id 0). Nothing is
    sent or stored.
-3. `IAiProviderConfigService.GetAvailableAsync` → use `request.Provider` or the first available; none →
+3. `IAiProviderConfigService.GetAvailableAsync` → use `request.ProviderId` (v1.3) or the first available; none →
    `AssistantRequestException("TFA is not available yet. An administrator needs to configure an AI provider.")`; chosen
-   one missing → `ProviderFailureMessages.NotConfigured(kind)` (400).
+   id not among the available ones → `ProviderFailureMessages.NotConfigured(name)` with the provider's name from
+   `GetAdminConfigAsync`, or "That AI provider" for an unknown id (400).
 4. `IAssistantRateLimiter.TryAcquire(userId)`; a wait value → `AssistantRateLimitedException` (429, `Retry-After`) – 4.1.4.
 5. `FindLatestForUpdateAsync(userId)` or create a new `AssistantConversation` (latest by `Id` is the active one).
 6. `LoadHistoryAsync`: newest 24 (`HistoryMessages * 2`) messages, drop `Notice` metas, take 12, stop at 6000 characters,
@@ -341,26 +352,32 @@ classDiagram
    `PendingActionId`. A `ToolOutcome.FixedReply` ends the turn with that exact text. Tool results pass
    `SecretScreen.Redact` before going back to the model. Empty model text → `AssistantTexts.EmptyAnswer` with no
    sources; a fixed reply has no sources; a non-empty model answer carries the sources from step 8.
-10. `ProviderFailureException` → `AssistantReplyDto([], AssistantFailureDto(kind, provider, message, retryAfterSeconds,
-   alternatives))` with `message` = `ProviderFailureMessages.For` (never `ProviderReason`, v1.2); nothing stored.
-11. Success → insert user and assistant `AssistantMessage` rows (assistant `CreatedAt` = now + 1 ms, `ProviderKind`,
+10. `ProviderFailureException` → `AssistantReplyDto([], AssistantFailureDto(kind, providerId, providerName, message,
+   retryAfterSeconds, alternatives))` (v1.3: id and name of the provider that failed, built-in or custom) with `message` =
+   `ProviderFailureMessages.For` (names the provider; never `ProviderReason`, v1.2); `alternatives` = the other
+   available providers; nothing stored.
+11. Success → insert user and assistant `AssistantMessage` rows (assistant `CreatedAt` = now + 1 ms, `ProviderId` (v1.3; was `ProviderKind`),
     `MetaJson` = `AssistantMessageMeta` with `Sources`), set `conversation.UpdatedAt`, `SaveChangesAsync`, map with
     `ToDtosAsync` (cards from `IAssistantActionCards.GetCardsAsync`; `meta?.Sources ?? []`, so older messages load with no
-    sources). Transient messages (`Transient`) and action replies from `AssistantActionService` carry `[]`.
+    sources). Transient messages (`Transient`) and action replies from `AssistantActionService` carry `[]`. (v1.3)
+    `ToDtosAsync` maps `ProviderId` to `Provider` = the provider's current name (from `GetAdminConfigAsync`); a message
+    whose provider was removed (`ProviderId` null) has no provider name.
 
 **Service logic – `GetConversationAsync(caller)`**: latest conversation of `UserId`; newest `ConversationMessages` (100)
 messages reversed; none → `AssistantConversationDto(null, [])`.
 
 **Service logic – `NewConversationAsync(caller)`**: insert a new `AssistantConversation`; it becomes the latest.
 
-**Gateway and providers**: `ChatModelGateway.CompleteAsync(kind, request)` → `IAiProviderConfigService.GetRuntimeAsync(kind)`
-(decrypts the key with `IAiKeyProtector`; `null` → `ProviderNotConfiguredException`) → `IChatModelProviderRegistry.Get(kind).CompleteAsync(runtime, request with ModelName)`.
+**Gateway and providers**: `ChatModelGateway.CompleteAsync(providerId, request)` (v1.3) → `IAiProviderConfigService.GetRuntimeAsync(providerId)`
+(decrypts the key with `IAiKeyProtector`; `null` → `ProviderNotConfiguredException(providerId, name)`) → `IChatModelProviderRegistry.Get(runtime.ApiType).CompleteAsync(runtime, request with ModelName)`;
+a `ProviderFailureException` is attached to the provider (`For(runtime)`: `ProviderId`, `ProviderName`, `IsLocal`) before it reaches `SendAsync`.
+A custom provider is served by `OpenAiProvider` (OpenAI-compatible, at its own address) or `OllamaProvider` (TFA Settings LLD).
 
 | Provider | Endpoint | Auth | Locality |
 |---|---|---|---|
 | `OllamaProvider` | `{BaseUrl or http://localhost:11434}/api/chat`; body adds `options.num_ctx` = `AiProviders:OllamaContextTokens` (8192) | none | Local A whole answer that is a JSON tool call written as text is run as that tool when the name is offered, else re-asked once without tools. |
 | `GeminiProvider` | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` | `x-goog-api-key` header | Cloud |
-| `OpenAiProvider` | `https://api.openai.com/v1/chat/completions` | Bearer header | Cloud |
+| `OpenAiProvider` | `https://api.openai.com/v1/chat/completions` (built-in); `{BaseUrl}/chat/completions` for a custom OpenAI-compatible provider (v1.3) | Bearer header, only when a key is saved | Cloud, or the custom provider's Local / Cloud |
 
 Failure classification (`ProviderFailureKind`): 429 / `insufficient_quota` / `rate_limit_exceeded` / `RESOURCE_EXHAUSTED`
 → `RateLimited`; 401, 403 / `invalid_api_key` / `UNAUTHENTICATED` / `PERMISSION_DENIED` → `InvalidKey`; 404 /
@@ -391,7 +408,7 @@ sequenceDiagram
   S->>S: Length, SecretScreen, provider, rate limit
   S->>DB: Load conversation and history
   S->>S: IDocumentSearch.SearchAsync, AssistantPrompt.Build
-  S->>G: CompleteAsync(kind, prompt and tools)
+  S->>G: CompleteAsync(providerId, prompt and tools)
   G->>P: HTTP chat request
   P-->>G: Text or tool calls
   S->>T: ExecuteAsync(tool call)
@@ -417,7 +434,7 @@ sequenceDiagram
 |---|---|---|
 | `Text` | 1–2000 characters after trim | "A message must be between 1 and 2000 characters." |
 | `Text` | No password or API key/token (`SecretScreen.ContainsSecret`) | "For your safety I did not send or keep that message: it looks like it contains a password or an API key. Please never type passwords into chat. To change your password, open My Profile and use the Change password form." |
-| `Provider` | Configured and enabled provider, or omitted | "TFA is not available yet. An administrator needs to configure an AI provider." / "`{Provider}` is not configured. Choose another model, or ask an administrator to set it up." |
+| `ProviderId` (v1.3; was `Provider`) | Id of a configured and enabled provider (built-in or custom), or omitted | "TFA is not available yet. An administrator needs to configure an AI provider." / "`{Provider}` is not configured. Choose another model, or ask an administrator to set it up." |
 
 **Error cases**
 
@@ -998,7 +1015,7 @@ classDiagram
 
 ```json
 // Spoken "Hey TF assistant, what are my upcoming tasks" is sent as
-{ "text": "what are my upcoming tasks", "provider": "Ollama" }
+{ "text": "what are my upcoming tasks", "providerId": 1 }
 ```
 
 **Service logic – `WakePhraseService`**
@@ -1099,7 +1116,7 @@ erDiagram
 | Role | string(16) | No | – | – | `AssistantMessageRole` as text |
 | Content | string | No | – | – | Message text |
 | MetaJson | string | Yes | – | – | `AssistantMessageMeta` (kind, links, ranked tasks, action id, sources); `Sources` is absent in messages stored before v1.1 and read as empty |
-| ProviderKind | string(16) | Yes | – | – | `AiProviderKind` as text |
+| ProviderId (v1.3; replaces `ProviderKind`) | int | Yes | FK → `AiProviderConfigs.Id` (Set null); `IX_AssistantMessages_ProviderId` | – | The provider that answered (built-in or custom); null for user messages and after a custom provider is removed |
 | CreatedAt | DateTime | No | – | – | UTC |
 
 #### `AssistantPendingActions` (AssistantPendingAction)
@@ -1163,11 +1180,12 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | `IX_AssistantAudits_UserId_At` | (`UserId`, `At`) | Audit by user and time |
 | `FK_AssistantConversations_Users_UserId` | Cascade | Delete with user |
 | `FK_AssistantMessages_AssistantConversations_ConversationId` | Cascade | Delete with conversation |
+| `IX_AssistantMessages_ProviderId`, `FK_AssistantMessages_AiProviderConfigs_ProviderId` (v1.3) | (`ProviderId`); Set null | Answering provider; kept when a custom provider is removed, without a name |
 | `FK_AssistantPendingActions_Users_UserId` | Cascade | Delete with user |
 | `IX_DocumentSources_RelativePath` | (`RelativePath`) unique | One source per file |
 | `IX_DocumentChunks_DocumentSourceId` | (`DocumentSourceId`) | Chunks of a file |
 | `FK_DocumentChunks_DocumentSources_DocumentSourceId` | Cascade | Chunks deleted with their file |
-| Enum conversions | `HasConversion<string>()` on `Role`, `ProviderKind`, `Kind`, `Status` | Readable values |
+| Enum conversions | `HasConversion<string>()` on `Role`, `Kind`, `Status` (v1.3: `ProviderKind` replaced by the `ProviderId` foreign key) | Readable values |
 
 ### 5.4 Enumerations
 
@@ -1176,7 +1194,7 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 | `AssistantActionKind` | SendMail, UpdateOwnProfile, ChangeUserRole | text (32) |
 | `AssistantActionStatus` | Pending, Confirmed, Cancelled, Expired, Refused, Failed | text (16) |
 | `AssistantMessageRole` | User, Assistant, Tool | text (16) |
-| `AiProviderKind` | Ollama, Gemini, OpenAI | text (16) in `AssistantMessages.ProviderKind` |
+| `AiApiType` (v1.3; renamed from `AiProviderKind`) | Ollama, Gemini, OpenAI (OpenAI-compatible) | Not stored by TFA since v1.3 (was text (16) in `AssistantMessages.ProviderKind`); stored in `AiProviderConfigs.ApiType` (TFA Settings) |
 | `ProviderFailureKind` | RateLimited, InvalidKey, Timeout, Unreachable, ModelUnavailable, Unexpected | Not stored (`AssistantFailureDto`) |
 | `AssistantMessageKind` (`Dtos/Assistant/AssistantDtos.cs`) | Text, Refusal, Notice | Inside `MetaJson` |
 | `TaskStage` (`Common/Rules/TaskStageCalculator.cs`) | Upcoming, DueToday, Overdue, Completed | Not stored (`PrioritisedTask`) |
@@ -1189,6 +1207,7 @@ Read by TFA, owned elsewhere: `AiProviderConfigs` (`AiProviderConfig`), `AiModel
 |---|---|
 | `20261018183210_AddAssistant` | Creates `AssistantConversations`, `AssistantMessages`, `AssistantPendingActions`, `AssistantAudits` (+ `AiProviderConfigs`, TFA Settings) and their indexes |
 | `20261031134802_AddDocumentIndex` | Creates `DocumentSources` (unique `RelativePath`) and `DocumentChunks` (FK cascade, index on `DocumentSourceId`). Additive; message sources need no schema change (`MetaJson`) |
+| `20261101050239_AddCustomAiProviders` (v1.3; TFA Settings LLD 5.5) | `AssistantMessages.ProviderKind` → `ProviderId`, filled from the built-in provider row of the old kind, so earlier answers keep their provider; index and set-null FK added |
 
 ---
 
@@ -1223,7 +1242,7 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | Document access | Every caller with `assistant.chat` searches the whole index (owner decision); the index holds documents only, no user data |
 | Embedding client | `OllamaEmbeddingClient` typed `HttpClient`: `AllowAutoRedirect = false`, logging removed; `EmbeddingUnavailableException` messages are fixed text and never contain document text; the configured `OllamaBaseUrl` is rejected at startup when it is not http/https or is a link-local / metadata address |
 | Secrets | `SecretScreen` blocks passwords/keys in user text; provider API keys encrypted with Data Protection purpose `TaskFlow.AiProviderKeys` (key ring `AiProviders:KeyRingPath`, DPAPI-protected on Windows), decrypted in memory for one call; provider `HttpClient`s without logging handlers, `AllowAutoRedirect = false` |
-| Cloud notice | Client holds the first message to a Cloud provider until **I understand** (`tfa.cloudAck`); text: "Your message, related task details and matching TaskFlow document text are sent to it." Embeddings always run on the local Ollama server |
+| Cloud notice | Client holds the first message to a Cloud provider until **I understand** (`tfa.cloudAck`, provider ids since v1.3); text: "Your message, related task details and matching TaskFlow document text are sent to it." Whether a provider is Cloud comes from its `locality` (v1.3), so a custom provider marked Cloud is held too and one marked Local is not. Embeddings always run on the local (built-in) Ollama server |
 | Audit | `AssistantAudits` (no bodies, passwords or keys); endpoint 403s recorded by `DeniedActionAuditHandler` |
 | Frontend | Panel rendered only when `canUseAssistant()` (`Permissions.AssistantChat`); action buttons not gated by `assistant.actions.confirm` (§10) |
 
@@ -1254,7 +1273,7 @@ Pending-action expiry is lazy (on read or confirm). The only background job of t
 | `AssistantRules.*` (constants) | 2000 / 12 / 6000 / 4 / 100 | Message length, history messages, history characters, tool rounds, loaded messages |
 | `AssistantActionRules.Lifetime` (constant) | 10 minutes | Pending-action lifetime |
 | `AssistantRateLimiter.RequestsPerMinute` (constant) | 20 | Messages per user per minute |
-| Frontend `localStorage` | `tfa.provider`, `tfa.cloudAck`, `tfa.handsfree` | Chosen model, cloud acknowledgement, deliberate voice off |
+| Frontend `localStorage` | `tfa.provider`, `tfa.cloudAck`, `tfa.handsfree` | Chosen provider id (v1.3; a value stored before ids, such as "Gemini", is ignored and the first available provider is used), cloud acknowledgement per provider id, deliberate voice off |
 | Frontend constants | `PROVIDER_REFRESH_MS` 60000, `COMMAND_SILENCE_MS` 2000, `WAKE_CAPTURE_TIMEOUT_MS` 8000, `DICTATION_TIMEOUT_MS` 10000, `MAX_SPOKEN_CHARS` 500 | Panel and voice timing |
 
 Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-flash` (v1.2; was `gemini-2.0-flash`, retired by Google), `gpt-4o-mini`.
@@ -1288,7 +1307,8 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | Provider config | `TaskFlow.UnitTests/Settings/TfaSettings/ProviderConfig/AiProviderConfigServiceTests.cs`, `AiProviderSeederTests.cs` | Unit | Config used by TFA |
 | Architecture | `TaskFlow.UnitTests/Architecture/ArchitectureTests.cs` | Unit | Layer rules |
 | TFA panel | `frontend/src/app/modules/assistant/components/tfa-panel.component.spec.ts` | Frontend unit | Open / close and Escape, greeting and starter suggestions, single and missing provider, model selector, cloud notice, refusal and ranked-task messages, waiting indicator, Enter / Shift+Enter, action cards (confirm, edit, cancel, expired, labels), provider failures and retry, voice (wake phrase, mic button, answers aloud, turn off / on, unsupported or denied microphone), new chat |
-| Assistant client | `frontend/src/app/modules/assistant/services/assistant.service.spec.ts` | Frontend unit | Load on sign-in, keep on token refresh, clear on user change, send with the selected provider, model switch and remembered choice, provider list refresh, cloud hold, failure retry, blocked message, 429 / 400 shown in the chat, new chat, confirm / cancel / edit actions |
+| Assistant client | `frontend/src/app/modules/assistant/services/assistant.service.spec.ts` | Frontend unit | Load on sign-in, keep on token refresh, clear on user change, send with the selected provider, model switch and remembered choice, provider list refresh, cloud hold, failure retry, blocked message, 429 / 400 shown in the chat, new chat, confirm / cancel / edit actions; (v1.3) "holds the first message to a custom Cloud provider too, and sends it with that provider's id", "ignores a provider remembered by name before providers had ids", "never holds a message for a Local provider" |
+| Custom provider chat (v1.3) | `TaskFlow.IntegrationTests/Settings/TfaSettings/CustomProviderEndpointsTests.cs`, `TaskFlow.UnitTests/Assistant/ModelGateway/ChatModelGatewayTests.cs` | Integration / Unit | A custom provider created in TFA Settings answers the TFA window and the message is stored with its provider id; a failure of a custom provider names it and goes to its address |
 | Speech output | `frontend/src/app/modules/assistant/services/speak.service.spec.ts` | Frontend unit | Read aloud and done callback, safety limit, no speech engine, cancel, `toSpeech` (markdown, links, `MAX_SPOKEN_CHARS`) |
 | Wake phrase | `frontend/src/app/modules/assistant/services/wake-phrase.service.spec.ts` | Frontend unit | On by default, deliberate turn off remembered, pause / unpause, "Hey TF assistant" variants, question after `COMMAND_SILENCE_MS`, mic-button command and `DICTATION_TIMEOUT_MS`, hands-free, greeting request, restart and back-off, browser errors (unsupported, denied, missing microphone, network), silence |
 
@@ -1342,12 +1362,13 @@ Built-in default models (seeded by TFA Settings): `llama3.2:3b`, `gemini-3.8-fla
 | FR-TFA-09 | `GetMyTasksTool` · `AssistantTaskReader` · `ITaskService.ListAsync` | `AssistantReadToolsTests` |
 | FR-TFA-10 | `TaskPrioritiser.Rank` | `TaskPrioritiserTests` |
 | FR-TFA-11 | `PrioritiseTasksTool` · `PrioritisedTask` · `TfaMessageComponent` | `TaskPrioritiserTests`, `AssistantReadToolsTests`; `tfa-panel.component.spec.ts` |
-| FR-TFA-12 | `GET /api/v1/assistant/providers` · `IAiProviderConfigService.GetAvailableAsync` · `TfaHeaderComponent` · `tfa.provider` | `ChatModelGatewayTests`, `AssistantProviderEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-12 | `GET /api/v1/assistant/providers` (`AiProviderOptionDto.ProviderId`) · `IAiProviderConfigService.GetAvailableAsync` · `TfaHeaderComponent` (`chooseProvider`, `providerStyle`) · `AssistantService.selectProvider(providerId)` · `tfa.provider` | `ChatModelGatewayTests`, `AssistantProviderEndpointsTests`, `CustomProviderEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-13 | `AssistantService.SendAsync` (no provider) · `ProviderFailureMessages.NotConfigured` · panel empty state | `AssistantServiceTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
-| FR-TFA-14 | `AssistantMessage.ProviderKind` · `AssistantMessageDto.Provider` | `AssistantServiceTests` |
-| FR-TFA-15 | `AssistantService.acknowledgeCloud` (Angular) · `tfa.cloudAck` | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
-| FR-TFA-16 | `ChatModelGateway` · `ProviderFailureKind` · `AssistantFailureDto` · `ProviderFailureMessages.For` · `AssistantService.retry` | `ProviderFailureHandlingTests`, `ChatModelGatewayTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-14 | `AssistantMessage.ProviderId` (v1.3; was `ProviderKind`) · `AssistantMessageDto.ProviderId`, `Provider` (name) | `AssistantServiceTests`, `CustomProviderEndpointsTests`, `CustomProvidersMigrationTests` |
+| FR-TFA-15 | `AssistantService.acknowledgeCloud` / `needsCloudNotice` by `locality` (Angular) · `tfa.cloudAck` | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-16 | `ChatModelGateway` (`For(runtime)`) · `ProviderFailureKind` · `AssistantFailureDto` (`ProviderId`, `ProviderName`) · `ProviderFailureMessages.For` · `AssistantService.retry` | `ProviderFailureHandlingTests`, `ChatModelGatewayTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | FR-TFA-17 | `POST /api/v1/assistant/conversation/new` · `NewConversationAsync` | `AssistantEndpointsTests`; `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| FR-TFA-68 (v1.3) | `SendAssistantMessageRequest.ProviderId` · `AssistantService.dispatch(text, providerId)` · `readStoredId(TFA_PROVIDER_KEY)` (ignores a stored name) · `SendAsync` step 3 and 11 | `CustomProviderEndpointsTests`, `AssistantServiceTests`; `assistant.service.spec.ts` |
 | FR-TFA-18 | `LoadHistoryAsync` · `HistoryMessages`, `HistoryCharacters` | `AssistantServiceTests` |
 | FR-TFA-19 | `RunTurnAsync` · `MaxToolRounds` | `AssistantServiceTests` |
 | FR-TFA-20 | `SecretScreen.Redact` on tool output · `AssistantPrompt` | `AssistantServiceTests` |

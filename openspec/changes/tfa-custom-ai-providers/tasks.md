@@ -41,7 +41,7 @@
 
 ## 5. Docs and integration check
 
-- [ ] 5.1 Update the six TFA Settings documents, plus the assistant FRD and LLD (`TF - Documents/TF - FRD/08-TFA-Assistant/...`, `TF - Documents/TF - LLD/08-TFA-Assistant/...`), for custom providers, the provider textbox, moves, provider-id routes and the migration. Verify by searching them for "custom provider" and `providerId`.
+- [x] 5.1 Update the six TFA Settings documents, plus the assistant FRD and LLD (`TF - Documents/TF - FRD/08-TFA-Assistant/...`, `TF - Documents/TF - LLD/08-TFA-Assistant/...`), for custom providers, the provider textbox, moves, provider-id routes and the migration. Verify by searching them for "custom provider" and `providerId`.
 - [ ] 5.2 Run `dotnet test` and `npm test`. Then, on a copy of your real database, start the app and check:
   1. Gemini is still in use with its key.
   2. Create a custom provider (for example a local LM Studio or a Groq key), test it and use it.

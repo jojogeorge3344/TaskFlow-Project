@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Document:** Functional Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > **Based on:** BRD-Assistant.md v1.2
@@ -19,6 +19,7 @@
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version: TFA Panel, how-to help, Action Card, voice controls and background safeguards, traced to BRD-Assistant v1.0 |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`), traced to BRD-Assistant v1.1. 4.1.2 becomes "Answers from TaskFlow Documents": FR-TFA-25 – FR-TFA-28 superseded by FR-TFA-57 – FR-TFA-66; UC-TFA-04 rewritten; cloud notice text (FR-TFA-15 element, M-TFA-03) and side effects updated; sources added to the conversation feed; messages M-TFA-10 – M-TFA-12, data, NFR-TFA-09 – NFR-TFA-12, open issues and traceability updated. |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` (revised, design D13 and D14), traced to BRD-Assistant v1.2. The Document search card and **Re-index now** on TFA Settings and the endpoints `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` were removed: FR-TFA-66 no longer mentions a manual re-index; FR-TFA-67 added (indexing problems written to the server log as warnings naming the folder or file; no index screen or endpoint), traced to REQ-TFA-56; related documents, scope and traceability updated. FR-TFA-16 and the "Other provider error" message state that chat replies keep the plain message; the provider's own status and reason appear only on Test connection in TFA Settings. |
+| 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-custom-ai-providers` (traced to FRD-TFA-Settings v1.5). Providers are identified by id, so a **custom provider** (OpenAI-compatible or Ollama API, added in TFA Settings) is offered in the model selector like a built-in one: FR-TFA-12 (selector lists built-in and custom providers by id), FR-TFA-13, FR-TFA-14 (answer shows the provider's name; the message stores the provider id), FR-TFA-15 (cloud notice by the provider's Local/Cloud setting, custom Cloud providers included), FR-TFA-16 (failure names the provider and carries its id) reworded; added FR-TFA-68 (the chat request sends the provider id; a choice remembered by name before providers had ids is ignored). Definitions, context diagram, model selector and failure card elements, workflow 5.3, data and traceability updated. Everything else unchanged. |
 
 ### Related Documents
 
@@ -61,7 +62,7 @@ Developer and tester of TaskFlow, reviewers, and the product owner (Jojo George)
 | Term | Meaning |
 |---|---|
 | TFA | TaskFlow Assistant, the built-in AI assistant |
-| AI provider | Service that writes TFA's answers: Ollama (local), Google Gemini or OpenAI GPT (cloud) |
+| AI provider | Service that writes TFA's answers: a built-in provider – Ollama (local), Google Gemini or OpenAI GPT (cloud) – or (v1.3) a custom provider an administrator added in TFA Settings, marked Local or Cloud; identified by its provider id |
 | Lookup | A read TFA makes while answering (own tasks, user directory) |
 | TaskFlow documents | The Markdown files (BRD, FRD, HLD, LLD, TDD, screen specifications) in the documents folder TFA answers from |
 | Document section | A part of a document under one heading; the unit TFA finds and cites |
@@ -94,7 +95,7 @@ flowchart LR
   U1["Administrator"] --> S["TFA Assistant"]
   U2["Manager"] --> S
   U3["Employee or Custom role"] --> S
-  S --> P["AI provider: Ollama, Gemini, OpenAI"]
+  S --> P["AI provider: Ollama, Gemini, OpenAI or a custom provider"]
   S --> B["Browser speech service"]
   S --> M["Mail, My Profile, Employee Management"]
   S --> T["Task Management"]
@@ -146,14 +147,14 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 |---|---|---|:---:|---|
 | TFA button | Floating button + voice hint | Opens/closes the panel | – | Users with `assistant.chat` |
 | Header | Title + buttons | "TFA – TaskFlow Assistant", **New chat** (+), **Close** (×) | – | Users with `assistant.chat` |
-| Model selector | Menu | Chosen provider and model with **Local**/**Cloud** tag; menu opens only with 2 or more configured providers | – | Users with `assistant.chat` |
-| Cloud notice | Inline notice | "`{Provider}` is a cloud provider. Your message, related task details and matching TaskFlow document text are sent to it." with **I understand**, **Cancel** | – | Users with `assistant.chat` |
+| Model selector | Menu | Chosen provider and model with **Local**/**Cloud** tag; menu opens only with 2 or more configured providers; lists built-in and custom providers, each chosen by its provider id; the badge has a colour per built-in provider and a shared "Custom" colour for custom providers (v1.3) | – | Users with `assistant.chat` |
+| Cloud notice | Inline notice | "`{Provider}` is a cloud provider. Your message, related task details and matching TaskFlow document text are sent to it." with **I understand**, **Cancel**; shown for every provider marked Cloud, custom providers included (v1.3) | – | Users with `assistant.chat` |
 | Conversation feed | List | User messages, TFA answers with provider name (e.g. "TFA · Gemini"), "Permission required" bubble, notices, numbered ranked task list with tags, screen link buttons, **Sources** chips (4.1.2), Action Cards | – | Users with `assistant.chat` |
 | Welcome bubble + suggestions | Text + chips | "Hi, I'm TFA. I can explain how TaskFlow works, tell you what is coming up and what to do first, and draft mail for you to review."; *What are my upcoming tasks?*, *What should I prioritise?*, *How do I change a task status?*, *Send a mail to my manager* | – | Users with `assistant.chat` (empty chat only) |
 | Message box | Text area | "Ask TFA anything about TaskFlow…"; Enter sends, Shift+Enter new line | Yes (to send) | Users with `assistant.chat` |
 | Microphone, Send | Buttons | Dictate (4.1.4); send the message | – | Users with `assistant.chat` |
 | Footer | Text | "TFA can make mistakes. Actions always need your confirmation." | – | Users with `assistant.chat` |
-| Provider failure card | Card | Plain failure text with **Retry** and **Use** `{other provider}` | – | Users with `assistant.chat` |
+| Provider failure card | Card | Plain failure text naming the provider that failed (built-in or custom, v1.3) with **Retry** and **Use** `{other provider}` | – | Users with `assistant.chat` |
 
 **Functional requirements**
 
@@ -170,11 +171,11 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 | FR-TFA-09 | The system shall answer questions about upcoming, due-today, overdue and all open tasks using the same access rules as Task Management – the user's own tasks by default and every task the user may see on request – each task linking to its task page. | Must | `assistant.chat` | REQ-TFA-06, BR-TFA-05 |
 | FR-TFA-10 | The system shall rank the user's open assigned tasks (To Do, In Progress, In QA, Blocked): overdue first (longest overdue first), then due today, then nearest due date, higher priority first on the same day; Completed and Cancelled excluded; blocked tasks kept and tagged **Blocked**. | Must | `assistant.chat` | REQ-TFA-07, BR-TFA-06 |
 | FR-TFA-11 | The system shall show the top 5 ranked tasks (up to 10 when asked) as a numbered list with tags Overdue, Today, Tomorrow, `{n}` days or Blocked, each linking to its task page; the order shall be calculated by the system and be identical for every provider. | Must | `assistant.chat` | REQ-TFA-08, BR-TFA-06 |
-| FR-TFA-12 | The system shall list in the model selector only providers configured by an administrator, with a Local or Cloud tag, open the menu only when 2 or more are configured, remember the choice in the browser, and keep the same conversation when the model is switched. | Must | `assistant.chat` | REQ-TFA-09, BR-TFA-11 |
-| FR-TFA-13 | The system shall show "TFA is not available yet. An administrator needs to choose an AI model in TFA Settings." when no provider is configured, and "`{Provider}` is not configured. Choose another model, or ask an administrator to set it up." when the chosen provider was removed. | Must | `assistant.chat` | REQ-TFA-09, BR-TFA-11 |
-| FR-TFA-14 | The system shall show the name of the provider that answered under each TFA answer. | Could | `assistant.chat` | REQ-TFA-09 |
-| FR-TFA-15 | The system shall hold the first message to each cloud provider and show the cloud notice; **I understand** sends it and is remembered in that browser, **Cancel** puts the text back into the message box. | Must | `assistant.chat` | REQ-TFA-10, BR-TFA-11 |
-| FR-TFA-16 | The system shall save nothing when a provider fails (rate limit, rejected key, timeout, unreachable, model missing, unexpected error), show the matching plain message, and offer **Retry** (same text) and **Use** `{other provider}` for each other configured provider. The chat message never includes the provider's own status or reason; that is added only on Test connection in TFA Settings (FRD-TFA-Settings FR-TFAS-39, v1.2). | Must | `assistant.chat` | REQ-TFA-11 |
+| FR-TFA-12 | The system shall list in the model selector only providers configured by an administrator – built-in or (v1.3) custom – each with its name and a Local or Cloud tag, open the menu only when 2 or more are configured, remember the choice in the browser by provider id (v1.3), and keep the same conversation when the model is switched. | Must | `assistant.chat` | REQ-TFA-09, BR-TFA-11 |
+| FR-TFA-13 | The system shall show "TFA is not available yet. An administrator needs to choose an AI model in TFA Settings." when no provider is configured, and "`{Provider}` is not configured. Choose another model, or ask an administrator to set it up." when the chosen provider was removed. When the remembered provider id is no longer configured, the first available provider is selected (v1.3). | Must | `assistant.chat` | REQ-TFA-09, BR-TFA-11 |
+| FR-TFA-14 | The system shall show the name of the provider that answered under each TFA answer, and store each answer with the provider's id (v1.3); an answer from a custom provider that has since been removed keeps no provider name. | Could | `assistant.chat` | REQ-TFA-09 |
+| FR-TFA-15 | The system shall hold the first message to each cloud provider and show the cloud notice; **I understand** sends it and is remembered in that browser (per provider id, v1.3), **Cancel** puts the text back into the message box. Whether a provider is a cloud provider comes from its Local/Cloud setting, so a custom provider marked Cloud gets the notice and one marked Local does not (v1.3). | Must | `assistant.chat` | REQ-TFA-10, BR-TFA-11 |
+| FR-TFA-16 | The system shall save nothing when a provider fails (rate limit, rejected key, timeout, unreachable, model missing, unexpected error), show the matching plain message naming the provider (for a custom provider its own name, for example "Groq did not accept the API key. …", v1.3), and offer **Retry** (same text) and **Use** `{other provider}` for each other configured provider. The failure carries the provider's id and name (v1.3). The chat message never includes the provider's own status or reason; that is added only on Test connection in TFA Settings (FRD-TFA-Settings FR-TFAS-39, v1.2). | Must | `assistant.chat` | REQ-TFA-11 |
 | FR-TFA-17 | The system shall start a new conversation on **New chat**, empty the panel and show the welcome bubble; earlier messages stay stored but are no longer used as context. On failure it shall show "Could not start a new chat." | Should | `assistant.chat` | REQ-TFA-12 |
 | FR-TFA-18 | The system shall use at most the last 12 messages, about 6000 characters, of the current conversation as context, excluding notices. | Should | `assistant.chat` | REQ-TFA-13 |
 | FR-TFA-19 | The system shall allow at most 4 rounds of lookups per answer, after which TFA shall answer in words. | Should | `assistant.chat` | REQ-TFA-14 |
@@ -183,6 +184,7 @@ Mail, profile and task answers additionally follow the user's own rights in thos
 | FR-TFA-22 | The system shall use the application name and time zone from Application Settings in answers and when deciding which tasks are due today. | Should | `assistant.chat` | REQ-TFA-17, BR-17 |
 | FR-TFA-23 | The system shall show a refused request as a "Permission required" bubble with "You do not have the required permission to perform this action. `{Action}` can only be performed by `{who}`. Please contact your system administrator for assistance." | Must | `assistant.chat` | REQ-TFA-01, REQ-TFA-23, BR-TFA-01 |
 | FR-TFA-24 | The system shall show the footer "TFA can make mistakes. Actions always need your confirmation." at all times in the panel. | Should | `assistant.chat` | REQ-TFA-22, BR-TFA-02 |
+| FR-TFA-68 | The system shall send each chat message with the chosen provider's id (v1.3), answer it through that provider (built-in or custom) and store the answer with that id; a provider choice remembered in the browser by name before providers had ids (for example "Gemini") shall be ignored, and the first available provider used instead. | Must | `assistant.chat` | REQ-TFA-09 |
 
 **Use case: UC-TFA-01 – Ask TFA a question**
 
@@ -267,6 +269,7 @@ flowchart LR
 | Cloud provider unreachable | "`{Provider}` cannot be reached right now. Check the connection and retry, or choose another model." |
 | Model not installed (Ollama) | "The configured model is not available on Ollama. Ask an administrator to install it, or choose another model." |
 | Model not available (cloud) | "The configured model is not available on `{Provider}`. Ask an administrator to check the model name, or choose another model." |
+| Custom provider failure (v1.3) | The same messages with the custom provider's name as `{Provider}`; a Local custom provider that cannot be reached gets "`{Provider}` is not running or cannot be reached. Ask an administrator to start it, or choose another model." |
 | Other provider error | "`{Provider}` returned an unexpected error. Please try again, or choose another model." (plain message only; the provider's reason is not shown in the chat, v1.2) |
 | Any other send error | "TFA could not answer. Please try again." |
 | No permission | "You do not have the required permission to perform this action. `{Action}` can only be performed by `{who}`. Please contact your system administrator for assistance." |
@@ -663,9 +666,9 @@ sequenceDiagram
 
 | Step | Module | Actor / System | Action | FR reference |
 |---|---|---|---|---|
-| 1 | TFAS | Administrator | Configures providers and models | FRD-TFA-Settings (`FR-TFAS-nn`) |
-| 2 | TFA | System | Lists only configured providers in the selector | FR-TFA-12, FR-TFA-13 |
-| 3 | TFA | User | Sends a message; cloud notice for a cloud provider | FR-TFA-15 |
+| 1 | TFAS | Administrator | Configures providers and models, including custom providers (v1.3) | FRD-TFA-Settings (`FR-TFAS-nn`) |
+| 2 | TFA | System | Lists only configured providers in the selector, by provider id | FR-TFA-12, FR-TFA-13 |
+| 3 | TFA | User | Sends a message with the provider id; cloud notice for a provider marked Cloud | FR-TFA-15, FR-TFA-68 |
 
 ```mermaid
 sequenceDiagram
@@ -673,10 +676,12 @@ sequenceDiagram
   participant C as TFA Settings
   participant T as TFA Assistant
   actor U as User
-  A->>C: Configure Ollama and Gemini
+  A->>C: Configure Ollama, Gemini or a custom provider such as Groq
   U->>T: Open panel
-  T->>C: Read configured providers
+  T->>C: Read configured providers (id, name, model, Local or Cloud)
   T-->>U: Model selector with Local and Cloud
+  U->>T: Send a message with the chosen provider id
+  T-->>U: Answer showing the provider name
 ```
 
 ---
@@ -713,12 +718,12 @@ TFA sends no in-app notification of its own; a confirmed mail is delivered throu
 | Data item | Description | Created by | Rules |
 |---|---|---|---|
 | Conversation | A user's chat thread | System on first message / New chat | Own only; kept indefinitely (see §10) |
-| Message | Question, answer, lookup result or notice, with provider used, sources (document, section, file) and time | System | Last 100 shown; detected secrets never stored; nothing stored on provider failure |
+| Message | Question, answer, lookup result or notice, with provider used (stored by provider id since v1.3; empty when a custom provider was removed), sources (document, section, file) and time | System | Last 100 shown; detected secrets never stored; nothing stored on provider failure |
 | Pending action | Prepared action (Send mail, Update own profile, Change user role) with details and status | System | Status Pending, Confirmed, Cancelled, Expired, Refused, Failed; expires 10 minutes after creation; resolved once |
 | Audit record | Action outcome: user, kind, outcome, time | System | No message bodies, passwords or keys |
 | Help topics | *Removed in v1.1* (replaced by the document index) | – | – |
 | Document index | One entry per Markdown document (file path, title, content fingerprint, embedding model, section count, indexed time) and its sections (heading path, text, search vector) | System (background indexing) | Rebuilt from the documents folder; changed documents replaced, deleted ones removed; holds no user data |
-| Browser settings | Chosen model, cloud acknowledgement per provider, hands-free off | User's browser | Not stored on the server |
+| Browser settings | Chosen model (provider id since v1.3; a name remembered before is ignored), cloud acknowledgement per provider id, hands-free off | User's browser | Not stored on the server |
 
 ---
 
@@ -773,9 +778,9 @@ Test cases are the automated test suites (backend test classes and frontend `*.s
 | REQ-TFA-06 | FR-TFA-09 | TFA Panel | UC-TFA-01 | `AssistantReadToolsTests` |
 | REQ-TFA-07 | FR-TFA-10 | TFA Panel | UC-TFA-02 | `TaskPrioritiserTests` |
 | REQ-TFA-08 | FR-TFA-11 | TFA Panel | UC-TFA-02 | `TaskPrioritiserTests`, `AssistantReadToolsTests` |
-| REQ-TFA-09 | FR-TFA-12, FR-TFA-13, FR-TFA-14 | TFA Panel | UC-TFA-01 | `ChatModelGatewayTests`, `AssistantServiceTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| REQ-TFA-09 | FR-TFA-12, FR-TFA-13, FR-TFA-14, FR-TFA-68 | TFA Panel | UC-TFA-01 | `ChatModelGatewayTests`, `AssistantServiceTests`, `CustomProviderEndpointsTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | REQ-TFA-10 | FR-TFA-15 | TFA Panel | UC-TFA-01 | `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
-| REQ-TFA-11 | FR-TFA-16 | TFA Panel | UC-TFA-01 | `ProviderFailureHandlingTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
+| REQ-TFA-11 | FR-TFA-16 | TFA Panel | UC-TFA-01 | `ProviderFailureHandlingTests`, `ChatModelGatewayTests`, `tfa-panel.component.spec.ts`, `assistant.service.spec.ts` |
 | REQ-TFA-12 | FR-TFA-04, FR-TFA-17 | TFA Panel | UC-TFA-03 | `AssistantEndpointsTests`, `tfa-panel.component.spec.ts` |
 | REQ-TFA-13 | FR-TFA-18 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
 | REQ-TFA-14 | FR-TFA-19 | TFA Panel | UC-TFA-01 | `AssistantServiceTests` |
