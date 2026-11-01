@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { EMPTY, catchError, map, of, switchMap, tap } from 'rxjs';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
-import { CreateTaskRequest, ReminderFrequency, TASK_PRIORITIES, TaskDetails, TaskPriority } from '../models/task.model';
+import { AssigneeCandidate, CreateTaskRequest, ReminderFrequency, TASK_PRIORITIES, TaskDetails, TaskPriority } from '../models/task.model';
 import { ProjectWithCount } from '../../../management/project-management/models/project.model';
 import { User } from '../../../management/employee-management/models/user.model';
 import { ApplicationSettingsService } from '../../../settings/application-settings/services/application-settings.service';
@@ -43,6 +44,16 @@ function deadlineAfterStart(group: AbstractControl): ValidationErrors | null {
 export function toLocalInput(date: Date): string {
   const pad = (value: number) => value.toString().padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Where the assignee dropdown's data stands: no project chosen, fetching the project's team, have it, or failed. */
+export type CandidatesState = 'idle' | 'loading' | 'loaded' | 'error';
+
+/** The dropdown text for a team member: name, code, and their current load (overdue only when there is any). */
+export function candidateLabel(candidate: AssigneeCandidate): string {
+  const code = candidate.employeeCode ? ` (${candidate.employeeCode})` : '';
+  const overdue = candidate.overdueTasks > 0 ? ` - ${candidate.overdueTasks} overdue` : '';
+  return `${candidate.fullName}${code} - ${candidate.activeTasks} active${overdue}`;
 }
 
 /** Create Task (Screen 8). Manager/Administrator only; validation mirrors CreateTaskRequestValidator. */
@@ -88,6 +99,16 @@ export class TaskCreateComponent implements OnInit {
   private readonly copySource = signal<TaskDetails | null>(null);
   /** Tells the user what was (or could not be) carried over from the copied task. */
   readonly copyNotice = signal<{ kind: 'info' | 'warning'; message: string } | null>(null);
+  /** The chosen project's team with each member's current load, least-loaded first (the server's pick order). */
+  readonly candidates = signal<AssigneeCandidate[]>([]);
+  readonly candidatesState = signal<CandidatesState>('idle');
+  readonly candidateLabel = candidateLabel;
+  /** The team member picked automatically for the current project, so the hint can say so until someone else is chosen. */
+  private readonly autoPickedId = signal<number | null>(null);
+  /** True while a `?copyFrom=` task is loading, so a team that arrives first is not auto-picked over the copied assignee. */
+  private copyPending = false;
+  /** The copied task's assignee, waiting for the copied project's team to arrive. */
+  private copiedAssignee: { userId: number; name: string; taskCode: string } | null = null;
 
   readonly form = new FormGroup(
     {
@@ -113,10 +134,57 @@ export class TaskCreateComponent implements OnInit {
 
   private readonly assigneeId = toSignal(this.form.controls.assignedToUserId.valueChanges, { initialValue: null });
 
-  readonly assigneeOptions = computed(() => this.users().filter((user) => user.role === 'Employee'));
-
   /** Anyone active except the assignee, who is always a recipient anyway. */
   readonly recipientOptions = computed(() => this.users().filter((user) => user.id !== this.assigneeId()));
+
+  /** The line under the assignee field: why the employee was picked (until the user chooses someone else), or why
+   * nobody could be. */
+  readonly assigneeNotice = computed<{ kind: 'info' | 'warning'; message: string } | null>(() => {
+    switch (this.candidatesState()) {
+      case 'error':
+        return { kind: 'warning', message: "This project's team could not be loaded." };
+      case 'loaded': {
+        if (this.candidates().length === 0) {
+          return { kind: 'warning', message: 'No employees are mapped to this project.' };
+        }
+        const picked = this.candidates().find((candidate) => candidate.userId === this.autoPickedId());
+        return picked && picked.userId === this.assigneeId()
+          ? { kind: 'info', message: `Auto-selected: fewest active tasks on this project's team (${picked.activeTasks} active).` }
+          : null;
+      }
+      default:
+        return null;
+    }
+  });
+
+  constructor() {
+    // Every project change fetches that project's team afresh; switchMap drops a reply for a project no longer chosen.
+    this.form.controls.projectId.valueChanges
+      .pipe(
+        tap((projectId) => {
+          this.candidates.set([]);
+          this.autoPickedId.set(null);
+          this.candidatesState.set(projectId === null ? 'idle' : 'loading');
+          this.form.controls.assignedToUserId.setValue(null);
+        }),
+        switchMap((projectId) =>
+          projectId === null
+            ? EMPTY
+            : this.taskService.getAssigneeCandidates(projectId).pipe(
+                map((candidates) => ({ candidates, failed: false })),
+                catchError(() => of({ candidates: [] as AssigneeCandidate[], failed: true }))
+              )
+        ),
+        takeUntilDestroyed()
+      )
+      .subscribe(({ candidates, failed }) => {
+        this.candidates.set(candidates);
+        this.candidatesState.set(failed ? 'error' : 'loaded');
+        if (!this.copyPending) {
+          this.applyAssignee();
+        }
+      });
+  }
 
   ngOnInit(): void {
     const start = new Date();
@@ -148,7 +216,7 @@ export class TaskCreateComponent implements OnInit {
       next: (users) => {
         this.users.set(users);
         this.usersLoading.set(false);
-        this.applyCopyPeople();
+        this.applyCopyRecipients();
       },
       error: () => {
         this.usersError.set(true);
@@ -165,6 +233,7 @@ export class TaskCreateComponent implements OnInit {
       return;
     }
 
+    this.copyPending = true;
     this.taskService.getById(copyFrom).subscribe({
       next: (source) => {
         const { projectId, priority, firstReminderDays, secondReminderDays, overdueReminderFrequency } = this.form.controls;
@@ -181,38 +250,64 @@ export class TaskCreateComponent implements OnInit {
         [priority, firstReminderDays, secondReminderDays, overdueReminderFrequency].forEach((control) => control.markAsDirty());
         this.firstReminderOptions.set(withReminderDay(FIRST_REMINDER_OPTIONS, source.firstReminderDays));
         this.secondReminderOptions.set(withReminderDay(SECOND_REMINDER_OPTIONS, source.secondReminderDays));
-        if (source.projectId !== null && projectId.pristine) {
-          projectId.setValue(source.projectId);
-        }
         this.copySource.set(source);
         this.copyNotice.set({ kind: 'info', message: `Copied from ${source.taskCode}. Check the dates before creating.` });
-        this.applyCopyPeople();
+        this.copiedAssignee = { userId: source.assignedToUserId, name: source.assignedToName, taskCode: source.taskCode };
+        this.copyPending = false;
+        if (source.projectId !== null && projectId.pristine) {
+          projectId.setValue(source.projectId);
+        } else if (this.candidatesState() === 'loaded') {
+          // The project was already chosen and its team is in, so apply the copied assignee to it now.
+          this.applyAssignee();
+        }
+        this.applyCopyRecipients();
       },
-      error: () =>
-        this.copyNotice.set({ kind: 'warning', message: 'That task could not be copied, so the form is empty.' })
+      error: () => {
+        this.copyPending = false;
+        this.copyNotice.set({ kind: 'warning', message: 'That task could not be copied, so the form is empty.' });
+        if (this.candidatesState() === 'loaded') {
+          this.applyAssignee();
+        }
+      }
     });
   }
 
-  /** The assignee and recipients can only be applied once both the source task and the user list are in. */
-  private applyCopyPeople(): void {
+  /** The copied recipients can only be applied once both the source task and the user list are in. */
+  private applyCopyRecipients(): void {
     const source = this.copySource();
     if (!source || this.usersLoading() || this.usersError()) {
       return;
     }
 
-    const assigneeEligible = this.assigneeOptions().some((user) => user.id === source.assignedToUserId);
-    if (assigneeEligible && this.form.controls.assignedToUserId.pristine) {
-      this.form.controls.assignedToUserId.setValue(source.assignedToUserId);
-    } else if (!assigneeEligible) {
-      this.copyNotice.set({
-        kind: 'warning',
-        message: `Copied from ${source.taskCode}, but ${source.assignedToName || 'the original assignee'} can no longer be assigned. Choose another employee.`
-      });
-    }
-
     const known = new Set(this.users().map((user) => user.id));
     this.recipientIds.set(source.recipients.map((recipient) => recipient.userId).filter((id) => id !== source.assignedToUserId && known.has(id)));
     this.copySource.set(null);
+  }
+
+  /** Once the chosen project's team is in: keeps a copied task's assignee if they are on it, otherwise selects the first
+   * (least-loaded) team member, or nobody when the team is empty. */
+  private applyAssignee(): void {
+    const candidates = this.candidates();
+    const copied = this.copiedAssignee;
+    this.copiedAssignee = null;
+
+    if (copied && candidates.some((candidate) => candidate.userId === copied.userId)) {
+      this.form.controls.assignedToUserId.setValue(copied.userId);
+      return;
+    }
+
+    const pick = candidates[0] ?? null;
+    this.autoPickedId.set(pick?.userId ?? null);
+    this.form.controls.assignedToUserId.setValue(pick?.userId ?? null);
+    if (copied) {
+      const who = copied.name || 'the original assignee';
+      this.copyNotice.set({
+        kind: 'warning',
+        message: pick
+          ? `Copied from ${copied.taskCode}, but ${who} is no longer on this project's team, so the least-loaded team member was selected.`
+          : `Copied from ${copied.taskCode}, but ${who} can no longer be assigned. Choose another employee.`
+      });
+    }
   }
 
   /** Pre-fills the reminder fields from the configured defaults (Screen 13). Fields the user already

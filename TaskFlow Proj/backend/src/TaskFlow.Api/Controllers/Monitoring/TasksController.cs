@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Common.Security;
+using TaskFlow.Api.Services.Monitoring.TaskManagement.AssigneeCandidates;
 using TaskFlow.Api.Services.Monitoring.TaskManagement.Tasks;
 using TaskFlow.Api.Authorization.Policies;
 
@@ -16,13 +17,16 @@ public class TasksController : ControllerBase
 {
     private readonly ITaskService _taskService;
     private readonly IAuthorizationService _authorizationService;
+    private readonly IAssigneeCandidateService _assigneeCandidates;
 
     public TasksController(
         ITaskService taskService,
-        IAuthorizationService authorizationService)
+        IAuthorizationService authorizationService,
+        IAssigneeCandidateService assigneeCandidates)
     {
         _taskService = taskService;
         _authorizationService = authorizationService;
+        _assigneeCandidates = assigneeCandidates;
     }
 
     /// <summary>A page of tasks the caller may access, with search, filters and paging (Screen 7).</summary>
@@ -67,6 +71,18 @@ public class TasksController : ControllerBase
 
         var assignees = await _taskService.GetAssigneesAsync(userId, role, cancellationToken);
         return Ok(assignees);
+    }
+
+    /// <summary>The project's assignable team for a new task with each member's current load, in pick order: the first is
+    /// the default assignee (Screen 8).</summary>
+    [HttpGet("assignee-candidates")]
+    [RequirePermission(PermissionKeys.TasksCreate)]
+    public async Task<ActionResult<IReadOnlyList<AssigneeCandidateDto>>> GetAssigneeCandidates(
+        [FromQuery] int projectId,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await _assigneeCandidates.GetCandidatesAsync(projectId, cancellationToken);
+        return candidates is null ? NotFound() : Ok(candidates);
     }
 
     /// <summary>All tasks the caller may access, flat list the Kanban board groups client-side.</summary>

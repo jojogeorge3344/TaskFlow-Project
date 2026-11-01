@@ -35,12 +35,12 @@ public class ProviderTimeoutTests : IClassFixture<TaskFlowApiFactory>, IClassFix
         factory.Services.GetRequiredService<IHttpClientFactory>().CreateClient(typeof(TClient).Name).Timeout;
 
     [Fact]
-    public void OllamaChatWaits180SecondsAndCloudProvidersAndEmbeddings60ByDefault()
+    public void OllamaChatWaits180SecondsAndCloudProvidersAndEmbeddings120ByDefault()
     {
         Assert.Equal(TimeSpan.FromSeconds(180), TimeoutOf<OllamaProvider>(_defaults));
-        Assert.Equal(TimeSpan.FromSeconds(60), TimeoutOf<GeminiEmbeddingClient>(_defaults));
-        Assert.Equal(TimeSpan.FromSeconds(60), TimeoutOf<GeminiProvider>(_defaults));
-        Assert.Equal(TimeSpan.FromSeconds(60), TimeoutOf<OpenAiProvider>(_defaults));
+        Assert.Equal(TimeSpan.FromSeconds(120), TimeoutOf<GeminiEmbeddingClient>(_defaults));
+        Assert.Equal(TimeSpan.FromSeconds(120), TimeoutOf<GeminiProvider>(_defaults));
+        Assert.Equal(TimeSpan.FromSeconds(120), TimeoutOf<OpenAiProvider>(_defaults));
     }
 
     [Fact]

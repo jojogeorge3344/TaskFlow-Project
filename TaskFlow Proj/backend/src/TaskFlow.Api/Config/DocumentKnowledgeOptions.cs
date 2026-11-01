@@ -39,6 +39,22 @@ public class DocumentKnowledgeOptions
     /// at 768 dimensions: covered questions scored 0.73 to 0.84 against the right section, unrelated ones at most 0.56.</summary>
     public double MinScore { get; set; } = 0.65;
 
+    /// <summary>Searches by keyword (the FTS5 index) as well as by similarity and merges the two rankings. Off searches by
+    /// similarity only, as before hybrid search.</summary>
+    public bool HybridSearch { get; set; } = true;
+
+    /// <summary>The lowest similarity at which a keyword match of ordinary words may reach the model. A keyword match
+    /// for an exact identifier (NFR-14, TimeoutSeconds), or any keyword match when the message cannot be embedded, needs
+    /// no similarity. A value above <see cref="MinScore"/> acts as <see cref="MinScore"/>.</summary>
+    public double KeywordAssistMinScore { get; set; } = 0.55;
+
+    /// <summary>How many chunks each search (similarity and keyword) contributes to the merged ranking.</summary>
+    public int CandidateCount { get; set; } = 20;
+
+    /// <summary>The k of Reciprocal Rank Fusion: a chunk scores 1 / (k + rank) in each ranking. Higher values flatten
+    /// the difference between the first and later ranks.</summary>
+    public int RrfK { get; set; } = 60;
+
     /// <summary>The longest chunk, in characters, before a section is split.</summary>
     public int MaxChunkCharacters { get; set; } = 1500;
 
@@ -84,6 +100,23 @@ public class DocumentKnowledgeOptions
         if (MinScore is < 0 or > 1)
         {
             problems.Add("DocumentKnowledge:MinScore must be between 0 and 1.");
+        }
+
+        // Not tied to MinScore: a configuration that lowered MinScore below the default KeywordAssistMinScore must still
+        // start. Search uses the lower of the two, so a value above MinScore simply adds nothing.
+        if (KeywordAssistMinScore is < 0 or > 1)
+        {
+            problems.Add("DocumentKnowledge:KeywordAssistMinScore must be between 0 and 1.");
+        }
+
+        if (CandidateCount is < 1 or > 100 || CandidateCount < TopK)
+        {
+            problems.Add("DocumentKnowledge:CandidateCount must be between 1 and 100 and at least TopK.");
+        }
+
+        if (RrfK is < 1 or > 1000)
+        {
+            problems.Add("DocumentKnowledge:RrfK must be between 1 and 1000.");
         }
 
         if (MaxChunkCharacters is < 300 or > 6000)

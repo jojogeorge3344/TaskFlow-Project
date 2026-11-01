@@ -50,6 +50,13 @@ public class DocumentKnowledgeOptionsTests
     [InlineData(nameof(DocumentKnowledgeOptions.RescanMinutes), 0)]
     [InlineData(nameof(DocumentKnowledgeOptions.EmbeddingDimensions), 127)]
     [InlineData(nameof(DocumentKnowledgeOptions.EmbeddingDimensions), 3073)]
+    [InlineData(nameof(DocumentKnowledgeOptions.KeywordAssistMinScore), -0.1)]
+    [InlineData(nameof(DocumentKnowledgeOptions.KeywordAssistMinScore), 1.1)]
+    [InlineData(nameof(DocumentKnowledgeOptions.CandidateCount), 0)]
+    [InlineData(nameof(DocumentKnowledgeOptions.CandidateCount), 101)]
+    [InlineData(nameof(DocumentKnowledgeOptions.CandidateCount), 3)]
+    [InlineData(nameof(DocumentKnowledgeOptions.RrfK), 0)]
+    [InlineData(nameof(DocumentKnowledgeOptions.RrfK), 1001)]
     public void AnOutOfRangeValueIsRejectedByName(string key, double value)
     {
         var options = new DocumentKnowledgeOptions();
@@ -67,6 +74,20 @@ public class DocumentKnowledgeOptionsTests
         var options = new DocumentKnowledgeOptions();
 
         Assert.Equal(("gemini-embedding-2", 768, "gemini-embedding-2@768"), (options.EmbeddingModel, options.EmbeddingDimensions, options.IndexModel));
+    }
+
+    [Fact]
+    public void HybridSearchIsOnByDefault()
+    {
+        var options = new DocumentKnowledgeOptions();
+
+        Assert.Equal((true, 0.55, 20, 60), (options.HybridSearch, options.KeywordAssistMinScore, options.CandidateCount, options.RrfK));
+    }
+
+    [Fact]
+    public void ALoweredMinScoreStillStartsWithTheDefaultKeywordAssistMinimum()
+    {
+        Assert.Empty(new DocumentKnowledgeOptions { MinScore = 0.5 }.Validate());
     }
 
     [Fact]

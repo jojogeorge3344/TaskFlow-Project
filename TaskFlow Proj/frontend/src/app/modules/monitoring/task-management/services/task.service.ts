@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ActivityEntry, AddCommentRequest, CreateTaskRequest, PagedResult, ReassignTaskRequest, SetRecipientsRequest, TaskCard, TaskComment, TaskDetails, TaskListFilter, TaskListItem, TaskRecipient, UpdateTaskRequest, UpdateTaskStatusRequest } from '../models/task.model';
+import { ActivityEntry, AddCommentRequest, AssigneeCandidate, CreateTaskRequest, PagedResult, ReassignTaskRequest, SetRecipientsRequest, TaskCard, TaskComment, TaskDetails, TaskListFilter, TaskListItem, TaskRecipient, UpdateTaskRequest, UpdateTaskStatusRequest } from '../models/task.model';
 import { ActivityFilter } from './task.model';
 
 @Injectable({ providedIn: 'root' })
@@ -23,6 +23,13 @@ export class TaskService {
   /** Distinct assignees of the tasks the caller may access, for the list's employee filter. */
   getAssignees(): Observable<TaskRecipient[]> {
     return this.http.get<TaskRecipient[]>(`${this.baseUrl}/assignees`);
+  }
+
+  /** The project's team for a new task with each member's current load, least-loaded first (Screen 8). */
+  getAssigneeCandidates(projectId: number): Observable<AssigneeCandidate[]> {
+    return this.http.get<AssigneeCandidate[]>(`${this.baseUrl}/assignee-candidates`, {
+      params: new HttpParams().set('projectId', String(projectId))
+    });
   }
 
   /** Creates a task (Screen 8). Manager/Administrator only. */

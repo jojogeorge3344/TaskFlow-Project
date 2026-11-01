@@ -37,7 +37,8 @@ public static class ServiceRegistration
         services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.Access.ITaskAccessService, TaskFlow.Api.Services.Monitoring.TaskManagement.Access.TaskAccessService>();
         services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.ITaskCommentService, TaskFlow.Api.Services.Monitoring.TaskManagement.Discussion.TaskCommentService>();
         services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.ITaskActivityService, TaskFlow.Api.Services.Monitoring.TaskManagement.Activity.TaskActivityService>();
-        services.AddScoped<TaskFlow.Api.Services.Monitoring.EmployeeWorkload.IWorkloadService, TaskFlow.Api.Services.Monitoring.EmployeeWorkload.WorkloadService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.TaskManagement.AssigneeCandidates.IAssigneeCandidateService, TaskFlow.Api.Services.Monitoring.TaskManagement.AssigneeCandidates.AssigneeCandidateService>();
+        services.AddScoped<TaskFlow.Api.Services.Monitoring.EmployeeWorkload.IWorkloadService,TaskFlow.Api.Services.Monitoring.EmployeeWorkload.WorkloadService>();
 
         // Management
         services.AddScoped<TaskFlow.Api.Services.Management.EmployeeManagement.Employees.IEmployeeService, TaskFlow.Api.Services.Management.EmployeeManagement.Employees.EmployeeService>();

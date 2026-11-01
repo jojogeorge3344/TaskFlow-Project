@@ -1,3 +1,5 @@
+using TaskFlow.Api.Services.Assistant.Documents.Rules;
+
 namespace TaskFlow.Api.Services.Assistant.Documents;
 
 /// <summary>A chunk held in memory for search. <see cref="Vector"/> is L2-normalised.</summary>
@@ -9,7 +11,12 @@ public record ScoredChunk(IndexedChunk Chunk, double Score);
 /// query. The set is replaced as a whole after an indexing run, so a search always sees one consistent set.</summary>
 public class DocumentVectorIndex
 {
-    private sealed record Snapshot(IReadOnlyList<IndexedChunk> Chunks, string? Model);
+    private sealed record Snapshot(IReadOnlyList<IndexedChunk> Chunks, string? Model)
+    {
+        private Dictionary<int, IndexedChunk>? _byId;
+
+        public Dictionary<int, IndexedChunk> ById => _byId ??= Chunks.ToDictionary(chunk => chunk.ChunkId);
+    }
 
     private volatile Snapshot _snapshot = new([], null);
 
@@ -23,12 +30,15 @@ public class DocumentVectorIndex
     /// <summary>The best chunks with a score of at least <paramref name="minScore"/>, best first: at most
     /// <paramref name="topK"/>, and only as many as fit in <paramref name="maxCharacters"/> of text. The best match is
     /// always kept.</summary>
-    public IReadOnlyList<ScoredChunk> Search(float[] query, int topK, double minScore, int maxCharacters)
-    {
-        var snapshot = _snapshot;
-        var best = new List<ScoredChunk>();
+    public IReadOnlyList<ScoredChunk> Search(float[] query, int topK, double minScore, int maxCharacters) =>
+        ChunkSelection.Take(Similarities(query, minScore), topK, maxCharacters);
 
-        foreach (var chunk in snapshot.Chunks)
+    /// <summary>Every chunk with a similarity of at least <paramref name="floor"/>, best first, then by chunk id. A chunk
+    /// whose vector has another length than the query is skipped.</summary>
+    public IReadOnlyList<ScoredChunk> Similarities(float[] query, double floor)
+    {
+        var best = new List<ScoredChunk>();
+        foreach (var chunk in _snapshot.Chunks)
         {
             if (chunk.Vector.Length != query.Length)
             {
@@ -36,26 +46,21 @@ public class DocumentVectorIndex
             }
 
             var score = Dot(chunk.Vector, query);
-            if (score >= minScore)
+            if (score >= floor)
             {
                 best.Add(new ScoredChunk(chunk, score));
             }
         }
 
-        var results = new List<ScoredChunk>();
-        var characters = 0;
-        foreach (var candidate in best.OrderByDescending(scored => scored.Score).ThenBy(scored => scored.Chunk.ChunkId).Take(topK))
-        {
-            if (results.Count > 0 && characters + candidate.Chunk.Text.Length > maxCharacters)
-            {
-                continue;
-            }
+        return best.OrderByDescending(scored => scored.Score).ThenBy(scored => scored.Chunk.ChunkId).ToList();
+    }
 
-            results.Add(candidate);
-            characters += candidate.Chunk.Text.Length;
-        }
-
-        return results;
+    /// <summary>The loaded chunks with these ids, in the given order. An id that is not loaded (the index is being
+    /// replaced) is skipped.</summary>
+    public IReadOnlyList<IndexedChunk> Resolve(IEnumerable<int> chunkIds)
+    {
+        var byId = _snapshot.ById;
+        return chunkIds.Select(id => byId.GetValueOrDefault(id)).OfType<IndexedChunk>().ToList();
     }
 
     private static double Dot(float[] left, float[] right)

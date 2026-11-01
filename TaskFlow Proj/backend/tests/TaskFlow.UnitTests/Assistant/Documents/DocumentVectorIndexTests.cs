@@ -15,6 +15,26 @@ public class DocumentVectorIndexTests
         new(id, path, "Title", $"Section {id}", text, vector);
 
     [Fact]
+    public void SimilaritiesReturnsEveryChunkAboveTheFloorBestFirstAndSkipsOtherLengths()
+    {
+        var index = new DocumentVectorIndex();
+        index.Replace([Chunk(1, Unit(0, 1)), Chunk(2, Unit(1, 0)), Chunk(3, Unit(1, 1)), Chunk(4, Unit(1, 0, 0))], "m");
+
+        var results = index.Similarities(Unit(1, 0.1f), floor: 0.5);
+
+        Assert.Equal([2, 3], results.Select(result => result.Chunk.ChunkId));
+    }
+
+    [Fact]
+    public void ResolveKeepsTheGivenOrderAndSkipsUnknownIds()
+    {
+        var index = new DocumentVectorIndex();
+        index.Replace([Chunk(1, Unit(1, 0)), Chunk(2, Unit(0, 1))], "m");
+
+        Assert.Equal([2, 1], index.Resolve([2, 99, 1]).Select(chunk => chunk.ChunkId));
+    }
+
+    [Fact]
     public void ResultsAreOrderedByScore()
     {
         var index = new DocumentVectorIndex();

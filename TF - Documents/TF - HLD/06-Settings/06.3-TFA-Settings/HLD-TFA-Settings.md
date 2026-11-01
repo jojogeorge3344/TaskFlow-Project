@@ -143,7 +143,7 @@ flowchart LR
   (`AiApiType`, per-type facts in `AiProviderCatalog`) and providers are data: three built-in rows plus any number of
   custom rows of type OpenAI-compatible or Ollama. A custom provider cannot use the Gemini API, be renamed or change its
   API type.
-- One API process; provider calls are synchronous HTTP with a timeout of `AiProviders:TimeoutSeconds` (60).
+- One API process; provider calls are synchronous HTTP with a timeout of `AiProviders:TimeoutSeconds` (120).
 - Key protection depends on the key ring folder staying with the data folder; losing it makes saved keys unreadable.
 - "One active server" is applied by the use and add actions on the server (v1.3); the save request kept for
   compatibility still accepts several enabled providers.
@@ -559,7 +559,7 @@ the overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`, §10).
 
 TFA Settings runs inside the single `TaskFlow.Api` process. Deployment-relevant items: the key ring folder
 `AiProviders:KeyRingPath` (default `dp-keys`) under `Storage:Root` must stay with the database (and be backed up with it)
-or saved keys become unreadable; `AiProviders:TimeoutSeconds` (60) bounds each cloud provider and Gemini embedding call
+or saved keys become unreadable; `AiProviders:TimeoutSeconds` (120) bounds each cloud provider and Gemini embedding call
 (`AiProviders:OllamaTimeoutSeconds`, 180, each Ollama chat call); the optional Ollama, when used, runs as a separate local
 service reachable at the saved address (default `http://localhost:11434`); cloud providers need outbound HTTPS. A Gemini key
 can be supplied at install time with `dotnet user-secrets set "AiProviders:GeminiApiKey" "<key>"` or the environment
