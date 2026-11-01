@@ -22,18 +22,25 @@ public class ChatModelGateway : IChatModelGateway
         _logger = logger;
     }
 
-    public async Task<ChatModelResult> CompleteAsync(AiProviderKind kind, ChatModelRequest request, CancellationToken cancellationToken = default)
+    public async Task<ChatModelResult> CompleteAsync(int providerId, ChatModelRequest request, CancellationToken cancellationToken = default)
     {
-        var runtime = await _config.GetRuntimeAsync(kind, cancellationToken) ?? throw new ProviderNotConfiguredException(kind);
+        var runtime = await _config.GetRuntimeAsync(providerId, cancellationToken);
+        if (runtime is null)
+        {
+            var provider = await _config.GetProviderAsync(providerId, cancellationToken);
+            throw new ProviderNotConfiguredException(provider.Id, provider.Name);
+        }
 
         try
         {
-            return await _registry.Get(kind).CompleteAsync(runtime, request with { ModelName = runtime.ModelName }, cancellationToken);
+            return await _registry.Get(runtime.ApiType).CompleteAsync(runtime, request with { ModelName = runtime.ModelName }, cancellationToken);
         }
         catch (ProviderFailureException failure)
         {
+            failure.For(runtime);
+
             // Only the provider, the class of failure and the HTTP status are logged: never the key, the prompt or the provider's body.
-            _logger.LogWarning("AI provider {Provider} call failed: {FailureKind} (HTTP status {HttpStatus})", failure.Provider, failure.Kind, failure.HttpStatus);
+            _logger.LogWarning("AI provider {Provider} call failed: {FailureKind} (HTTP status {HttpStatus})", failure.ProviderName, failure.Kind, failure.HttpStatus);
             throw;
         }
     }

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
 import { AuthService } from '../../../shared/auth/auth.service';
-import { AiProviderKind, AiProviderOption, AssistantActionResult, AssistantConversation, AssistantMessage, AssistantPendingAction, AssistantReply, EditMailAction } from '../models/assistant.model';
+import { AiProviderOption, AssistantActionResult, AssistantConversation, AssistantMessage, AssistantPendingAction, AssistantReply, EditMailAction } from '../models/assistant.model';
 import { FailedSend } from './assistant.model';
 
 export const TFA_PROVIDER_KEY = 'tfa.provider';
@@ -33,23 +33,23 @@ export class AssistantService {
   /** A message held until the user acknowledges that a Cloud provider will receive it. */
   readonly heldMessage = signal<string | null>(null);
 
-  private readonly chosenKind = signal<AiProviderKind | null>(readStored(TFA_PROVIDER_KEY) as AiProviderKind | null);
+  private readonly chosenId = signal<number | null>(readStoredId(TFA_PROVIDER_KEY));
 
   /** The selected provider: the remembered one when it is still configured, otherwise the first available. */
   readonly selected = computed(() => {
     const options = this.providers();
-    return options.find((option) => option.kind === this.chosenKind()) ?? options.at(0) ?? null;
+    return options.find((option) => option.providerId === this.chosenId()) ?? options.at(0) ?? null;
   });
 
   readonly available = computed(() => this.providers().length > 0);
 
   /** Providers the user has acknowledged as Cloud providers, as a signal so the panel can show the notice. */
-  private readonly acknowledged = signal<AiProviderKind[]>(readAcknowledged());
+  private readonly acknowledged = signal<number[]>(readAcknowledged());
 
   /** True when the selected provider is a Cloud one the user has not yet acknowledged. */
   readonly needsCloudNotice = computed(() => {
     const provider = this.selected();
-    return provider !== null && provider.locality === 'Cloud' && !this.acknowledged().includes(provider.kind);
+    return provider !== null && provider.locality === 'Cloud' && !this.acknowledged().includes(provider.providerId);
   });
 
   private localId = 0;
@@ -120,13 +120,13 @@ export class AssistantService {
   }
 
   /** Changes the model for the next message. The conversation stays as it is. */
-  selectProvider(kind: AiProviderKind): void {
-    this.chosenKind.set(kind);
-    writeStored(TFA_PROVIDER_KEY, kind);
+  selectProvider(providerId: number): void {
+    this.chosenId.set(providerId);
+    writeStored(TFA_PROVIDER_KEY, String(providerId));
   }
 
-  isAcknowledged(kind: AiProviderKind): boolean {
-    return this.acknowledged().includes(kind);
+  isAcknowledged(providerId: number): boolean {
+    return this.acknowledged().includes(providerId);
   }
 
   /** Sends the message with the selected model. The first message to a Cloud provider is held until the user
@@ -138,12 +138,12 @@ export class AssistantService {
       return;
     }
 
-    if (provider.locality === 'Cloud' && !this.isAcknowledged(provider.kind)) {
+    if (provider.locality === 'Cloud' && !this.isAcknowledged(provider.providerId)) {
       this.heldMessage.set(trimmed);
       return;
     }
 
-    this.dispatch(trimmed, provider.kind);
+    this.dispatch(trimmed, provider.providerId);
   }
 
   acknowledgeCloud(): void {
@@ -153,11 +153,11 @@ export class AssistantService {
       return;
     }
 
-    this.acknowledged.set([...new Set([...this.acknowledged(), provider.kind])]);
+    this.acknowledged.set([...new Set([...this.acknowledged(), provider.providerId])]);
     writeStored(TFA_CLOUD_ACK_KEY, JSON.stringify(this.acknowledged()));
     this.heldMessage.set(null);
     if (held) {
-      this.dispatch(held, provider.kind);
+      this.dispatch(held, provider.providerId);
     }
   }
 
@@ -221,7 +221,7 @@ export class AssistantService {
 
   // ------------------------------------------------------------------ internals
 
-  private dispatch(text: string, provider: AiProviderKind): void {
+  private dispatch(text: string, providerId: number): void {
     this.failed.set(null);
     const local: AssistantMessage = {
       id: --this.localId,
@@ -229,6 +229,7 @@ export class AssistantService {
       content: text,
       kind: 'Text',
       createdAt: new Date().toISOString(),
+      providerId: null,
       provider: null,
       links: [],
       rankedTasks: [],
@@ -239,7 +240,7 @@ export class AssistantService {
     this.messages.update((messages) => [...messages, local]);
     this.sending.set(true);
 
-    this.http.post<AssistantReply>(`${this.baseUrl}/conversation/messages`, { text, provider }).subscribe({
+    this.http.post<AssistantReply>(`${this.baseUrl}/conversation/messages`, { text, providerId }).subscribe({
       next: (reply) => {
         this.sending.set(false);
         if (reply.failure) {
@@ -269,7 +270,8 @@ export class AssistantService {
         content: text,
         kind: 'Notice',
         createdAt: new Date().toISOString(),
-        provider: null,
+        providerId: null,
+      provider: null,
         links: [],
         rankedTasks: [],
         action: null,
@@ -325,10 +327,18 @@ function writeStored(key: string, value: string): void {
   }
 }
 
-function readAcknowledged(): AiProviderKind[] {
+/** The remembered provider id. A value stored before providers had ids (a name such as "Gemini") is ignored. */
+function readStoredId(key: string): number | null {
+  const id = Number(readStored(key));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** The Cloud providers the user acknowledged, by id. Names stored before providers had ids are dropped, so the notice
+ * is shown once more. */
+function readAcknowledged(): number[] {
   try {
     const parsed: unknown = JSON.parse(readStored(TFA_CLOUD_ACK_KEY) ?? '[]');
-    return Array.isArray(parsed) ? (parsed as AiProviderKind[]) : [];
+    return Array.isArray(parsed) ? parsed.filter((value): value is number => typeof value === 'number') : [];
   } catch {
     return [];
   }

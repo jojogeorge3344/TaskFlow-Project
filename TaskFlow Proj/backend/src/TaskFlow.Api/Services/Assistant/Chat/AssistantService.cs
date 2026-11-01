@@ -114,13 +114,16 @@ public class AssistantService : IAssistantService
         }
 
         var available = await _providers.GetAvailableAsync(cancellationToken);
-        var provider = request.Provider ?? available.FirstOrDefault()?.Kind;
-        if (provider is not { } kind || available.All(option => option.Kind != kind))
+        var provider = request.ProviderId ?? available.FirstOrDefault()?.ProviderId;
+        if (provider is not { } providerId || available.All(option => option.ProviderId != providerId))
         {
-            throw new AssistantRequestException(
-                provider is { } missing
-                    ? ProviderFailureMessages.NotConfigured(missing)
-                    : "TFA is not available yet. An administrator needs to configure an AI provider.");
+            if (provider is not { } missing)
+            {
+                throw new AssistantRequestException("TFA is not available yet. An administrator needs to configure an AI provider.");
+            }
+
+            var name = (await _providers.GetAdminConfigAsync(cancellationToken)).FirstOrDefault(option => option.ProviderId == missing)?.DisplayName;
+            throw new AssistantRequestException(ProviderFailureMessages.NotConfigured(name ?? "That AI provider"));
         }
 
         if (_rateLimiter.TryAcquire(caller.UserId) is { } wait)
@@ -152,17 +155,18 @@ public class AssistantService : IAssistantService
         Answer answer;
         try
         {
-            answer = await RunTurnAsync(caller, conversation.Id, kind, systemPrompt, turn, SourcesOf(documents), cancellationToken);
+            answer = await RunTurnAsync(caller, conversation.Id, providerId, systemPrompt, turn, SourcesOf(documents), cancellationToken);
         }
         catch (ProviderFailureException failure)
         {
-            var alternatives = available.Where(option => option.Kind != failure.Provider).ToList();
+            var alternatives = available.Where(option => option.ProviderId != providerId).ToList();
             return new AssistantReplyDto(
                 [],
                 new AssistantFailureDto(
                     failure.Kind,
-                    failure.Provider,
-                    ProviderFailureMessages.For(failure.Provider, failure.Kind, failure.RetryAfter),
+                    providerId,
+                    failure.ProviderName,
+                    ProviderFailureMessages.For(failure),
                     failure.RetryAfter is { } retry ? (int)Math.Ceiling(retry.TotalSeconds) : null,
                     alternatives));
         }
@@ -180,7 +184,7 @@ public class AssistantService : IAssistantService
             ConversationId = conversation.Id,
             Role = AssistantMessageRole.Assistant,
             Content = answer.Text,
-            ProviderKind = kind,
+            ProviderId = providerId,
             MetaJson = JsonSerializer.Serialize(
                 new AssistantMessageMeta(answer.Kind, answer.Links, answer.RankedTasks, answer.ActionId, answer.Sources),
                 MetaJson),
@@ -217,7 +221,7 @@ public class AssistantService : IAssistantService
     private async Task<Answer> RunTurnAsync(
         AssistantCaller caller,
         int conversationId,
-        AiProviderKind kind,
+        int providerId,
         string systemPrompt,
         List<ChatMessage> messages,
         IReadOnlyList<AssistantSourceDto> sources,
@@ -232,7 +236,7 @@ public class AssistantService : IAssistantService
         {
             // After the last allowed round the model is asked once more with no tools, so it must answer in words.
             var offered = round == AssistantRules.MaxToolRounds ? [] : tools;
-            var result = await _gateway.CompleteAsync(kind, new ChatModelRequest(systemPrompt, messages, offered, string.Empty), cancellationToken);
+            var result = await _gateway.CompleteAsync(providerId, new ChatModelRequest(systemPrompt, messages, offered, string.Empty), cancellationToken);
 
             if (result.ToolCalls.Count == 0)
             {
@@ -336,6 +340,9 @@ public class AssistantService : IAssistantService
         var cards = actionIds.Count == 0
             ? new Dictionary<Guid, AssistantPendingActionDto>()
             : (await _actionCards.GetCardsAsync(userId, actionIds, cancellationToken)).ToDictionary(pair => pair.Key, pair => pair.Value);
+        var providerNames = messages.Any(message => message.ProviderId is not null)
+            ? (await _providers.GetAdminConfigAsync(cancellationToken)).ToDictionary(provider => provider.ProviderId, provider => provider.DisplayName)
+            : [];
 
         return messages.Select(message =>
         {
@@ -347,7 +354,8 @@ public class AssistantService : IAssistantService
                 message.Content,
                 meta?.Kind ?? AssistantMessageKind.Text,
                 DateTime.SpecifyKind(message.CreatedAt, DateTimeKind.Utc),
-                message.ProviderKind,
+                message.ProviderId,
+                message.ProviderId is { } providerKey && providerNames.TryGetValue(providerKey, out var providerName) ? providerName : null,
                 meta?.Links ?? [],
                 meta?.RankedTasks ?? [],
                 card,
@@ -356,5 +364,5 @@ public class AssistantService : IAssistantService
     }
 
     private AssistantMessageDto Transient(string content, AssistantMessageKind kind) =>
-        new(0, "Assistant", content, kind, UtcNow, null, [], [], null, []);
+        new(0, "Assistant", content, kind, UtcNow, null, null, [], [], null, []);
 }

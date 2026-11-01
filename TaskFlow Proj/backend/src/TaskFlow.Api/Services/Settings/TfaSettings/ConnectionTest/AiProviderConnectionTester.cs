@@ -28,23 +28,23 @@ public class AiProviderConnectionTester : IAiProviderConnectionTester
         _logger = logger;
     }
 
-    public async Task<AiProviderTestResultDto> TestAsync(AiProviderKind kind, CancellationToken cancellationToken = default)
+    public async Task<AiProviderTestResultDto> TestAsync(int providerId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _gateway.CompleteAsync(kind, TestRequest, cancellationToken);
+            await _gateway.CompleteAsync(providerId, TestRequest, cancellationToken);
             return Passed();
         }
-        catch (ProviderNotConfiguredException)
+        catch (ProviderNotConfiguredException notConfigured)
         {
-            return new AiProviderTestResultDto(false, ProviderFailureMessages.NotConfigured(kind), null);
+            return new AiProviderTestResultDto(false, ProviderFailureMessages.NotConfigured(notConfigured.ProviderName), null);
         }
         catch (ProviderFailureException failure)
         {
             _logger.LogWarning(
                 "AI provider {Provider} connection test failed: {FailureKind} (HTTP status {HttpStatus}) {ProviderReason}",
-                failure.Provider, failure.Kind, failure.HttpStatus, failure.ProviderReason);
-            return Failed(kind, failure);
+                failure.ProviderName, failure.Kind, failure.HttpStatus, failure.ProviderReason);
+            return Failed(failure);
         }
     }
 
@@ -52,16 +52,18 @@ public class AiProviderConnectionTester : IAiProviderConnectionTester
     {
         try
         {
-            await _registry.Get(runtime.Kind).CompleteAsync(runtime, TestRequest with { ModelName = runtime.ModelName }, cancellationToken);
+            await _registry.Get(runtime.ApiType).CompleteAsync(runtime, TestRequest with { ModelName = runtime.ModelName }, cancellationToken);
             return Passed();
         }
         catch (ProviderFailureException failure)
         {
+            failure.For(runtime);
+
             // Never the key or the provider's raw body: only the cleaned, shortened reason (keys replaced by [key]).
             _logger.LogWarning(
                 "AI provider {Provider} test of a new model failed: {FailureKind} (HTTP status {HttpStatus}) {ProviderReason}",
-                failure.Provider, failure.Kind, failure.HttpStatus, failure.ProviderReason);
-            return Failed(runtime.Kind, failure);
+                failure.ProviderName, failure.Kind, failure.HttpStatus, failure.ProviderReason);
+            return Failed(failure);
         }
     }
 
@@ -71,14 +73,14 @@ public class AiProviderConnectionTester : IAiProviderConnectionTester
     /// and reason are added, so the administrator can see what it refused (Google, for example, names the model to use
     /// instead of a retired one). Test connection needs settings.ai.test, so only administrators see it; chat replies
     /// keep the fixed message.</summary>
-    private static AiProviderTestResultDto Failed(AiProviderKind kind, ProviderFailureException failure)
+    private static AiProviderTestResultDto Failed(ProviderFailureException failure)
     {
-        var message = ProviderFailureMessages.For(kind, failure.Kind, failure.RetryAfter);
+        var message = ProviderFailureMessages.For(failure);
         if (failure.Kind is ProviderFailureKind.Unexpected or ProviderFailureKind.ModelUnavailable or ProviderFailureKind.InvalidModelName
             && failure.ProviderReason is { } reason)
         {
             var status = failure.HttpStatus is { } code ? $"HTTP {code} - " : string.Empty;
-            message = $"{message} {AiProviderCatalog.DisplayName(kind)} said: {status}{reason}";
+            message = $"{message} {failure.ProviderName} said: {status}{reason}";
         }
 
         return new(false, message, failure.Kind);

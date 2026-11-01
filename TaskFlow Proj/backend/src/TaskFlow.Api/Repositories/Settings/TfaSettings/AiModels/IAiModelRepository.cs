@@ -11,10 +11,10 @@ public interface IAiModelRepository : IBaseRepository<AiModel>
     Task<IReadOnlyList<AiModel>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Whether the model is stored or already staged to be added in this request.</summary>
-    Task<bool> IsKnownAsync(AiProviderKind kind, string name, CancellationToken cancellationToken = default);
+    Task<bool> IsKnownAsync(int providerId, string name, CancellationToken cancellationToken = default);
 
     /// <summary>The tracked model with this name, for removing it.</summary>
-    Task<AiModel?> GetForUpdateAsync(AiProviderKind kind, string name, CancellationToken cancellationToken = default);
+    Task<AiModel?> GetForUpdateAsync(int providerId, string name, CancellationToken cancellationToken = default);
 
     /// <summary>After a save failed on the unique index: un-stages each model this request was adding that another request
     /// has stored in the meantime. Returns whether any was dropped, so the caller can save again.</summary>

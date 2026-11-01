@@ -46,3 +46,19 @@
   margin-top: var(--tf-space-1);
   color: var(--tf-danger);
 }
+
+.add-model__tag {
+  margin-left: var(--tf-space-2);
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--tf-primary-soft);
+  color: var(--tf-primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.add-model__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--tf-space-3);
+}

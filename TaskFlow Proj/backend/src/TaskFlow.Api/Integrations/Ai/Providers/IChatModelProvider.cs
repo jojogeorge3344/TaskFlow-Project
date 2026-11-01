@@ -6,7 +6,7 @@ namespace TaskFlow.Api.Integrations.Ai.Providers;
 /// format and throws <see cref="ProviderFailureException"/> for every failure.</summary>
 public interface IChatModelProvider
 {
-    AiProviderKind Kind { get; }
+    AiApiType ApiType { get; }
 
     Task<ChatModelResult> CompleteAsync(AiProviderRuntime runtime, ChatModelRequest request, CancellationToken cancellationToken = default);
 }

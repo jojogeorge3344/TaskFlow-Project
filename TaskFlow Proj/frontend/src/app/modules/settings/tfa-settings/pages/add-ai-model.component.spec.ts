@@ -11,21 +11,24 @@ import { AiProviderConfig } from '../../../assistant/models/assistant.model';
 import { AddAiModelComponent } from './add-ai-model.component';
 
 const CONFIG_URL = '/api/v1/assistant/providers/config';
+const ADD_URL = '/api/v1/assistant/providers/models';
+const PROVIDER_IDS: Record<string, number> = { Ollama: 1, Gemini: 2, OpenAI: 3 };
+const PROVIDER_NAMES: Record<string, string> = { Ollama: 'Ollama', Gemini: 'Google Gemini', OpenAI: 'OpenAI GPT' };
 
 function config(): AiProviderConfig[] {
   return [
     {
-      kind: 'Ollama', displayName: 'Ollama', locality: 'Local', requiresKey: false, isEnabled: true, modelName: 'llama3.2:3b',
+      providerId: 1, displayName: 'Ollama', apiType: 'Ollama', isBuiltIn: true, locality: 'Local', requiresKey: false, isEnabled: true, modelName: 'llama3.2:3b',
       baseUrl: 'http://localhost:11434', keySet: false, keyLast4: null, isConfigured: true, keyReadable: true,
       models: ['llama3.2:3b'], customModels: []
     },
     {
-      kind: 'Gemini', displayName: 'Google Gemini', locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gemini-2.0-flash',
+      providerId: 2, displayName: 'Google Gemini', apiType: 'Gemini', isBuiltIn: true, locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gemini-2.0-flash',
       baseUrl: null, keySet: true, keyLast4: '1234', isConfigured: false, keyReadable: true,
       models: ['gemini-2.0-flash'], customModels: []
     },
     {
-      kind: 'OpenAI', displayName: 'OpenAI GPT', locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
+      providerId: 3, displayName: 'OpenAI GPT', apiType: 'OpenAI', isBuiltIn: true, locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
       baseUrl: null, keySet: false, keyLast4: null, isConfigured: false, keyReadable: true,
       models: ['gpt-4o-mini'], customModels: []
     }
@@ -47,10 +50,11 @@ describe('AddAiModelComponent', () => {
     return el().querySelector(`[data-field="${name}"]`) as T;
   }
 
-  function choose(kind: string): void {
-    const select = field<HTMLSelectElement>('kind');
-    select.value = kind;
-    select.dispatchEvent(new Event('change'));
+  /** Types the provider's name in the AI provider box: a built-in one by its API type, or any other name (a new provider). */
+  function choose(provider: string): void {
+    const input = field<HTMLInputElement>('provider');
+    input.value = PROVIDER_NAMES[provider] ?? provider;
+    input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
 
@@ -97,10 +101,90 @@ describe('AddAiModelComponent', () => {
 
   afterEach(() => http.verify());
 
+  it('has a text box for the AI provider that suggests the existing providers', () => {
+    openLoaded();
+
+    const input = field<HTMLInputElement>('provider');
+    expect(input.tagName).toBe('INPUT');
+    expect(input.disabled).toBeFalse();
+    const options = Array.from(el().querySelectorAll(`#${input.getAttribute('list')} option`)) as HTMLOptionElement[];
+    expect(options.map((option) => option.value)).toEqual(['Ollama', 'Google Gemini', 'OpenAI GPT']);
+    expect(el().querySelector('select[data-field="provider"]')).toBeNull();
+  });
+
+  it('says to enter the AI provider when it is left empty, and sends nothing', () => {
+    openLoaded();
+
+    clickTest();
+
+    expect(el().querySelector('[data-error="provider"]')?.textContent).toContain('Enter the AI provider.');
+    http.expectNone(ADD_URL);
+  });
+
+  it('treats a typed name that matches a provider, in any case, as that provider', () => {
+    openLoaded();
+
+    choose('  google GEMINI ');
+
+    expect(el().querySelector('[data-tag="new-provider"]')).toBeNull();
+    expect(field('apiType')).toBeNull();
+    expect(el().querySelector('[data-hint="key"]')?.textContent).toContain('ends …1234');
+    type('modelName', 'gemini-3.5-flash');
+    clickTest();
+    expect(http.expectOne(ADD_URL).request.body).toEqual({ modelName: 'gemini-3.5-flash', providerId: 2 });
+  });
+
+  it('asks for the details of a new provider and needs its server address', () => {
+    openLoaded();
+
+    choose('Groq');
+
+    expect(el().querySelector('[data-tag="new-provider"]')?.textContent).toContain('New provider');
+    expect(field<HTMLSelectElement>('apiType').value).toBe('OpenAI');
+    expect(field<HTMLSelectElement>('locality').value).toBe('Cloud');
+    expect(el().querySelector('label[for="add-model-key"]')?.textContent).toContain('(optional)');
+    type('modelName', 'llama-3.3-70b-versatile');
+    clickTest();
+
+    expect(el().querySelector('[data-error="baseUrl"]')?.textContent).toContain('Enter the server address.');
+    http.expectNone(ADD_URL);
+  });
+
+  it('creates a new provider with its model when the test passes', () => {
+    openLoaded();
+    choose('Groq');
+    type('baseUrl', 'https://api.groq.com/openai/v1');
+    type('modelName', 'meta-llama/Llama-3.3-70B-Instruct');
+    type('apiKey', 'gsk-new-key-4321');
+    clickTest();
+
+    const request = http.expectOne(ADD_URL);
+    expect(request.request.body).toEqual({
+      modelName: 'meta-llama/Llama-3.3-70B-Instruct',
+      apiKey: 'gsk-new-key-4321',
+      newProvider: { name: 'Groq', apiType: 'OpenAI', baseUrl: 'https://api.groq.com/openai/v1', locality: 'Cloud' }
+    });
+    request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: config() });
+
+    expect(toast.success).toHaveBeenCalledWith('meta-llama/Llama-3.3-70B-Instruct on Groq is now in use');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/settings/tfa');
+  });
+
+  it('refuses a one-letter provider name before sending anything', () => {
+    openLoaded();
+    choose('X');
+    type('baseUrl', 'https://example.com/v1');
+    type('modelName', 'some-model');
+    clickTest();
+
+    expect(el().querySelector('[data-error="provider"]')?.textContent).toContain('The provider name must be 2 to 40 characters.');
+    http.expectNone(ADD_URL);
+  });
+
   it('asks for the provider first and shows no other field until one is chosen', () => {
     openLoaded();
 
-    expect(field('kind')).toBeTruthy();
+    expect(field('provider')).toBeTruthy();
     expect(field('modelName')).toBeNull();
     expect(field('apiKey')).toBeNull();
     expect(field('baseUrl')).toBeNull();
@@ -124,7 +208,7 @@ describe('AddAiModelComponent', () => {
     openLoaded();
 
     clickTest();
-    expect(el().querySelector('[data-error="kind"]')).toBeTruthy();
+    expect(el().querySelector('[data-error="provider"]')).toBeTruthy();
 
     choose('OpenAI');
     clickTest();
@@ -167,8 +251,8 @@ describe('AddAiModelComponent', () => {
     type('modelName', 'models/gemini-3.8-flash');
     clickTest();
 
-    const request = http.expectOne('/api/v1/assistant/providers/Gemini/models');
-    expect(request.request.body).toEqual({ modelName: 'gemini-3.8-flash' });
+    const request = http.expectOne(ADD_URL);
+    expect(request.request.body).toEqual({ modelName: 'gemini-3.8-flash', providerId: 2 });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: config() });
   });
 
@@ -192,7 +276,7 @@ describe('AddAiModelComponent', () => {
     type('modelName', 'gemini-3.8-flash');
     clickTest();
 
-    http.expectOne('/api/v1/assistant/providers/Gemini/models').flush({
+    http.expectOne(ADD_URL).flush({
       ok: false,
       message: 'Google Gemini did not accept the configured model name as a model ID.',
       failureKind: 'InvalidModelName',
@@ -229,8 +313,8 @@ describe('AddAiModelComponent', () => {
     type('modelName', 'gemini-2.5-pro');
     clickTest();
 
-    const request = http.expectOne('/api/v1/assistant/providers/Gemini/models');
-    expect(request.request.body).toEqual({ modelName: 'gemini-2.5-pro' });
+    const request = http.expectOne(ADD_URL);
+    expect(request.request.body).toEqual({ modelName: 'gemini-2.5-pro', providerId: 2 });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: config() });
   });
 
@@ -241,8 +325,8 @@ describe('AddAiModelComponent', () => {
     type('apiKey', 'sk-new-key-9999');
     clickTest();
 
-    const request = http.expectOne('/api/v1/assistant/providers/OpenAI/models');
-    expect(request.request.body).toEqual({ modelName: 'gpt-4.1-mini', apiKey: 'sk-new-key-9999' });
+    const request = http.expectOne(ADD_URL);
+    expect(request.request.body).toEqual({ modelName: 'gpt-4.1-mini', apiKey: 'sk-new-key-9999', providerId: 3 });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: config() });
 
     expect(toast.success).toHaveBeenCalledWith('gpt-4.1-mini on OpenAI GPT is now in use');
@@ -256,7 +340,7 @@ describe('AddAiModelComponent', () => {
     type('apiKey', 'sk-wrong');
     clickTest();
 
-    http.expectOne('/api/v1/assistant/providers/OpenAI/models').flush({
+    http.expectOne(ADD_URL).flush({
       ok: false, message: 'OpenAI GPT did not accept the API key.', failureKind: 'InvalidKey', providers: null
     });
     fixture.detectChanges();
@@ -273,8 +357,8 @@ describe('AddAiModelComponent', () => {
     type('modelName', 'phi3:mini');
     clickTest();
 
-    const request = http.expectOne('/api/v1/assistant/providers/Ollama/models');
-    expect(request.request.body).toEqual({ modelName: 'phi3:mini', baseUrl: null });
+    const request = http.expectOne(ADD_URL);
+    expect(request.request.body).toEqual({ modelName: 'phi3:mini', providerId: 1, baseUrl: null });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: config() });
   });
 
@@ -297,7 +381,7 @@ describe('AddAiModelComponent', () => {
 /** Gemini has the added models gemini-2.5-pro (in use) and gemini-2.0-flash, and the built-in gemini-3.8-flash. */
 function editConfig(): AiProviderConfig[] {
   return config().map((provider) =>
-    provider.kind === 'Gemini'
+    provider.apiType === 'Gemini'
       ? {
           ...provider,
           isEnabled: true,
@@ -337,7 +421,7 @@ describe('AddAiModelComponent in edit mode', () => {
   }
 
   async function openEdit(kind: string, name: string, load: AiProviderConfig[] = editConfig()): Promise<void> {
-    await harness.navigateByUrl(`/settings/tfa/models/${kind}/${name}/edit`);
+    await harness.navigateByUrl(`/settings/tfa/models/${PROVIDER_IDS[kind]}/${name}/edit`);
     http.expectOne(CONFIG_URL).flush(load);
     harness.detectChanges();
     await harness.fixture.whenStable();
@@ -350,7 +434,7 @@ describe('AddAiModelComponent in edit mode', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
-          { path: 'settings/tfa/models/:kind/:name/edit', component: AddAiModelComponent },
+          { path: 'settings/tfa/models/:providerId/:name/edit', component: AddAiModelComponent },
           { path: 'settings/tfa', children: [] }
         ]),
         { provide: AuthService, useValue: fakeAuthService(() => ({ permissions: [...ADMINISTRATOR_PERMISSIONS] })) },
@@ -374,8 +458,8 @@ describe('AddAiModelComponent in edit mode', () => {
     await openEdit('Gemini', 'gemini-2.0-flash');
 
     expect(el().querySelector('h1')?.textContent).toContain('Edit AI model');
-    expect(field<HTMLSelectElement>('kind').disabled).toBeTrue();
-    expect(field<HTMLSelectElement>('kind').value).toBe('Gemini');
+    expect(field<HTMLInputElement>('provider').disabled).toBeFalse();
+    expect(field<HTMLInputElement>('provider').value).toBe('Google Gemini');
     expect(field<HTMLInputElement>('modelName').value).toBe('gemini-2.0-flash');
     expect(el().querySelector('[data-hint="key"]')?.textContent).toContain(
       'A key is saved (ends …1234). Leave the box empty to keep it. A new key replaces it for every Google Gemini model.'
@@ -390,9 +474,9 @@ describe('AddAiModelComponent in edit mode', () => {
     type('modelName', 'gemini-2.5-flash');
     clickTest();
 
-    const request = http.expectOne((candidate) => candidate.method === 'PUT' && candidate.url === '/api/v1/assistant/providers/Gemini/models');
+    const request = http.expectOne((candidate) => candidate.method === 'PUT' && candidate.url === '/api/v1/assistant/providers/2/models');
     expect(request.request.params.get('name')).toBe('gemini-2.0-flash');
-    expect(request.request.body).toEqual({ modelName: 'gemini-2.5-flash' });
+    expect(request.request.body).toEqual({ modelName: 'gemini-2.5-flash', providerId: 2 });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: editConfig() });
 
     expect(toast.success).toHaveBeenCalledWith('gemini-2.5-flash was updated');
@@ -426,6 +510,46 @@ describe('AddAiModelComponent in edit mode', () => {
 
     expect(toast.error).toHaveBeenCalledWith('gemini-2.5-pro is in use by TFA. Switch TFA to another model first, then edit it.');
     expect(router.url).toBe('/settings/tfa');
+  });
+
+  it('moves the model to another existing provider when the provider is changed', async () => {
+    await openEdit('Gemini', 'gemini-2.0-flash');
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
+
+    type('provider', 'OpenAI GPT');
+    expect(el().querySelector('[data-hint="move"]')?.textContent).toContain('The model moves to OpenAI GPT when the test works.');
+    expect(el().querySelector('[data-action="remove-key"]')).toBeNull();
+    type('modelName', 'gpt-4.1-mini');
+    type('apiKey', 'sk-openai-key-5555');
+    clickTest();
+
+    const request = http.expectOne((candidate) => candidate.method === 'PUT' && candidate.url === '/api/v1/assistant/providers/2/models');
+    expect(request.request.params.get('name')).toBe('gemini-2.0-flash');
+    expect(request.request.body).toEqual({ modelName: 'gpt-4.1-mini', apiKey: 'sk-openai-key-5555', providerId: 3 });
+    request.flush({ ok: true, message: 'The connection works.', failureKind: null, providers: editConfig() });
+
+    expect(toast.success).toHaveBeenCalledWith('gpt-4.1-mini was updated');
+  });
+
+  it('moves the model to a new provider typed on the edit screen', async () => {
+    await openEdit('Gemini', 'gemini-2.0-flash');
+
+    type('provider', 'OpenRouter');
+    expect(el().querySelector('[data-hint="move"]')?.textContent).toContain('The model moves to OpenRouter when the test works.');
+    type('baseUrl', 'https://openrouter.ai/api/v1');
+    type('modelName', 'google/gemini-2.0-flash-001');
+    clickTest();
+
+    const request = http.expectOne((candidate) => candidate.method === 'PUT');
+    expect(request.request.body).toEqual({
+      modelName: 'google/gemini-2.0-flash-001',
+      newProvider: { name: 'OpenRouter', apiType: 'OpenAI', baseUrl: 'https://openrouter.ai/api/v1', locality: 'Cloud' }
+    });
+    request.flush({ ok: false, message: 'OpenRouter did not accept the API key.', failureKind: 'InvalidKey', providers: null });
+    harness.detectChanges();
+
+    expect(el().querySelector('[data-result="InvalidKey"]')?.textContent).toContain('Nothing was saved');
+    expect(field<HTMLInputElement>('provider').value).toBe('OpenRouter');
   });
 
   it('removes the key after a confirmation that warns when TFA uses the provider', async () => {

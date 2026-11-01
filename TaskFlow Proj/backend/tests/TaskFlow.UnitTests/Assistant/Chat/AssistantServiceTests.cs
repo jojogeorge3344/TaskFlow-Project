@@ -36,15 +36,16 @@ public class AssistantServiceTests
         await h.SendAsync(h.Asha, "one");
         await h.SendAsync(h.Asha, "two");
         await h.SendAsync(h.Asha, "three");
-        var reply = await h.SendAsync(h.Asha, "four", AiProviderKind.Gemini);
+        var reply = await h.SendAsync(h.Asha, "four", AiApiType.Gemini);
 
         var (kind, request) = h.Gateway.Calls.Last();
-        Assert.Equal(AiProviderKind.Gemini, kind);
+        Assert.Equal(AiApiType.Gemini, kind);
         Assert.Equal(["one", "OK", "two", "OK", "three", "OK", "four"], request.Messages.Select(m => m.Content));
-        Assert.Equal(AiProviderKind.Gemini, reply.Messages.Last().Provider);
+        Assert.Equal("Google Gemini", reply.Messages.Last().Provider);
+        Assert.Equal(h.ProviderIds[AiApiType.Gemini], reply.Messages.Last().ProviderId);
         var conversation = await h.Service.GetConversationAsync(AssistantServiceHarness.Caller(h.Asha));
         Assert.Equal(8, conversation.Messages.Count);
-        Assert.Equal([AiProviderKind.Ollama, AiProviderKind.Gemini], conversation.Messages.Where(m => m.Provider is not null).Select(m => m.Provider!.Value).Distinct());
+        Assert.Equal(["Ollama", "Google Gemini"], conversation.Messages.Where(m => m.Provider is not null).Select(m => m.Provider!).Distinct());
     }
 
     [Fact]
@@ -119,14 +120,15 @@ public class AssistantServiceTests
         await using var h = await AssistantServiceHarness.CreateAsync();
         h.Gateway.Handler = (kind, _) => throw new ProviderFailureException(kind, ProviderFailureKind.RateLimited, TimeSpan.FromSeconds(30));
 
-        var reply = await h.SendAsync(h.Asha, "hello", AiProviderKind.Gemini);
+        var reply = await h.SendAsync(h.Asha, "hello", AiApiType.Gemini);
 
         Assert.Empty(reply.Messages);
         var failure = Assert.IsType<AssistantFailureDto>(reply.Failure);
         Assert.Equal(ProviderFailureKind.RateLimited, failure.Kind);
-        Assert.Equal(AiProviderKind.Gemini, failure.Provider);
+        Assert.Equal(h.ProviderIds[AiApiType.Gemini], failure.ProviderId);
+        Assert.Equal("Google Gemini", failure.ProviderName);
         Assert.Equal(30, failure.RetryAfterSeconds);
-        Assert.Equal([AiProviderKind.Ollama], failure.Alternatives.Select(a => a.Kind));
+        Assert.Equal([h.ProviderIds[AiApiType.Ollama]], failure.Alternatives.Select(a => a.ProviderId));
         Assert.Contains("Google Gemini", failure.Message);
         Assert.Single(h.Gateway.Calls);
         Assert.Equal(0, await h.Tracking.Db.AssistantMessages.CountAsync());
@@ -139,7 +141,7 @@ public class AssistantServiceTests
         h.Gateway.Handler = (kind, _) => throw new ProviderFailureException(
             kind, ProviderFailureKind.Unexpected, httpStatus: 400, providerReason: "FAILED_PRECONDITION: User location is not supported");
 
-        var reply = await h.SendAsync(h.Asha, "hello", AiProviderKind.Gemini);
+        var reply = await h.SendAsync(h.Asha, "hello", AiApiType.Gemini);
 
         var failure = Assert.IsType<AssistantFailureDto>(reply.Failure);
         Assert.Contains("unexpected error", failure.Message);
@@ -154,7 +156,7 @@ public class AssistantServiceTests
         h.Gateway.Handler = (kind, _) => throw new ProviderFailureException(
             kind, ProviderFailureKind.InvalidModelName, httpStatus: 400, providerReason: "INVALID_ARGUMENT: * GenerateContentRequest.model: unexpected model name format");
 
-        var reply = await h.SendAsync(h.Asha, "hello", AiProviderKind.Gemini);
+        var reply = await h.SendAsync(h.Asha, "hello", AiApiType.Gemini);
 
         var failure = Assert.IsType<AssistantFailureDto>(reply.Failure);
         Assert.Equal(ProviderFailureKind.InvalidModelName, failure.Kind);
@@ -196,7 +198,7 @@ public class AssistantServiceTests
     {
         await using var h = await AssistantServiceHarness.CreateAsync();
 
-        var error = await Assert.ThrowsAsync<AssistantRequestException>(() => h.SendAsync(h.Asha, "hi", AiProviderKind.OpenAI));
+        var error = await Assert.ThrowsAsync<AssistantRequestException>(() => h.SendAsync(h.Asha, "hi", AiApiType.OpenAI));
 
         Assert.Contains("OpenAI GPT is not configured", error.Message);
         Assert.Empty(h.Gateway.Calls);
@@ -208,8 +210,8 @@ public class AssistantServiceTests
         await using var h = await AssistantServiceHarness.CreateAsync();
         await h.Config.SaveAsync(1, new UpdateAiProvidersRequest(
         [
-            new UpdateAiProviderRequest(AiProviderKind.Ollama, false, "llama3.1:8b", null, null, null),
-            new UpdateAiProviderRequest(AiProviderKind.Gemini, false, "gemini-2.0-flash", null, null, null)
+            new UpdateAiProviderRequest(h.ProviderIds[AiApiType.Ollama], false, "llama3.1:8b", null, null, null),
+            new UpdateAiProviderRequest(h.ProviderIds[AiApiType.Gemini], false, "gemini-2.0-flash", null, null, null)
         ]));
 
         var error = await Assert.ThrowsAsync<AssistantRequestException>(
@@ -226,7 +228,7 @@ public class AssistantServiceTests
 
         await h.Service.SendAsync(AssistantServiceHarness.Caller(h.Asha), new SendAssistantMessageRequest("hi", null));
 
-        Assert.Equal(AiProviderKind.Ollama, h.Gateway.Calls.Single().Kind);
+        Assert.Equal(AiApiType.Ollama, h.Gateway.Calls.Single().Kind);
     }
 
     [Fact]

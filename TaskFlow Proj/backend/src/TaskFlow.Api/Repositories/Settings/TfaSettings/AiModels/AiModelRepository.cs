@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Models.Entities;
-using TaskFlow.Api.Models.Enums;
 using TaskFlow.Api.Persistence;
 using TaskFlow.Api.Repositories.Base;
 
@@ -19,12 +18,12 @@ public class AiModelRepository : BaseRepository<AiModel>, IAiModelRepository
             .ThenBy(model => model.Id)
             .ToListAsync(cancellationToken);
 
-    public async Task<bool> IsKnownAsync(AiProviderKind kind, string name, CancellationToken cancellationToken = default) =>
-        Set.Local.Any(model => model.Kind == kind && model.Name == name)
-        || await Set.AnyAsync(model => model.Kind == kind && model.Name == name, cancellationToken);
+    public async Task<bool> IsKnownAsync(int providerId, string name, CancellationToken cancellationToken = default) =>
+        Set.Local.Any(model => model.ProviderId == providerId && model.Name == name)
+        || await Set.AnyAsync(model => model.ProviderId == providerId && model.Name == name, cancellationToken);
 
-    public Task<AiModel?> GetForUpdateAsync(AiProviderKind kind, string name, CancellationToken cancellationToken = default) =>
-        Set.FirstOrDefaultAsync(model => model.Kind == kind && model.Name == name, cancellationToken);
+    public Task<AiModel?> GetForUpdateAsync(int providerId, string name, CancellationToken cancellationToken = default) =>
+        Set.FirstOrDefaultAsync(model => model.ProviderId == providerId && model.Name == name, cancellationToken);
 
     public async Task<bool> DropAddedModelsStoredElsewhereAsync(CancellationToken cancellationToken = default)
     {
@@ -32,7 +31,7 @@ public class AiModelRepository : BaseRepository<AiModel>, IAiModelRepository
         foreach (var entry in Db.ChangeTracker.Entries<AiModel>().Where(entry => entry.State == EntityState.Added).ToList())
         {
             var model = entry.Entity;
-            if (await Set.AsNoTracking().AnyAsync(stored => stored.Kind == model.Kind && stored.Name == model.Name, cancellationToken))
+            if (await Set.AsNoTracking().AnyAsync(stored => stored.ProviderId == model.ProviderId && stored.Name == model.Name, cancellationToken))
             {
                 entry.State = EntityState.Detached;
                 dropped = true;

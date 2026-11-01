@@ -109,13 +109,15 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
   }
 
   rowKey(row: ModelRow): string {
-    return `${row.provider.kind}|${row.model}`;
+    return `${row.provider.providerId}|${row.model}`;
   }
 
-  /** What the row says about the provider's key or address. Never the key itself. */
+  /** What the row says about the provider's key or address. Never the key itself. A custom provider shows its address,
+   * and its key when one is saved (a local server may need none). */
   keyText(provider: AiProviderConfig): string {
     if (!provider.requiresKey) {
-      return provider.baseUrl || 'http://localhost:11434';
+      const address = provider.baseUrl || 'http://localhost:11434';
+      return provider.keySet && provider.keyLast4 ? `${address} · key ends …${provider.keyLast4}` : address;
     }
     if (!provider.keySet) {
       return 'No key saved';
@@ -138,7 +140,7 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
 
     this.actionError.set(null);
     this.busy.set(this.rowKey(row));
-    this.admin.useModel(row.provider.kind, row.model).subscribe({
+    this.admin.useModel(row.provider.providerId, row.model).subscribe({
       next: (config) => {
         this.busy.set(null);
         this.providers.set(config);
@@ -156,7 +158,7 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
     const key = this.rowKey(row);
     this.testRun?.unsubscribe();
     this.testing.set(key);
-    this.testRun = this.admin.test(row.provider.kind, row.model).subscribe({
+    this.testRun = this.admin.test(row.provider.providerId, row.model).subscribe({
       next: (result) => {
         this.testing.set(null);
         this.results.update((results) => ({ ...results, [key]: result }));
@@ -178,7 +180,7 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    void this.router.navigate(['/settings/tfa/models', row.provider.kind, row.model, 'edit']);
+    void this.router.navigate(['/settings/tfa/models', row.provider.providerId, row.model, 'edit']);
   }
 
   /** Deletes an added model after confirmation, unless TFA uses it: then a notice says to switch first. */
@@ -200,7 +202,7 @@ export class AiProviderSettingsComponent implements OnInit, OnDestroy {
 
     this.actionError.set(null);
     this.busy.set(this.rowKey(row));
-    this.admin.removeModel(row.provider.kind, row.model).subscribe({
+    this.admin.removeModel(row.provider.providerId, row.model).subscribe({
       next: (config) => {
         this.busy.set(null);
         this.providers.set(config);

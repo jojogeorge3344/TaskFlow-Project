@@ -60,10 +60,10 @@ public class AiProvidersController : ControllerBase
     }
 
     /// <summary>Removes a model an administrator added. Built-in models and the one TFA uses stay.</summary>
-    [HttpDelete("{kind}/models")]
+    [HttpDelete("{providerId:int}/models")]
     [RequirePermission(PermissionKeys.SettingsAiRemoveModel)]
     public async Task<ActionResult<IReadOnlyList<AiProviderConfigDto>>> RemoveProviderModel(
-        AiProviderKind kind,
+        int providerId,
         [FromQuery] string? name,
         CancellationToken cancellationToken)
     {
@@ -72,16 +72,16 @@ public class AiProvidersController : ControllerBase
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = ["The model name is required."] }));
         }
 
-        return Ok(await _providers.RemoveModelAsync(kind, name.Trim(), cancellationToken));
+        return Ok(await _providers.RemoveModelAsync(providerId, name.Trim(), cancellationToken));
     }
 
-    /// <summary>The Add AI model page: tests the typed model, key or address and, only when the test passes, saves the
-    /// model and makes it the one TFA uses. A failed test returns 200 with <c>ok: false</c> and saves nothing. Needs both
+    /// <summary>The Add AI model page: tests the typed model, key or address on an existing provider (<c>providerId</c>)
+    /// or a new one (<c>newProvider</c>) and, only when the test passes, saves the model (creating the provider when it is
+    /// new) and makes it the one TFA uses. A failed test returns 200 with <c>ok: false</c> and saves nothing. Needs both
     /// settings.ai.edit and settings.ai.test (the permission attribute takes one key, so the second is checked here).</summary>
-    [HttpPost("{kind}/models")]
+    [HttpPost("models")]
     [RequirePermission(PermissionKeys.SettingsAiEdit)]
     public async Task<ActionResult<AddAiModelResultDto>> AddModel(
-        AiProviderKind kind,
         [FromBody] AddAiModelRequest request,
         CancellationToken cancellationToken)
     {
@@ -95,16 +95,16 @@ public class AiProvidersController : ControllerBase
             return Forbid();
         }
 
-        return Ok(await _modelAddition.AddAndActivateAsync(userId, kind, request, cancellationToken));
+        return Ok(await _modelAddition.AddAndActivateAsync(userId, request, cancellationToken));
     }
 
-    /// <summary>Edits a model an administrator added: tests the typed values and, only when the test passes, renames the
-    /// model and saves the key or address. A built-in model and the one TFA uses are refused. Like adding, it needs both
-    /// settings.ai.edit and settings.ai.test.</summary>
-    [HttpPut("{kind}/models")]
+    /// <summary>Edits a model an administrator added: tests the typed values on the target provider (the same one, another
+    /// existing one, or a new one) and, only when the test passes, renames or moves the model and saves the key or address.
+    /// A built-in model and the one TFA uses are refused. Like adding, it needs both settings.ai.edit and settings.ai.test.</summary>
+    [HttpPut("{providerId:int}/models")]
     [RequirePermission(PermissionKeys.SettingsAiEdit)]
     public async Task<ActionResult<AddAiModelResultDto>> EditModel(
-        AiProviderKind kind,
+        int providerId,
         [FromQuery] string? name,
         [FromBody] AddAiModelRequest request,
         CancellationToken cancellationToken)
@@ -124,14 +124,14 @@ public class AiProvidersController : ControllerBase
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["name"] = ["The model name is required."] }));
         }
 
-        return Ok(await _modelAddition.EditAsync(userId, kind, name.Trim(), request, cancellationToken));
+        return Ok(await _modelAddition.EditAsync(userId, providerId, name.Trim(), request, cancellationToken));
     }
 
     /// <summary>"Use this model": makes a listed model the one TFA uses and switches the other providers off.</summary>
-    [HttpPost("{kind}/models/use")]
+    [HttpPost("{providerId:int}/models/use")]
     [RequirePermission(PermissionKeys.SettingsAiEdit)]
     public async Task<ActionResult<IReadOnlyList<AiProviderConfigDto>>> UseModel(
-        AiProviderKind kind,
+        int providerId,
         [FromBody] AiModelChoiceRequest request,
         CancellationToken cancellationToken)
     {
@@ -145,19 +145,20 @@ public class AiProvidersController : ControllerBase
             return ValidationProblem(new ValidationProblemDetails(new Dictionary<string, string[]> { ["modelName"] = ["The model name is required."] }));
         }
 
-        return Ok(await _providers.UseModelAsync(userId, kind, request.ModelName, cancellationToken));
+        return Ok(await _providers.UseModelAsync(userId, providerId, request.ModelName, cancellationToken));
     }
+
     /// <summary>Sends one tiny request to the provider so an administrator can see whether it works: with the saved
     /// settings, or, when a model name is sent, with that listed model and the saved key or address.</summary>
-    [HttpPost("{kind}/test")]
+    [HttpPost("{providerId:int}/test")]
     [RequirePermission(PermissionKeys.SettingsAiTest)]
     public async Task<ActionResult<AiProviderTestResultDto>> TestProvider(
-        AiProviderKind kind,
+        int providerId,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AiModelChoiceRequest? request,
         CancellationToken cancellationToken)
     {
         return Ok(string.IsNullOrWhiteSpace(request?.ModelName)
-            ? await _connectionTester.TestAsync(kind, cancellationToken)
-            : await _modelAddition.TestSavedModelAsync(kind, request.ModelName, cancellationToken));
+            ? await _connectionTester.TestAsync(providerId, cancellationToken)
+            : await _modelAddition.TestSavedModelAsync(providerId, request.ModelName, cancellationToken));
     }
 }

@@ -12,7 +12,7 @@ internal static class ProviderHttp
 {
     public static async Task<(HttpResponseMessage Response, string Body)> SendAsync(
         HttpClient client,
-        AiProviderKind provider,
+        AiApiType provider,
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
@@ -86,7 +86,7 @@ internal static class ProviderHttp
         return null;
     }
 
-    public static JsonNode ParseOrFail(AiProviderKind provider, string body)
+    public static JsonNode ParseOrFail(AiApiType provider, string body)
     {
         try
         {

@@ -26,6 +26,16 @@ public class AiProviderSeederTests : IAsyncLifetime
 
     private AiProviderSeeder Seeder() => new(_harness.Db, TimeProvider.System);
 
+    /// <summary>A built-in provider row as an older installation had it saved.</summary>
+    private static AiProviderConfig BuiltIn(AiApiType apiType) => new()
+    {
+        Name = AiProviderCatalog.DisplayName(apiType),
+        ApiType = apiType,
+        Locality = AiProviderCatalog.Locality(apiType),
+        IsBuiltIn = true,
+        UpdatedAt = DateTime.UtcNow
+    };
+
     private AiProviderConfigService Service() => new(new AiProviderConfigRepository(_harness.Db), new AiModelRepository(_harness.Db), new UnitOfWork(_harness.Db), new AiKeyProtector(_provider), TimeProvider.System);
 
     [Fact]
@@ -35,7 +45,7 @@ public class AiProviderSeederTests : IAsyncLifetime
 
         foreach (var kind in AiProviderCatalog.All)
         {
-            var stored = await _harness.Db.AiModels.Where(model => model.Kind == kind).Select(model => model.Name).ToListAsync();
+            var stored = await _harness.Db.AiModels.Where(model => model.Provider!.ApiType == kind).Select(model => model.Name).ToListAsync();
             Assert.Equal(AiProviderCatalog.BuiltInModels(kind).OrderBy(name => name), stored.OrderBy(name => name));
         }
 
@@ -50,17 +60,17 @@ public class AiProviderSeederTests : IAsyncLifetime
         var rows = await _harness.Db.AiProviderConfigs.ToListAsync();
         Assert.Equal(3, rows.Count);
 
-        var ollama = rows.Single(row => row.Kind == AiProviderKind.Ollama);
+        var ollama = rows.Single(row => row.ApiType == AiApiType.Ollama);
         Assert.True(ollama.IsEnabled);
         Assert.Equal("llama3.2:3b", ollama.ModelName);
         Assert.Equal("http://localhost:11434", ollama.BaseUrl);
 
-        foreach (var cloud in rows.Where(row => row.Kind != AiProviderKind.Ollama))
+        foreach (var cloud in rows.Where(row => row.ApiType != AiApiType.Ollama))
         {
             Assert.False(cloud.IsEnabled);
             Assert.Null(cloud.EncryptedApiKey);
             Assert.Null(cloud.BaseUrl);
-            Assert.Equal(AiProviderCatalog.DefaultModel(cloud.Kind), cloud.ModelName);
+            Assert.Equal(AiProviderCatalog.DefaultModel(cloud.ApiType), cloud.ModelName);
         }
     }
 
@@ -85,7 +95,7 @@ public class AiProviderSeederTests : IAsyncLifetime
         var available = await Service().GetAvailableAsync();
 
         var ollama = Assert.Single(available);
-        Assert.Equal(AiProviderKind.Ollama, ollama.Kind);
+        Assert.Equal("Ollama", ollama.DisplayName);
         Assert.Equal("llama3.2:3b", ollama.ModelName);
     }
 
@@ -106,19 +116,16 @@ public class AiProviderSeederTests : IAsyncLifetime
     [Fact]
     public async Task WhatAnAdministratorSavedIsNeverOverwritten()
     {
-        _harness.Db.AiProviderConfigs.Add(new AiProviderConfig
-        {
-            Kind = AiProviderKind.Ollama,
-            IsEnabled = false,
-            ModelName = "my-own-model:7b",
-            BaseUrl = "http://gpu-box:11434",
-            UpdatedAt = DateTime.UtcNow
-        });
+        var saved = BuiltIn(AiApiType.Ollama);
+        saved.IsEnabled = false;
+        saved.ModelName = "my-own-model:7b";
+        saved.BaseUrl = "http://gpu-box:11434";
+        _harness.Db.AiProviderConfigs.Add(saved);
         await _harness.Db.SaveChangesAsync();
 
         await Seeder().SeedAsync();
 
-        var ollama = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Ollama);
+        var ollama = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Ollama);
         Assert.False(ollama.IsEnabled);
         Assert.Equal("my-own-model:7b", ollama.ModelName);
         Assert.Equal("http://gpu-box:11434", ollama.BaseUrl);
@@ -126,26 +133,23 @@ public class AiProviderSeederTests : IAsyncLifetime
         // The model that was typed in before the list existed is offered from now on, as a custom one.
         var custom = await _harness.Db.AiModels.SingleAsync(model => model.Name == "my-own-model:7b");
         Assert.False(custom.IsBuiltIn);
-        Assert.Equal(AiProviderKind.Ollama, custom.Kind);
+        Assert.Equal(ollama.Id, custom.ProviderId);
     }
 
     /// <summary>A database seeded before Google retired gemini-2.0-flash, gemini-2.5-flash and gemini-2.5-pro.</summary>
     private async Task SeedAnOldDatabaseAsync(bool geminiSetUp)
     {
+        var gemini = BuiltIn(AiApiType.Gemini);
+        gemini.IsEnabled = geminiSetUp;
+        gemini.ModelName = "gemini-2.0-flash";
+        gemini.EncryptedApiKey = geminiSetUp ? "protected-key" : null;
+        gemini.KeyLast4 = geminiSetUp ? "1234" : null;
+        _harness.Db.AiProviderConfigs.Add(gemini);
         foreach (var name in new[] { "gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro" })
         {
-            _harness.Db.AiModels.Add(new AiModel { Kind = AiProviderKind.Gemini, Name = name, IsBuiltIn = true });
+            _harness.Db.AiModels.Add(new AiModel { Provider = gemini, Name = name, IsBuiltIn = true });
         }
 
-        _harness.Db.AiProviderConfigs.Add(new AiProviderConfig
-        {
-            Kind = AiProviderKind.Gemini,
-            IsEnabled = geminiSetUp,
-            ModelName = "gemini-2.0-flash",
-            EncryptedApiKey = geminiSetUp ? "protected-key" : null,
-            KeyLast4 = geminiSetUp ? "1234" : null,
-            UpdatedAt = DateTime.UtcNow
-        });
         await _harness.Db.SaveChangesAsync();
     }
 
@@ -156,16 +160,17 @@ public class AiProviderSeederTests : IAsyncLifetime
 
         await Seeder().SeedAsync();
 
-        var gemini = await _harness.Db.AiModels.Where(model => model.Kind == AiProviderKind.Gemini).ToDictionaryAsync(model => model.Name, model => model.IsBuiltIn);
+        var gemini = await _harness.Db.AiModels.Where(model => model.Provider!.ApiType == AiApiType.Gemini).ToDictionaryAsync(model => model.Name, model => model.IsBuiltIn);
         Assert.False(gemini["gemini-2.0-flash"]);
         Assert.False(gemini["gemini-2.5-flash"]);
         Assert.False(gemini["gemini-2.5-pro"]);
-        foreach (var name in AiProviderCatalog.BuiltInModels(AiProviderKind.Gemini))
+        foreach (var name in AiProviderCatalog.BuiltInModels(AiApiType.Gemini))
         {
             Assert.True(gemini[name]);
         }
 
-        await Service().RemoveModelAsync(AiProviderKind.Gemini, "gemini-2.5-pro");
+        var geminiId = (await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini)).Id;
+        await Service().RemoveModelAsync(geminiId, "gemini-2.5-pro");
         Assert.False(await _harness.Db.AiModels.AnyAsync(model => model.Name == "gemini-2.5-pro"));
     }
 
@@ -176,7 +181,7 @@ public class AiProviderSeederTests : IAsyncLifetime
 
         await Seeder().SeedAsync();
 
-        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini);
         Assert.Equal("gemini-3.8-flash", gemini.ModelName);
         Assert.False(gemini.IsEnabled);
         Assert.Null(gemini.EncryptedApiKey);
@@ -189,7 +194,7 @@ public class AiProviderSeederTests : IAsyncLifetime
 
         await Seeder().SeedAsync();
 
-        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        var gemini = await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini);
         Assert.Equal("gemini-2.0-flash", gemini.ModelName);
         Assert.True(gemini.IsEnabled);
         Assert.Equal("protected-key", gemini.EncryptedApiKey);
@@ -202,12 +207,12 @@ public class AiProviderSeederTests : IAsyncLifetime
         await SeedAnOldDatabaseAsync(geminiSetUp: false);
         await Seeder().SeedAsync();
         var models = await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.Id).Select(model => new { model.Name, model.IsBuiltIn }).ToListAsync();
-        var gemini = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        var gemini = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.ApiType == AiApiType.Gemini);
 
         await Seeder().SeedAsync();
 
         Assert.Equal(models, await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.Id).Select(model => new { model.Name, model.IsBuiltIn }).ToListAsync());
-        var again = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.Kind == AiProviderKind.Gemini);
+        var again = await _harness.Db.AiProviderConfigs.AsNoTracking().SingleAsync(row => row.ApiType == AiApiType.Gemini);
         Assert.Equal(gemini.ModelName, again.ModelName);
         Assert.Equal(gemini.UpdatedAt, again.UpdatedAt);
     }
@@ -216,12 +221,13 @@ public class AiProviderSeederTests : IAsyncLifetime
     public async Task ASeededModelRemovedByNobodyIsNotDuplicatedWhenTheListGrows()
     {
         await Seeder().SeedAsync();
-        _harness.Db.AiModels.Add(new AiModel { Kind = AiProviderKind.Gemini, Name = "gemini-custom", IsBuiltIn = false });
+        var geminiId = (await _harness.Db.AiProviderConfigs.SingleAsync(row => row.ApiType == AiApiType.Gemini)).Id;
+        _harness.Db.AiModels.Add(new AiModel { ProviderId = geminiId, Name = "gemini-custom", IsBuiltIn = false });
         await _harness.Db.SaveChangesAsync();
 
         await Seeder().SeedAsync();
 
         Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Name == "gemini-custom"));
-        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Kind == AiProviderKind.Gemini && model.Name == AiProviderCatalog.DefaultModel(AiProviderKind.Gemini)));
+        Assert.Equal(1, await _harness.Db.AiModels.CountAsync(model => model.Provider!.ApiType == AiApiType.Gemini && model.Name == AiProviderCatalog.DefaultModel(AiApiType.Gemini)));
     }
 }

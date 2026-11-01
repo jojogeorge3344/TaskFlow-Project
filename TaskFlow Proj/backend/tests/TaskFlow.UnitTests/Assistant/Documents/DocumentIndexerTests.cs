@@ -160,7 +160,7 @@ public class DocumentIndexerTests
         await using var h = new DocumentIndexerHarness();
         await using (var db = h.NewContext())
         {
-            db.AiProviderConfigs.Add(new() { Kind = TaskFlow.Api.Models.Enums.AiProviderKind.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434/", UpdatedAt = DateTime.UtcNow });
+            db.AiProviderConfigs.Add(new() { Name = "Ollama", Locality = "Local", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434/", UpdatedAt = DateTime.UtcNow });
             await db.SaveChangesAsync();
         }
 
@@ -176,7 +176,7 @@ public class DocumentIndexerTests
         await using var h = new DocumentIndexerHarness();
         await using (var db = h.NewContext())
         {
-            db.AiProviderConfigs.Add(new() { Kind = TaskFlow.Api.Models.Enums.AiProviderKind.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434", UpdatedAt = DateTime.UtcNow });
+            db.AiProviderConfigs.Add(new() { Name = "Ollama", Locality = "Local", IsBuiltIn = true, ApiType = TaskFlow.Api.Models.Enums.AiApiType.Ollama, ModelName = "llama3.2:3b", BaseUrl = "http://gpu-box:11434", UpdatedAt = DateTime.UtcNow });
             await db.SaveChangesAsync();
         }
 

@@ -28,7 +28,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     private readonly EphemeralDataProtectionProvider _protection = new();
     private readonly FakeHttpHandler _http = new();
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    private IReadOnlyDictionary<AiApiType, int> _ids = new Dictionary<AiApiType, int>();
+
+    public async Task InitializeAsync() => _ids = await AiTestProviders.SeedBuiltInsAsync(_harness.Db);
+
+    private int Id(AiApiType apiType) => _ids[apiType];
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
@@ -48,9 +52,9 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     private async Task SaveStartingSetupAsync() =>
         await Config().SaveAsync(1, new UpdateAiProvidersRequest(
         [
-            new UpdateAiProviderRequest(AiProviderKind.OpenAI, true, "gpt-4o-mini", null, "sk-openai-key-1111", null),
-            new UpdateAiProviderRequest(AiProviderKind.Gemini, false, "gemini-2.0-flash", null, "AIza-saved-gemini-2222", null),
-            new UpdateAiProviderRequest(AiProviderKind.Ollama, false, "llama3.2:3b", null, null, null)
+            new UpdateAiProviderRequest(Id(AiApiType.OpenAI), true, "gpt-4o-mini", null, "sk-openai-key-1111", null),
+            new UpdateAiProviderRequest(Id(AiApiType.Gemini), false, "gemini-2.0-flash", null, "AIza-saved-gemini-2222", null),
+            new UpdateAiProviderRequest(Id(AiApiType.Ollama), false, "llama3.2:3b", null, null, null)
         ]));
 
     [Fact]
@@ -59,11 +63,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveStartingSetupAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest(" gemini-2.5-flash-lite ", "AIza-new-gemini-9876", null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest(" gemini-2.5-flash-lite ", "AIza-new-gemini-9876", null, ProviderId: Id(AiApiType.Gemini)));
 
         Assert.True(result.Ok);
         var providers = Assert.IsAssignableFrom<IReadOnlyList<AiProviderConfigDto>>(result.Providers);
-        var gemini = providers.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        var gemini = providers.Single(provider => provider.ApiType == AiApiType.Gemini);
         Assert.True(gemini.IsEnabled);
         Assert.True(gemini.IsConfigured);
         Assert.Equal("gemini-2.5-flash-lite", gemini.ModelName);
@@ -72,11 +76,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         Assert.Equal("AIza-new-gemini-9876", _http.Sent.Single().Request.Headers.GetValues("x-goog-api-key").Single());
 
         // The others are switched off, and keep their keys and models.
-        var openAi = providers.Single(provider => provider.Kind == AiProviderKind.OpenAI);
+        var openAi = providers.Single(provider => provider.ApiType == AiApiType.OpenAI);
         Assert.False(openAi.IsEnabled);
         Assert.True(openAi.KeySet);
         Assert.Equal("gpt-4o-mini", openAi.ModelName);
-        Assert.False(providers.Single(provider => provider.Kind == AiProviderKind.Ollama).IsEnabled);
+        Assert.False(providers.Single(provider => provider.ApiType == AiApiType.Ollama).IsEnabled);
     }
 
     [Fact]
@@ -86,7 +90,7 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         var before = await SnapshotAsync();
         _http.Reply(HttpStatusCode.BadRequest, """{"error":{"status":"INVALID_ARGUMENT","message":"API key not valid"}}""");
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest("gemini-2.5-flash-lite", "AIza-wrong-key", null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest("gemini-2.5-flash-lite", "AIza-wrong-key", null, ProviderId: Id(AiApiType.Gemini)));
 
         Assert.False(result.Ok);
         Assert.NotNull(result.FailureKind);
@@ -100,11 +104,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveStartingSetupAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest("gemini-2.0-flash", null, null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest("gemini-2.0-flash", null, null, ProviderId: Id(AiApiType.Gemini)));
 
         Assert.True(result.Ok);
-        Assert.Single(await _harness.Db.AiModels.Where(model => model.Kind == AiProviderKind.Gemini && model.Name == "gemini-2.0-flash").ToListAsync());
-        Assert.Equal("gemini-2.0-flash", result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini).ModelName);
+        Assert.Single(await _harness.Db.AiModels.Where(model => model.ProviderId == Id(AiApiType.Gemini) && model.Name == "gemini-2.0-flash").ToListAsync());
+        Assert.Equal("gemini-2.0-flash", result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini).ModelName);
     }
 
     [Fact]
@@ -113,18 +117,18 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveStartingSetupAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest("gemini-2.5-pro", "", null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest("gemini-2.5-pro", "", null, ProviderId: Id(AiApiType.Gemini)));
 
         Assert.True(result.Ok);
         Assert.Equal("AIza-saved-gemini-2222", _http.Sent.Single().Request.Headers.GetValues("x-goog-api-key").Single());
-        Assert.Equal("2222", result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini).KeyLast4);
+        Assert.Equal("2222", result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini).KeyLast4);
     }
 
     [Fact]
     public async Task ACloudProviderWithNoKeyIsRefusedWithoutSendingAnything()
     {
         var failure = await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().AddAndActivateAsync(1, AiProviderKind.OpenAI, new AddAiModelRequest("gpt-4.1-mini", null, null)));
+            Service().AddAndActivateAsync(1, new AddAiModelRequest("gpt-4.1-mini", null, null, ProviderId: Id(AiApiType.OpenAI))));
 
         Assert.Contains("API key", failure.Message);
         Assert.Empty(_http.Sent);
@@ -134,7 +138,7 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     public async Task AKeySentForOllamaIsRefused()
     {
         await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().AddAndActivateAsync(1, AiProviderKind.Ollama, new AddAiModelRequest("phi3:mini", "some-key", null)));
+            Service().AddAndActivateAsync(1, new AddAiModelRequest("phi3:mini", "some-key", null, ProviderId: Id(AiApiType.Ollama))));
 
         Assert.Empty(_http.Sent);
     }
@@ -144,11 +148,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     {
         _http.Reply(HttpStatusCode.OK, OllamaOk);
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Ollama, new AddAiModelRequest("phi3:mini", null, null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest("phi3:mini", null, null, ProviderId: Id(AiApiType.Ollama)));
 
         Assert.True(result.Ok);
         Assert.StartsWith("http://localhost:11434/", _http.Sent.Single().Request.RequestUri!.ToString());
-        var ollama = result.Providers!.Single(provider => provider.Kind == AiProviderKind.Ollama);
+        var ollama = result.Providers!.Single(provider => provider.ApiType == AiApiType.Ollama);
         Assert.True(ollama.IsEnabled);
         Assert.Equal("phi3:mini", ollama.ModelName);
         Assert.Equal("http://localhost:11434", ollama.BaseUrl);
@@ -163,7 +167,7 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         var before = await SnapshotAsync();
 
         var failure = await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest(name, "AIza-new-gemini-9876", null)));
+            Service().AddAndActivateAsync(1, new AddAiModelRequest(name, "AIza-new-gemini-9876", null, ProviderId: Id(AiApiType.Gemini))));
 
         Assert.Contains("gemini-3.8-flash", failure.Message);
         Assert.Contains("Google AI Studio", failure.Message);
@@ -177,11 +181,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveStartingSetupAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().AddAndActivateAsync(1, AiProviderKind.Gemini, new AddAiModelRequest("models/gemini-3.8-flash", null, null));
+        var result = await Service().AddAndActivateAsync(1, new AddAiModelRequest("models/gemini-3.8-flash", null, null, ProviderId: Id(AiApiType.Gemini)));
 
         Assert.True(result.Ok);
         Assert.EndsWith("/v1beta/models/gemini-3.8-flash:generateContent", _http.Sent.Single().Request.RequestUri!.AbsolutePath);
-        Assert.Equal("gemini-3.8-flash", result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini).ModelName);
+        Assert.Equal("gemini-3.8-flash", result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini).ModelName);
         Assert.Equal(0, await _harness.Db.AiModels.CountAsync(model => model.Name.StartsWith("models/")));
     }
 
@@ -190,9 +194,9 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     {
         await SaveStartingSetupAsync();
         _harness.Db.AiModels.AddRange(
-            new AiModel { Kind = AiProviderKind.Gemini, Name = "gemini-2.0-flash", IsBuiltIn = false },
-            new AiModel { Kind = AiProviderKind.Gemini, Name = "gemini-2.5-pro", IsBuiltIn = false },
-            new AiModel { Kind = AiProviderKind.Gemini, Name = "gemini-3.8-flash", IsBuiltIn = true });
+            new AiModel { ProviderId = Id(AiApiType.Gemini), Name = "gemini-2.0-flash", IsBuiltIn = false },
+            new AiModel { ProviderId = Id(AiApiType.Gemini), Name = "gemini-2.5-pro", IsBuiltIn = false },
+            new AiModel { ProviderId = Id(AiApiType.Gemini), Name = "gemini-3.8-flash", IsBuiltIn = true });
         await _harness.Db.SaveChangesAsync();
     }
 
@@ -202,18 +206,18 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveSetupWithAddedGeminiModelsAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.0-flash", new AddAiModelRequest("gemini-2.5-flash", null, null));
+        var result = await Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.0-flash", new AddAiModelRequest("gemini-2.5-flash", null, null));
 
         Assert.True(result.Ok);
         Assert.EndsWith("/models/gemini-2.5-flash:generateContent", _http.Sent.Single().Request.RequestUri!.AbsolutePath);
-        var gemini = result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        var gemini = result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini);
         Assert.Contains("gemini-2.5-flash", gemini.Models);
         Assert.DoesNotContain("gemini-2.0-flash", gemini.Models);
 
         // Gemini was switched off with gemini-2.0-flash saved; the saved name follows the rename, and OpenAI stays in use.
         Assert.Equal("gemini-2.5-flash", gemini.ModelName);
         Assert.False(gemini.IsEnabled);
-        Assert.True(result.Providers!.Single(provider => provider.Kind == AiProviderKind.OpenAI).IsEnabled);
+        Assert.True(result.Providers!.Single(provider => provider.ApiType == AiApiType.OpenAI).IsEnabled);
     }
 
     [Fact]
@@ -222,11 +226,11 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         await SaveSetupWithAddedGeminiModelsAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-pro", "AIza-new-gemini-7777", null));
+        var result = await Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-pro", "AIza-new-gemini-7777", null));
 
         Assert.True(result.Ok);
         Assert.Equal("AIza-new-gemini-7777", _http.Sent.Single().Request.Headers.GetValues("x-goog-api-key").Single());
-        Assert.Equal("7777", result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini).KeyLast4);
+        Assert.Equal("7777", result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini).KeyLast4);
     }
 
     [Fact]
@@ -236,7 +240,7 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         var before = await SnapshotAsync();
         _http.Reply(HttpStatusCode.NotFound, """{"error":{"status":"NOT_FOUND","message":"not found"}}""");
 
-        var result = await Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-9.9-pro", "AIza-new-gemini-7777", null));
+        var result = await Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-9.9-pro", "AIza-new-gemini-7777", null));
 
         Assert.False(result.Ok);
         Assert.Equal(ProviderFailureKind.ModelUnavailable, result.FailureKind);
@@ -247,15 +251,15 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     public async Task ABuiltInTheModelInUseOrADuplicateNameIsRefusedWithoutCallingTheProvider()
     {
         await SaveSetupWithAddedGeminiModelsAsync();
-        await Config().UseModelAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro");
+        await Config().UseModelAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro");
 
         var builtIn = await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().EditAsync(1, AiProviderKind.Gemini, "gemini-3.8-flash", new AddAiModelRequest("gemini-3.9-flash", null, null)));
+            Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-3.8-flash", new AddAiModelRequest("gemini-3.9-flash", null, null)));
         var inUse = await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-flash", null, null)));
-        await Config().UseModelAsync(1, AiProviderKind.OpenAI, "gpt-4o-mini");
+            Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-flash", null, null)));
+        await Config().UseModelAsync(1, Id(AiApiType.OpenAI), "gpt-4o-mini");
         var duplicate = await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-2.0-flash", null, null)));
+            Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-2.0-flash", null, null)));
 
         Assert.Equal("A built-in model cannot be changed or removed.", builtIn.Message);
         Assert.Equal("gemini-2.5-pro is in use by TFA. Switch TFA to another model first, then edit it.", inUse.Message);
@@ -268,15 +272,15 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
     {
         await SaveSetupWithAddedGeminiModelsAsync();
 
-        var result = await Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-pro", null, null, ClearKey: true));
+        var result = await Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-2.5-pro", null, null, ClearKey: true));
 
         Assert.True(result.Ok);
-        var gemini = result.Providers!.Single(provider => provider.Kind == AiProviderKind.Gemini);
+        var gemini = result.Providers!.Single(provider => provider.ApiType == AiApiType.Gemini);
         Assert.False(gemini.KeySet);
         Assert.Null(gemini.KeyLast4);
         Assert.Empty(_http.Sent);
         await Assert.ThrowsAsync<RequestValidationException>(() =>
-            Service().EditAsync(1, AiProviderKind.Gemini, "gemini-2.5-pro", new AddAiModelRequest("gemini-2.6-pro", null, null, ClearKey: true)));
+            Service().EditAsync(1, Id(AiApiType.Gemini), "gemini-2.5-pro", new AddAiModelRequest("gemini-2.6-pro", null, null, ClearKey: true)));
     }
 
     [Fact]
@@ -286,22 +290,22 @@ public class AiModelAdditionServiceTests : IAsyncLifetime
         var before = await SnapshotAsync();
         _http.Reply(HttpStatusCode.OK, GeminiOk);
 
-        var result = await Service().TestSavedModelAsync(AiProviderKind.Gemini, "gemini-2.5-pro");
+        var result = await Service().TestSavedModelAsync(Id(AiApiType.Gemini), "gemini-2.5-pro");
 
         Assert.True(result.Ok);
         var sent = _http.Sent.Single().Request;
         Assert.EndsWith("/models/gemini-2.5-pro:generateContent", sent.RequestUri!.AbsolutePath);
         Assert.Equal("AIza-saved-gemini-2222", sent.Headers.GetValues("x-goog-api-key").Single());
         Assert.Equal(before, await SnapshotAsync());
-        await Assert.ThrowsAsync<NotFoundException>(() => Service().TestSavedModelAsync(AiProviderKind.Gemini, "never-added"));
+        await Assert.ThrowsAsync<NotFoundException>(() => Service().TestSavedModelAsync(Id(AiApiType.Gemini), "never-added"));
     }
 
     private async Task<string> SnapshotAsync()
     {
         _harness.Db.ChangeTracker.Clear();
-        var rows = await _harness.Db.AiProviderConfigs.AsNoTracking().OrderBy(row => row.Kind).ToListAsync();
-        var models = await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.Kind).ThenBy(model => model.Name).ToListAsync();
-        return string.Join("|", rows.Select(row => $"{row.Kind}:{row.IsEnabled}:{row.ModelName}:{row.BaseUrl}:{row.EncryptedApiKey}:{row.KeyLast4}"))
-            + "#" + string.Join(",", models.Select(model => $"{model.Kind}/{model.Name}"));
+        var rows = await _harness.Db.AiProviderConfigs.AsNoTracking().OrderBy(row => row.ApiType).ToListAsync();
+        var models = await _harness.Db.AiModels.AsNoTracking().OrderBy(model => model.ProviderId).ThenBy(model => model.Name).ToListAsync();
+        return string.Join("|", rows.Select(row => $"{row.ApiType}:{row.IsEnabled}:{row.ModelName}:{row.BaseUrl}:{row.EncryptedApiKey}:{row.KeyLast4}"))
+            + "#" + string.Join(",", models.Select(model => $"{model.ProviderId}/{model.Name}"));
     }
 }

@@ -1,7 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
-import { AiProviderKind, AiProviderOption } from '../models/assistant.model';
+import { AiProviderOption } from '../models/assistant.model';
 import { AssistantService } from '../services/assistant.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+
+const BUILT_IN_STYLES: Record<string, string> = { Ollama: 'Ollama', 'Google Gemini': 'Gemini', 'OpenAI GPT': 'OpenAI' };
 
 /** The panel header: the TFA title, New chat, Close, and the model selector. The selector lists only the providers an
  * administrator has configured, each marked Local or Cloud. Switching model never closes the chat. */
@@ -18,7 +20,7 @@ export class TfaHeaderComponent {
   readonly menuOpen = signal(false);
 
   chooseProvider(option: AiProviderOption): void {
-    this.assistant.selectProvider(option.kind);
+    this.assistant.selectProvider(option.providerId);
     this.menuOpen.set(false);
   }
 
@@ -26,8 +28,14 @@ export class TfaHeaderComponent {
     this.menuOpen.set(false);
   }
 
-  providerInitial(kind: AiProviderKind): string {
-    return kind === 'OpenAI' ? 'AI' : kind.charAt(0);
+  /** The badge colour: one for each built-in provider, and one shared by custom providers. */
+  providerStyle(name: string): string {
+    return BUILT_IN_STYLES[name] ?? 'Custom';
+  }
+
+  /** The badge letters for a provider: "AI" for OpenAI GPT, otherwise the first letter of its name (custom ones too). */
+  providerInitial(name: string): string {
+    return name.startsWith('OpenAI') ? 'AI' : name.charAt(0).toUpperCase();
   }
 
   newChat(): void {

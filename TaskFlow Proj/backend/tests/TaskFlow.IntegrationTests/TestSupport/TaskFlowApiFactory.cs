@@ -32,8 +32,17 @@ public class TaskFlowApiFactory : WebApplicationFactory<Program>
         Path.Combine(Path.GetTempPath(), $"taskflow-dp-tests-{Guid.NewGuid():N}");
 
     /// <summary>The AI providers used by the tests, scripted so nothing reaches a real model.</summary>
-    public IReadOnlyDictionary<AiProviderKind, ScriptedChatProvider> Providers { get; } =
-        Enum.GetValues<AiProviderKind>().ToDictionary(kind => kind, kind => new ScriptedChatProvider(kind));
+    public IReadOnlyDictionary<AiApiType, ScriptedChatProvider> Providers { get; } =
+        Enum.GetValues<AiApiType>().ToDictionary(kind => kind, kind => new ScriptedChatProvider(kind));
+
+    /// <summary>The id of the built-in provider of this API type (the seeder creates them when the API starts).</summary>
+    public int ProviderId(AiApiType apiType)
+    {
+        _ = Server;
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskFlow.Api.Persistence.AppDbContext>();
+        return db.AiProviderConfigs.AsNoTracking().Single(row => row.IsBuiltIn && row.ApiType == apiType).Id;
+    }
 
     /// <summary>Everything the API logged, for asserting that secrets never reach the logs.</summary>
     public CapturingLoggerProvider Logs { get; } = new();

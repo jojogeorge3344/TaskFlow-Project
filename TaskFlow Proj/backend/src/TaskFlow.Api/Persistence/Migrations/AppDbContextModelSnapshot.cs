@@ -26,19 +26,17 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.Property<bool>("IsBuiltIn")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("ProviderId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("Kind", "Name")
+                    b.HasIndex("ProviderId", "Name")
                         .IsUnique();
 
                     b.ToTable("AiModels");
@@ -50,12 +48,20 @@ namespace TaskFlow.Api.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ApiType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("BaseUrl")
                         .HasMaxLength(300)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EncryptedApiKey")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsBuiltIn")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
@@ -64,15 +70,21 @@ namespace TaskFlow.Api.Persistence.Migrations
                         .HasMaxLength(4)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Kind")
+                    b.Property<string>("Locality")
                         .IsRequired()
-                        .HasMaxLength(16)
+                        .HasMaxLength(8)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ModelName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -82,7 +94,7 @@ namespace TaskFlow.Api.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Kind")
+                    b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("AiProviderConfigs");
@@ -193,9 +205,8 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.Property<string>("MetaJson")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ProviderKind")
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
+                    b.Property<int?>("ProviderId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -205,6 +216,8 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ConversationId");
+
+                    b.HasIndex("ProviderId");
 
                     b.ToTable("AssistantMessages");
                 });
@@ -1211,6 +1224,17 @@ namespace TaskFlow.Api.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AiModel", b =>
+                {
+                    b.HasOne("TaskFlow.Api.Models.Entities.AiProviderConfig", "Provider")
+                        .WithMany("Models")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantConversation", b =>
                 {
                     b.HasOne("TaskFlow.Api.Models.Entities.User", "User")
@@ -1230,7 +1254,14 @@ namespace TaskFlow.Api.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskFlow.Api.Models.Entities.AiProviderConfig", "Provider")
+                        .WithMany()
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantPendingAction", b =>
@@ -1607,6 +1638,11 @@ namespace TaskFlow.Api.Persistence.Migrations
                     b.Navigation("Project");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskFlow.Api.Models.Entities.AiProviderConfig", b =>
+                {
+                    b.Navigation("Models");
                 });
 
             modelBuilder.Entity("TaskFlow.Api.Models.Entities.AssistantConversation", b =>

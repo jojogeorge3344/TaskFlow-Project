@@ -84,8 +84,8 @@
             <span data-failure-message>{{ failed.failure.message }}</span>
             <div class="tfa__swap">
               <button type="button" class="tfa__chip" data-action="retry" (click)="assistant.retry()">Retry</button>
-              @for (option of failed.failure.alternatives; track option.kind) {
-                <button type="button" class="tfa__chip" [attr.data-action]="'use-' + option.kind" (click)="useProvider(option.kind)">
+              @for (option of failed.failure.alternatives; track option.providerId) {
+                <button type="button" class="tfa__chip" [attr.data-action]="'use-' + option.providerId" (click)="useProvider(option.providerId)">
                   Use {{ option.displayName }}
                   <span class="tfa__pill" [class.tfa__pill--local]="option.locality === 'Local'" [class.tfa__pill--cloud]="option.locality === 'Cloud'">
                     {{ option.locality }}

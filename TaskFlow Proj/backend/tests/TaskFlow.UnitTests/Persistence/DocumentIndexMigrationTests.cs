@@ -11,6 +11,9 @@ public class DocumentIndexMigrationTests : IDisposable
 {
     private const string Before = "20261024122725_AddTaskCommentEditDelete";
 
+    // Later migrations change other tables, so this one is checked on its own.
+    private const string DocumentIndex = "20261031134802_AddDocumentIndex";
+
     private readonly string _path = Path.Combine(Path.GetTempPath(), $"taskflow-documents-{Guid.NewGuid():N}.db");
 
     public void Dispose()
@@ -56,7 +59,7 @@ public class DocumentIndexMigrationTests : IDisposable
         }
 
         await using var db = NewContext();
-        await db.Database.MigrateAsync();
+        await db.GetService<IMigrator>().MigrateAsync(DocumentIndex);
         var after = await SchemaAsync(db);
 
         Assert.All(before, entry => Assert.Equal(entry.Value, after[entry.Key]));
@@ -70,7 +73,7 @@ public class DocumentIndexMigrationTests : IDisposable
     public async System.Threading.Tasks.Task AFreshDatabaseGetsTheDocumentTablesAndDeletingASourceDeletesItsChunks()
     {
         await using var db = NewContext();
-        await db.Database.MigrateAsync();
+        await db.GetService<IMigrator>().MigrateAsync(DocumentIndex);
 
         var source = new TaskFlow.Api.Models.Entities.DocumentSource
         {
@@ -95,7 +98,7 @@ public class DocumentIndexMigrationTests : IDisposable
     public async System.Threading.Tasks.Task TwoSourcesCannotShareAPath()
     {
         await using var db = NewContext();
-        await db.Database.MigrateAsync();
+        await db.GetService<IMigrator>().MigrateAsync(DocumentIndex);
 
         db.DocumentSources.AddRange(
             new() { RelativePath = "a.md", Title = "A", ContentHash = "x", EmbeddingModel = "m", IndexedAt = DateTime.UtcNow },
@@ -108,7 +111,7 @@ public class DocumentIndexMigrationTests : IDisposable
     public async System.Threading.Tasks.Task Downgrade_RemovesOnlyTheDocumentTables()
     {
         await using var db = NewContext();
-        await db.Database.MigrateAsync();
+        await db.GetService<IMigrator>().MigrateAsync(DocumentIndex);
         var upgraded = await SchemaAsync(db);
 
         await db.GetService<IMigrator>().MigrateAsync(Before);

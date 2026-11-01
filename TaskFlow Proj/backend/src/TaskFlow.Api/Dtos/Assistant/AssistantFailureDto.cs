@@ -7,7 +7,8 @@ namespace TaskFlow.Api.Dtos.Assistant;
 /// choose. The raw provider error is never part of it.</summary>
 public record AssistantFailureDto(
     ProviderFailureKind Kind,
-    AiProviderKind Provider,
+    int ProviderId,
+    string ProviderName,
     string Message,
     int? RetryAfterSeconds,
     IReadOnlyList<AiProviderOptionDto> Alternatives);

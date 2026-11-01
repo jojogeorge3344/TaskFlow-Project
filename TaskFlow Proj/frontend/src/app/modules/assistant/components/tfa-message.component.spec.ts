@@ -11,6 +11,7 @@ function answer(extra: Partial<AssistantMessage> = {}): AssistantMessage {
     content: 'The assignee and the task creator receive it.',
     kind: 'Text',
     createdAt: '2026-10-31T09:00:00Z',
+    providerId: 1,
     provider: 'Ollama',
     links: [],
     rankedTasks: [],

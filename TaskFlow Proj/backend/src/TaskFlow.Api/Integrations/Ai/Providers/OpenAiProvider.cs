@@ -5,10 +5,13 @@ using TaskFlow.Api.Models.Enums;
 
 namespace TaskFlow.Api.Integrations.Ai.Providers;
 
-/// <summary>OpenAI chat completions. OpenAI has no free tier: this only works with a paid key an administrator saved.</summary>
+/// <summary>OpenAI-compatible chat completions: built-in OpenAI GPT (no free tier; a paid key is needed) at its fixed
+/// address, and every custom OpenAI-compatible provider (Groq, Mistral, OpenRouter, LM Studio, vLLM, …) at the address an
+/// administrator gave, which includes the version path as those services print it (for example
+/// <c>https://api.groq.com/openai/v1</c>). The key is optional: a local server may need none.</summary>
 public class OpenAiProvider : IChatModelProvider
 {
-    public const string BaseAddress = "https://api.openai.com/";
+    public const string DefaultAddress = "https://api.openai.com/v1";
 
     private readonly HttpClient _client;
 
@@ -17,14 +20,20 @@ public class OpenAiProvider : IChatModelProvider
         _client = client;
     }
 
-    public AiProviderKind Kind => AiProviderKind.OpenAI;
+    public AiApiType ApiType => AiApiType.OpenAI;
 
     public async Task<ChatModelResult> CompleteAsync(AiProviderRuntime runtime, ChatModelRequest request, CancellationToken cancellationToken = default)
     {
-        var httpRequest = ProviderHttp.Json(HttpMethod.Post, $"{BaseAddress}v1/chat/completions", BuildBody(request));
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", runtime.ApiKey ?? string.Empty);
+        var url = $"{(runtime.BaseUrl ?? DefaultAddress).TrimEnd('/')}/chat/completions";
+        var (response, body) = await SendAsync(runtime, url, BuildBody(request, includeTools: true), cancellationToken);
 
-        var (response, body) = await ProviderHttp.SendAsync(_client, Kind, httpRequest, cancellationToken);
+        // Some OpenAI-compatible servers reject tool definitions for models without tool support: ask once more without
+        // them, on the same provider, so the model still answers in plain text.
+        if (!response.IsSuccessStatusCode && request.Tools.Count > 0 && response.StatusCode == HttpStatusCode.BadRequest && MentionsTools(body))
+        {
+            (response, body) = await SendAsync(runtime, url, BuildBody(request, includeTools: false), cancellationToken);
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             throw Classify(response, body, runtime.ApiKey);
@@ -33,7 +42,25 @@ public class OpenAiProvider : IChatModelProvider
         return Parse(body);
     }
 
-    private static JsonObject BuildBody(ChatModelRequest request)
+    private Task<(HttpResponseMessage Response, string Body)> SendAsync(
+        AiProviderRuntime runtime,
+        string url,
+        JsonObject body,
+        CancellationToken cancellationToken)
+    {
+        var httpRequest = ProviderHttp.Json(HttpMethod.Post, url, body);
+        if (!string.IsNullOrEmpty(runtime.ApiKey))
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", runtime.ApiKey);
+        }
+
+        return ProviderHttp.SendAsync(_client, ApiType, httpRequest, cancellationToken);
+    }
+
+    private static bool MentionsTools(string body) =>
+        body.Contains("tool", StringComparison.OrdinalIgnoreCase) || body.Contains("function", StringComparison.OrdinalIgnoreCase);
+
+    private static JsonObject BuildBody(ChatModelRequest request, bool includeTools)
     {
         var messages = new JsonArray { new JsonObject { ["role"] = "system", ["content"] = request.SystemPrompt } };
         foreach (var message in request.Messages)
@@ -68,7 +95,7 @@ public class OpenAiProvider : IChatModelProvider
         }
 
         var body = new JsonObject { ["model"] = request.ModelName, ["messages"] = messages };
-        if (request.Tools.Count > 0)
+        if (includeTools && request.Tools.Count > 0)
         {
             body["tools"] = new JsonArray(request.Tools.Select(tool => (JsonNode)new JsonObject
             {
@@ -87,7 +114,7 @@ public class OpenAiProvider : IChatModelProvider
 
     private ChatModelResult Parse(string body)
     {
-        var root = ProviderHttp.ParseOrFail(Kind, body);
+        var root = ProviderHttp.ParseOrFail(ApiType, body);
         var message = root["choices"]?[0]?["message"];
         var text = message?["content"]?.GetValue<string>();
 
@@ -109,7 +136,7 @@ public class OpenAiProvider : IChatModelProvider
 
         if (string.IsNullOrWhiteSpace(text) && calls.Count == 0)
         {
-            throw new ProviderFailureException(Kind, ProviderFailureKind.Unexpected);
+            throw new ProviderFailureException(ApiType, ProviderFailureKind.Unexpected);
         }
 
         return new ChatModelResult(string.IsNullOrWhiteSpace(text) ? null : text, calls);
@@ -141,7 +168,7 @@ public class OpenAiProvider : IChatModelProvider
         };
 
         return new ProviderFailureException(
-            Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            ApiType, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
             providerReason: ProviderHttp.Reason(code, message, apiKey));
     }
 }

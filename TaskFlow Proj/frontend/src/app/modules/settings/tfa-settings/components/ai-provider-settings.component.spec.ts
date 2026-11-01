@@ -20,17 +20,17 @@ type Kind = 'Ollama' | 'Gemini' | 'OpenAI';
 function config(overrides: Partial<Record<Kind, Partial<AiProviderConfig>>> = {}): AiProviderConfig[] {
   return [
     {
-      kind: 'Ollama', displayName: 'Ollama', locality: 'Local', requiresKey: false, isEnabled: false, modelName: 'llama3.2:3b',
+      providerId: 1, displayName: 'Ollama', apiType: 'Ollama', isBuiltIn: true, locality: 'Local', requiresKey: false, isEnabled: false, modelName: 'llama3.2:3b',
       baseUrl: 'http://localhost:11434', keySet: false, keyLast4: null, isConfigured: false, keyReadable: true,
       models: ['llama3.2:3b', 'llama3.1:8b'], customModels: [], ...overrides.Ollama
     },
     {
-      kind: 'Gemini', displayName: 'Google Gemini', locality: 'Cloud', requiresKey: true, isEnabled: true, modelName: 'gemini-2.5-pro',
+      providerId: 2, displayName: 'Google Gemini', apiType: 'Gemini', isBuiltIn: true, locality: 'Cloud', requiresKey: true, isEnabled: true, modelName: 'gemini-2.5-pro',
       baseUrl: null, keySet: true, keyLast4: '1234', isConfigured: true, keyReadable: true,
       models: ['gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'], customModels: ['gemini-2.5-pro', 'gemini-2.0-flash'], ...overrides.Gemini
     },
     {
-      kind: 'OpenAI', displayName: 'OpenAI GPT', locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
+      providerId: 3, displayName: 'OpenAI GPT', apiType: 'OpenAI', isBuiltIn: true, locality: 'Cloud', requiresKey: true, isEnabled: false, modelName: 'gpt-4o-mini',
       baseUrl: null, keySet: false, keyLast4: null, isConfigured: false, keyReadable: true,
       models: ['gpt-4o-mini'], customModels: [], ...overrides.OpenAI
     }
@@ -100,7 +100,7 @@ describe('AiProviderSettingsComponent', () => {
     expect(section.querySelector('select')).toBeNull();
     expect(section.querySelector('input')).toBeNull();
     expect(section.querySelector('[data-action="save-ai"]')).toBeNull();
-    expect(Array.from(el().querySelectorAll('[data-provider]')).map((group) => group.getAttribute('data-provider'))).toEqual(['Ollama', 'Gemini', 'OpenAI']);
+    expect(Array.from(el().querySelectorAll('[data-provider]')).map((group) => group.getAttribute('data-provider'))).toEqual(['1', '2', '3']);
     expect(el().querySelectorAll('[data-model]').length).toBe(6);
 
     expect(row('gemini-3.8-flash').querySelector('[data-detail="provider"]')?.textContent).toContain('Google Gemini · Cloud');
@@ -126,7 +126,7 @@ describe('AiProviderSettingsComponent', () => {
     await create();
 
     action('llama3.2:3b', 'use-model')!.click();
-    const request = http.expectOne(`${BASE}/Ollama/models/use`);
+    const request = http.expectOne(`${BASE}/1/models/use`);
     expect(request.request.body).toEqual({ modelName: 'llama3.2:3b' });
     request.flush(config({ Ollama: { isEnabled: true, isConfigured: true }, Gemini: { isEnabled: false } }));
     fixture.detectChanges();
@@ -149,7 +149,7 @@ describe('AiProviderSettingsComponent', () => {
     await create();
 
     action('gemini-3.8-flash', 'test-model')!.click();
-    const request = http.expectOne(`${BASE}/Gemini/test`);
+    const request = http.expectOne(`${BASE}/2/test`);
     expect(request.request.body).toEqual({ modelName: 'gemini-3.8-flash' });
     request.flush({ ok: true, message: 'The connection works.', failureKind: null });
     fixture.detectChanges();
@@ -174,7 +174,7 @@ describe('AiProviderSettingsComponent', () => {
     action('gemini-2.0-flash', 'edit-model')!.click();
     await fixture.whenStable();
 
-    expect(router.navigate).toHaveBeenCalledWith(['/settings/tfa/models', 'Gemini', 'gemini-2.0-flash', 'edit']);
+    expect(router.navigate).toHaveBeenCalledWith(['/settings/tfa/models', 2, 'gemini-2.0-flash', 'edit']);
   });
 
   it('says the model in use must be switched first, instead of editing or deleting it', async () => {
@@ -207,13 +207,41 @@ describe('AiProviderSettingsComponent', () => {
     (dialog().querySelector('[data-action="confirm"]') as HTMLButtonElement).click();
     await fixture.whenStable();
 
-    const request = http.expectOne((candidate) => candidate.method === 'DELETE' && candidate.url === `${BASE}/Gemini/models`);
+    const request = http.expectOne((candidate) => candidate.method === 'DELETE' && candidate.url === `${BASE}/2/models`);
     expect(request.request.params.get('name')).toBe('gemini-2.0-flash');
     request.flush(config({ Gemini: { models: ['gemini-3.8-flash', 'gemini-2.5-pro'], customModels: ['gemini-2.5-pro'] } }));
     fixture.detectChanges();
 
     expect(row('gemini-2.0-flash')).toBeNull();
     expect(toast.success).toHaveBeenCalledWith('Deleted gemini-2.0-flash');
+  });
+
+  it('lists a custom provider after the built-in ones, and drops its group once its last model is deleted', async () => {
+    const groq: AiProviderConfig = {
+      providerId: 9, displayName: 'Groq', apiType: 'OpenAI', isBuiltIn: false, locality: 'Cloud', requiresKey: false, isEnabled: false,
+      modelName: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1', keySet: true, keyLast4: '4321', isConfigured: false,
+      keyReadable: true, models: ['llama-3.3-70b-versatile'], customModels: ['llama-3.3-70b-versatile']
+    };
+    await create(systemPermissions('Administrator'), [...config(), groq]);
+
+    const groups = Array.from(el().querySelectorAll('[data-provider]'));
+    expect(groups.map((group) => group.getAttribute('data-provider'))).toEqual(['1', '2', '3', '9']);
+    expect(groups[3].getAttribute('data-custom')).toBe('true');
+    const row9 = row('llama-3.3-70b-versatile');
+    expect(row9.querySelector('[data-detail="provider"]')?.textContent).toContain('Groq · Cloud');
+    expect(row9.querySelector('[data-detail="key"]')?.textContent).toContain('https://api.groq.com/openai/v1 · key ends …4321');
+    expect(row9.querySelector('[data-detail="origin"]')?.textContent).toContain('Added by you');
+    expect(action('llama-3.3-70b-versatile', 'use-model')!.disabled).toBeFalse();
+
+    action('llama-3.3-70b-versatile', 'delete-model')!.click();
+    fixture.detectChanges();
+    (dialog().querySelector('[data-action="confirm"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    const request = http.expectOne((candidate) => candidate.method === 'DELETE' && candidate.url === `${BASE}/9/models`);
+    request.flush(config());
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-provider="9"]')).toBeNull();
   });
 
   it('keeps the model when the delete confirmation is cancelled', async () => {
@@ -242,7 +270,7 @@ describe('AiProviderSettingsComponent', () => {
     await create();
 
     action('llama3.2:3b', 'use-model')!.click();
-    http.expectOne(`${BASE}/Ollama/models/use`).flush({ title: 'Could not switch.' }, { status: 400, statusText: 'Bad Request' });
+    http.expectOne(`${BASE}/1/models/use`).flush({ title: 'Could not switch.' }, { status: 400, statusText: 'Bad Request' });
     fixture.detectChanges();
 
     expect(el().querySelector('[data-error="ai-action"]')).toBeTruthy();

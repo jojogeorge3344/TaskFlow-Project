@@ -45,8 +45,8 @@
         }
       </p>
 
-      @for (group of groups(); track group.provider.kind) {
-        <section class="tf-card ai-settings__group" [attr.data-provider]="group.provider.kind" [attr.aria-label]="group.provider.displayName">
+      @for (group of groups(); track group.provider.providerId) {
+        <section class="tf-card ai-settings__group" [attr.data-provider]="group.provider.providerId" [attr.data-custom]="!group.provider.isBuiltIn" [attr.aria-label]="group.provider.displayName">
           <div class="ai-settings__title">
             <h3>{{ group.provider.displayName }}</h3>
             <span class="ai-settings__pill" [class.ai-settings__pill--local]="group.provider.locality === 'Local'"

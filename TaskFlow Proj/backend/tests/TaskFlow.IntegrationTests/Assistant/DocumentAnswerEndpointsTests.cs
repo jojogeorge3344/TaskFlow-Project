@@ -51,9 +51,9 @@ public class DocumentAnswerEndpointsTests : IClassFixture<DocumentKnowledgeFacto
         {
             providers = new object[]
             {
-                new { kind = "Ollama", isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
-                new { kind = "Gemini", isEnabled = false, modelName = "gemini-2.0-flash" },
-                new { kind = "OpenAI", isEnabled = false, modelName = "gpt-4o-mini" }
+                new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
+                new { providerId = _factory.ProviderId(AiApiType.Gemini), isEnabled = false, modelName = "gemini-2.0-flash" },
+                new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = false, modelName = "gpt-4o-mini" }
             }
         }));
         response.EnsureSuccessStatusCode();
@@ -64,17 +64,17 @@ public class DocumentAnswerEndpointsTests : IClassFixture<DocumentKnowledgeFacto
     {
         await ConfigureOllamaAsync();
         Assert.True(await _factory.Services.GetRequiredService<DocumentIndexerService>().RunOnceAsync());
-        _factory.Providers[AiProviderKind.Ollama].Handler = (_, _) => ChatModelResult.FromText("The assignee and the task's creator.");
+        _factory.Providers[AiApiType.Ollama].Handler = (_, _) => ChatModelResult.FromText("The assignee and the task's creator.");
         var (client, token) = await SignInAsync(_factory, SystemRoles.Employee);
 
         var sent = await SendAsync(client, HttpMethod.Post, $"{Base}/conversation/messages", token,
-            JsonContent.Create(new { text = "who receives the overdue reminder?", provider = "Ollama" }));
+            JsonContent.Create(new { text = "who receives the overdue reminder?", providerId = _factory.ProviderId(AiApiType.Ollama) }));
         sent.EnsureSuccessStatusCode();
         using var reply = JsonDocument.Parse(await sent.Content.ReadAsStringAsync());
         var reloaded = await SendAsync(client, HttpMethod.Get, $"{Base}/conversation", token);
         using var conversation = JsonDocument.Parse(await reloaded.Content.ReadAsStringAsync());
 
-        var prompt = _factory.Providers[AiProviderKind.Ollama].Calls.Single().Request.SystemPrompt;
+        var prompt = _factory.Providers[AiApiType.Ollama].Calls.Single().Request.SystemPrompt;
         Assert.Contains("[1] FRD – Reminders › 4.2 Overdue reminder", prompt);
         Assert.Contains("sent to the assignee and the task's creator", prompt);
         Assert.DoesNotContain("Compose screen", prompt);

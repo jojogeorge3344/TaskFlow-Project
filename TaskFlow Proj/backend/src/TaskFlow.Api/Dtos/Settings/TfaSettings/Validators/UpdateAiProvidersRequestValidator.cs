@@ -10,7 +10,7 @@ public class UpdateAiProvidersRequestValidator : AbstractValidator<UpdateAiProvi
     {
         RuleFor(request => request.Providers)
             .NotNull().WithMessage("Providers are required.")
-            .Must(providers => providers is null || providers.Select(p => p.Kind).Distinct().Count() == providers.Count)
+            .Must(providers => providers is null || providers.Select(p => p.ProviderId).Distinct().Count() == providers.Count)
             .WithMessage("Each provider can only appear once.");
 
         RuleForEach(request => request.Providers).SetValidator(new UpdateAiProviderRequestValidator());
@@ -21,7 +21,7 @@ public class UpdateAiProviderRequestValidator : AbstractValidator<UpdateAiProvid
 {
     public UpdateAiProviderRequestValidator()
     {
-        RuleFor(provider => provider.Kind).NotNull().IsInEnum();
+        RuleFor(provider => provider.ProviderId).NotNull().GreaterThan(0);
         RuleFor(provider => provider.IsEnabled).NotNull();
 
         RuleFor(provider => provider.ModelName)

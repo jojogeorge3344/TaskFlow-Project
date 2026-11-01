@@ -29,8 +29,8 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var get = await SendAsync(client, HttpMethod.Get, $"{Base}/config", token);
         var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", token, JsonContent.Create(new { providers = Array.Empty<object>() }));
-        var test = await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/test", token);
-        var remove = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=phi3", token);
+        var test = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/test", token);
+        var remove = await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models?name=phi3", token);
 
         Assert.Equal(HttpStatusCode.Forbidden, get.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
@@ -59,8 +59,8 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         {
             providers = new object[]
             {
-                new { kind = "Ollama", isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
-                new { kind = "OpenAI", isEnabled = true, modelName = "gpt-4o-mini", apiKey = key }
+                new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "llama3.1:8b", baseUrl = "http://localhost:11434" },
+                new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = true, modelName = "gpt-4o-mini", apiKey = key }
             }
         }));
         var putBody = await put.Content.ReadAsStringAsync();
@@ -79,7 +79,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         using (var config = JsonDocument.Parse(adminBody))
         {
-            var openAi = config.RootElement.EnumerateArray().Single(p => p.GetProperty("kind").GetString() == "OpenAI");
+            var openAi = config.RootElement.EnumerateArray().Single(p => p.GetProperty("apiType").GetString() == "OpenAI");
             Assert.True(openAi.GetProperty("keySet").GetBoolean());
             Assert.Equal("4321", openAi.GetProperty("keyLast4").GetString());
             Assert.True(openAi.GetProperty("isConfigured").GetBoolean());
@@ -87,9 +87,9 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         using (var available = JsonDocument.Parse(userBody))
         {
-            var kinds = available.RootElement.EnumerateArray().Select(p => p.GetProperty("kind").GetString()).ToList();
+            var kinds = available.RootElement.EnumerateArray().Select(p => p.GetProperty("displayName").GetString()).ToList();
             Assert.Contains("Ollama", kinds);
-            Assert.Contains("OpenAI", kinds);
+            Assert.Contains("OpenAI GPT", kinds);
         }
 
         Assert.DoesNotContain(_factory.Logs.Lines, line => line.Contains("INTEGRATIONSECRET"));
@@ -103,12 +103,12 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var put = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
-            providers = new object[] { new { kind = "OpenAI", isEnabled = true, modelName = "gpt-4o-mini", apiKey = "sk-proj-DPAPITESTKEY-5555" } }
+            providers = new object[] { new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = true, modelName = "gpt-4o-mini", apiKey = "sk-proj-DPAPITESTKEY-5555" } }
         }));
         var config = await JsonOf(await SendAsync(client, HttpMethod.Get, $"{Base}/config", admin));
 
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-        Assert.True(config.EnumerateArray().Single(p => p.GetProperty("kind").GetString() == "OpenAI").GetProperty("isConfigured").GetBoolean());
+        Assert.True(config.EnumerateArray().Single(p => p.GetProperty("apiType").GetString() == "OpenAI").GetProperty("isConfigured").GetBoolean());
         var keyFiles = Directory.GetFiles(_factory.KeyRingPath, "key-*.xml");
         Assert.NotEmpty(keyFiles);
         foreach (var file in keyFiles)
@@ -130,7 +130,7 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
 
         var response = await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
-            providers = new object[] { new { kind = "Ollama", isEnabled = true, modelName = "", baseUrl = "ftp://x" } }
+            providers = new object[] { new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "", baseUrl = "ftp://x" } }
         }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -145,19 +145,19 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         {
             providers = new object[]
             {
-                new { kind = "Gemini", isEnabled = true, modelName = "gemini-2.0-flash", apiKey = "AIzaSyTestKey0001" },
-                new { kind = "OpenAI", isEnabled = false, modelName = "gpt-4o-mini" }
+                new { providerId = _factory.ProviderId(AiApiType.Gemini), isEnabled = true, modelName = "gemini-2.0-flash", apiKey = "AIzaSyTestKey0001" },
+                new { providerId = _factory.ProviderId(AiApiType.OpenAI), isEnabled = false, modelName = "gpt-4o-mini" }
             }
         }));
-        var gemini = _factory.Providers[AiProviderKind.Gemini];
+        var gemini = _factory.Providers[AiApiType.Gemini];
 
         gemini.Handler = (_, _) => ChatModelResult.FromText("OK");
-        var ok = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/Gemini/test", admin));
+        var ok = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/test", admin));
 
-        gemini.Handler = (_, _) => throw new ProviderFailureException(AiProviderKind.Gemini, ProviderFailureKind.RateLimited);
-        var limited = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/Gemini/test", admin));
+        gemini.Handler = (_, _) => throw new ProviderFailureException(AiApiType.Gemini, ProviderFailureKind.RateLimited);
+        var limited = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/test", admin));
 
-        var notConfigured = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/OpenAI/test", admin));
+        var notConfigured = await ReadAsync(await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.OpenAI)}/test", admin));
 
         Assert.True(ok.GetProperty("ok").GetBoolean());
         Assert.False(limited.GetProperty("ok").GetBoolean());
@@ -177,29 +177,29 @@ public class AssistantProviderEndpointsTests : IClassFixture<TaskFlowApiFactory>
         // Save "typo-model" as the Ollama model, then move Ollama to another model so "typo-model" is only in the list.
         await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
-            providers = new object[] { new { kind = "Ollama", isEnabled = true, modelName = "typo-model", baseUrl = "http://localhost:11434" } }
+            providers = new object[] { new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "typo-model", baseUrl = "http://localhost:11434" } }
         }));
 
-        var inUse = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin);
+        var inUse = await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models?name=typo-model", admin);
         Assert.Equal(HttpStatusCode.BadRequest, inUse.StatusCode);
 
         await SendAsync(client, HttpMethod.Put, $"{Base}/config", admin, JsonContent.Create(new
         {
-            providers = new object[] { new { kind = "Ollama", isEnabled = true, modelName = "llama3.2:3b", baseUrl = "http://localhost:11434" } }
+            providers = new object[] { new { providerId = _factory.ProviderId(AiApiType.Ollama), isEnabled = true, modelName = "llama3.2:3b", baseUrl = "http://localhost:11434" } }
         }));
 
-        var builtIn = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=llama3.1:8b", admin);
+        var builtIn = await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models?name=llama3.1:8b", admin);
         Assert.Equal(HttpStatusCode.BadRequest, builtIn.StatusCode);
 
-        var removed = await ReadAsync(await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin));
-        var ollama = removed.EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Ollama");
+        var removed = await ReadAsync(await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models?name=typo-model", admin));
+        var ollama = removed.EnumerateArray().Single(provider => provider.GetProperty("apiType").GetString() == "Ollama");
         Assert.DoesNotContain("typo-model", ollama.GetProperty("models").EnumerateArray().Select(model => model.GetString()));
         Assert.DoesNotContain("typo-model", ollama.GetProperty("customModels").EnumerateArray().Select(model => model.GetString()));
 
-        var gone = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models?name=typo-model", admin);
+        var gone = await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models?name=typo-model", admin);
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
 
-        var missingName = await SendAsync(client, HttpMethod.Delete, $"{Base}/Ollama/models", admin);
+        var missingName = await SendAsync(client, HttpMethod.Delete, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models", admin);
         Assert.Equal(HttpStatusCode.BadRequest, missingName.StatusCode);
     }
 

@@ -5,14 +5,14 @@ namespace TaskFlow.Api.Integrations.Ai.Registry;
 
 public class ChatModelProviderRegistry : IChatModelProviderRegistry
 {
-    private readonly IReadOnlyDictionary<AiProviderKind, IChatModelProvider> _providers;
+    private readonly IReadOnlyDictionary<AiApiType, IChatModelProvider> _providers;
 
     public ChatModelProviderRegistry(IEnumerable<IChatModelProvider> providers)
     {
-        _providers = providers.ToDictionary(provider => provider.Kind);
+        _providers = providers.ToDictionary(provider => provider.ApiType);
     }
 
-    public IChatModelProvider Get(AiProviderKind kind) =>
+    public IChatModelProvider Get(AiApiType kind) =>
         _providers.TryGetValue(kind, out var provider)
             ? provider
             : throw new InvalidOperationException($"No provider is registered for {kind}.");

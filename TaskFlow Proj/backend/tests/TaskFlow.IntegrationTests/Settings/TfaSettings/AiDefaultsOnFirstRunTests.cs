@@ -29,13 +29,13 @@ public class AiDefaultsOnFirstRunTests : IClassFixture<TaskFlowApiFactory>
         Assert.Equal(3, config.GetArrayLength());
         foreach (var provider in config.EnumerateArray())
         {
-            var kind = Enum.Parse<AiProviderKind>(provider.GetProperty("kind").GetString()!);
+            var kind = Enum.Parse<AiApiType>(provider.GetProperty("apiType").GetString()!);
             var models = provider.GetProperty("models").EnumerateArray().Select(model => model.GetString()!).ToList();
             Assert.Equal(AiProviderCatalog.BuiltInModels(kind), models);
             Assert.False(provider.GetProperty("keySet").GetBoolean());
         }
 
-        var ollama = config.EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Ollama");
+        var ollama = config.EnumerateArray().Single(provider => provider.GetProperty("apiType").GetString() == "Ollama");
         Assert.True(ollama.GetProperty("isEnabled").GetBoolean());
         Assert.True(ollama.GetProperty("isConfigured").GetBoolean());
         Assert.Equal("llama3.2:3b", ollama.GetProperty("modelName").GetString());
@@ -51,7 +51,7 @@ public class AiDefaultsOnFirstRunTests : IClassFixture<TaskFlowApiFactory>
         var available = await GetAsync(client, "/api/v1/assistant/providers", employee);
 
         var only = Assert.Single(available.EnumerateArray());
-        Assert.Equal("Ollama", only.GetProperty("kind").GetString());
+        Assert.Equal("Ollama", only.GetProperty("displayName").GetString());
     }
 
     private async System.Threading.Tasks.Task<string> LoginAsync(HttpClient client, string username, string role)

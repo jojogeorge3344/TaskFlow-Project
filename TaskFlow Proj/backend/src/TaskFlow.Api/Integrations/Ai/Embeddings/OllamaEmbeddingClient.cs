@@ -36,7 +36,7 @@ public class OllamaEmbeddingClient : IEmbeddingClient
             string text;
             try
             {
-                (response, text) = await ProviderHttp.SendAsync(_client, AiProviderKind.Ollama, ProviderHttp.Json(HttpMethod.Post, url, body), cancellationToken);
+                (response, text) = await ProviderHttp.SendAsync(_client, AiApiType.Ollama, ProviderHttp.Json(HttpMethod.Post, url, body), cancellationToken);
             }
             catch (ProviderFailureException failure)
             {

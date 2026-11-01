@@ -59,8 +59,8 @@ class FakeSynthesis implements SpeechSynthesisLike {
   }
 }
 
-const ollama: AiProviderOption = { kind: 'Ollama', displayName: 'Ollama', modelName: 'llama3.1:8b', locality: 'Local' };
-const gemini: AiProviderOption = { kind: 'Gemini', displayName: 'Google Gemini', modelName: 'gemini-2.0-flash', locality: 'Cloud' };
+const ollama: AiProviderOption = { providerId: 1, displayName: 'Ollama', modelName: 'llama3.1:8b', locality: 'Local' };
+const gemini: AiProviderOption = { providerId: 2, displayName: 'Google Gemini', modelName: 'gemini-2.0-flash', locality: 'Cloud' };
 
 function message(id: number, role: 'User' | 'Assistant', content: string, extra: Partial<AssistantMessage> = {}): AssistantMessage {
   return {
@@ -69,6 +69,7 @@ function message(id: number, role: 'User' | 'Assistant', content: string, extra:
     content,
     kind: 'Text',
     createdAt: '2026-10-19T09:00:00Z',
+    providerId: role === 'Assistant' ? 1 : null,
     provider: role === 'Assistant' ? 'Ollama' : null,
     links: [],
     rankedTasks: [],
@@ -230,7 +231,7 @@ describe('TfaPanelComponent', () => {
       expect(q('[data-locality]')!.textContent!.trim()).toBe('Local');
       type('hello');
       click('[data-action="send"]');
-      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body).toEqual({ text: 'hello', provider: 'Ollama' });
+      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body).toEqual({ text: 'hello', providerId: 1 });
     });
 
     it('says TFA is not available yet when no provider is configured, with no message box', async () => {
@@ -272,13 +273,13 @@ describe('TfaPanelComponent', () => {
     });
 
     it('lists the configured providers with Local and Cloud labels and switches without closing the chat', async () => {
-      localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify(['Gemini']));
+      localStorage.setItem(TFA_CLOUD_ACK_KEY, JSON.stringify([2]));
       await setup({ messages: [message(1, 'User', 'first'), message(2, 'Assistant', 'answer')] });
       click('[data-action="open-tfa"]');
 
       click('[data-action="model-selector"]');
       const options = Array.from(el().querySelectorAll<HTMLElement>('[role="option"]'));
-      expect(options.map((option) => option.dataset['option'])).toEqual(['Ollama', 'Gemini']);
+      expect(options.map((option) => option.dataset['option'])).toEqual(['1', '2']);
       expect(options[0].textContent).toContain('Local');
       expect(options[1].textContent).toContain('Cloud');
 
@@ -292,7 +293,7 @@ describe('TfaPanelComponent', () => {
 
       type('second question');
       click('[data-action="send"]');
-      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.provider).toBe('Gemini');
+      expect(http.expectOne('/api/v1/assistant/conversation/messages').request.body.providerId).toBe(2);
     });
   });
 
@@ -303,7 +304,7 @@ describe('TfaPanelComponent', () => {
       await setup();
       click('[data-action="open-tfa"]');
       click('[data-action="model-selector"]');
-      (el().querySelector('[data-option="Gemini"]') as HTMLElement).click();
+      (el().querySelector('[data-option="2"]') as HTMLElement).click();
       fixture.detectChanges();
 
       expect(q('[data-notice="cloud"]')!.textContent).toContain('Google Gemini is a cloud provider');
@@ -317,8 +318,8 @@ describe('TfaPanelComponent', () => {
 
       click('[data-action="acknowledge-cloud"]');
       const request = http.expectOne('/api/v1/assistant/conversation/messages');
-      expect(request.request.body).toEqual({ text: 'summarise my tasks', provider: 'Gemini' });
-      request.flush({ messages: [message(1, 'User', 'summarise my tasks'), message(2, 'Assistant', 'ok', { provider: 'Gemini' })], failure: null });
+      expect(request.request.body).toEqual({ text: 'summarise my tasks', providerId: 2 });
+      request.flush({ messages: [message(1, 'User', 'summarise my tasks'), message(2, 'Assistant', 'ok', { providerId: 2 })], failure: null });
       fixture.detectChanges();
 
       expect(q('[data-notice="cloud"]')).toBeNull();
@@ -331,7 +332,7 @@ describe('TfaPanelComponent', () => {
       await setup();
       click('[data-action="open-tfa"]');
       click('[data-action="model-selector"]');
-      (el().querySelector('[data-option="Gemini"]') as HTMLElement).click();
+      (el().querySelector('[data-option="2"]') as HTMLElement).click();
       fixture.detectChanges();
       type('keep this local');
       click('[data-action="send"]');
@@ -530,7 +531,8 @@ describe('TfaPanelComponent', () => {
         messages: [],
         failure: {
           kind: 'RateLimited',
-          provider: 'Ollama',
+          providerId: 1,
+          providerName: 'Ollama',
           message: 'Ollama is busy right now. Try again in about a minute, or choose another model.',
           retryAfterSeconds: null,
           alternatives: [gemini]
@@ -541,11 +543,11 @@ describe('TfaPanelComponent', () => {
       expect(q('[data-failure-kind]')!.textContent).toContain('RateLimited');
       expect(q('[data-failure-message]')!.textContent).toContain('choose another model');
       expect(q('[data-action="retry"]')).not.toBeNull();
-      expect(q('[data-action="use-Gemini"]')!.textContent).toContain('Cloud');
+      expect(q('[data-action="use-2"]')!.textContent).toContain('Cloud');
       expect(el().textContent).toContain('hello');
       http.expectNone('/api/v1/assistant/conversation/messages');
 
-      click('[data-action="use-Gemini"]');
+      click('[data-action="use-2"]');
       // Gemini is a Cloud provider, so the user is asked first: the message is held, not sent.
       http.expectNone('/api/v1/assistant/conversation/messages');
       expect(q('[data-notice="cloud"]')).not.toBeNull();
@@ -558,14 +560,14 @@ describe('TfaPanelComponent', () => {
       click('[data-action="send"]');
       http.expectOne('/api/v1/assistant/conversation/messages').flush({
         messages: [],
-        failure: { kind: 'Timeout', provider: 'Ollama', message: 'Ollama took too long.', retryAfterSeconds: null, alternatives: [] }
+        failure: { kind: 'Timeout', providerId: 1, providerName: 'Ollama', message: 'Ollama took too long.', retryAfterSeconds: null, alternatives: [] }
       });
       fixture.detectChanges();
 
       click('[data-action="retry"]');
 
       const retry = http.expectOne('/api/v1/assistant/conversation/messages');
-      expect(retry.request.body).toEqual({ text: 'hello', provider: 'Ollama' });
+      expect(retry.request.body).toEqual({ text: 'hello', providerId: 1 });
       retry.flush({ messages: [message(1, 'User', 'hello'), message(2, 'Assistant', 'hi')], failure: null });
     });
   });
@@ -755,7 +757,7 @@ describe('TfaPanelComponent', () => {
       afterPause();
       http.expectOne('/api/v1/assistant/conversation/messages').flush({
         messages: [],
-        failure: { kind: 'Timeout', provider: 'Ollama', message: 'Ollama took too long.', retryAfterSeconds: null, alternatives: [] }
+        failure: { kind: 'Timeout', providerId: 1, providerName: 'Ollama', message: 'Ollama took too long.', retryAfterSeconds: null, alternatives: [] }
       });
       fixture.detectChanges();
 

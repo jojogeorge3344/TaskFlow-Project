@@ -9,5 +9,5 @@ public interface IChatModelGateway
 {
     /// <exception cref="ProviderNotConfiguredException">The provider is not enabled and fully configured.</exception>
     /// <exception cref="ProviderFailureException">The call failed; the exception carries the classified kind.</exception>
-    Task<ChatModelResult> CompleteAsync(AiProviderKind kind, ChatModelRequest request, CancellationToken cancellationToken = default);
+    Task<ChatModelResult> CompleteAsync(int providerId, ChatModelRequest request, CancellationToken cancellationToken = default);
 }

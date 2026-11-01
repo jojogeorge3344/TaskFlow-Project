@@ -136,6 +136,10 @@
   background: #10a37f;
 }
 
+.tfa__menu .tfa__mi[data-provider='Custom'] {
+  background: #64748b;
+}
+
 .tfa__mt {
   flex: 1;
   min-width: 0;

@@ -26,7 +26,7 @@ public class DocumentEmbeddingEndpoint
         var baseUrl = _options.OllamaBaseUrl;
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            baseUrl = (await _providers.GetAsync(AiProviderKind.Ollama, cancellationToken))?.BaseUrl;
+            baseUrl = (await _providers.GetBuiltInAsync(AiApiType.Ollama, cancellationToken))?.BaseUrl;
         }
 
         return new EmbeddingEndpoint(

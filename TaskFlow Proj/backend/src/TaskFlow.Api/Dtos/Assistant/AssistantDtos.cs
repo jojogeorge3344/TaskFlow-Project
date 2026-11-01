@@ -37,7 +37,8 @@ public record AssistantMessageDto(
     string Content,
     AssistantMessageKind Kind,
     DateTime CreatedAt,
-    AiProviderKind? Provider,
+    int? ProviderId,
+    string? Provider,
     IReadOnlyList<AssistantLinkDto> Links,
     IReadOnlyList<PrioritisedTask> RankedTasks,
     AssistantPendingActionDto? Action,
@@ -48,7 +49,7 @@ public record AssistantConversationDto(int? ConversationId, IReadOnlyList<Assist
 /// <summary>The result of sending a message: the messages to append, or a classified provider failure.</summary>
 public record AssistantReplyDto(IReadOnlyList<AssistantMessageDto> Messages, AssistantFailureDto? Failure);
 
-public record SendAssistantMessageRequest(string? Text, AiProviderKind? Provider);
+public record SendAssistantMessageRequest(string? Text, int? ProviderId);
 
 /// <summary>What is stored in <c>AssistantMessage.MetaJson</c> so the panel can redraw a message after a reload.</summary>
 public record AssistantMessageMeta(

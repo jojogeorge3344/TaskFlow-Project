@@ -24,7 +24,7 @@ public class AiProviderConnectionTesterTests
     {
         var (tester, handler, _) = Create(new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"candidates":[{"content":{"parts":[{"text":"OK"}]}}]}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-2.5-flash-lite", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-2.5-flash-lite", null, Key));
 
         Assert.True(result.Ok);
         Assert.Null(result.FailureKind);
@@ -40,7 +40,7 @@ public class AiProviderConnectionTesterTests
     {
         var (tester, _, _) = Create(new FakeHttpHandler().Reply(status, body));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.OpenAI, "gpt-x", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.OpenAI, "gpt-x", null, Key));
 
         Assert.False(result.Ok);
         Assert.Equal(expected, result.FailureKind);
@@ -52,7 +52,7 @@ public class AiProviderConnectionTesterTests
     {
         var (tester, _, _) = Create(new FakeHttpHandler().Throw(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout")));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.OpenAI, "gpt-4o-mini", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.OpenAI, "gpt-4o-mini", null, Key));
 
         Assert.False(result.Ok);
         Assert.Equal(ProviderFailureKind.Timeout, result.FailureKind);
@@ -63,7 +63,7 @@ public class AiProviderConnectionTesterTests
     {
         var (tester, _, logger) = Create(new FakeHttpHandler().Reply(HttpStatusCode.Unauthorized, """{"error":{"message":"bad key AIzaSyCandidateKey9876"}}"""));
 
-        await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-2.5-flash", null, Key));
+        await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-2.5-flash", null, Key));
 
         Assert.NotEmpty(logger.Messages);
         Assert.All(logger.Messages, message => Assert.DoesNotContain(Key, message));
@@ -75,7 +75,7 @@ public class AiProviderConnectionTesterTests
         var (tester, _, logger) = Create(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest,
             """{"error":{"code":400,"status":"FAILED_PRECONDITION","message":"User location is not supported for the API use."}}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-3.8-flash", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-3.8-flash", null, Key));
 
         Assert.False(result.Ok);
         Assert.Equal(ProviderFailureKind.Unexpected, result.FailureKind);
@@ -90,7 +90,7 @@ public class AiProviderConnectionTesterTests
         var (tester, _, _) = Create(new FakeHttpHandler().Reply(HttpStatusCode.NotFound,
             """{"error":{"code":404,"status":"NOT_FOUND","message":"This model models/gemini-2.0-flash is no longer available. Please update your code to use models/gemini-3.8-flash."}}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-2.0-flash", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-2.0-flash", null, Key));
 
         Assert.Equal(ProviderFailureKind.ModelUnavailable, result.FailureKind);
         Assert.Contains("not available on Google Gemini", result.Message);
@@ -103,7 +103,7 @@ public class AiProviderConnectionTesterTests
         var (tester, _, _) = Create(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest,
             """{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"* GenerateContentRequest.model: unexpected model name format\n"}}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "Gemini_TF_AI", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "Gemini_TF_AI", null, Key));
 
         Assert.False(result.Ok);
         Assert.Equal(ProviderFailureKind.InvalidModelName, result.FailureKind);
@@ -117,7 +117,7 @@ public class AiProviderConnectionTesterTests
         var (tester, _, logger) = Create(new FakeHttpHandler().Reply(HttpStatusCode.BadRequest,
             $$$"""{"error":{"status":"FAILED_PRECONDITION","message":"Project for {{{Key}}} is suspended"}}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-3.8-flash", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-3.8-flash", null, Key));
 
         Assert.Contains("Project for [key] is suspended", result.Message);
         Assert.DoesNotContain(Key, result.Message);
@@ -130,7 +130,7 @@ public class AiProviderConnectionTesterTests
         var (tester, _, _) = Create(new FakeHttpHandler().Reply(HttpStatusCode.Forbidden,
             """{"error":{"status":"PERMISSION_DENIED","message":"denied"}}"""));
 
-        var result = await tester.TestCandidateAsync(new AiProviderRuntime(AiProviderKind.Gemini, "gemini-3.8-flash", null, Key));
+        var result = await tester.TestCandidateAsync(AiTestProviders.Runtime(AiApiType.Gemini, "gemini-3.8-flash", null, Key));
 
         Assert.Equal(ProviderFailureKind.InvalidKey, result.FailureKind);
         Assert.DoesNotContain("said:", result.Message);
@@ -138,7 +138,7 @@ public class AiProviderConnectionTesterTests
 
     private sealed class UnusedGateway : IChatModelGateway
     {
-        public Task<ChatModelResult> CompleteAsync(AiProviderKind kind, ChatModelRequest request, CancellationToken cancellationToken = default) =>
+        public Task<ChatModelResult> CompleteAsync(int providerId, ChatModelRequest request, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("A candidate test must not use the saved settings.");
     }
 }

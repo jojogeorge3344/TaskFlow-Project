@@ -33,18 +33,18 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "list-use-admin", SystemRoles.Administrator);
         await AddGeminiModelAsync(client, admin, "gemini-use-me");
-        await ClearKeyAsync(AiProviderKind.OpenAI);
+        await ClearKeyAsync(AiApiType.OpenAI);
 
-        var use = await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/models/use", admin, new { modelName = "llama3.2:3b" });
-        var noKey = await SendAsync(client, HttpMethod.Post, $"{Base}/OpenAI/models/use", admin, new { modelName = "gpt-4o-mini" });
-        var unknown = await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/models/use", admin, new { modelName = "never-added" });
+        var use = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models/use", admin, new { modelName = "llama3.2:3b" });
+        var noKey = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.OpenAI)}/models/use", admin, new { modelName = "gpt-4o-mini" });
+        var unknown = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models/use", admin, new { modelName = "never-added" });
 
         Assert.Equal(HttpStatusCode.OK, use.StatusCode);
         using var providers = JsonDocument.Parse(await use.Content.ReadAsStringAsync());
-        var ollama = providers.RootElement.EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Ollama");
+        var ollama = providers.RootElement.EnumerateArray().Single(provider => provider.GetProperty("apiType").GetString() == "Ollama");
         Assert.True(ollama.GetProperty("isEnabled").GetBoolean());
         Assert.Equal("llama3.2:3b", ollama.GetProperty("modelName").GetString());
-        var gemini = providers.RootElement.EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Gemini");
+        var gemini = providers.RootElement.EnumerateArray().Single(provider => provider.GetProperty("apiType").GetString() == "Gemini");
         Assert.False(gemini.GetProperty("isEnabled").GetBoolean());
         Assert.True(gemini.GetProperty("keySet").GetBoolean());
 
@@ -60,7 +60,7 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var role = await AddCustomRoleAsync("AI viewers", PermissionKeys.SettingsAiView);
         var viewer = await LoginInRoleAsync(client, "list-use-viewer", role.Id);
 
-        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/models/use", viewer, new { modelName = "llama3.2:3b" });
+        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models/use", viewer, new { modelName = "llama3.2:3b" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -71,9 +71,9 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "list-test-admin", SystemRoles.Administrator);
         await AddGeminiModelAsync(client, admin, "gemini-test-me");
-        await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/models/use", admin, new { modelName = "llama3.2:3b" });
+        await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models/use", admin, new { modelName = "llama3.2:3b" });
         var before = await ReadConfigAsync(client, admin);
-        var gemini = _factory.Providers[AiProviderKind.Gemini];
+        var gemini = _factory.Providers[AiApiType.Gemini];
         AiProviderRuntime? sent = null;
         gemini.Handler = (runtime, _) =>
         {
@@ -81,7 +81,7 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
             return ChatModelResult.FromText("OK");
         };
 
-        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/Gemini/test", admin, new { modelName = "gemini-test-me" });
+        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/test", admin, new { modelName = "gemini-test-me" });
         gemini.Reset();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -99,10 +99,10 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var admin = await LoginAsync(client, "list-edit-admin", SystemRoles.Administrator);
         await AddGeminiModelAsync(client, admin, "gemini-edit-me");
 
-        var inUse = await SendAsync(client, HttpMethod.Put, $"{Base}/Gemini/models?name=gemini-edit-me", admin, new { modelName = "gemini-edited" });
-        await SendAsync(client, HttpMethod.Post, $"{Base}/Ollama/models/use", admin, new { modelName = "llama3.2:3b" });
-        var builtIn = await SendAsync(client, HttpMethod.Put, $"{Base}/Gemini/models?name=gemini-3.8-flash", admin, new { modelName = "gemini-3.9-flash" });
-        var edit = await SendAsync(client, HttpMethod.Put, $"{Base}/Gemini/models?name=gemini-edit-me", admin, new { modelName = "gemini-edited", apiKey = key });
+        var inUse = await SendAsync(client, HttpMethod.Put, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/models?name=gemini-edit-me", admin, new { modelName = "gemini-edited" });
+        await SendAsync(client, HttpMethod.Post, $"{Base}/{_factory.ProviderId(AiApiType.Ollama)}/models/use", admin, new { modelName = "llama3.2:3b" });
+        var builtIn = await SendAsync(client, HttpMethod.Put, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/models?name=gemini-3.8-flash", admin, new { modelName = "gemini-3.9-flash" });
+        var edit = await SendAsync(client, HttpMethod.Put, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/models?name=gemini-edit-me", admin, new { modelName = "gemini-edited", apiKey = key });
         var body = await edit.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.BadRequest, inUse.StatusCode);
@@ -112,7 +112,7 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         Assert.DoesNotContain("EDITMODELSECRET", body);
         using var result = JsonDocument.Parse(body);
         Assert.True(result.RootElement.GetProperty("ok").GetBoolean());
-        var gemini = result.RootElement.GetProperty("providers").EnumerateArray().Single(provider => provider.GetProperty("kind").GetString() == "Gemini");
+        var gemini = result.RootElement.GetProperty("providers").EnumerateArray().Single(provider => provider.GetProperty("apiType").GetString() == "Gemini");
         var models = gemini.GetProperty("models").EnumerateArray().Select(model => model.GetString()).ToList();
         Assert.Contains("gemini-edited", models);
         Assert.DoesNotContain("gemini-edit-me", models);
@@ -127,7 +127,7 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var role = await AddCustomRoleAsync("AI edit only", PermissionKeys.SettingsAiView, PermissionKeys.SettingsAiEdit);
         var editorOnly = await LoginInRoleAsync(client, "list-edit-editor", role.Id);
 
-        var response = await SendAsync(client, HttpMethod.Put, $"{Base}/Gemini/models?name=gemini-anything", editorOnly, new { modelName = "gemini-other" });
+        var response = await SendAsync(client, HttpMethod.Put, $"{Base}/{_factory.ProviderId(AiApiType.Gemini)}/models?name=gemini-anything", editorOnly, new { modelName = "gemini-other" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -135,18 +135,18 @@ public class AiModelListEndpointsTests : IClassFixture<TaskFlowApiFactory>
     /// <summary>Adds a Gemini model through the Add AI model endpoint, which also makes it the one TFA uses.</summary>
     private async Task AddGeminiModelAsync(HttpClient client, string token, string name)
     {
-        var gemini = _factory.Providers[AiProviderKind.Gemini];
+        var gemini = _factory.Providers[AiApiType.Gemini];
         gemini.Handler = (_, _) => ChatModelResult.FromText("OK");
-        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/Gemini/models", token, new { modelName = name, apiKey = "AIzaSyListTestKey-1234" });
+        var response = await SendAsync(client, HttpMethod.Post, $"{Base}/models", token, new { providerId = _factory.ProviderId(AiApiType.Gemini), modelName = name, apiKey = "AIzaSyListTestKey-1234" });
         gemini.Reset();
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private async Task ClearKeyAsync(AiProviderKind kind)
+    private async Task ClearKeyAsync(AiApiType kind)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        foreach (var row in await db.AiProviderConfigs.Where(row => row.Kind == kind).ToListAsync())
+        foreach (var row in await db.AiProviderConfigs.Where(row => row.IsBuiltIn && row.ApiType == kind).ToListAsync())
         {
             row.EncryptedApiKey = null;
             row.KeyLast4 = null;

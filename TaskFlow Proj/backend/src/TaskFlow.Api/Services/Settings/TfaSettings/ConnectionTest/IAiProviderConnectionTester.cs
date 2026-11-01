@@ -9,7 +9,7 @@ namespace TaskFlow.Api.Services.Settings.TfaSettings.ConnectionTest;
 public interface IAiProviderConnectionTester
 {
     /// <summary>Tests the provider with its saved settings.</summary>
-    Task<AiProviderTestResultDto> TestAsync(AiProviderKind kind, CancellationToken cancellationToken = default);
+    Task<AiProviderTestResultDto> TestAsync(int providerId, CancellationToken cancellationToken = default);
 
     /// <summary>Tests values that are not saved (the Add AI model page). Nothing is read from or written to the database.</summary>
     Task<AiProviderTestResultDto> TestCandidateAsync(AiProviderRuntime runtime, CancellationToken cancellationToken = default);

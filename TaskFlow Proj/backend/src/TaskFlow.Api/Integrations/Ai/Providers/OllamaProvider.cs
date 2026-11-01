@@ -20,19 +20,19 @@ public partial class OllamaProvider : IChatModelProvider
         _contextTokens = (options?.Value ?? new AiProviderOptions()).OllamaContextTokens;
     }
 
-    public AiProviderKind Kind => AiProviderKind.Ollama;
+    public AiApiType ApiType => AiApiType.Ollama;
 
     public async Task<ChatModelResult> CompleteAsync(AiProviderRuntime runtime, ChatModelRequest request, CancellationToken cancellationToken = default)
     {
         var url = $"{(runtime.BaseUrl ?? AiProviderCatalog.DefaultOllamaBaseUrl).TrimEnd('/')}/api/chat";
 
         var (response, body) = await ProviderHttp.SendAsync(
-            _client, Kind, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: true)), cancellationToken);
+            _client, ApiType, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: true)), cancellationToken);
 
         if (!response.IsSuccessStatusCode && request.Tools.Count > 0 && DoesNotSupportTools(body))
         {
             (response, body) = await ProviderHttp.SendAsync(
-                _client, Kind, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: false)), cancellationToken);
+                _client, ApiType, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: false)), cancellationToken);
         }
 
         if (!response.IsSuccessStatusCode)
@@ -55,7 +55,7 @@ public partial class OllamaProvider : IChatModelProvider
         }
 
         (response, body) = await ProviderHttp.SendAsync(
-            _client, Kind, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: false)), cancellationToken);
+            _client, ApiType, ProviderHttp.Json(HttpMethod.Post, url, BuildBody(request, includeTools: false)), cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw Classify(response, body);
@@ -160,7 +160,7 @@ public partial class OllamaProvider : IChatModelProvider
 
     private ChatModelResult Parse(string body)
     {
-        var root = ProviderHttp.ParseOrFail(Kind, body);
+        var root = ProviderHttp.ParseOrFail(ApiType, body);
         var message = root["message"];
         var text = message?["content"]?.GetValue<string>();
 
@@ -184,7 +184,7 @@ public partial class OllamaProvider : IChatModelProvider
 
         if (string.IsNullOrWhiteSpace(text) && calls.Count == 0)
         {
-            throw new ProviderFailureException(Kind, ProviderFailureKind.Unexpected);
+            throw new ProviderFailureException(ApiType, ProviderFailureKind.Unexpected);
         }
 
         return new ChatModelResult(string.IsNullOrWhiteSpace(text) ? null : text, calls);
@@ -204,7 +204,7 @@ public partial class OllamaProvider : IChatModelProvider
         };
 
         return new ProviderFailureException(
-            Kind, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
+            ApiType, kind, ProviderHttp.RetryAfter(response), httpStatus: (int)response.StatusCode,
             providerReason: ProviderHttp.Reason(null, error, null));
     }
 

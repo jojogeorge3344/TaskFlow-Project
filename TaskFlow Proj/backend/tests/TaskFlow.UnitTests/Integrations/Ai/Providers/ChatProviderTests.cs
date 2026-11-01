@@ -19,7 +19,7 @@ public class ChatProviderTests
 
     // ------------------------------------------------------------------ Ollama
 
-    private static AiProviderRuntime OllamaRuntime => new(AiProviderKind.Ollama, "llama3.1:8b", "http://localhost:11434", null);
+    private static AiProviderRuntime OllamaRuntime => AiTestProviders.Runtime(AiApiType.Ollama, "llama3.1:8b", "http://localhost:11434", null);
 
     [Fact]
     public async Task OllamaTextReplyRoundTrips()
@@ -178,7 +178,7 @@ public class ChatProviderTests
         var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(OllamaRuntime, Request(User("hi"))));
 
         Assert.Equal(ProviderFailureKind.Unreachable, failure.Kind);
-        Assert.Equal(AiProviderKind.Ollama, failure.Provider);
+        Assert.Equal(AiApiType.Ollama, failure.ApiType);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class ChatProviderTests
 
     // ------------------------------------------------------------------ Gemini
 
-    private static AiProviderRuntime GeminiRuntime => new(AiProviderKind.Gemini, "gemini-2.0-flash", null, "AIzaSyTestKey1234");
+    private static AiProviderRuntime GeminiRuntime => AiTestProviders.Runtime(AiApiType.Gemini, "gemini-2.0-flash", null, "AIzaSyTestKey1234");
 
     [Fact]
     public async Task GeminiTextReplyAndKeyHeader()
@@ -377,7 +377,7 @@ public class ChatProviderTests
 
     // ------------------------------------------------------------------ OpenAI
 
-    private static AiProviderRuntime OpenAiRuntime => new(AiProviderKind.OpenAI, "gpt-4o-mini", null, "sk-test-9999");
+    private static AiProviderRuntime OpenAiRuntime => AiTestProviders.Runtime(AiApiType.OpenAI, "gpt-4o-mini", null, "sk-test-9999");
 
     [Fact]
     public async Task OpenAiTextReplyAndBearerHeader()
@@ -394,6 +394,51 @@ public class ChatProviderTests
         Assert.Equal("sk-test-9999", request.Headers.Authorization.Parameter);
         Assert.DoesNotContain("sk-test-9999", body);
         Assert.Equal("prioritise_tasks", JsonNode.Parse(body)!["tools"]![0]!["function"]!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task ACustomOpenAiCompatibleProviderIsCalledAtItsOwnAddress()
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"choices":[{"message":{"role":"assistant","content":"Hi"}}]}""");
+        var provider = new OpenAiProvider(new HttpClient(handler));
+        var groq = new AiProviderRuntime(7, AiApiType.OpenAI, "Groq", false, "llama-3.3-70b-versatile", "https://api.groq.com/openai/v1/", "gsk-test-1234");
+
+        await provider.CompleteAsync(groq, Request(User("hi")));
+
+        var (request, body) = Assert.Single(handler.Sent);
+        Assert.Equal("https://api.groq.com/openai/v1/chat/completions", request.RequestUri!.ToString());
+        Assert.Equal("gsk-test-1234", request.Headers.Authorization!.Parameter);
+    }
+
+    [Fact]
+    public async Task ALocalServerWithoutAKeyGetsNoAuthorizationHeader()
+    {
+        var handler = new FakeHttpHandler().Reply(HttpStatusCode.OK, """{"choices":[{"message":{"role":"assistant","content":"Hi"}}]}""");
+        var provider = new OpenAiProvider(new HttpClient(handler));
+        var lmStudio = new AiProviderRuntime(8, AiApiType.OpenAI, "LM Studio", true, "qwen2.5-7b-instruct", "http://localhost:1234/v1", null);
+
+        await provider.CompleteAsync(lmStudio, Request(User("hi")));
+
+        var (request, _) = Assert.Single(handler.Sent);
+        Assert.Equal("http://localhost:1234/v1/chat/completions", request.RequestUri!.ToString());
+        Assert.Null(request.Headers.Authorization);
+    }
+
+    [Fact]
+    public async Task AServerThatRejectsToolsIsAskedAgainWithoutThem()
+    {
+        var handler = new FakeHttpHandler()
+            .Reply(HttpStatusCode.BadRequest, """{"error":{"message":"This model does not support tools"}}""")
+            .Reply(HttpStatusCode.OK, """{"choices":[{"message":{"role":"assistant","content":"Plain answer"}}]}""");
+        var provider = new OpenAiProvider(new HttpClient(handler));
+        var custom = new AiProviderRuntime(9, AiApiType.OpenAI, "vLLM", true, "mistral-7b", "http://gpu-box:8000/v1", null);
+
+        var result = await provider.CompleteAsync(custom, Request(User("hi")));
+
+        Assert.Equal("Plain answer", result.Text);
+        Assert.Equal(2, handler.Sent.Count);
+        Assert.NotNull(JsonNode.Parse(handler.Sent[0].Body)!["tools"]);
+        Assert.Null(JsonNode.Parse(handler.Sent[1].Body)!["tools"]);
     }
 
     [Fact]
@@ -475,8 +520,8 @@ public class ChatProviderTests
         var client = new HttpClient(new FakeHttpHandler());
         var registry = new ChatModelProviderRegistry([new OllamaProvider(client), new GeminiProvider(client)]);
 
-        Assert.IsType<OllamaProvider>(registry.Get(AiProviderKind.Ollama));
-        Assert.IsType<GeminiProvider>(registry.Get(AiProviderKind.Gemini));
-        Assert.Throws<InvalidOperationException>(() => registry.Get(AiProviderKind.OpenAI));
+        Assert.IsType<OllamaProvider>(registry.Get(AiApiType.Ollama));
+        Assert.IsType<GeminiProvider>(registry.Get(AiApiType.Gemini));
+        Assert.Throws<InvalidOperationException>(() => registry.Get(AiApiType.OpenAI));
     }
 }

@@ -127,7 +127,7 @@ describe('app routes', () => {
       'settings/reminders',
       'settings/application',
       'settings/tfa',
-      'settings/tfa/models/:kind/:name/edit',
+      'settings/tfa/models/:providerId/:name/edit',
       'settings/tfa/models/new',
       'settings/permissions',
       'profile',
@@ -223,7 +223,7 @@ describe('app routes', () => {
   });
 
   it('protects the Edit AI model page like the Add AI model page', async () => {
-    const route = childRoute('settings/tfa/models/:kind/:name/edit');
+    const route = childRoute('settings/tfa/models/:providerId/:name/edit');
     expect(route.canActivate).toEqual([permissionGuard]);
     expect(route.data?.['permissions']).toEqual([Permissions.SettingsAiEdit]);
     expect(await load(route)).toBe(AddAiModelComponent);

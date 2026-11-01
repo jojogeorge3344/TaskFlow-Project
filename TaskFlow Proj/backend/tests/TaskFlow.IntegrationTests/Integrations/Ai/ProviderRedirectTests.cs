@@ -65,7 +65,7 @@ public class ProviderRedirectTests : IClassFixture<TaskFlowApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var provider = scope.ServiceProvider.GetRequiredService<OllamaProvider>();
-        var runtime = new AiProviderRuntime(AiProviderKind.Ollama, "llama3.2:3b", $"http://localhost:{redirectPort}", null);
+        var runtime = new AiProviderRuntime(1, AiApiType.Ollama, "Ollama", true, "llama3.2:3b", $"http://localhost:{redirectPort}", null);
         var request = new ChatModelRequest("sys", [new ChatMessage(AssistantMessageRole.User, "hi")], [], "llama3.2:3b");
 
         var failure = await Assert.ThrowsAsync<ProviderFailureException>(() => provider.CompleteAsync(runtime, request));

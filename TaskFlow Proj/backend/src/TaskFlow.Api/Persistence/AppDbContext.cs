@@ -549,19 +549,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AiProviderConfig>(entity =>
         {
             entity.HasKey(config => config.Id);
-            entity.Property(config => config.Kind).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.Name).IsRequired().HasMaxLength(40).UseCollation("NOCASE");
+            entity.Property(config => config.ApiType).HasConversion<string>().HasMaxLength(16);
+            entity.Property(config => config.Locality).IsRequired().HasMaxLength(8);
             entity.Property(config => config.ModelName).IsRequired().HasMaxLength(100);
             entity.Property(config => config.BaseUrl).HasMaxLength(300);
             entity.Property(config => config.KeyLast4).HasMaxLength(4);
-            entity.HasIndex(config => config.Kind).IsUnique();
+            entity.HasIndex(config => config.Name).IsUnique();
         });
 
         modelBuilder.Entity<AiModel>(entity =>
         {
             entity.HasKey(model => model.Id);
-            entity.Property(model => model.Kind).HasConversion<string>().HasMaxLength(16);
             entity.Property(model => model.Name).IsRequired().HasMaxLength(100);
-            entity.HasIndex(model => new { model.Kind, model.Name }).IsUnique();
+            entity.HasIndex(model => new { model.ProviderId, model.Name }).IsUnique();
+
+            entity
+                .HasOne(model => model.Provider)
+                .WithMany(provider => provider.Models)
+                .HasForeignKey(model => model.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AssistantConversation>(entity =>
@@ -580,9 +587,14 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(message => message.Id);
             entity.Property(message => message.Role).HasConversion<string>().HasMaxLength(16);
-            entity.Property(message => message.ProviderKind).HasConversion<string>().HasMaxLength(16);
             entity.Property(message => message.Content).IsRequired();
             entity.HasIndex(message => message.ConversationId);
+
+            entity
+                .HasOne(message => message.Provider)
+                .WithMany()
+                .HasForeignKey(message => message.ProviderId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity
                 .HasOne(message => message.Conversation)

@@ -47,7 +47,7 @@ public class AssistantDocumentPromptTests
         await using var h = await AssistantServiceHarness.CreateAsync();
         h.Documents.Result = DocumentContext.Unavailable(DocumentUnavailableReason.CannotSearch);
 
-        await h.SendAsync(h.Asha, "who receives the overdue reminder?", Api.Models.Enums.AiProviderKind.Gemini);
+        await h.SendAsync(h.Asha, "who receives the overdue reminder?", Api.Models.Enums.AiApiType.Gemini);
 
         var prompt = h.Gateway.Calls.Single().Request.SystemPrompt;
         Assert.Contains(AssistantPrompt.UnavailableRule, prompt);

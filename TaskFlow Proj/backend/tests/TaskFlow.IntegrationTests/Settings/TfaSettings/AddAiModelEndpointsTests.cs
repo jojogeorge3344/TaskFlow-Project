@@ -32,7 +32,7 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
         const string key = "AIzaSyADDMODELSECRET-7788";
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "add-model-admin", SystemRoles.Administrator);
-        var gemini = _factory.Providers[AiProviderKind.Gemini];
+        var gemini = _factory.Providers[AiApiType.Gemini];
         AiProviderRuntime? sent = null;
         gemini.Handler = (runtime, _) =>
         {
@@ -40,7 +40,7 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
             return ChatModelResult.FromText("OK");
         };
 
-        var response = await SendAsync(client, $"{Base}/Gemini/models", admin, new { modelName = "gemini-2.5-flash-lite", apiKey = key });
+        var response = await SendAsync(client, $"{Base}/models", admin, new { providerId = _factory.ProviderId(AiApiType.Gemini), modelName = "gemini-2.5-flash-lite", apiKey = key });
         var body = await response.Content.ReadAsStringAsync();
         gemini.Reset();
 
@@ -53,11 +53,11 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
         using var result = JsonDocument.Parse(body);
         Assert.True(result.RootElement.GetProperty("ok").GetBoolean());
         var providers = result.RootElement.GetProperty("providers").EnumerateArray().ToList();
-        var saved = providers.Single(provider => provider.GetProperty("kind").GetString() == "Gemini");
+        var saved = providers.Single(provider => provider.GetProperty("apiType").GetString() == "Gemini");
         Assert.True(saved.GetProperty("isEnabled").GetBoolean());
         Assert.Equal("gemini-2.5-flash-lite", saved.GetProperty("modelName").GetString());
         Assert.Equal("7788", saved.GetProperty("keyLast4").GetString());
-        Assert.All(providers.Where(provider => provider.GetProperty("kind").GetString() != "Gemini"),
+        Assert.All(providers.Where(provider => provider.GetProperty("apiType").GetString() != "Gemini"),
             provider => Assert.False(provider.GetProperty("isEnabled").GetBoolean()));
     }
 
@@ -67,10 +67,10 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "add-model-admin-fail", SystemRoles.Administrator);
         var before = await ReadConfigAsync(client, admin);
-        var openAi = _factory.Providers[AiProviderKind.OpenAI];
-        openAi.Handler = (_, _) => throw new ProviderFailureException(AiProviderKind.OpenAI, ProviderFailureKind.InvalidKey);
+        var openAi = _factory.Providers[AiApiType.OpenAI];
+        openAi.Handler = (_, _) => throw new ProviderFailureException(AiApiType.OpenAI, ProviderFailureKind.InvalidKey);
 
-        var response = await SendAsync(client, $"{Base}/OpenAI/models", admin, new { modelName = "gpt-typo", apiKey = "sk-wrong-0000" });
+        var response = await SendAsync(client, $"{Base}/models", admin, new { providerId = _factory.ProviderId(AiApiType.OpenAI), modelName = "gpt-typo", apiKey = "sk-wrong-0000" });
         openAi.Reset();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -87,14 +87,14 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var client = _factory.CreateClient();
         var admin = await LoginAsync(client, "add-model-admin-400", SystemRoles.Administrator);
 
-        var noName = await SendAsync(client, $"{Base}/Gemini/models", admin, new { modelName = "", apiKey = "AIzaSyKey" });
-        var noKey = await SendAsync(client, $"{Base}/OpenAI/models", admin, new { modelName = "gpt-4.1-mini" });
-        var badAddress = await SendAsync(client, $"{Base}/Ollama/models", admin, new { modelName = "phi3:mini", baseUrl = "http://169.254.169.254" });
+        var noName = await SendAsync(client, $"{Base}/models", admin, new { providerId = _factory.ProviderId(AiApiType.Gemini), modelName = "", apiKey = "AIzaSyKey" });
+        var noKey = await SendAsync(client, $"{Base}/models", admin, new { providerId = _factory.ProviderId(AiApiType.OpenAI), modelName = "gpt-4.1-mini" });
+        var badAddress = await SendAsync(client, $"{Base}/models", admin, new { providerId = _factory.ProviderId(AiApiType.Ollama), modelName = "phi3:mini", baseUrl = "http://169.254.169.254" });
 
         Assert.Equal(HttpStatusCode.BadRequest, noName.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, noKey.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, badAddress.StatusCode);
-        Assert.DoesNotContain(_factory.Providers[AiProviderKind.OpenAI].Calls, call => call.Request.ModelName == "gpt-4.1-mini");
+        Assert.DoesNotContain(_factory.Providers[AiApiType.OpenAI].Calls, call => call.Request.ModelName == "gpt-4.1-mini");
     }
 
     [Fact]
@@ -105,8 +105,8 @@ public class AddAiModelEndpointsTests : IClassFixture<TaskFlowApiFactory>
         var editorOnly = await LoginInRoleAsync(client, "add-model-editor", role.Id);
         var employee = await LoginAsync(client, "add-model-employee", SystemRoles.Employee);
 
-        var editor = await SendAsync(client, $"{Base}/Gemini/models", editorOnly, new { modelName = "gemini-2.5-pro", apiKey = "AIzaSyKey" });
-        var plain = await SendAsync(client, $"{Base}/Gemini/models", employee, new { modelName = "gemini-2.5-pro", apiKey = "AIzaSyKey" });
+        var editor = await SendAsync(client, $"{Base}/models", editorOnly, new { providerId = _factory.ProviderId(AiApiType.Gemini), modelName = "gemini-2.5-pro", apiKey = "AIzaSyKey" });
+        var plain = await SendAsync(client, $"{Base}/models", employee, new { providerId = _factory.ProviderId(AiApiType.Gemini), modelName = "gemini-2.5-pro", apiKey = "AIzaSyKey" });
 
         Assert.Equal(HttpStatusCode.Forbidden, editor.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, plain.StatusCode);
