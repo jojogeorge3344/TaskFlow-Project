@@ -38,13 +38,13 @@ describe('TfaMessageComponent sources', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows one chip per source with the document and the last heading, and the full path as the tooltip', () => {
+  it('does not show the sources of an answer that has them', () => {
     const element = render(
       answer({
         sources: [
           {
             document: 'FRD – Task Management',
-            section: '4. Functional Requirements by Module › 4.1 Module: Task Management (TASK) › 4.1.2 Screen: Create Task (and Copy Task)',
+            section: '4. Functional Requirements by Module › 4.1.2 Screen: Create Task (and Copy Task)',
             path: 'TF - FRD/02-TaskFlow-Monitoring/02.1-Task-Management/FRD-Task-Management.md'
           },
           { document: 'SCREEN 8: Create Task Screen', section: 'Functional Requirements', path: 'Screens Wise Feature Development Plan/08-create-task-screen.md' }
@@ -52,37 +52,9 @@ describe('TfaMessageComponent sources', () => {
       })
     );
 
-    const chips = Array.from(element.querySelectorAll<HTMLElement>('[data-source]'));
-    expect(chips.map((chip) => chip.textContent?.trim())).toEqual([
-      'FRD – Task Management › 4.1.2 Screen: Create Task (and Copy Task)',
-      'SCREEN 8: Create Task Screen › Functional Requirements'
-    ]);
-    expect(chips[0].title).toBe(
-      'FRD – Task Management › 4. Functional Requirements by Module › 4.1 Module: Task Management (TASK) › 4.1.2 Screen: Create Task (and Copy Task)\n'
-        + 'TF - FRD/02-TaskFlow-Monitoring/02.1-Task-Management/FRD-Task-Management.md'
-    );
-    expect(element.querySelector('[data-sources]')?.textContent).toContain('Sources');
-  });
-
-  it('shows only the document when the section is the document itself', () => {
-    const element = render(answer({ sources: [{ document: 'TaskFlow TDD', section: 'TaskFlow TDD', path: 'TF - TDD/TDD-TaskFlow.md' }] }));
-
-    expect(element.querySelector('[data-source]')?.textContent?.trim()).toBe('TaskFlow TDD');
-  });
-
-  it('shows nothing for an answer without sources', () => {
-    const element = render(answer());
-
     expect(element.querySelector('[data-sources]')).toBeNull();
     expect(element.querySelectorAll('[data-source]').length).toBe(0);
-  });
-
-  it('shows nothing for a message that arrived without a sources field', () => {
-    const legacy = answer();
-    delete (legacy as Partial<AssistantMessage>).sources;
-
-    const element = render(legacy);
-
-    expect(element.querySelector('[data-sources]')).toBeNull();
+    expect(element.textContent).not.toContain('Sources');
+    expect(element.textContent).toContain('The assignee and the task creator receive it.');
   });
 });

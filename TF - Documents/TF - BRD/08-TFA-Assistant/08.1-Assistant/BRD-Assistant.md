@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** Business Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Approved (v1.0 baseline); v1.1 and v1.2 changes recorded
+> **Document:** Business Requirements Document (sub-module 08.1 Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Approved (v1.0 baseline); v1.1 – v1.3 changes recorded
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > © 2026 Jojo George. All rights reserved.
@@ -20,6 +20,7 @@
 | 1.0 | 31-Oct-2026 | Jojo George | Editorial only: Related Documents paths updated to the `TF - Documents` folder layout; no requirement changed, sign-off unchanged. |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). How-to help from the 19 built-in help topics is withdrawn: SCREEN 2 becomes "Answers from TaskFlow documents"; REQ-TFA-18 – REQ-TFA-21 and AC-TFA-08 are superseded by REQ-TFA-46 – REQ-TFA-55 and AC-TFA-18 – AC-TFA-22; BR-TFA-07 reworded; BR-TFA-15 – BR-TFA-16, NFR-TFA-09 – NFR-TFA-12 and R-TFA-07 – R-TFA-08 added; cloud notice text, objectives, scope, workflows, data, integrations, deliverables and glossary updated. Every role may get answers from every document (owner decision). |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` (revised, design D13 and D14). The Document search card, **Re-index now** and the document status/re-index endpoints were removed from TFA Settings: the server still builds the document index at start-up and re-checks the folder every 5 minutes, re-processing only changed documents, and indexing problems (folder not found, embedding model unavailable, a document that could not be indexed) are written to the server log as warnings naming the folder or file. REQ-TFA-55 and NFR-TFA-10 no longer mention a manual re-index; REQ-TFA-56 and AC-TFA-23 added (no index screen or endpoint, problems logged); stakeholders, scope, integrations and RTM updated. Chat replies for an unexpected provider error keep the plain message; the provider's own reason is shown only on Test connection in TFA Settings (SCREEN 1 messages). |
+| 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-hide-answer-sources`. Answer sources are no longer shown in the TFA panel, for any role: they are still recorded with each answer and kept on reload. Updated §1, §2, §3, §4, SCREEN 2 (feed, elements), REQ-TFA-50, risks R-TFA-01 and R-TFA-08, AC-TFA-18, AC-TFA-21, the glossary and the conclusion. |
 
 ### Approvals / Sign-off
 
@@ -68,7 +69,7 @@
 ## 1. Project Overview
 
 ### 1.1 Introduction
-TFA (TaskFlow Assistant) is the AI assistant built into TaskFlow. It opens as a panel on the right of every signed-in screen. Users ask how TaskFlow works and get answers taken only from TaskFlow's own documents (requirements, design and screen specifications), with the sources shown, see their upcoming, due-today and overdue tasks, get a ranked "what to do first" list, and let TFA prepare a mail, a change to their own profile or (for administrators) a change to another user's role. TFA never acts on its own: every prepared action is shown on a card and happens only when the user clicks Confirm.
+TFA (TaskFlow Assistant) is the AI assistant built into TaskFlow. It opens as a panel on the right of every signed-in screen. Users ask how TaskFlow works and get answers taken only from TaskFlow's own documents (requirements, design and screen specifications), see their upcoming, due-today and overdue tasks, get a ranked "what to do first" list, and let TFA prepare a mail, a change to their own profile or (for administrators) a change to another user's role. TFA never acts on its own: every prepared action is shown on a card and happens only when the user clicks Confirm.
 
 ### 1.2 Business Problem / Current Situation
 Users who do not know a screen must search training material or ask a colleague. Deciding what to work on first means scanning the task list by hand, and routine mails such as "update my manager on task TSK-12" take time to address and write. A general-purpose AI chat outside TaskFlow would not know the user's tasks, could leak company data, and could invent features or act without permission.
@@ -81,11 +82,11 @@ Users who do not know a screen must search training material or ask a colleague.
 | OBJ-TFA-02 | Give a clear, repeatable work order | The same open tasks always produce the same ranked list, whichever AI model is used |
 | OBJ-TFA-03 | Save time on routine actions without losing control | A mail or own-profile change is prepared and carried out with one confirmation |
 | OBJ-TFA-04 | Keep the organisation safe | TFA never does more than the user may do, never accepts passwords or keys, and records every action outcome |
-| OBJ-TFA-05 | Give trustworthy answers about TaskFlow | Answers about TaskFlow's features, screens, rules and design come only from the TaskFlow documents, name their sources, and say so when the documents do not cover a question (v1.1; replaces "only from the 19 built-in help topics") |
+| OBJ-TFA-05 | Give trustworthy answers about TaskFlow | Answers about TaskFlow's features, screens, rules and design come only from the TaskFlow documents, record their sources, and say so when the documents do not cover a question (v1.1; replaces "only from the 19 built-in help topics") |
 | OBJ-TFA-06 | Allow hands-free use | In Chrome or Edge, "Hey TF assistant" opens TFA and answers are read aloud |
 
 ### 1.4 Expected Benefits
-- Less training effort; answers for every role taken from the same documents the project is built from, with sources to check them.
+- Less training effort; answers for every role taken from the same documents the project is built from.
 - Low cost for document answers: the documents are searched with Google Gemini using a free Google AI Studio key (the free tier has rate limits).
 - Faster daily planning through the ranked work order.
 - Faster routine communication with mail drafts addressed to "my manager".
@@ -128,7 +129,7 @@ Users who do not know a screen must search training material or ask a colleague.
 - Task answers: upcoming, due today, overdue, all open tasks; ranked "what to do first" list.
 - Action Cards: mail draft (editable), own profile update, role change; confirm and cancel.
 - Lookup and guidance: find a user, password guidance, "needs an administrator" guidance.
-- Answers about TaskFlow from the Markdown documents in the TaskFlow documents folder (BRD, FRD, HLD, LLD, TDD, screen specifications), with sources (v1.1; replaces the 19 built-in help topics).
+- Answers about TaskFlow from the Markdown documents in the TaskFlow documents folder (BRD, FRD, HLD, LLD, TDD, screen specifications), with their sources recorded but not shown (v1.1, v1.3; replaces the 19 built-in help topics).
 - Safeguards: password/API-key screen, 20-messages-per-minute limit, action audit log.
 - Voice input: wake phrase, dictation, answers read aloud (Chrome, Edge).
 
@@ -161,7 +162,7 @@ Users who do not know a screen must search training material or ask a colleague.
 | 2 | System | Shows the provider notice for the first message to each provider (cloud or local) | User clicks **I understand** or **Cancel** |
 | 3 | System | Checks length (1–2000) and screens for passwords or API keys | Unsafe message is neither sent nor stored |
 | 4 | System | Checks the 20-messages-per-minute limit | Over the limit → "too quickly" message |
-| 5 | System, AI provider | The system finds the TaskFlow document sections that match the question; the AI provider answers, using that text and up to 4 rounds of lookups (tasks, users) | Answer with sources, task links or a ranked list |
+| 5 | System, AI provider | The system finds the TaskFlow document sections that match the question; the AI provider answers, using that text and up to 4 rounds of lookups (tasks, users) | Answer with task links or a ranked list; sources recorded, not shown |
 | 6 | System | Saves the question and answer | Conversation can be reloaded later |
 
 ```mermaid
@@ -223,7 +224,7 @@ flowchart LR
 | 1 | User | Asks, e.g. "What validations apply when creating a task?" | – |
 | 2 | System | Finds the best-matching sections of the TaskFlow documents (a short follow-up such as "and for managers?" is searched together with the previous question) | Up to 5 sections passed to the AI as reference text |
 | 3 | AI provider | Answers only from those sections | No general knowledge, no invented features |
-| 4 | System | Shows the answer with its sources (document name and section) | Sources kept with the answer |
+| 4 | System | Shows the answer | Sources (document name and section) kept with the answer, not displayed (v1.3) |
 
 ```mermaid
 flowchart LR
@@ -232,11 +233,11 @@ flowchart LR
   B -- Yes --> D{"Matching sections?"}
   D -- No --> E["The documents do not cover it"]
   D -- Yes --> F{"Sections answer it?"}
-  F -- Yes --> G["Answer with sources"]
+  F -- Yes --> G["Answer from documents"]
   F -- No --> E
 ```
 
-**Example:** An Employee asks "Who receives the overdue reminder?". TFA answers with the recipients the reminder documents name, adds none they do not mention, and lists the document sections it was given under **Sources** (document title and section heading).
+**Example:** An Employee asks "Who receives the overdue reminder?". TFA answers with the recipients the reminder documents name, adds none they do not mention, The document sections it was given are recorded with the answer as its sources but are not shown (v1.3).
 
 **Exceptions / alternate flows:**
 - No section matches, or the sections do not answer the question → TFA says the TaskFlow documents do not cover it.
@@ -266,7 +267,7 @@ Let the user ask TFA questions and read its answers in a running conversation, f
 - Header: "TFA – TaskFlow Assistant", **New chat** (+), **Close** (×).
 - Model selector with **Local**/**Cloud** tag (menu opens only with 2 or more configured providers).
 - Provider notice (cloud or local provider) with **I understand** and **Cancel**.
-- Conversation feed: messages, "Permission required" bubble, notices, numbered ranked task list with tags (Overdue, Today, Tomorrow, `n` days, Blocked), screen link buttons, **Sources** under answers that used the TaskFlow documents (v1.1), provider name under each answer.
+- Conversation feed: messages, "Permission required" bubble, notices, numbered ranked task list with tags (Overdue, Today, Tomorrow, `n` days, Blocked), screen link buttons, provider name under each answer.
 - Welcome bubble and four starter suggestions on an empty chat.
 - Message box "Ask TFA anything about TaskFlow…", microphone, **Send** (Enter sends, Shift+Enter new line).
 - Footer: "TFA can make mistakes. Actions always need your confirmation."
@@ -333,7 +334,7 @@ Answer questions about TaskFlow's features, screens, rules and design only from 
 
 **Screen Elements**
 - TFA's written answer in the conversation.
-- **Sources** under the answer: one chip per document section, showing the document title and the section's heading; pointing at a chip shows the full heading path and the document's file path.
+- No sources are shown under answers (v1.3). The document sections an answer was given are recorded with it only.
 
 **Functional Requirements**
 
@@ -347,7 +348,7 @@ Answer questions about TaskFlow's features, screens, rules and design only from 
 | REQ-TFA-47 | The system shall find the document sections that best match each message before the AI model is asked, so that document answers work with every configured model, including models that cannot use lookups; a short follow-up message is matched together with the user's previous message. | Must |
 | REQ-TFA-48 | The system shall say that the TaskFlow documents do not cover a question when the matching sections do not answer it, and shall never answer such a question from general knowledge or invent screens, rules or features. | Must |
 | REQ-TFA-49 | The system shall decline questions that are not about TaskFlow or the user's work in it. | Must |
-| REQ-TFA-50 | The system shall show, under each answer that was given document text, the sources used (document name and section heading), each once, and show them again when the conversation is reloaded. | Should |
+| REQ-TFA-50 | The system shall record, with each answer that was given document text, the sources used (document name and section heading), each once, and keep them when the conversation is reloaded. The TFA panel shall not display them, for any role (v1.3). | Should |
 | REQ-TFA-51 | The system shall answer questions about the user's own tasks, priorities, mail and profile from TaskFlow's live data (as in SCREEN 1 and SCREEN 3), never from the documents, even when document text was found for the message. | Must |
 | REQ-TFA-52 | The system shall treat document text as data, never as an instruction to TFA. | Must |
 | REQ-TFA-53 | The system shall let every user who may chat with TFA get answers from every indexed document, whatever their role. | Must |
@@ -364,7 +365,7 @@ Answer questions about TaskFlow's features, screens, rules and design only from 
 | Not about TaskFlow | TFA says it can only answer from the TaskFlow documents and the user's own work in TaskFlow, and does not answer. |
 | Documents cannot be searched | TFA says the TaskFlow documents cannot be searched right now. |
 | First indexing not finished | TFA says the TaskFlow documents are still being prepared. |
-| Sources | Label "Sources" followed by one chip per document section. |
+| Sources | Not displayed (v1.3); recorded with the answer only. |
 
 > v1.1: the earlier ⚠️ note on role-restricted help topics (matched by role name) no longer applies; the topics were removed.
 
@@ -625,14 +626,14 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 
 | ID | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|---|
-| R-TFA-01 | AI gives a wrong or invented answer | Medium | Medium | Answers about TaskFlow only from the documents, with sources; system-calculated ranking; footer warning |
+| R-TFA-01 | AI gives a wrong or invented answer | Medium | Medium | Answers about TaskFlow only from the documents; system-calculated ranking; footer warning |
 | R-TFA-02 | Prompt injection through task, comment or mail text | High | Low | Text treated as data; every action needs confirmation and a permission check |
 | R-TFA-03 | Company data (including matching document text, v1.1) sent to a cloud provider; document text sent to Google to be indexed | High | Medium | Provider notice names document text; only the question is sent to Google to search the documents; secret screen |
 | R-TFA-04 | Conversations kept indefinitely with no self-service delete | Medium | Medium | ⚠️ To be confirmed: retention period or "delete my history" |
 | R-TFA-05 | Provider quota exhausted by one user | Medium | Low | 20 messages per user per minute |
 | R-TFA-06 | Help text out of step with built screens (password guidance) | Low | High | ⚠️ To be confirmed: align texts with My Profile (the help topics were removed in v1.1; the fixed password guidance remains) |
 | R-TFA-07 | Technical design documents (TDD, LLD) answered to every role | Medium | Medium | Accepted by the project owner (BR-TFA-15); limiting documents by role is a future enhancement |
-| R-TFA-08 | A small local model paraphrases loosely or misses a detail in long reference text | Medium | Medium | Small, labelled sections; reference text capped per message; sources shown so users can check; a larger model answers better |
+| R-TFA-08 | A small local model paraphrases loosely or misses a detail in long reference text | Medium | Medium | Small, labelled sections; reference text capped per message; sources recorded with each answer; a larger model answers better |
 
 ---
 
@@ -657,10 +658,10 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | AC-TFA-15 | "Turn off" is remembered after reload; no audio recording is stored by TaskFlow. | SCREEN 4, REQ-TFA-40, REQ-TFA-41 |
 | AC-TFA-16 | The 21st message within a minute gets the "too quickly" message. | SCREEN 5, REQ-TFA-42 |
 | AC-TFA-17 | Each prepared, confirmed, cancelled, expired, refused or failed action leaves one audit record without message text. | SCREEN 5, REQ-TFA-43, REQ-TFA-44, REQ-TFA-45 |
-| AC-TFA-18 | "What validations apply when creating a task?" is answered from the Create Task sections of the documents, with those sections listed under Sources, also when the chosen Ollama model cannot use lookups. | SCREEN 2, REQ-TFA-46, REQ-TFA-47, REQ-TFA-50 |
+| AC-TFA-18 | "What validations apply when creating a task?" is answered from the Create Task sections of the documents, with those sections recorded as its sources and no Sources row shown, also when the chosen Ollama model cannot use lookups. | SCREEN 2, REQ-TFA-46, REQ-TFA-47, REQ-TFA-50 |
 | AC-TFA-19 | A question the documents do not cover gets "the documents do not cover it"; "What is the capital of France?" is declined. | SCREEN 2, REQ-TFA-48, REQ-TFA-49 |
 | AC-TFA-20 | "Which of my tasks are overdue?" is answered from the user's own tasks even when document sections matched; an instruction written inside a document is not followed. | SCREEN 2, REQ-TFA-51, REQ-TFA-52 |
-| AC-TFA-21 | An Employee asking how the reminder scheduler works gets the answer from the technical documents; after reloading, earlier answers still show their sources. | SCREEN 2, REQ-TFA-50, REQ-TFA-53 |
+| AC-TFA-21 | An Employee asking how the reminder scheduler works gets the answer from the technical documents; after reloading, earlier answers show no Sources row. | SCREEN 2, REQ-TFA-50, REQ-TFA-53 |
 | AC-TFA-22 | With no Google Gemini API key saved, a documentation question gets "the documents cannot be searched right now" while task questions still work; an edited document is reflected after the next check without a restart. | SCREEN 2, REQ-TFA-54, REQ-TFA-55 |
 | AC-TFA-23 | With the documents folder missing, the server log has a warning naming the folder and TFA says the documents cannot be searched right now; TFA Settings shows no Document search card, and `GET api/v1/assistant/documents/status` and `POST api/v1/assistant/documents/reindex` answer 404 (v1.2). | SCREEN 2, REQ-TFA-56 |
 
@@ -707,12 +708,12 @@ _Not applicable for this sub-module._ The stack is recorded once in the overall 
 | Secret screen | The check that blocks messages that look like passwords or API keys |
 | TaskFlow documents | The Markdown documents (BRD, FRD, HLD, LLD, TDD, screen specifications) in the documents folder that TFA answers from |
 | Document index | The searchable form of the TaskFlow documents, kept in step with the folder automatically |
-| Source | A document name and section heading shown under an answer that used document text |
+| Source | A document name and section heading recorded with an answer that used document text; not shown in the panel (v1.3) |
 
 ---
 
 ## 18. Project Summary
-TFA brings an AI assistant into every TaskFlow screen without giving up control. Users ask how TaskFlow works and get answers only from TaskFlow's own documents, with their sources, see a system-calculated "what to do first" list, and have mails and own-profile changes prepared for one-click confirmation; administrators can also change roles from the chat. Every action is permission-checked twice, confirmed by the user, run once and audited, while passwords and keys never pass through the chat and the organisation chooses between local and cloud AI.
+TFA brings an AI assistant into every TaskFlow screen without giving up control. Users ask how TaskFlow works and get answers only from TaskFlow's own documents, see a system-calculated "what to do first" list, and have mails and own-profile changes prepared for one-click confirmation; administrators can also change roles from the chat. Every action is permission-checked twice, confirmed by the user, run once and audited, while passwords and keys never pass through the chat and the organisation chooses between local and cloud AI.
 
 ---
 <sub>© 2026 Jojo George. All rights reserved. Unauthorized copying or distribution of this document is prohibited.</sub>

@@ -2,7 +2,7 @@
 
 ## TaskFlow – Intelligent Task Allocation & Tracking System
 
-> **Document:** High-Level Design (Sub-module: TFA Assistant, code `TFA`)  ·  **Version:** 1.2  ·  **Status:** Draft
+> **Document:** High-Level Design (Sub-module: TFA Assistant, code `TFA`)  ·  **Version:** 1.3  ·  **Status:** Draft
 > **Project type:** Personal Project (Skill Development)  ·  **Date:** 01-Nov-2026
 > **Author:** Jojo George (jojogeorge3344@gmail.com)
 > **Based on:** BRD-Assistant v1.2, FRD-Assistant v1.2
@@ -17,6 +17,7 @@
 | 1.0 | 31-Oct-2026 | Jojo George | Initial version |
 | 1.1 | 31-Oct-2026 | Jojo George | TFA answers TaskFlow questions from the documents folder (OpenSpec change `tfa-document-rag`). Built-in help (`SearchHelpTool`, `HelpKnowledgeBase`, 19 embedded topics) replaced by document knowledge: background indexing of the Markdown documents, local embeddings on Ollama (`nomic-embed-text`), document index in SQLite, in-memory vector search before every model call, answer sources. Updated §1, §2, §3, §4, §5, §6, §7, §8 (new §8.5), §9, §10, §11, §12, §13 (D-TFA-5 superseded, D-TFA-11 – D-TFA-14 added), §14 and §15. |
 | 1.2 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-document-rag` revised (design D13, D14). The Document search card on TFA Settings, **Re-index now** and the endpoints `GET /api/v1/assistant/documents/status` and `POST /api/v1/assistant/documents/reindex` were removed, together with `DocumentIndexerService.RequestReindex()`; the indexer waits `RescanMinutes` between runs, keeps one run at a time, and logs indexing problems as warnings (folder not found, embeddings unavailable, a file that could not be indexed). `DocumentIndexStatus` stays for the "documents cannot be searched right now" answer. Provider failures carry the provider's cleaned reason (logged; shown only on Test connection, never in chat); a Gemini 400 about the model name is "model unavailable"; Gemini default model now `gemini-3.8-flash`. Updated §1, §2, §5.1, §7, §8.5, §9, §12, §13 (D-TFA-15 added) and §14. |
+| 1.3 | 01-Nov-2026 | Jojo George | OpenSpec change `tfa-hide-answer-sources`. `TfaMessageComponent` no longer renders sources; the API still returns them and they are stored with the message. Updated the glossary, §5 (presentation) and §6 (document knowledge) and the traceability row for FR-TFA-57 – FR-TFA-66. |
 
 **Related documents:**
 
@@ -75,7 +76,7 @@ Developer, tester and reviewer of TaskFlow; the product owner (Jojo George).
 | Chunk | One heading-bounded section (or part of a section) of a document, stored with its embedding |
 | Embedding | A 768-number vector made by the Google Gemini model `gemini-embedding-2`; similar texts have similar vectors |
 | Retrieval | Finding the chunks most similar to a message, in code, before the model is called |
-| Source | Document title, heading path and file path of a chunk given to the model, shown under the answer |
+| Source | Document title, heading path and file path of a chunk given to the model, recorded with the answer; not shown in the panel (v1.3) |
 
 ---
 
@@ -192,7 +193,7 @@ flowchart TB
 
 | Layer | Responsibility | May call |
 |---|---|---|
-| Presentation | `TfaPanelComponent` (button, panel, feed, provider notice, failure card), `TfaHeaderComponent` (new chat, close, model selector), `TfaComposerComponent` (message box, suggestions, mic), `TfaMessageComponent` (text, ranked list, links, sources, cards), `TfaActionCardComponent` (confirm / edit / cancel); `AssistantService` (TS) signals; `WakePhraseService`, `SpeakService`; browser storage `tfa.provider`, `tfa.cloudAck`, `tfa.handsfree` | API, browser speech |
+| Presentation | `TfaPanelComponent` (button, panel, feed, provider notice, failure card), `TfaHeaderComponent` (new chat, close, model selector), `TfaComposerComponent` (message box, suggestions, mic), `TfaMessageComponent` (text, ranked list, links, cards), `TfaActionCardComponent` (confirm / edit / cancel); `AssistantService` (TS) signals; `WakePhraseService`, `SpeakService`; browser storage `tfa.provider`, `tfa.cloudAck`, `tfa.handsfree` | API, browser speech |
 | API / Controllers | `AssistantController`: caller from the token (`AssistantCaller`), `perm:assistant.chat` / `perm:assistant.actions.confirm` per action | Services |
 | Conversation engine | `AssistantService`, `AssistantPrompt`, `AssistantTexts`, `ProviderFailureMessages`: length check, secret screen, provider choice, rate limit, history window, document search, prompt with document block, tool loop, sources, persistence | Gateway, document search, tools, repositories |
 | Document knowledge | `DocumentSearch`, `DocumentVectorIndex`, `DocumentIndexer`, `DocumentIndexerService`, `DocumentIndexStatus`, `DocumentEmbeddingEndpoint`, `MarkdownChunker` | Embedding client, document index repository, unit of work |
@@ -211,7 +212,7 @@ flowchart TB
 | Conversation engine | Validate, screen secrets, limit rate, build prompt and history, run up to 4 tool rounds, store question and answer | `AssistantService`, `AssistantPrompt`, `SecretScreen`, `AssistantRateLimiter`, conversation and message repositories | Application Settings (name, timezone) |
 | Model gateway | One interface over three providers; failure classification (`ProviderFailureKind`) | `ChatModelGateway`, `ChatModelProviderRegistry`, provider adapters | TFA Settings (`AiProviderConfig`, `AiModel`, encrypted keys via `AiKeyProtector`) |
 | Task answers and work order | Own / accessible open tasks; deterministic ranking | `GetMyTasksTool`, `PrioritiseTasksTool`, `TaskPrioritiser` | Task Management (`ITaskService`, access rules) |
-| Document knowledge (v1.1; replaces how-to help) | Index the Markdown documents (heading-aware chunks, Gemini embeddings, only changed files); retrieve the best chunks for each message before the model call; prompt block (Found / NoMatch / Unavailable); sources under answers | `DocumentIndexerService`, `DocumentIndexer`, `MarkdownChunker`, `GeminiEmbeddingClient`, `DocumentVectorIndex`, `DocumentSearch`, `AssistantPrompt`, document index repository; `TfaMessageComponent` source chips | Documents folder; Google Gemini (`gemini-embedding-2`); TFA Settings (saved Gemini key) |
+| Document knowledge (v1.1; replaces how-to help) | Index the Markdown documents (heading-aware chunks, Gemini embeddings, only changed files); retrieve the best chunks for each message before the model call; prompt block (Found / NoMatch / Unavailable); sources recorded with answers, not displayed | `DocumentIndexerService`, `DocumentIndexer`, `MarkdownChunker`, `GeminiEmbeddingClient`, `DocumentVectorIndex`, `DocumentSearch`, `AssistantPrompt`, document index repository | Documents folder; Google Gemini (`gemini-embedding-2`); TFA Settings (saved Gemini key) |
 | Lookup and guidance | Find users for mail; fixed password and "needs an administrator" guidance | `FindUserTool`, `ExplainPasswordChangeTool`, `ContactAdminGuidanceTool` | Mail (`IMailService` contacts) |
 | Action Cards | Prepare, edit (mail only), confirm, cancel; expiry; run once; audit | `DraftMailTool`, `ProposeProfileUpdateTool`, `ProposeRoleChangeTool`, `AssistantActionService`, `TfaActionCardComponent`, pending-action repository | Mail, My Profile, Employee Management services and validators |
 | Voice controls | Wake phrase, dictation, read-aloud, hands-free toggle | `WakePhraseService`, `SpeakService` (frontend only) | Browser Web Speech API |
@@ -550,7 +551,7 @@ overall HLD (`../../00-Overall/HLD-TaskFlow-Overall.md`).
 | FR-TFA-47 – FR-TFA-52 | Voice controls › `WakePhraseService`, `SpeakService`, `TfaComposerComponent` mic | §8.4, D-TFA-9 |
 | FR-TFA-53 | `AssistantRateLimiter` | §9, D-TFA-8 |
 | FR-TFA-54 – FR-TFA-56 | `AssistantAuditLog` and audit repository | §9, D-TFA-10 |
-| FR-TFA-57 – FR-TFA-66 | Document knowledge › `DocumentIndexerService`, `DocumentIndexer`, `MarkdownChunker`, `GeminiEmbeddingClient`, `DocumentSearch`, `DocumentVectorIndex`, `AssistantPrompt`, sources in `TfaMessageComponent` | §5, §6, §7, §8.1, §8.5, D-TFA-11 – D-TFA-14 |
+| FR-TFA-57 – FR-TFA-66 | Document knowledge › `DocumentIndexerService`, `DocumentIndexer`, `MarkdownChunker`, `GeminiEmbeddingClient`, `DocumentSearch`, `DocumentVectorIndex`, `AssistantPrompt` | §5, §6, §7, §8.1, §8.5, D-TFA-11 – D-TFA-14 |
 | NFR-TFA-01 – NFR-TFA-12 | Non-functional design | §12 |
 | BR-TFA-01 – BR-TFA-16 | Covered through the FR rows above (see FRD §11) | §15 |
 
